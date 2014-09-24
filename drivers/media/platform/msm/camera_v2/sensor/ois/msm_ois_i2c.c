@@ -147,7 +147,7 @@ int32_t load_bin(uint8_t *ois_bin, uint32_t filesize, char *filename)
 
 	set_fs(KERNEL_DS);
 
-	sprintf(fs_name_buf1, "/system/media/%s", filename);
+	sprintf(fs_name_buf1, "/system/etc/firmware/%s", filename);
 
 	fd1 = sys_open(fs_name_buf1, O_RDONLY, 0);
 	if (fd1 < 0) {
