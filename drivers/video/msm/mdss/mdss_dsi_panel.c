@@ -1093,6 +1093,7 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
 	struct mdss_panel_info *pinfo;
 	struct dsi_panel_cmds *on_cmds;
+	int ret = 0;
 #if defined(CONFIG_LGE_MIPI_H1_INCELL_QHD_CMD_PANEL)
 	struct dsi_panel_cmds *vcom_cmds;
 #endif
@@ -1193,9 +1194,16 @@ notify:
 	}
 #endif
 
+	if (ctrl->ds_registered) {
+		if (ctrl->dba_ops.video_on)
+			ret = ctrl->dba_ops.video_on(
+				ctrl->dba_data, true,
+				&ctrl->dba_video_cfg, 0);
+	}
+
 end:
 	pr_debug("%s:-\n", __func__);
-	return 0;
+	return ret;
 }
 
 static int mdss_dsi_post_panel_on(struct mdss_panel_data *pdata)
