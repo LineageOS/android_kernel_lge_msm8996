@@ -284,6 +284,7 @@ static int ecryptfs_parse_options(struct ecryptfs_sb_info *sbi, char *options,
 	int cipher_key_bytes_set = 0;
 	int fn_cipher_key_bytes;
 	int fn_cipher_key_bytes_set = 0;
+	size_t salt_size = 0;
 	struct ecryptfs_mount_crypt_stat *mount_crypt_stat =
 		&sbi->mount_crypt_stat;
 #ifdef FEATURE_SDCARD_ENCRYPTION
@@ -453,7 +454,22 @@ static int ecryptfs_parse_options(struct ecryptfs_sb_info *sbi, char *options,
 	    && !fn_cipher_name_set)
 		strcpy(mount_crypt_stat->global_default_fn_cipher_name,
 		       mount_crypt_stat->global_default_cipher_name);
-	if (!cipher_key_bytes_set)
+
+	if (cipher_key_bytes_set) {
+
+		salt_size = ecryptfs_get_salt_size_for_cipher(
+				ecryptfs_get_full_cipher(
+				mount_crypt_stat->global_default_cipher_name,
+				mount_crypt_stat->global_default_cipher_mode));
+
+		if (!ecryptfs_check_space_for_salt(
+			mount_crypt_stat->global_default_cipher_key_size,
+			salt_size)) {
+			ecryptfs_printk(
+				KERN_WARNING,
+				"eCryptfs internal error: no space for salt");
+		}
+	} else
 		mount_crypt_stat->global_default_cipher_key_size = 0;
 
 	if ((mount_crypt_stat->flags & ECRYPTFS_GLOBAL_ENCRYPT_FILENAMES)

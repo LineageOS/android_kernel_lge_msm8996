@@ -647,9 +647,9 @@ static int crypt_scatterlist(struct ecryptfs_crypt_stat *crypt_stat,
 	       || !(crypt_stat->flags & ECRYPTFS_STRUCT_INITIALIZED));
 	if (unlikely(ecryptfs_verbosity > 0)) {
 		ecryptfs_printk(KERN_DEBUG, "Key size [%zd]; key:\n",
-				crypt_stat->key_size);
+				ecryptfs_get_key_size_to_enc_data(crypt_stat));
 		ecryptfs_dump_hex(crypt_stat->key,
-				  crypt_stat->key_size);
+				ecryptfs_get_key_size_to_enc_data(crypt_stat));
 	}
 
 	init_completion(&ecr.completion);
@@ -668,7 +668,7 @@ static int crypt_scatterlist(struct ecryptfs_crypt_stat *crypt_stat,
 	/* Consider doing this once, when the file is opened */
 	if (!(crypt_stat->flags & ECRYPTFS_KEY_SET)) {
 		rc = crypto_ablkcipher_setkey(crypt_stat->tfm, crypt_stat->key,
-					      crypt_stat->key_size);
+				ecryptfs_get_key_size_to_enc_data(crypt_stat));
 		if (rc) {
 			ecryptfs_printk(KERN_ERR,
 					"Error setting key; rc = [%d]\n",
@@ -1008,7 +1008,7 @@ int ecryptfs_init_crypt_ctx(struct ecryptfs_crypt_stat *crypt_stat)
 			"Initializing cipher [%s]; strlen = [%d]; "
 			"key_size_bits = [%zd]\n",
 			crypt_stat->cipher, (int)strlen(crypt_stat->cipher),
-			crypt_stat->key_size << 3);
+			ecryptfs_get_key_size_to_enc_data(crypt_stat) << 3);
 	mutex_lock(&crypt_stat->cs_tfm_mutex);
 	if (crypt_stat->tfm) {
 		rc = 0;
@@ -1109,7 +1109,7 @@ int ecryptfs_compute_root_iv(struct ecryptfs_crypt_stat *crypt_stat)
 #endif //CONFIG_CRYPTO_DEV_HWCRYPTO_FOR_SDCARD
 #else
 	rc = ecryptfs_calculate_md5(dst, crypt_stat, crypt_stat->key,
-				    crypt_stat->key_size);
+			ecryptfs_get_key_size_to_enc_data(crypt_stat));
 #endif //CONFIG_CRYPTO_CCMODE
 	if (rc) {
 		ecryptfs_printk(KERN_WARNING, "Error attempting to compute "
@@ -1147,6 +1147,33 @@ static void ecryptfs_generate_new_key(struct ecryptfs_crypt_stat *crypt_stat)
 		ecryptfs_dump_hex(crypt_stat->key,
 				  crypt_stat->key_size);
 	}
+}
+
+static int ecryptfs_generate_new_salt(struct ecryptfs_crypt_stat *crypt_stat)
+{
+	size_t salt_size = 0;
+
+	salt_size = ecryptfs_get_salt_size_for_cipher(
+			ecryptfs_get_full_cipher(crypt_stat->cipher,
+						 crypt_stat->cipher_mode));
+
+	if (0 == salt_size)
+		return 0;
+
+	if (!ecryptfs_check_space_for_salt(crypt_stat->key_size, salt_size)) {
+		ecryptfs_printk(KERN_WARNING, "not enough space for salt\n");
+		crypt_stat->flags |= ECRYPTFS_SECURITY_WARNING;
+		return -EINVAL;
+	}
+
+	get_random_bytes(crypt_stat->key + crypt_stat->key_size, salt_size);
+	if (unlikely(ecryptfs_verbosity > 0)) {
+		ecryptfs_printk(KERN_DEBUG, "Generated new session salt:\n");
+		ecryptfs_dump_hex(crypt_stat->key + crypt_stat->key_size,
+				  salt_size);
+	}
+
+	return 0;
 }
 
 /**
@@ -1278,6 +1305,8 @@ int ecryptfs_new_file_context(struct inode *ecryptfs_inode)
 	crypt_stat->key_size =
 		mount_crypt_stat->global_default_cipher_key_size;
 	ecryptfs_generate_new_key(crypt_stat);
+	ecryptfs_generate_new_salt(crypt_stat);
+
 	rc = ecryptfs_init_crypt_ctx(crypt_stat);
 	if (rc) {
 		ecryptfs_printk(KERN_ERR, "Error initializing cryptographic "

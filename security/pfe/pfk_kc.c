@@ -407,13 +407,12 @@ int pfk_kc_remove_key_with_salt(const unsigned char *key, size_t key_size,
 		return -EINVAL;
 	}
 
-	kc_clear_entry(entry);
+	kc_clear_entry(entry, true);
 	spin_unlock(&kc_lock);
-
-	qti_pfk_ice_invalidate_key(entry->key_index);
 
 	return 0;
 }
+
 
 /**
  * pfk_kc_remove_key() - remove the key from cache and from ICE engine
