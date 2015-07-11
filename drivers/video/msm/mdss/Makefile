@@ -72,3 +72,5 @@ obj-$(CONFIG_COMPAT) += mdss_compat_utils.o
 ifeq ($(CONFIG_LGE_DISPLAY_AOD_SUPPORTED),y)
 obj-$(CONFIG_FB_MSM_MDSS) += oem_mdss_aod.o
 endif
+
+obj-$(CONFIG_FB_MSM_MDSS) += mdss_livedisplay.o
