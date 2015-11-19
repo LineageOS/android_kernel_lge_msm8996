@@ -150,6 +150,7 @@ struct mdss_rect {
 
 #define MDSS_MAX_PANEL_LEN      256
 #define MDSS_INTF_MAX_NAME_LEN 5
+#define MDSS_DISPLAY_ID_MAX_LEN 16
 struct mdss_panel_intf {
 	char name[MDSS_INTF_MAX_NAME_LEN];
 	int  type;
@@ -638,6 +639,7 @@ struct mdss_panel_info {
 
 	bool is_prim_panel;
 	bool is_pluggable;
+	char display_id[MDSS_DISPLAY_ID_MAX_LEN];
 
 	/* refer sim_panel_modes enum for different modes */
 	u8 sim_panel_mode;
