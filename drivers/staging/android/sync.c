@@ -25,7 +25,7 @@
 #include <linux/slab.h>
 #include <linux/uaccess.h>
 #include <linux/anon_inodes.h>
-#include <linux/sync.h>
+#include "sync.h"
 #include <linux/spinlock.h>
 
 #define CREATE_TRACE_POINTS
@@ -734,4 +734,3 @@ static const struct file_operations sync_fence_fops = {
 	.unlocked_ioctl = sync_fence_ioctl,
 	.compat_ioctl = sync_fence_ioctl,
 };
-
