@@ -628,7 +628,10 @@ static void cpufreq_interactive_timer(unsigned long data)
 			cputime_speedadj = (u64)sl->prev_load *
 					   ppol->policy->cpuinfo.max_freq;
 			do_div(cputime_speedadj, tunables->timer_rate);
-			new_load_pct = sl->new_task_load * 100 / sl->prev_load;
+			new_load_pct = 0;
+			if (sl->prev_load)
+				new_load_pct = sl->new_task_load * 100 /
+						sl->prev_load;
 		} else {
 			now = update_load(i);
 			delta_time = (unsigned int)
