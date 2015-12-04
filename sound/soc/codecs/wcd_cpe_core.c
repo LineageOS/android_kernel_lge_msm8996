@@ -737,7 +737,7 @@ static unsigned int wcd_cpe_state_poll(struct snd_info_entry *entry,
  * wcd_cpe_is_online_state - return true if card is online state
  * @core: core offline to query
  */
-bool wcd_cpe_is_online_state(void *core_handle)
+static bool wcd_cpe_is_online_state(void *core_handle)
 {
 	struct wcd_cpe_core *core = core_handle;
 	if (core_handle) {
@@ -972,7 +972,7 @@ static void wcd_cpe_set_and_complete(struct wcd_cpe_core *core,
  * @work: work that is scheduled to perform CPE shutdown
  *	and restart
  */
-void wcd_cpe_ssr_work(struct work_struct *work)
+static void wcd_cpe_ssr_work(struct work_struct *work)
 {
 
 	int rc = 0;
@@ -1205,7 +1205,7 @@ static irqreturn_t svass_exception_irq(int irq, void *data)
  * Process the request to the command sent to CPE and wakeup the
  * command send wait.
  */
-void wcd_cpe_cmi_afe_cb(const struct cmi_api_notification *param)
+static void wcd_cpe_cmi_afe_cb(const struct cmi_api_notification *param)
 {
 	struct cmi_hdr *hdr;
 	struct wcd_cmi_afe_port_data *afe_port_d;
@@ -2001,7 +2001,7 @@ EXPORT_SYMBOL(wcd_cpe_init);
  * This callback is registered with cpe services while registering
  * the LSM service
  */
-void wcd_cpe_cmi_lsm_callback(const struct cmi_api_notification *param)
+static void wcd_cpe_cmi_lsm_callback(const struct cmi_api_notification *param)
 {
 	struct cmi_hdr *hdr;
 	struct cpe_lsm_session *lsm_session;
@@ -3062,9 +3062,9 @@ err_ret:
 }
 
 static int wcd_cpe_lsm_set_data(void *core_handle,
-			struct cpe_lsm_session *session,
-			enum lsm_detection_mode detect_mode,
-			bool detect_failure)
+				struct cpe_lsm_session *session,
+				enum lsm_detection_mode detect_mode,
+				bool detect_failure)
 {
 	struct wcd_cpe_core *core = core_handle;
 	struct cpe_lsm_ids ids;
