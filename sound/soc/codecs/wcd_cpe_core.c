@@ -2879,6 +2879,7 @@ static int wcd_cpe_send_param_dereg_model(
 			__func__, rc);
 	WCD_CPE_REL_LOCK(&session->lsm_lock, "lsm");
 err_ret:
+	kfree(message);
 	return rc;
 }
 
