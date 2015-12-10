@@ -748,6 +748,9 @@ int read_platform_resources_from_dt(
 	of_property_read_u32(pdev->dev.of_node,
 			"qcom,pm-qos-latency-us", &res->pm_qos_latency_us);
 
+	of_property_read_u32(pdev->dev.of_node,
+			"qcom,max-secure-instances",
+			&res->max_secure_inst_count);
 	return rc;
 
 err_setup_legacy_cb:
