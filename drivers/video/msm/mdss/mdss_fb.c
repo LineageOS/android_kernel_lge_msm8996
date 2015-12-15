@@ -2323,6 +2323,7 @@ void mdss_fb_update_backlight(struct msm_fb_data_type *mfd)
 			if (bl_notify)
 				mdss_fb_bl_update_notify(mfd,
 					NOTIFY_TYPE_BL_AD_ATTEN_UPDATE);
+			mdss_fb_bl_update_notify(mfd, NOTIFY_TYPE_BL_UPDATE);
 			pdata->set_backlight(pdata, temp);
 			mfd->bl_level_scaled = mfd->unset_bl_level;
 			mfd->bl_updated = 1;
