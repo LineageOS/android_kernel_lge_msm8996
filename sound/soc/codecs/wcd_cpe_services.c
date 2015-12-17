@@ -50,7 +50,7 @@
 #define TOMTOM_A_SVASS_SPE_OUTBOX(N)	(TOMTOM_A_SVASS_SPE_OUTBOX_0 + (N))
 
 #define WCD9335_CPE_SS_SPE_DRAM_OFFSET		0x48000
-#define WCD9335_CPE_SS_SPE_DRAM_SIZE		0x38000
+#define WCD9335_CPE_SS_SPE_DRAM_SIZE		0x34000
 #define WCD9335_CPE_SS_SPE_IRAM_OFFSET		0x80000
 #define WCD9335_CPE_SS_SPE_IRAM_SIZE		0x20000
 
@@ -1312,12 +1312,12 @@ static enum cpe_process_result cpe_mt_process_cmd(
 		service = CMI_HDR_GET_SERVICE(hdr);
 		pr_debug("%s: msg send success, notifying clients\n",
 			 __func__);
+		cpe_command_cleanup(command_node);
+		t_info->pending = NULL;
 		cpe_change_state(t_info,
 				 CPE_STATE_IDLE, CPE_SS_IDLE);
 		cpe_notify_cmi_client(t_info,
 			t_info->tgt->outbox, CPE_SVC_SUCCESS);
-		cpe_command_cleanup(command_node);
-		t_info->pending = NULL;
 		break;
 
 	case CPE_CMD_PROC_INCOMING_MSG:
