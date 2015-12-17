@@ -1348,10 +1348,6 @@ if( mfd->panel_info->type == MIPI_CMD_PANEL )
 					mfd->index);
 			return 0;
 		}
-	} else if (mdata->handoff_pending) {
-		pr_warn("fb%d: commit while splash handoff pending\n",
-				mfd->index);
-		return -EPERM;
 	}
 
 	pr_debug("starting fb%d overlay\n", mfd->index);
