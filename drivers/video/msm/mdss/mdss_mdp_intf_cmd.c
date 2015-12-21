@@ -847,6 +847,9 @@ int mdss_mdp_resource_control(struct mdss_mdp_ctl *ctl, u32 sw_event)
 		 * 1. Early wakeup cancelled the gate work.
 		 * 2. Early wakeup cancelled the off work.
 		 * 3. Early wakeup changed the state to ON.
+		 *
+		 * Driver will not allow off work under one condition:
+		 * 1. Kickoff is pending.
 		 */
 		if (schedule_off && !ctl->mfd->validate_pending) {
 			/*
