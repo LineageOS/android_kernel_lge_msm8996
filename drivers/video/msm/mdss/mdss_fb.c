@@ -1441,7 +1441,7 @@ static DEVICE_ATTR(thermal_blmax, S_IWUSR|S_IRUGO, thermal_blmax_show , thermal_
 #endif
 
 #if defined(CONFIG_LGE_DISPLAY_DYNAMIC_LOG)
-static DEVICE_ATTR(debug_level, S_IWUSR|S_IRUGO, display_debug_level_show , display_debug_level_store); 
+static DEVICE_ATTR(debug_level, S_IWUSR|S_IRUGO, display_debug_level_show , display_debug_level_store);
 #endif
 
 static struct attribute *mdss_fb_attrs[] = {
@@ -2460,11 +2460,13 @@ static int mdss_fb_blank_blank(struct msm_fb_data_type *mfd,
 			pr_info("[AOD] Don't off backlight when U2 Blank\n");
 			mfd->unset_bl_level = 0;
 		} else {
+			mfd->allow_bl_update = true;
 			mdss_fb_set_backlight(mfd, 0);
 			mfd->bl_updated = 0;
 			mfd->unset_bl_level = 0;
 		}
 #else
+		mfd->allow_bl_update = true;
 		mdss_fb_set_backlight(mfd, 0);
 		mfd->bl_updated = 0;
 		mfd->unset_bl_level = current_bl;
