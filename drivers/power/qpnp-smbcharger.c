@@ -399,9 +399,15 @@ module_param_named(
 	int, S_IRUSR | S_IWUSR
 );
 
-static int smbchg_default_hvdcp_icl_ma = 3000;
+static int smbchg_default_hvdcp_icl_ma = 1800;
 module_param_named(
 	default_hvdcp_icl_ma, smbchg_default_hvdcp_icl_ma,
+	int, S_IRUSR | S_IWUSR
+);
+
+static int smbchg_default_hvdcp3_icl_ma = 3000;
+module_param_named(
+	default_hvdcp3_icl_ma, smbchg_default_hvdcp3_icl_ma,
 	int, S_IRUSR | S_IWUSR
 );
 
@@ -1671,6 +1677,34 @@ static int smbchg_get_min_parallel_current_ma(struct smbchg_chip *chip)
 	if ((reg & hvdcp_sel) && (reg & hvdcp_sel_9v))
 		return chip->parallel.min_9v_current_thr_ma;
 	return chip->parallel.min_current_thr_ma;
+}
+
+static bool is_hvdcp_present(struct smbchg_chip *chip)
+{
+	int rc;
+	u8 reg, hvdcp_sel;
+
+	rc = smbchg_read(chip, &reg,
+			chip->usb_chgpth_base + USBIN_HVDCP_STS, 1);
+	if (rc < 0) {
+		pr_err("Couldn't read hvdcp status rc = %d\n", rc);
+		return false;
+	}
+
+	pr_smb(PR_STATUS, "HVDCP_STS = 0x%02x\n", reg);
+	/*
+	 * If a valid HVDCP is detected, notify it to the usb_psy only
+	 * if USB is still present.
+	 */
+	if (chip->schg_version == QPNP_SCHG_LITE)
+		hvdcp_sel = SCHG_LITE_USBIN_HVDCP_SEL_BIT;
+	else
+		hvdcp_sel = USBIN_HVDCP_SEL_BIT;
+
+	if ((reg & hvdcp_sel) && is_usb_present(chip))
+		return true;
+
+	return false;
 }
 
 #define FCC_CFG			0xF2
@@ -3116,28 +3150,25 @@ static int smbchg_hw_aicl_rerun_en(struct smbchg_chip *chip, bool en)
 	return rc;
 }
 
-static int smbchg_aicl_config(struct smbchg_chip *chip)
+static int smbchg_aicl_deglitch_config(struct smbchg_chip *chip, bool longer)
 {
 	int rc = 0;
 
 	rc = smbchg_sec_masked_write(chip,
 		chip->usb_chgpth_base + USB_AICL_CFG,
-		USB_AICL_DEGLITCH_MASK, USB_AICL_DEGLITCH_LONG);
-	if (rc) {
+		USB_AICL_DEGLITCH_MASK,
+		longer ? USB_AICL_DEGLITCH_LONG : USB_AICL_DEGLITCH_SHORT);
+	if (rc < 0) {
 		pr_err("Couldn't write to USB_AICL_CFG rc=%d\n", rc);
 		return rc;
 	}
 	rc = smbchg_sec_masked_write(chip,
 		chip->dc_chgpth_base + DC_AICL_CFG,
-		DC_AICL_DEGLITCH_MASK, DC_AICL_DEGLITCH_LONG);
-	if (rc) {
+		DC_AICL_DEGLITCH_MASK,
+		longer ? DC_AICL_DEGLITCH_LONG : DC_AICL_DEGLITCH_SHORT);
+	if (rc < 0) {
 		pr_err("Couldn't write to DC_AICL_CFG rc=%d\n", rc);
 		return rc;
-	}
-	if (!chip->very_weak_charger) {
-		rc = smbchg_hw_aicl_rerun_en(chip, true);
-		if (rc)
-			pr_err("Couldn't enable AICL rerun rc= %d\n", rc);
 	}
 	return rc;
 }
@@ -3149,18 +3180,10 @@ static void smbchg_aicl_deglitch_wa_en(struct smbchg_chip *chip, bool en)
 	if (chip->force_aicl_rerun)
 		return;
 	if (en && !chip->aicl_deglitch_short) {
-		rc = smbchg_sec_masked_write(chip,
-			chip->usb_chgpth_base + USB_AICL_CFG,
-			USB_AICL_DEGLITCH_MASK, USB_AICL_DEGLITCH_SHORT);
-		if (rc) {
-			pr_err("Couldn't write to USB_AICL_CFG rc=%d\n", rc);
-			return;
-		}
-		rc = smbchg_sec_masked_write(chip,
-			chip->dc_chgpth_base + DC_AICL_CFG,
-			DC_AICL_DEGLITCH_MASK, DC_AICL_DEGLITCH_SHORT);
-		if (rc) {
-			pr_err("Couldn't write to DC_AICL_CFG rc=%d\n", rc);
+		/* set to short deglitch */
+		rc = smbchg_aicl_deglitch_config(chip, false);
+		if (rc < 0) {
+			pr_err("Couldn't config short deglitch rc=%d\n", rc);
 			return;
 		}
 		if (!chip->very_weak_charger) {
@@ -3173,22 +3196,14 @@ static void smbchg_aicl_deglitch_wa_en(struct smbchg_chip *chip, bool en)
 		}
 		pr_smb(PR_STATUS, "AICL deglitch set to short\n");
 	} else if (!en && chip->aicl_deglitch_short) {
-		rc = smbchg_sec_masked_write(chip,
-			chip->usb_chgpth_base + USB_AICL_CFG,
-			USB_AICL_DEGLITCH_MASK, USB_AICL_DEGLITCH_LONG);
-		if (rc) {
-			pr_err("Couldn't write to USB_AICL_CFG rc=%d\n", rc);
-			return;
-		}
-		rc = smbchg_sec_masked_write(chip,
-			chip->dc_chgpth_base + DC_AICL_CFG,
-			DC_AICL_DEGLITCH_MASK, DC_AICL_DEGLITCH_LONG);
-		if (rc) {
-			pr_err("Couldn't write to DC_AICL_CFG rc=%d\n", rc);
+		/* set to long deglitch */
+		rc = smbchg_aicl_deglitch_config(chip, true);
+		if (rc < 0) {
+			pr_err("Couldn't config long deglitch rc=%d\n", rc);
 			return;
 		}
 		rc = smbchg_hw_aicl_rerun_en(chip, false);
-		if (rc) {
+		if (rc < 0) {
 			pr_err("Couldn't disable AICL rerun rc= %d\n", rc);
 			return;
 		}
@@ -3201,7 +3216,6 @@ static void smbchg_aicl_deglitch_wa_check(struct smbchg_chip *chip)
 {
 	union power_supply_propval prop = {0,};
 	int rc;
-	u8 reg;
 	bool low_volt_chgr = true;
 
 	if (!(chip->wa_flags & SMBCHG_AICL_DEGLITCH_WA))
@@ -3217,13 +3231,7 @@ static void smbchg_aicl_deglitch_wa_check(struct smbchg_chip *chip)
 		return;
 
 	if (is_usb_present(chip)) {
-		rc = smbchg_read(chip, &reg,
-				chip->usb_chgpth_base + USBIN_HVDCP_STS, 1);
-		if (rc < 0) {
-			pr_err("Couldn't read hvdcp status rc = %d\n", rc);
-			return;
-		}
-		if (reg & USBIN_HVDCP_SEL_BIT)
+		if (is_hvdcp_present(chip))
 			low_volt_chgr = false;
 	} else if (is_dc_present(chip)) {
 		if (chip->dc_psy_type == POWER_SUPPLY_TYPE_WIPOWER)
@@ -3539,6 +3547,7 @@ struct regulator_ops smbchg_otg_reg_ops = {
 #define ADAPTER_ALLOWANCE_MASK		0x7
 #define USBIN_ADAPTER_9V		0x3
 #define USBIN_ADAPTER_5V_9V_CONT	0x2
+#define USBIN_ADAPTER_5V_UNREGULATED_9V	0x5
 #define HVDCP_EN_BIT			BIT(3)
 static int smbchg_external_otg_regulator_enable(struct regulator_dev *rdev)
 {
@@ -4181,9 +4190,10 @@ static int smbchg_change_usb_supply_type(struct smbchg_chip *chip,
 		current_limit_ma = DEFAULT_SDP_MA;
 	else if (type == POWER_SUPPLY_TYPE_USB_CDP)
 		current_limit_ma = DEFAULT_CDP_MA;
-	else if (type == POWER_SUPPLY_TYPE_USB_HVDCP
-			|| type == POWER_SUPPLY_TYPE_USB_HVDCP_3)
+	else if (type == POWER_SUPPLY_TYPE_USB_HVDCP)
 		current_limit_ma = smbchg_default_hvdcp_icl_ma;
+	else if (type == POWER_SUPPLY_TYPE_USB_HVDCP_3)
+		current_limit_ma = smbchg_default_hvdcp3_icl_ma;
 	else
 		current_limit_ma = smbchg_default_dcp_icl_ma;
 
@@ -4210,34 +4220,6 @@ static int smbchg_change_usb_supply_type(struct smbchg_chip *chip,
 
 out:
 	return rc;
-}
-
-static bool is_hvdcp_present(struct  smbchg_chip *chip)
-{
-	int rc;
-	u8 reg, hvdcp_sel;
-
-	rc = smbchg_read(chip, &reg,
-			chip->usb_chgpth_base + USBIN_HVDCP_STS, 1);
-	if (rc < 0) {
-		pr_err("Couldn't read hvdcp status rc = %d\n", rc);
-		return false;
-	}
-
-	pr_smb(PR_STATUS, "HVDCP_STS = 0x%02x\n", reg);
-	/*
-	 * If a valid HVDCP is detected, notify it to the usb_psy only
-	 * if USB is still present.
-	 */
-	if (chip->schg_version == QPNP_SCHG_LITE)
-		hvdcp_sel = SCHG_LITE_USBIN_HVDCP_SEL_BIT;
-	else
-		hvdcp_sel = USBIN_HVDCP_SEL_BIT;
-
-	if ((reg & hvdcp_sel) && is_usb_present(chip))
-		return true;
-
-	return false;
 }
 
 #define HVDCP_ADAPTER_SEL_MASK	SMB_MASK(5, 4)
@@ -4360,10 +4342,10 @@ static void restore_from_hvdcp_detection(struct smbchg_chip *chip)
 	if (rc < 0)
 		pr_err("Couldn't enable APSD rc=%d\n", rc);
 
-	/* allow 5 to 9V chargers */
+	/* Reset back to 5V unregulated */
 	rc = smbchg_sec_masked_write(chip,
-			chip->usb_chgpth_base + USBIN_CHGR_CFG,
-			ADAPTER_ALLOWANCE_MASK, USBIN_ADAPTER_5V_9V_CONT);
+		chip->usb_chgpth_base + USBIN_CHGR_CFG,
+		ADAPTER_ALLOWANCE_MASK, USBIN_ADAPTER_5V_UNREGULATED_9V);
 	if (rc < 0)
 		pr_err("Couldn't write usb allowance rc=%d\n", rc);
 
@@ -6716,8 +6698,17 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 		return rc;
 	}
 
-	if (chip->force_aicl_rerun)
-		rc = smbchg_aicl_config(chip);
+	/* set to long aicl deglitch */
+	rc = smbchg_aicl_deglitch_config(chip, true);
+
+	if (chip->force_aicl_rerun) {
+		rc = smbchg_hw_aicl_rerun_en(chip, true);
+		if (rc < 0) {
+			dev_err(chip->dev, "Couldn't set hw aicl rerun rc = %d\n",
+					rc);
+			return rc;
+		}
+	}
 
 	if (chip->schg_version == QPNP_SCHG_LITE) {
 		/* enable OTG hiccup mode */
