@@ -433,7 +433,7 @@ static int __init lge_check_bootreason(char *reason)
 
 	return 1;
 }
-__setup("lge.bootreasoncode=", lge_check_bootreason);
+__setup("lge.bootreason=", lge_check_bootreason);
 
 int lge_get_bootreason(void)
 {
