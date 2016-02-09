@@ -733,10 +733,9 @@ static void hdmi_ddc_trigger(struct hdmi_tx_ddc_ctrl *ddc_ctrl,
 	DSS_REG_W_ND(io, HDMI_DDC_CTRL, ddc_ctrl_reg_val);
 }
 
-static int hdmi_ddc_check_status(struct hdmi_tx_ddc_ctrl *ddc_ctrl)
+static void hdmi_ddc_clear_status(struct hdmi_tx_ddc_ctrl *ddc_ctrl)
 {
 	u32 reg_val;
-	int rc = 0;
 
 	/* Read DDC status */
 	reg_val = DSS_REG_R(ddc_ctrl->io, HDMI_DDC_SW_STATUS);
@@ -751,18 +750,14 @@ static int hdmi_ddc_check_status(struct hdmi_tx_ddc_ctrl *ddc_ctrl)
 		reg_val = BIT(3) | BIT(1);
 
 		DSS_REG_W_ND(ddc_ctrl->io, HDMI_DDC_CTRL, reg_val);
-
-		rc = -ECOMM;
 	}
-
-	return rc;
 }
 
 static int hdmi_ddc_read_retry(struct hdmi_tx_ddc_ctrl *ddc_ctrl)
 {
 	u32 reg_val, ndx, time_out_count, wait_time;
 	struct hdmi_tx_ddc_data *ddc_data;
-	int status, rc;
+	int status;
 	int busy_wait_us;
 
 	if (!ddc_ctrl || !ddc_ctrl->io) {
@@ -831,10 +826,7 @@ static int hdmi_ddc_read_retry(struct hdmi_tx_ddc_ctrl *ddc_ctrl)
 			status = -ETIMEDOUT;
 		}
 
-		rc = hdmi_ddc_check_status(ddc_ctrl);
-
-		if (!status)
-			status = rc;
+		hdmi_ddc_clear_status(ddc_ctrl);
 	} while (status && ddc_data->retry--);
 
 	if (status)
@@ -1173,7 +1165,7 @@ int hdmi_ddc_read(struct hdmi_tx_ddc_ctrl *ddc_ctrl)
 
 int hdmi_ddc_read_seg(struct hdmi_tx_ddc_ctrl *ddc_ctrl)
 {
-	int status, rc;
+	int status;
 	u32 reg_val, ndx, time_out_count;
 	struct hdmi_tx_ddc_data *ddc_data;
 
@@ -1214,10 +1206,7 @@ int hdmi_ddc_read_seg(struct hdmi_tx_ddc_ctrl *ddc_ctrl)
 			status = -ETIMEDOUT;
 		}
 
-		rc = hdmi_ddc_check_status(ddc_ctrl);
-
-		if (!status)
-			status = rc;
+		hdmi_ddc_clear_status(ddc_ctrl);
 	} while (status && ddc_data->retry--);
 
 	if (status)
@@ -1243,7 +1232,7 @@ error:
 
 int hdmi_ddc_write(struct hdmi_tx_ddc_ctrl *ddc_ctrl)
 {
-	int status, rc;
+	int status;
 	u32 time_out_count;
 	struct hdmi_tx_ddc_data *ddc_data;
 	u32 wait_time;
@@ -1315,10 +1304,7 @@ int hdmi_ddc_write(struct hdmi_tx_ddc_ctrl *ddc_ctrl)
 			status = -ETIMEDOUT;
 		}
 
-		rc = hdmi_ddc_check_status(ddc_ctrl);
-
-		if (!status)
-			status = rc;
+		hdmi_ddc_clear_status(ddc_ctrl);
 	} while (status && ddc_data->retry--);
 
 	if (status)
