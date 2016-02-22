@@ -200,6 +200,8 @@ int fb_cmap_to_user(const struct fb_cmap *from, struct fb_cmap_user *to)
 	if (size <= 0)
 		return -EINVAL;
 	size *= sizeof(u16);
+	if (!size)
+		return -EINVAL;
 
 	if (copy_to_user(to->red+tooff, from->red+fromoff, size))
 		return -EFAULT;
