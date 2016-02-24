@@ -399,8 +399,26 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			return rc;
 		}
 		if (!pinfo->cont_splash_enabled) {
-			if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
-				gpio_set_value((ctrl_pdata->disp_en_gpio), 1);
+			if (gpio_is_valid(ctrl_pdata->disp_en_gpio)) {
+				rc = gpio_direction_output(
+					ctrl_pdata->disp_en_gpio, 1);
+				if (rc) {
+					pr_err("%s: unable to set dir for en gpio\n",
+						__func__);
+					goto exit;
+				}
+			}
+
+			if (pdata->panel_info.rst_seq_len) {
+				rc = gpio_direction_output(ctrl_pdata->rst_gpio,
+					pdata->panel_info.rst_seq[0]);
+				if (rc) {
+					pr_err("%s: unable to set dir for rst gpio\n",
+						__func__);
+					goto exit;
+				}
+			}
+
 #if defined(CONFIG_LGE_DISPLAY_AOD_SUPPORTED)
 			/* Only panel reset when U0 -> U3 or U0 -> U2 Unblank*/
 			if (pinfo->aod_cmd_mode != ON_CMD && pinfo->aod_cmd_mode != ON_AND_AOD && !pinfo->panel_dead)
@@ -411,6 +429,7 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			if (touch_notifier_call_chain(NOTIFY_TOUCH_RESET, NULL))
 				pr_err("Failt to send notify to touch\n");
 #endif
+
 			for (i = 0; i < pdata->panel_info.rst_seq_len; ++i) {
 				gpio_set_value((ctrl_pdata->rst_gpio),
 					pdata->panel_info.rst_seq[i]);
@@ -418,15 +437,31 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 					usleep_range(pinfo->rst_seq[i] * 1000, pinfo->rst_seq[i] * 1000);
 			}
 
-			if (gpio_is_valid(ctrl_pdata->bklt_en_gpio))
-				gpio_set_value((ctrl_pdata->bklt_en_gpio), 1);
+			if (gpio_is_valid(ctrl_pdata->bklt_en_gpio)) {
+				rc = gpio_direction_output(
+					ctrl_pdata->bklt_en_gpio, 1);
+				if (rc) {
+					pr_err("%s: unable to set dir for bklt gpio\n",
+						__func__);
+					goto exit;
+				}
+			}
 		}
 
 		if (gpio_is_valid(ctrl_pdata->mode_gpio)) {
+			bool out;
+
 			if (pinfo->mode_gpio_state == MODE_GPIO_HIGH)
-				gpio_set_value((ctrl_pdata->mode_gpio), 1);
+				out = true;
 			else if (pinfo->mode_gpio_state == MODE_GPIO_LOW)
-				gpio_set_value((ctrl_pdata->mode_gpio), 0);
+				out = false;
+
+			rc = gpio_direction_output(ctrl_pdata->mode_gpio, out);
+			if (rc) {
+				pr_err("%s: unable to set dir for mode gpio\n",
+					__func__);
+				goto exit;
+			}
 		}
 		if (ctrl_pdata->ctrl_state & CTRL_STATE_PANEL_INIT) {
 			pr_debug("%s: Panel Not properly turned OFF\n",
@@ -448,6 +483,8 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 		if (gpio_is_valid(ctrl_pdata->mode_gpio))
 			gpio_free(ctrl_pdata->mode_gpio);
 	}
+
+exit:
 	return rc;
 }
 
