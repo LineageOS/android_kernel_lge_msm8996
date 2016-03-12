@@ -176,8 +176,9 @@ void send_uevent_lpwg(struct i2c_client *client, int type)
 		atomic_set(&ts->state.uevent, UEVENT_BUSY);
 		send_uevent(&client->dev, lpwg_uevent[type-1]);
 		if (type == LPWG_DOUBLE_TAP) {
-			input_report_key(ts->input_dev, KEY_POWER, BUTTON_PRESSED);
-			input_report_key(ts->input_dev, KEY_POWER, BUTTON_RELEASED);
+			input_report_key(ts->input_dev, KEY_WAKEUP, BUTTON_PRESSED);
+			input_sync(ts->input_dev);
+			input_report_key(ts->input_dev, KEY_WAKEUP, BUTTON_RELEASED);
 			input_sync(ts->input_dev);
 		}
 	}
@@ -4179,7 +4180,7 @@ static int touch_probe(struct i2c_client *client,
 	set_bit(EV_SYN, ts->input_dev->evbit);
 	set_bit(EV_ABS, ts->input_dev->evbit);
 	set_bit(EV_KEY, ts->input_dev->evbit);
-	set_bit(KEY_POWER, ts->input_dev->keybit);
+	set_bit(KEY_WAKEUP, ts->input_dev->keybit);
 	set_bit(INPUT_PROP_DIRECT, ts->input_dev->propbit);
 
 	input_set_abs_params(ts->input_dev,
