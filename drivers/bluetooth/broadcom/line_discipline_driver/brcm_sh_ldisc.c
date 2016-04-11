@@ -2006,7 +2006,7 @@ static int __init brcm_hci_uart_init( void )
 /*****************************************************************************
 **   Module EXIT interface
 *****************************************************************************/
-static void __exit brcm_hci_uart_exit(struct hci_uart* hu)
+static void __ref brcm_hci_uart_exit(struct hci_uart* hu)
 {
     int err;
 
