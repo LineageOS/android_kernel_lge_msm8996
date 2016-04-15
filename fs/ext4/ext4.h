@@ -204,6 +204,7 @@ struct ext4_io_submit {
 	struct bio		*io_bio;
 	ext4_io_end_t		*io_end;
 	sector_t		io_next_block;
+	struct inode		*io_crypt_inode;
 };
 
 /*
@@ -2160,7 +2161,7 @@ void ext4_free_encryption_info(struct inode *inode, struct ext4_crypt_info *ci);
 #ifdef CONFIG_EXT4_FS_ENCRYPTION
 int ext4_has_encryption_key(struct inode *inode);
 
-int ext4_get_encryption_info(struct inode *inode);
+int ext4_get_encryption_info(struct inode *inode, bool keep_raw_key);
 
 static inline struct ext4_crypt_info *ext4_encryption_info(struct inode *inode)
 {
