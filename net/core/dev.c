@@ -3682,8 +3682,7 @@ skip_taps:
 	if (fast_recv) {
 		if (fast_recv(skb)) {
 			ret = NET_RX_SUCCESS;
-			rcu_read_unlock();
-			goto out;
+			goto unlock;
 		}
 	}
 
