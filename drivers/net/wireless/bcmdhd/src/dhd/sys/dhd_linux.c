@@ -12026,48 +12026,18 @@ int
 write_to_file(dhd_pub_t *dhd, uint8 *buf, int size)
 {
 	int ret = 0;
-	struct file *fp = NULL;
+	struct file *fp;
 	mm_segment_t old_fs;
 	loff_t pos = 0;
-	char memdump_path[64];
-	char memdump_type[32];
-	struct timeval curtime;
-	uint32 file_mode;
 
 	/* change to KERNEL_DS address limit */
 	old_fs = get_fs();
 	set_fs(KERNEL_DS);
 
-	/* Init file name */
-	memset(memdump_path, 0, sizeof(memdump_path));
-	memset(memdump_type, 0, sizeof(memdump_type));
-	do_gettimeofday(&curtime);
-	dhd_convert_memdump_type_to_str(dhd->memdump_type, memdump_type);
-#ifdef CUSTOMER_HW4
-	sprintf(memdump_path, "%s_%s_%ld.%ld", "/data/log/mem_dump",
-		memdump_type, (unsigned long)curtime.tv_sec,
-		(unsigned long)curtime.tv_usec);
-	file_mode = O_CREAT | O_WRONLY | O_SYNC;
-#else
-	sprintf(memdump_path, "%s_%s_%ld.%ld", "/installmedia/mem_dump",
-		memdump_type, (unsigned long)curtime.tv_sec,
-		(unsigned long)curtime.tv_usec);
-	/* Extra flags O_DIRECT and O_SYNC are required for Brix Android, as we are
-	 * calling BUG_ON immediately after collecting the socram dump.
-	 * So the file write operation should directly write the contents into the
-	 * file instead of caching it. O_TRUNC flag ensures that file will be re-written
-	 * instead of appending.
-	 */
-	file_mode = O_CREAT | O_WRONLY | O_DIRECT | O_SYNC | O_TRUNC;
-#endif /* CUSTOMER_HW4 */
-
-	/* print SOCRAM dump file path */
-	DHD_ERROR(("%s: memdump_path = %s\n", __FUNCTION__, memdump_path));
-
 	/* open file to write */
-	fp = filp_open(memdump_path, file_mode, 0644);
-	if (IS_ERR(fp)) {
-		printf("%s: open file error, err = %ld\n", __FUNCTION__, PTR_ERR(fp));
+	fp = filp_open("/data/misc/wifi/mem_dump", O_WRONLY|O_CREAT, 0640);
+	if (!fp) {
+		printf("%s: open file error\n", __FUNCTION__);
 		ret = -1;
 		goto exit;
 	}
