@@ -49,5 +49,18 @@
 		wlan-en-gpio = <&pm8994_gpios 8 0>;
 		wlan-hostwake-gpio = <&tlmm 78 0>;
 	};
-};
 
+    bt_sleep{
+              compatible = "bcm,bluesleep";
+              bt_host_wake = <&tlmm 24 0>;
+              bt_ext_wake = <&tlmm 92 0>;
+              status = "ok";
+    };
+
+    bt_bcm4358{
+            compatible = "bcm,bcm4358";
+            bcm,bt-reset-gpio = <&tlmm 81 0>;
+            bcm,bt-vdd-io-supply = <&pm8994_s4>;
+            bcm,bt-vdd-io-voltage-level = <1800000 1800000>;
+    };
+};

@@ -2896,7 +2896,7 @@ out:
 }
 
 
-#if defined(CONFIG_LGE_BLUESLEEP) || defined(CONFIG_LGE_BLUETOOTH_PM)
+#if defined(CONFIG_LGE_BLUESLEEP) || defined(CONFIG_LGE_BLUETOOTH_PM) || defined(CONFIG_BT_MSM_SLEEP)
 
 
 struct uart_port* msm_hs_get_bt_uport(unsigned int line)
