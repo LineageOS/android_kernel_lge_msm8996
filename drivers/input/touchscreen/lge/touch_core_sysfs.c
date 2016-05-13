@@ -173,6 +173,26 @@ static ssize_t store_lpwg_notify(struct device *dev,
 	return count;
 }
 
+static ssize_t store_tap2wake(struct device *dev,
+		const char *buf, size_t count)
+{
+    struct touch_core_data *ts = to_touch_core(dev);
+    int status = 0;
+
+    sscanf(buf, "%d", &status);
+
+	if (ts->driver->lpwg) {
+		mutex_lock(&ts->lock);
+
+        TOUCH_I("TAP2WAKE: %s\n", (status) ? "Enabled" : "Disabled");
+        ts->driver->lpwg(ts->dev, LPWG_ENABLE, &status);
+
+        mutex_unlock(&ts->lock);
+    }
+
+    return count;
+}
+
 static ssize_t show_lockscreen_state(struct device *dev, char *buf)
 {
 	struct touch_core_data *ts = to_touch_core(dev);
@@ -525,6 +545,7 @@ static TOUCH_ATTR(platform_data, show_platform_data, NULL);
 static TOUCH_ATTR(fw_upgrade, show_upgrade, store_upgrade);
 static TOUCH_ATTR(lpwg_data, show_lpwg_data, store_lpwg_data);
 static TOUCH_ATTR(lpwg_notify, NULL, store_lpwg_notify);
+static TOUCH_ATTR(tap2wake, NULL, store_tap2wake);
 static TOUCH_ATTR(keyguard,
 	show_lockscreen_state, store_lockscreen_state);
 static TOUCH_ATTR(ime_status, show_ime_state, store_ime_state);
@@ -548,6 +569,7 @@ static struct attribute *touch_attribute_list[] = {
 	&touch_attr_fw_upgrade.attr,
 	&touch_attr_lpwg_data.attr,
 	&touch_attr_lpwg_notify.attr,
+	&touch_attr_tap2wake.attr,
 	&touch_attr_keyguard.attr,
 	&touch_attr_ime_status.attr,
 	&touch_attr_quick_cover_status.attr,
@@ -626,4 +648,3 @@ int touch_init_sysfs(struct touch_core_data *ts)
 
 	return ret;
 }
-
