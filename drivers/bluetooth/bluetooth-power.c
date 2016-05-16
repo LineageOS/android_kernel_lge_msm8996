@@ -39,6 +39,7 @@
 
 static struct of_device_id bt_power_match_table[] = {
 	{	.compatible = "bcm,bcm4358" },
+	{	.compatible = "bcm,bcm43455" },
 	{}
 };
 
