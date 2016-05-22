@@ -193,6 +193,12 @@
 			reg = <0 0x88800000 0 0x6100000>;
 		};
 
+		mba_mem: mba_region@0 {
+			linux,reserve-contiguous-region;
+			reg = <0 0 0 0x2080000>;
+			label = "mba_mem";
+		};
+
 		dfps_data_mem: dfps_data_mem@83400000 {
 		       compatible = "shared-dma-pool";
 		       no-map;
@@ -2308,7 +2314,7 @@
 		qcom,ahb-clk-vote;
 		qcom,pnoc-clk-vote;
 		qcom,qdsp6v56-1-5;
-		memory-region = <&modem_mem>;
+		memory-region = <&mba_mem>;
 		qcom,mem-protect-id = <0xF>;
 
 		/* GPIO inputs from mss */
