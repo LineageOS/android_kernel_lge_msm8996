@@ -792,8 +792,6 @@ void sched_avg_update(struct rq *rq)
 	}
 }
 
-#ifdef CONFIG_SCHED_HMP
-
 /*
  * Note C-state for (idle) cpus.
  *
