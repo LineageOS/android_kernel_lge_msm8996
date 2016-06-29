@@ -1817,7 +1817,30 @@ int32_t qpnp_vadc_read(struct qpnp_vadc_chip *vadc,
 		}
 
 		return 0;
-	} else
+	}
+#ifdef CONFIG_LGE_PM
+	else if (channel == LR_MUX10_PU1_AMUX_USB_ID_LV || channel == LR_MUX10_USB_ID_LV) {
+		u8 data, gpio3_mode, gpio3_out;
+		struct spmi_device *spmi = vadc->adc->spmi;
+
+		spmi_ext_register_readl(spmi->ctrl, spmi->sid, 0xc240, &gpio3_mode, 1);
+		spmi_ext_register_readl(spmi->ctrl, spmi->sid, 0xc245, &gpio3_out, 1);
+
+		data = 0x11;
+		spmi_ext_register_writel(spmi->ctrl, spmi->sid, 0xc240, &data, 1);
+		data = 0x03;
+		spmi_ext_register_writel(spmi->ctrl, spmi->sid, 0xc245, &data, 1);
+
+		rc = qpnp_vadc_conv_seq_request(vadc, ADC_SEQ_NONE,
+				channel, result);
+
+		spmi_ext_register_writel(spmi->ctrl, spmi->sid, 0xc240, &gpio3_mode, 1);
+		spmi_ext_register_writel(spmi->ctrl, spmi->sid, 0xc245, &gpio3_out, 1);
+
+		return rc;
+	}
+#endif
+	else
 		return qpnp_vadc_conv_seq_request(vadc, ADC_SEQ_NONE,
 				channel, result);
 }

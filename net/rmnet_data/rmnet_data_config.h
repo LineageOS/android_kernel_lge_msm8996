@@ -38,6 +38,7 @@ struct rmnet_logical_ep_conf_s {
 	uint8_t refcount;
 	uint8_t rmnet_mode;
 	uint8_t mux_id;
+	struct timespec flush_time; //qc_patch for gro=1
 	struct net_device *egress_dev;
 };
 

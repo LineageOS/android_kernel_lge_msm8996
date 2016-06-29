@@ -30,6 +30,16 @@
 #include <linux/regulator/of_regulator.h>
 #include <linux/qpnp/power-on.h>
 
+#ifdef CONFIG_LGE_PM_WAKE_LOCK_FOR_CHG_LOGO
+#include <linux/wakelock.h>
+#include <soc/qcom/lge/board_lge.h>
+#endif
+
+#define CONFIG_LGE_PM_REVISION_CHECK
+#ifdef CONFIG_LGE_PM_REVISION_CHECK
+#include <soc/qcom/lge/board_lge.h>
+#endif
+
 #define CREATE_MASK(NUM_BITS, POS) \
 	((unsigned char) (((1 << (NUM_BITS)) - 1) << (POS)))
 #define PON_MASK(MSB_BIT, LSB_BIT) \
@@ -170,6 +180,9 @@ struct qpnp_pon {
 	struct pon_regulator	*pon_reg_cfg;
 	struct list_head	list;
 	struct delayed_work	bark_work;
+#ifdef CONFIG_LGE_PM_HARDRESET_MODE
+	struct delayed_work	hardreset_work;
+#endif
 	struct dentry		*debugfs;
 	int			pon_trigger_reason;
 	int			pon_power_off_reason;
@@ -183,6 +196,9 @@ struct qpnp_pon {
 	u8			warm_reset_reason2;
 	bool			is_spon;
 	bool			store_hard_reset_reason;
+#ifdef CONFIG_LGE_PM_WAKE_LOCK_FOR_CHG_LOGO
+	struct wake_lock chg_logo_wake_lock;
+#endif
 };
 
 static struct qpnp_pon *sys_reset_dev;
@@ -224,6 +240,27 @@ static const char * const qpnp_poff_reason[] = {
 	[14] = "Triggered from OTST3 (Overtemp)",
 	[15] = "Triggered from STAGE3 (Stage 3 reset)",
 };
+
+#ifdef CONFIG_LGE_HANDLE_PANIC
+static const char * const pon_ps_hold_reset_ctl[] = {
+	[0] = "RESERVED0",
+	[1] = "WARM_RESET",
+	[2] = "IMMEDIATE_XVDD_SHUTDOWN",
+	[3] = "RESERVED3",
+	[4] = "SHUTDOWN",
+	[5] = "DVDD_SHUTDOWN",
+	[6] = "XVDD_SHUTDOWN",
+	[7] = "HARD_RESET",
+	[8] = "DVDD_HARD_RESET",
+	[9] = "XVDD_HARD_RESET",
+	[10] = "WARM_RESET_AND_DVDD_SHUTDOWN",
+	[11] = "WARM_RESET_AND_XVDD_SHUTDOWN",
+	[12] = "WARM_RESET_AND_SHUTDOWN",
+	[13] = "WARM_RESET_THEN_HARD_RESET",
+	[14] = "WARM_RESET_THEN_DVDD_HARD_RESET",
+	[15] = "WARM_RESET_THEN_XVDD_HARD_RESET",
+};
+#endif
 
 /*
  * On the kernel command line specify
@@ -416,6 +453,22 @@ static int qpnp_pon_reset_config(struct qpnp_pon *pon,
 				"qcom,cfg-shutdown-for-hard-reset", NULL))
 		type = PON_POWER_OFF_SHUTDOWN;
 
+#ifdef CONFIG_LGE_PM
+	/* Change PS_HOLD hard reset and shutdown to xVdd hard reset and shutdown */
+	if (pon->spmi->sid == 2) {
+		/* PMI8996 register : 0x102, PMI8996 v1.0 : 0x00, PMI8996 v1.1 : 0x01 */
+		rc = spmi_ext_register_readl(pon->spmi->ctrl, pon->spmi->sid,
+			0x102, &reg, 1);
+		/* for PMI8996 v1.0 only */
+		if (reg == 0x00) {
+			if (type == PON_POWER_OFF_HARD_RESET)
+				type = 0x09; //Change to xVdd hard reset for PMI
+			else if(type == PON_POWER_OFF_SHUTDOWN)
+				type = 0x06; //Change th xVdd shutdown for PMI
+		}
+	}
+#endif
+
 	rc = qpnp_pon_masked_write(pon, QPNP_PON_PS_HOLD_RST_CTL(pon),
 				   QPNP_PON_POWER_OFF_MASK, type);
 	if (rc)
@@ -430,7 +483,12 @@ static int qpnp_pon_reset_config(struct qpnp_pon *pon,
 			"Unable to write to addr=%hx, rc(%d)\n",
 			rst_en_reg, rc);
 
+#ifdef CONFIG_LGE_HANDLE_PANIC
+	dev_info(&pon->spmi->dev, "power off type = 0x%02X, %s\n",
+				type, pon_ps_hold_reset_ctl[type]);
+#else
 	dev_dbg(&pon->spmi->dev, "power off type = 0x%02X\n", type);
+#endif
 	return rc;
 }
 
@@ -667,6 +725,18 @@ qpnp_pon_input_dispatch(struct qpnp_pon *pon, u32 pon_type)
 	pr_debug("PMIC input: code=%d, sts=0x%hhx\n",
 					cfg->key_code, pon_rt_sts);
 	key_status = pon_rt_sts & pon_rt_bit;
+#ifdef CONFIG_LGE_PM_DEBUG
+	pr_err("%s: code(%d), value(%d)\n",
+			__func__, cfg->key_code, key_status);
+#endif
+
+#ifdef CONFIG_LGE_PM_WAKE_LOCK_FOR_CHG_LOGO
+	if (lge_get_boot_mode() == LGE_BOOT_MODE_CHARGERLOGO) {
+		if (wake_lock_active(&pon->chg_logo_wake_lock))
+			wake_unlock(&pon->chg_logo_wake_lock);
+		wake_lock_timeout(&pon->chg_logo_wake_lock, msecs_to_jiffies(500));
+	}
+#endif
 
 	/* simulate press event in case release event occured
 	 * without a press event
@@ -899,6 +969,9 @@ qpnp_config_reset(struct qpnp_pon *pon, struct qpnp_pon_config *cfg)
 	int rc;
 	u8 i;
 	u16 s1_timer_addr, s2_timer_addr;
+#ifdef CONFIG_LGE_PM
+	u8 reg = 0x00;
+#endif
 
 	switch (cfg->pon_type) {
 	case PON_KPDPWR:
@@ -916,6 +989,7 @@ qpnp_config_reset(struct qpnp_pon *pon, struct qpnp_pon_config *cfg)
 	default:
 		return -EINVAL;
 	}
+
 	/* disable S2 reset */
 	rc = qpnp_pon_masked_write(pon, cfg->s2_cntl2_addr,
 				QPNP_PON_S2_CNTL_EN, 0);
@@ -950,6 +1024,22 @@ qpnp_config_reset(struct qpnp_pon *pon, struct qpnp_pon_config *cfg)
 		dev_err(&pon->spmi->dev, "Unable to configure S2 timer\n");
 		return rc;
 	}
+
+#ifdef CONFIG_LGE_PM
+	/* Change PS_HOLD hard reset and shutdown to xVdd hard reset and shutdown */
+	if (pon->spmi->sid == 2) {
+		/* PMI8996 register : 0x102, PMI8996 v1.0 : 0x00, PMI8996 v1.1 : 0x01 */
+		rc = spmi_ext_register_readl(pon->spmi->ctrl, pon->spmi->sid,
+			0x102, &reg, 1);
+		/* for PMI8996 v1.0 only */
+		if (reg == 0x00) {
+			if (cfg->s2_type == PON_POWER_OFF_HARD_RESET)
+				cfg->s2_type = 0x09; //Change to xVdd hard reset for PMI
+			else if (cfg->s2_type == PON_POWER_OFF_SHUTDOWN)
+				cfg->s2_type = 0x06; //Change th xVdd shutdown for PMI
+		}
+	}
+#endif
 
 	rc = qpnp_pon_masked_write(pon, cfg->s2_cntl_addr,
 				QPNP_PON_S2_CNTL_TYPE_MASK, (u8)cfg->s2_type);
@@ -1657,6 +1747,113 @@ static struct kernel_param_ops dload_on_uvlo_ops = {
 
 module_param_cb(dload_on_uvlo, &dload_on_uvlo_ops, &dload_on_uvlo, 0644);
 
+#ifdef CONFIG_LGE_PM_HARDRESET_MODE
+static bool hardreset_mode;
+
+static int qpnp_pon_debugfs_hardreset_set(const char *val,
+		const struct kernel_param *kp)
+{
+	int i, rc = 0;
+	uint32_t value = 0;
+	struct qpnp_pon *pon = sys_reset_dev;
+	struct qpnp_pon_config *cfg = NULL;
+
+#ifdef CONFIG_MACH_MSM8996_H1_VZW
+	return 0;
+#endif
+
+#ifdef CONFIG_LGE_PM_REVISION_CHECK
+	if (lge_get_board_revno() < HW_REV_1_0)
+		return 0;
+#endif
+
+	if (pon == NULL) {
+		pr_err("qpnp_pon is not initialized\n");
+		return -EINVAL;
+	}
+
+	rc = param_set_int(val, kp);
+	if (rc) {
+		pr_err("Unable to set hardreset_mode: %d\n", rc);
+		return rc;
+	}
+
+	value = *(int *)kp->arg;
+
+	if (value == 1 || value == 0) {
+		for (i = 0; i < pon->num_pon_config; i++) {
+			cfg = &pon->pon_cfg[i++];
+
+			switch (cfg->pon_type) {
+			case PON_KPDPWR_RESIN:
+				if (value) {
+					cfg->s1_timer = 6720;
+					cfg->s2_timer = 2000;
+					cfg->s2_type = 7;
+					qpnp_config_reset(pon, cfg);
+				}
+				else {
+					/* disable S2 reset */
+					rc = qpnp_pon_masked_write(pon,
+							cfg->s2_cntl2_addr,
+							QPNP_PON_S2_CNTL_EN, 0);
+					usleep_range(100, 120);
+				}
+				break;
+			default:
+				break;
+			}
+		}
+
+		pr_err("set hardreset_mode to %d\n", value);
+	} else {
+		pr_err("invalid value : %d\n", value);
+	}
+
+	return 0;
+}
+
+static struct kernel_param_ops hardreset_mode_ops = {
+	.set = qpnp_pon_debugfs_hardreset_set,
+	.get = param_get_int,
+};
+
+module_param_cb(hardreset_mode, &hardreset_mode_ops, &hardreset_mode, 0644);
+
+#define HARDRESET_CHECK_DELAY			msecs_to_jiffies(60000)
+static void hardreset_work_func(struct work_struct *work)
+{
+	int i;
+	struct qpnp_pon_config *cfg;
+	struct qpnp_pon *pon =
+		container_of(work, struct qpnp_pon, hardreset_work.work);
+
+#ifdef CONFIG_MACH_MSM8996_H1_VZW
+	return;
+#endif
+#ifdef CONFIG_LGE_PM_REVISION_CHECK
+	if (lge_get_board_revno() < HW_REV_1_0)
+		return;
+#endif
+
+	if (hardreset_mode) {
+		for (i = 0; i < pon->num_pon_config; i++) {
+			cfg = &pon->pon_cfg[i++];
+
+			switch (cfg->pon_type) {
+			case PON_KPDPWR_RESIN:
+				cfg->s1_timer = 6720;
+				cfg->s2_timer = 2000;
+				cfg->s2_type = 7;
+				qpnp_config_reset(pon, cfg);
+				break;
+			}
+		}
+		pr_err("enable hardreset_mode\n");
+	}
+}
+#endif
+
 #if defined(CONFIG_DEBUG_FS)
 
 static int qpnp_pon_debugfs_uvlo_get(void *data, u64 *val)
@@ -1918,12 +2115,22 @@ static int qpnp_pon_probe(struct spmi_device *spmi)
 	dev_set_drvdata(&spmi->dev, pon);
 
 	INIT_DELAYED_WORK(&pon->bark_work, bark_work_func);
+#ifdef CONFIG_LGE_PM_HARDRESET_MODE
+	INIT_DELAYED_WORK(&pon->hardreset_work, hardreset_work_func);
+#endif
+
+#ifdef CONFIG_LGE_PM_WAKE_LOCK_FOR_CHG_LOGO
+	wake_lock_init(&pon->chg_logo_wake_lock, WAKE_LOCK_SUSPEND, "chg_logo-pon");
+#endif
 
 	/* register the PON configurations */
 	rc = qpnp_pon_config_init(pon);
 	if (rc) {
 		dev_err(&spmi->dev,
 			"Unable to initialize PON configurations rc: %d\n", rc);
+#ifdef CONFIG_LGE_PM_WAKE_LOCK_FOR_CHG_LOGO
+		wake_lock_destroy(&pon->chg_logo_wake_lock);
+#endif
 		return rc;
 	}
 
@@ -1966,6 +2173,10 @@ static int qpnp_pon_probe(struct spmi_device *spmi)
 					"qcom,store-hard-reset-reason");
 
 	qpnp_pon_debugfs_init(spmi);
+
+#ifdef CONFIG_LGE_PM_HARDRESET_MODE
+	schedule_delayed_work(&pon->hardreset_work, HARDRESET_CHECK_DELAY);
+#endif
 	return 0;
 }
 
@@ -1976,7 +2187,14 @@ static int qpnp_pon_remove(struct spmi_device *spmi)
 
 	device_remove_file(&spmi->dev, &dev_attr_debounce_us);
 
+#ifdef CONFIG_LGE_PM_HARDRESET_MODE
+	cancel_delayed_work_sync(&pon->hardreset_work);
+#endif
 	cancel_delayed_work_sync(&pon->bark_work);
+
+#ifdef CONFIG_LGE_PM_WAKE_LOCK_FOR_CHG_LOGO
+	wake_lock_destroy(&pon->chg_logo_wake_lock);
+#endif
 
 	if (pon->pon_input)
 		input_unregister_device(pon->pon_input);

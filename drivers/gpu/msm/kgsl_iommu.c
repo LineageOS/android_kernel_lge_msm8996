@@ -1682,7 +1682,7 @@ static uint64_t _get_unmapped_area_topdown(struct kgsl_pagetable *pagetable,
 		 * the bottom of the previous one
 		 */
 
-		if (offset < end) {
+		if ((end > size) && (offset < end)) {
 			uint64_t chunk = (end - size) & mask;
 
 			if (chunk >= offset)
@@ -1705,7 +1705,7 @@ static uint64_t _get_unmapped_area_topdown(struct kgsl_pagetable *pagetable,
 	}
 
 	/* If we get here then there are no more entries in the region */
-	if (((end - size) & mask) >= bottom)
+	if ((end > size) && (((end - size) & mask) >= bottom))
 		return (end - size) & mask;
 
 	return (uint64_t) -ENOMEM;

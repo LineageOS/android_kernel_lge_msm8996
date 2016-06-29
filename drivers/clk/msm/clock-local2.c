@@ -36,6 +36,8 @@
 /* For clock without halt checking, wait this long after enables/disables. */
 #define HALT_CHECK_DELAY_US	500
 
+#define RCG_FORCE_DISABLE_DELAY_US	100
+
 /*
  * When updating an RCG configuration, check the update bit up to this number
  * number of times (with a 1 us delay in between) before continuing.
@@ -155,6 +157,8 @@ void set_rate_hid(struct rcg_clk *rcg, struct clk_freq_tbl *nf)
 	spin_lock_irqsave(&local_clock_reg_lock, flags);
 	__set_rate_hid(rcg, nf);
 	spin_unlock_irqrestore(&local_clock_reg_lock, flags);
+	/* Add a delay of 100usecs to let the RCG disable */
+	udelay(RCG_FORCE_DISABLE_DELAY_US);
 }
 
 /* RCG set rate function for clocks with MND & Half Integer Dividers. */
@@ -291,24 +295,17 @@ static int rcg_clk_set_rate(struct clk *c, unsigned long rate)
 
 	BUG_ON(!rcg->set_rate);
 
-	/*
-	 * Perform clock-specific frequency switch operations.
-	 *
-	 * For RCGs with non_local_children set to true:
-	 * If this RCG has at least one branch that is controlled by another
-	 * execution entity, ensure that the enable/disable and mux switch
-	 * are staggered.
-	 */
-	if (!rcg->non_local_children) {
-		rcg->set_rate(rcg, nf);
-	} else if (c->count) {
+	/* Perform clock-specific frequency switch operations. */
+	if ((rcg->non_local_children && c->count) || rcg->non_local_control) {
 		/*
-		 * Force enable the RCG here since there could be a disable
-		 * call happening between pre_reparent and set_rate.
+		 * Force enable the RCG here since the clock could be disabled
+		 * between pre_reparent and set_rate.
 		 */
 		rcg_set_force_enable(rcg);
 		rcg->set_rate(rcg, nf);
 		rcg_clear_force_enable(rcg);
+	} else if (!rcg->non_local_children) {
+		rcg->set_rate(rcg, nf);
 	}
 	/*
 	 * If non_local_children is set and the RCG is not enabled,
@@ -586,6 +583,13 @@ static int cbcr_set_flags(void * __iomem regaddr, unsigned flags)
 	spin_lock_irqsave(&local_clock_reg_lock, irq_flags);
 	cbcr_val = readl_relaxed(regaddr);
 	switch (flags) {
+	case CLKFLAG_PERIPH_OFF_SET:
+		cbcr_val |= BIT(12);
+		delay_us = 1;
+		break;
+	case CLKFLAG_PERIPH_OFF_CLEAR:
+		cbcr_val &= ~BIT(12);
+		break;
 	case CLKFLAG_RETAIN_PERIPH:
 		cbcr_val |= BIT(13);
 		delay_us = 1;

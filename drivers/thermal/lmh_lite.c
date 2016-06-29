@@ -143,6 +143,10 @@ struct lmh_driver_data {
 	struct device			*dev;
 	struct workqueue_struct		*poll_wq;
 	struct delayed_work		poll_work;
+#ifdef CONFIG_LGE_PM
+	struct workqueue_struct		*zero_intensity_delay_wq;
+	struct delayed_work		zero_intensity_delay_work;
+#endif
 	uint32_t			log_enabled;
 	uint32_t			log_delay;
 	enum lmh_monitor_state		intr_state;
@@ -391,6 +395,18 @@ poll_exit:
 	return;
 }
 
+#ifdef CONFIG_LGE_PM
+static void lmh_zero_intensity_delay(struct work_struct *work)
+{
+	down_write(&lmh_sensor_access);
+	lmh_data->intr_state = LMH_ISR_MONITOR;
+	enable_irq(lmh_data->irq_num);
+	up_write(&lmh_sensor_access);
+
+	return;
+}
+#endif
+
 static void lmh_trim_error(void)
 {
 	struct scm_desc desc_arg;
@@ -413,12 +429,6 @@ static void lmh_trim_error(void)
 	return;
 }
 
-static irqreturn_t lmh_handle_isr(int irq, void *dev_id)
-{
-	disable_irq_nosync(irq);
-	return IRQ_WAKE_THREAD;
-}
-
 static irqreturn_t lmh_isr_thread(int irq, void *data)
 {
 	struct lmh_driver_data *lmh_dat = data;
@@ -426,6 +436,7 @@ static irqreturn_t lmh_isr_thread(int irq, void *data)
 	pr_debug("LMH Interrupt triggered\n");
 	trace_lmh_event_call("Lmh Interrupt");
 
+	disable_irq_nosync(irq);
 	down_write(&lmh_sensor_access);
 	if (lmh_dat->intr_state != LMH_ISR_MONITOR) {
 		pr_err("Invalid software state\n");
@@ -457,7 +468,13 @@ decide_next_action:
 		queue_delayed_work(lmh_dat->poll_wq, &lmh_dat->poll_work,
 			msecs_to_jiffies(lmh_poll_interval));
 	else
+#ifdef CONFIG_LGE_PM
+		queue_delayed_work(lmh_dat->zero_intensity_delay_wq,
+			&lmh_dat->zero_intensity_delay_work,
+			msecs_to_jiffies(LMH_ZERO_INTENSITY_DELAY_MSEC));
+#else
 		enable_irq(lmh_dat->irq_num);
+#endif
 
 isr_unlock_exit:
 	up_write(&lmh_sensor_access);
@@ -521,7 +538,7 @@ static int lmh_get_sensor_devicetree(struct platform_device *pdev)
 		goto dev_exit;
 	}
 
-	ret = request_threaded_irq(lmh_data->irq_num, lmh_handle_isr,
+	ret = request_threaded_irq(lmh_data->irq_num, NULL,
 		lmh_isr_thread, IRQF_TRIGGER_HIGH | IRQF_ONESHOT,
 		LMH_INTERRUPT, lmh_data);
 	if (ret) {
@@ -1309,6 +1326,17 @@ static int lmh_probe(struct platform_device *pdev)
 	}
 	INIT_DEFERRABLE_WORK(&lmh_data->poll_work, lmh_poll);
 
+#ifdef CONFIG_LGE_PM
+	lmh_data->zero_intensity_delay_wq =
+		alloc_workqueue("zero_intensity_delay_wq", WQ_HIGHPRI, 0);
+	if (!lmh_data->zero_intensity_delay_wq) {
+		pr_err("Error allocating workqueue\n");
+		ret = -ENOMEM;
+		goto probe_exit;
+	}
+	INIT_DEFERRABLE_WORK(&lmh_data->zero_intensity_delay_work, lmh_zero_intensity_delay);
+#endif
+
 	ret = lmh_sensor_init(pdev);
 	if (ret) {
 		pr_err("Sensor Init failed. err:%d\n", ret);
@@ -1336,6 +1364,10 @@ static int lmh_probe(struct platform_device *pdev)
 probe_exit:
 	if (lmh_data->poll_wq)
 		destroy_workqueue(lmh_data->poll_wq);
+#ifdef CONFIG_LGE_PM
+	if (lmh_data->zero_intensity_delay_wq)
+		destroy_workqueue(lmh_data->zero_intensity_delay_wq);
+#endif
 	lmh_data = NULL;
 	return ret;
 }
@@ -1345,6 +1377,9 @@ static int lmh_remove(struct platform_device *pdev)
 	struct lmh_driver_data *lmh_dat = platform_get_drvdata(pdev);
 
 	destroy_workqueue(lmh_dat->poll_wq);
+#ifdef CONFIG_LGE_PM
+	destroy_workqueue(lmh_dat->zero_intensity_delay_wq);
+#endif
 	free_irq(lmh_dat->irq_num, lmh_dat);
 	lmh_remove_sensors();
 	lmh_device_deregister(&lmh_dat->dev_info.dev_ops);

@@ -322,6 +322,7 @@ static struct crypto_cipher *setup_essiv_cpu(struct crypt_config *cc,
 	    crypto_ablkcipher_ivsize(any_tfm(cc))) {
 		ti->error = "Block size of ESSIV cipher does "
 			    "not match IV size of block cipher";
+		printk(KERN_ERR " [CCAudit] Block size of ESSIV cipher does not match IV size of block chipher");
 		crypto_free_cipher(essiv_tfm);
 		return ERR_PTR(-EINVAL);
 	}
@@ -329,6 +330,7 @@ static struct crypto_cipher *setup_essiv_cpu(struct crypt_config *cc,
 	err = crypto_cipher_setkey(essiv_tfm, salt, saltsize);
 	if (err) {
 		ti->error = "Failed to set key for ESSIV cipher";
+		printk(KERN_ERR " [CCAudit] Failed to set key for ESSIV cipher");
 		crypto_free_cipher(essiv_tfm);
 		return ERR_PTR(err);
 	}
@@ -1555,6 +1557,7 @@ static int crypt_ctr_cipher(struct dm_target *ti,
 	/* Convert to crypto api definition? */
 	if (strchr(cipher_in, '(')) {
 		ti->error = "Bad cipher specification";
+		printk(KERN_ERR " [CCAudit] Bad cipher specification");
 		return -EINVAL;
 	}
 
@@ -1575,6 +1578,7 @@ static int crypt_ctr_cipher(struct dm_target *ti,
 	else if (sscanf(keycount, "%u%c", &cc->tfms_count, &dummy) != 1 ||
 		 !is_power_of_2(cc->tfms_count)) {
 		ti->error = "Bad cipher key count specification";
+		printk(KERN_ERR " [CCAudit] Bad cipher key count specification");
 		return -EINVAL;
 	}
 	cc->key_parts = cc->tfms_count;
@@ -1602,6 +1606,7 @@ static int crypt_ctr_cipher(struct dm_target *ti,
 
 	if (strcmp(chainmode, "ecb") && !ivmode) {
 		ti->error = "IV mechanism required";
+		printk(KERN_ERR " [CCAudit] IV mechanism required");
 		return -EINVAL;
 	}
 
@@ -1620,6 +1625,7 @@ static int crypt_ctr_cipher(struct dm_target *ti,
 	ret = crypt_alloc_tfms(cc, cipher_api);
 	if (ret < 0) {
 		ti->error = "Error allocating crypto tfm";
+		printk(KERN_ERR " [CCAudit] Error allocating crypto tfm");
 		goto bad;
 	}
 
@@ -1666,6 +1672,8 @@ static int crypt_ctr_cipher(struct dm_target *ti,
 	} else {
 		ret = -EINVAL;
 		ti->error = "Invalid IV mode";
+		printk(KERN_ERR " [CCAudit] Invalid IV mode");
+
 		goto bad;
 	}
 
@@ -1681,6 +1689,7 @@ static int crypt_ctr_cipher(struct dm_target *ti,
 		ret = cc->iv_gen_ops->ctr(cc, ti, ivopts);
 		if (ret < 0) {
 			ti->error = "Error creating IV";
+			printk(KERN_ERR " [CCAudit] Error creating IV");
 			goto bad;
 		}
 	}
@@ -1690,6 +1699,7 @@ static int crypt_ctr_cipher(struct dm_target *ti,
 		ret = cc->iv_gen_ops->init(cc);
 		if (ret < 0) {
 			ti->error = "Error initialising IV";
+			printk(KERN_ERR " [CCAudit] Error initialising IV");
 			goto bad;
 		}
 	}
@@ -1701,6 +1711,7 @@ bad:
 
 bad_mem:
 	ti->error = "Cannot allocate cipher strings";
+	printk(KERN_ERR " [CCAudit] Cannot allocate cipher strings");
 	return -ENOMEM;
 }
 
@@ -1844,6 +1855,7 @@ static int crypt_ctr(struct dm_target *ti, unsigned int argc, char **argv)
 	cc->io_queue = alloc_workqueue("kcryptd_io", WQ_MEM_RECLAIM, 1);
 	if (!cc->io_queue) {
 		ti->error = "Couldn't create kcryptd io queue";
+		printk(KERN_ERR " [CCAudit] Couldn't create kcryptd io queue");
 		goto bad;
 	}
 
@@ -1854,6 +1866,7 @@ static int crypt_ctr(struct dm_target *ti, unsigned int argc, char **argv)
 						  num_online_cpus());
 	if (!cc->crypt_queue) {
 		ti->error = "Couldn't create kcryptd queue";
+		printk(KERN_ERR " [CCAudit] Couldn't create kcryptd queue");
 		goto bad;
 	}
 
@@ -1865,6 +1878,7 @@ static int crypt_ctr(struct dm_target *ti, unsigned int argc, char **argv)
 		ret = PTR_ERR(cc->write_thread);
 		cc->write_thread = NULL;
 		ti->error = "Couldn't spawn write thread";
+		printk(KERN_ERR " [CCAudit] Couldn't spawn write thread");
 		goto bad;
 	}
 	wake_up_process(cc->write_thread);

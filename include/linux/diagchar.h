@@ -33,6 +33,10 @@
 #define SOCKET_MODE			5
 #define CALLBACK_MODE			6
 
+#ifdef CONFIG_LGE_DM_APP
+#define DM_APP_MODE         10
+#endif
+
 /* different values that go in for diag_data_type */
 
 #define DATA_TYPE_EVENT         	0

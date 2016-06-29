@@ -40,3 +40,10 @@ config MSM_ADRENO_DEFAULT_GOVERNOR
 	default "msm-adreno-tz" if DEVFREQ_GOV_MSM_ADRENO_TZ
 	default "simple_ondemand"
 	depends on MSM_KGSL
+
+config LGE_KGSL_OFFSET_SEARCH
+	bool "LGE KGSL Memory allocation fail algorithm"
+	default y
+	depends on MSM_KGSL
+	---help---
+	  LGE_KGSL_OFFSET_SEARCH will reduce the code excution time of kgsl_page_alloc_vmfault.

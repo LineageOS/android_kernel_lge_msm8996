@@ -120,12 +120,16 @@ static u64 __maybe_unused gic_read_iar(void)
 	u64 irqstat;
 
 	asm volatile("mrs_s %0, " __stringify(ICC_IAR1_EL1) : "=r" (irqstat));
+	/* As per the architecture specification */
+	mb();
 	return irqstat;
 }
 
 static void __maybe_unused gic_write_pmr(u64 val)
 {
 	asm volatile("msr_s " __stringify(ICC_PMR_EL1) ", %0" : : "r" (val));
+	/* As per the architecture specification */
+	mb();
 }
 
 static void __maybe_unused gic_write_ctlr(u64 val)
@@ -142,17 +146,9 @@ static void __maybe_unused gic_write_grpen1(u64 val)
 
 static void __maybe_unused gic_write_sgi1r(u64 val)
 {
-#ifdef CONFIG_MSM_GIC_SGI_NEEDS_BARRIER
-	static DEFINE_RAW_SPINLOCK(sgi_lock);
-	unsigned long flags;
-	raw_spin_lock_irqsave(&sgi_lock, flags);
-#endif
-
 	asm volatile("msr_s " __stringify(ICC_SGI1R_EL1) ", %0" : : "r" (val));
-#ifdef CONFIG_MSM_GIC_SGI_NEEDS_BARRIER
-	dsb(nsh);
-	raw_spin_unlock_irqrestore(&sgi_lock, flags);
-#endif
+	/* As per the architecture specification */
+	mb();
 }
 
 static void gic_enable_sre(void)
@@ -353,11 +349,63 @@ static int gic_suspend(void)
 	return 0;
 }
 
+#ifdef CONFIG_LGE_PM_DEBUG
+static void gic_show_resume_irq(struct gic_chip_data *gic)
+{
+	unsigned int i, j;
+	u32 enabled;
+	/* TODO: data type mismatched btw 64bit long type
+	 *  and 32bit registers. but currently not changed this type
+	 *  because bit_ops support only long type, that supported by hw.
+	 */
+	unsigned long pending[32];
+	void __iomem *base = gic_data_dist_base(gic);
+	unsigned int max_irq_num, converted_irq;
+
+	for (i = 0; i * 32 < gic->irq_nr; i++) {
+		enabled = readl_relaxed(base + GICD_ICENABLER + i * 4);
+		pending[i] = readl_relaxed(base + GICD_ISPENDR + i * 4);
+		pending[i] &= enabled;
+	}
+
+	/* type converted */
+	max_irq_num = (gic->irq_nr / 32) * 64 + (gic->irq_nr % 32);
+	for (i = find_first_bit(pending, max_irq_num);
+			i < max_irq_num;
+			i = find_next_bit(pending, max_irq_num, i+1)) {
+		/* type converted */
+		converted_irq = (i / 64) * 32 + (i % 64);
+
+		for (j = 0; j < gic->irq_nr; j++) {
+			struct irq_data *d = irq_get_irq_data(j);
+			struct irq_desc *desc;
+			const char *name = "null";
+
+			if (d != NULL && gic_irq(d) == converted_irq) {
+				desc = irq_to_desc(j);
+				if (desc == NULL)
+					name = "stray irq";
+				else if (desc->action && desc->action->name)
+					name = desc->action->name;
+
+				pr_warning("%s: irq:%d hwirq:%d triggered %s\n",
+						__func__, j,
+						converted_irq, name);
+				break;
+			}
+		}
+	}
+}
+#endif
+
 static void gic_resume_one(struct gic_chip_data *gic)
 {
 	unsigned int i;
 	void __iomem *base = gic_data_dist_base(gic);
 
+#ifdef CONFIG_LGE_PM_DEBUG
+	gic_show_resume_irq(gic);
+#endif
 	for (i = 0; i * 32 < gic->irq_nr; i++) {
 		/* disable all of them */
 		writel_relaxed(0xffffffff, base + GICD_ICENABLER + i * 4);

@@ -119,13 +119,17 @@ int cpuidle_enter_state(struct cpuidle_device *dev, struct cpuidle_driver *drv,
 	ktime_t time_start, time_end;
 	s64 diff;
 
+#ifndef CONFIG_MSM_PM
 	trace_cpu_idle_rcuidle(index, dev->cpu);
+#endif
 	time_start = ktime_get();
 
 	entered_state = target_state->enter(dev, drv, index);
 
 	time_end = ktime_get();
+#ifndef CONFIG_MSM_PM
 	trace_cpu_idle_rcuidle(PWR_EVENT_EXIT, dev->cpu);
+#endif
 
 	if (!cpuidle_state_is_coupled(dev, drv, entered_state))
 		local_irq_enable();

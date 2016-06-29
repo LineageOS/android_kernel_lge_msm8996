@@ -176,11 +176,20 @@ u32 mdss_mdp_fb_stride(u32 fb_index, u32 xres, int bpp)
 static irqreturn_t mdss_irq_handler(int irq, void *ptr)
 {
 	struct mdss_data_type *mdata = ptr;
+#ifdef QCT_IRQ_NOC_PATCH
+	u32 intr = 0;
+#else
 	u32 intr = MDSS_REG_READ(mdata, MDSS_REG_HW_INTR_STATUS);
+#endif
 
 	if (!mdata)
 		return IRQ_NONE;
+#ifdef QCT_IRQ_NOC_PATCH
+	else if (!mdss_get_irq_enable_state(&mdss_mdp_hw))
+		return IRQ_HANDLED;
 
+	intr = MDSS_REG_READ(mdata, MDSS_REG_HW_INTR_STATUS);
+#endif
 	mdss_mdp_hw.irq_info->irq_buzy = true;
 
 	if (intr & MDSS_INTR_MDP) {
@@ -599,6 +608,9 @@ void mdss_mdp_intr_check_and_clear(u32 intr_type, u32 intf_num)
 		writel_relaxed(irq, mdata->mdp_base + MDSS_MDP_REG_INTR_CLEAR);
 	}
 	spin_unlock_irqrestore(&mdp_lock, irq_flags);
+#ifdef QCT_IRQ_NOC_PATCH
+	wmb();
+#endif
 }
 
 void mdss_mdp_hist_irq_disable(u32 irq)
@@ -1652,9 +1664,105 @@ static DEVICE_ATTR(caps, S_IRUGO, mdss_mdp_show_capabilities, NULL);
 static DEVICE_ATTR(bw_mode_bitmap, S_IRUGO | S_IWUSR | S_IWGRP, NULL,
 		mdss_mdp_store_max_limit_bw);
 
+#ifdef CONFIG_LGE_VSYNC_SKIP
+static ssize_t fps_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	ulong fps;
+
+	if (!count)
+		return -EINVAL;
+
+	fps = simple_strtoul(buf, NULL, 10);
+
+	if (fps == 0 || fps >= 60) {
+		mdss_res->enable_skip_vsync = 0;
+		mdss_res->skip_value = 0;
+		mdss_res->weight = 0;
+		mdss_res->bucket = 0;
+		mdss_res->skip_count = 0;
+		mdss_res->skip_ratio = 60;
+		mdss_res->skip_first = false;
+		pr_debug("Disable frame skip.\n");
+	} else {
+		mdss_res->enable_skip_vsync = 1;
+		mdss_res->skip_value = (60<<16)/fps;
+		mdss_res->weight = (1<<16);
+		mdss_res->bucket = 0;
+		mdss_res->skip_ratio = fps;
+		mdss_res->skip_first = false;
+		pr_debug("Enable frame skip: Set to %lu fps.\n", fps);
+	}
+	return count;
+}
+
+static ssize_t fps_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	int r = 0;
+	r = snprintf(buf, PAGE_SIZE, "enable_skip_vsync=%d\nweight=%lu\n"
+		     "skip_value=%lu\nbucket=%lu\nskip_count=%lu\n",
+	mdss_res->enable_skip_vsync,
+	mdss_res->weight,
+	mdss_res->skip_value,
+	mdss_res->bucket,
+	mdss_res->skip_count);
+	return r;
+}
+
+static ssize_t fps_ratio_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	int r = 0;
+	r = snprintf(buf, PAGE_SIZE, "%d 60\n", mdss_res->skip_ratio);
+	return r;
+}
+
+int fps_cnt_before = 0;
+extern struct fb_info *msm_fb_get_cmd_pan_fb(void);
+
+static ssize_t fps_fcnt_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	int r = 0;
+	struct msm_fb_data_type* mfd;
+	struct mdss_mdp_ctl *ctl;
+	struct fb_info *cmd_pn_info;
+
+	cmd_pn_info = msm_fb_get_cmd_pan_fb();
+	if ( cmd_pn_info->par == NULL )
+		goto read_fail;
+
+	mfd = cmd_pn_info->par;
+	if ( mfd == NULL )
+		goto read_fail;
+
+	ctl = mfd_to_ctl(mfd);
+	if ( ctl == NULL )
+		goto read_fail;
+
+	r = snprintf(buf, PAGE_SIZE, "%d\n", ctl->play_cnt-fps_cnt_before);
+	fps_cnt_before = ctl->play_cnt;
+	return r;
+
+read_fail:
+	fps_cnt_before = 0;
+	r = snprintf(buf,PAGE_SIZE, "0\n");
+	return r;
+}
+
+static DEVICE_ATTR(vfps, 0644, fps_show, fps_store);
+static DEVICE_ATTR(vfps_ratio, 0644, fps_ratio_show, NULL);
+static DEVICE_ATTR(vfps_fcnt, 0644, fps_fcnt_show, NULL);
+#endif
 static struct attribute *mdp_fs_attrs[] = {
 	&dev_attr_caps.attr,
 	&dev_attr_bw_mode_bitmap.attr,
+#ifdef CONFIG_LGE_VSYNC_SKIP
+	&dev_attr_vfps.attr,
+	&dev_attr_vfps_ratio.attr,
+	&dev_attr_vfps_fcnt.attr,
+#endif
 	NULL
 };
 
@@ -3852,6 +3960,28 @@ vreg_set_voltage_fail:
 	return rc;
 }
 
+void mdss_set_mdp_cbcr_enter_memory_retention(void)
+{
+	struct clk *clk = NULL;
+	struct clk *mdp_clk = mdss_mdp_get_clk(MDSS_CLK_MDP_CORE);
+
+	clk = clk_get_parent(mdp_clk);
+	clk_set_flags(clk, CLKFLAG_RETAIN_MEM);
+	clk_set_flags(clk, CLKFLAG_PERIPH_OFF_SET);
+	clk_set_flags(clk, CLKFLAG_NORETAIN_PERIPH);
+}
+
+void mdss_set_mdp_cbcr_exit_memory_retention(void)
+{
+	struct clk *clk = NULL;
+	struct clk *mdp_clk = mdss_mdp_get_clk(MDSS_CLK_MDP_CORE);
+
+	clk = clk_get_parent(mdp_clk);
+	clk_set_flags(clk, CLKFLAG_RETAIN_MEM);
+	clk_set_flags(clk, CLKFLAG_RETAIN_PERIPH);
+	clk_set_flags(clk, CLKFLAG_PERIPH_OFF_CLEAR);
+}
+
 /**
  * mdss_mdp_footswitch_ctrl() - Disable/enable MDSS GDSC and CX/Batfet rails
  * @mdata: MDP private data
@@ -3905,6 +4035,7 @@ static void mdss_mdp_footswitch_ctrl(struct mdss_data_type *mdata, int on)
 				mdata->idle_pc = true;
 				pr_debug("idle pc. active overlays=%d\n",
 					active_cnt);
+				mdss_set_mdp_cbcr_enter_memory_retention();
 			} else {
 				mdss_mdp_cx_ctrl(mdata, false);
 				mdss_mdp_batfet_ctrl(mdata, false);

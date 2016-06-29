@@ -262,4 +262,19 @@ config MSM_BT_POWER
 	  Provides a parameter to switch on/off power from PMIC
 	  to Bluetooth device.
 
+
+#[H1_BT_BRINGUP_S]
+config LGE_BLUETOOTH_PM
+	tristate "LGE Bluetooth Power & Sleep driver"
+	depends on RFKILL
+	default n
+	help
+		LGE Bluetooth Power & Sleep
+		This driver provides support for LGE BT Power & Sleep.
+#[H1_BT_BRINGUP_E]
+
+#BT_S : [CONBT-2025] LGC_BT_COMMON_IMP_MOS_V4L2
+source drivers/bluetooth/broadcom/Kconfig
+#BT_E : [CONBT-2025] LGC_BT_COMMON_IMP_MOS_V4L2
+
 endmenu

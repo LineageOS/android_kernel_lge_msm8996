@@ -27,6 +27,46 @@ config MMC_PERF_PROFILING
 	  If you say Y here, support will be added for collecting
 	  performance numbers at the MMC Queue and Host layers.
 
+# LGE_CHANGE_S : bohyun.jung@lge.com
+config LGE_MMC_RESET_IF_HANG
+    bool "MMC Reset if eMMC is hang. "
+    default n
+    help
+        Reset eMMC if eMMC is unaccessible.
+        continously error on cache flush or mmc restart cmd.
+
+config LGE_MMC_DYNAMIC_LOG
+    bool "MMC debugging - enable logs through adb"
+    default n
+    help
+        If you say Y here, developers can enable/disable mmc logs through adb
+        by accessing /sys/module/mmc_core/parameters/debug_level
+        ex. echo {debug_level} > /sys/module/mmc_core/parameters/debug_level
+# LGE_CHANGE_E : bohyun.jung@lge.com
+
+config LGE_MMC_BKOPS_ENABLE
+	bool "enable BKOPS for eMMC"
+	depends on MMC != n
+	help
+	  If you want to use BKOPS for eMMC, you have to set Y in kernel/arch/arm/configs/XXXX_defconfig file.
+
+config LGE_MMC_STOP_BKOPS
+	bool "enable BKOPS for eMMC"
+	depends on MMC != n
+	default n
+	help
+	  If you say Y here, MMC driver will send stop bkops command before MMC ioctl block command on eMMC,
+	  you have to set Y in kernel/arch/arm/configs/XXXX_defconfig file.
+
+config LGE_MMC_SPECIAL_SDR104
+        bool "SPECICAL SRD104 SDCARD need wating time for initialization (EXPERIMENTAL)"
+	default n
+	help
+          IF you say Y here, MMC driver will send status command after
+	  SDCARD initialization. If device is recieved sucess response,
+	  will stop sending status command and then SDR104 card is well recognized.
+	  It problem is associated with tunning process of mmc card.
+	  if you are experiencing issues with SD detection.
 if MMC
 
 source "drivers/mmc/core/Kconfig"

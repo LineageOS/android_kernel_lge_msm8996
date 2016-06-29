@@ -941,6 +941,7 @@ static int __ref kernel_init(void *unused)
 
 	flush_delayed_fput();
 
+        pr_notice("[CCAudit] Run init process for OS startup\n");
 	if (ramdisk_execute_command) {
 		ret = run_init_process(ramdisk_execute_command);
 		if (!ret)

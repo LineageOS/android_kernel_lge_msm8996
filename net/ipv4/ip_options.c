@@ -190,7 +190,18 @@ int __ip_options_echo(struct ip_options *dopt, struct sk_buff *skb,
 	}
 	if (sopt->cipso) {
 		optlen  = sptr[sopt->cipso+1];
-		dopt->cipso = dopt->optlen+sizeof(struct iphdr);
+        dopt->cipso = dopt->optlen+sizeof(struct iphdr);
+        /* 2015-11-24 chisung.in@lge.com, LGP_DATA_KERNEL_CRASHFIX_ICMP_OPTION [START] */
+        //QCT_LOG
+        trace_printk("dst : %p, src : %p, optlen : %d, sopt->cipso : %d (%p), dopt->cipso : %d (%p)\n", dptr, sptr+sopt->cipso, optlen, sopt->cipso, sopt, dopt->cipso, dopt); 
+        pr_err("[%s] dst : %p, src : %p, optlen : %d, sopt->cipso : %d (%p), dopt->cipso : %d (%p)\n", __func__, dptr, sptr+sopt->cipso, optlen, sopt->cipso, sopt, dopt->cipso, dopt); 
+        //QCT_LOG
+        if(optlen > 40) {
+            printk(KERN_ERR "[DEBUG] optlen is greater than 40, -> %d\n", optlen);
+            printk("Process %s (pid: %d)\n", current->comm, current->pid);
+            return -EINVAL;
+        }
+        /* 2015-11-24 chisung.in@lge.com, LGP_DATA_KERNEL_CRASHFIX_ICMP_OPTION [END] */
 		memcpy(dptr, sptr+sopt->cipso, optlen);
 		dptr += optlen;
 		dopt->optlen += optlen;
@@ -270,7 +281,10 @@ int ip_options_compile(struct net *net,
 	} else
 		optptr = opt->__data;
 	iph = optptr - sizeof(struct iphdr);
-
+    //QCT_LOG
+    trace_printk("skb : %p, optptr : %p, iph : %p\n", skb, optptr, iph); 
+    pr_err("[%s] skb : %p, optptr : %p, iph : %p\n", __func__, skb, optptr, iph); 
+    //QCT_LOG
 	for (l = opt->optlen; l > 0; ) {
 		switch (*optptr) {
 		case IPOPT_END:
@@ -449,6 +463,10 @@ int ip_options_compile(struct net *net,
 				goto error;
 			}
 			opt->cipso = optptr - iph;
+            //QCT+LOG
+            trace_printk("opt : %p, opt->cipso : %d, optptr : %p, iph : %p\n", opt, opt->cipso, optptr, iph); 
+            pr_err("[%s] opt : %p, opt->cipso : %d, optptr : %p, iph : %p\n", __func__, opt, opt->cipso, optptr, iph); 
+            //QCT+LOG
 			if (cipso_v4_validate(skb, &optptr)) {
 				pp_ptr = optptr;
 				goto error;

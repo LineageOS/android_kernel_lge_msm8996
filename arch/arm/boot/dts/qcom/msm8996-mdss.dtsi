@@ -484,7 +484,7 @@
 		clock-names = "mdp_core_clk", "iface_clk",
 				"core_clk", "alt_iface_clk", "extp_clk";
 
-		qcom,hdmi-tx-hpd = <&pm8994_mpps 4 0>;
+		/delete-property/ qcom,hdmi-tx-hpd;
 		qcom,mdss-fb-map = <&mdss_fb2>;
 
 		hdmi_audio: qcom,msm-hdmi-audio-rx {

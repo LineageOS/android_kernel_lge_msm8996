@@ -831,7 +831,22 @@ static int swrm_disconnect_port(struct swr_master *master,
 	}
 	return 0;
 }
+#ifdef CONFIG_MACH_LGE
+static int swrm_wakeup_soundwire_master(struct swr_master *master)
+{
+	struct swr_mstr_ctrl *swrm = swr_get_ctrl_data(master);
 
+	if(!swrm) {
+		dev_err(&master->dev, "%s: swrm is NULL\n", __func__);
+		return -EINVAL;
+	}
+
+	pm_runtime_get_sync(&swrm->pdev->dev);
+	pm_runtime_mark_last_busy(&swrm->pdev->dev);
+	pm_runtime_put_autosuspend(&swrm->pdev->dev);
+	return 0;
+}
+#endif
 static int swrm_check_slave_change_status(struct swr_mstr_ctrl *swrm,
 					int status, u8 *devnum)
 {
@@ -1124,6 +1139,9 @@ static int swrm_probe(struct platform_device *pdev)
 	swrm->master.get_logical_dev_num = swrm_get_logical_dev_num;
 	swrm->master.connect_port = swrm_connect_port;
 	swrm->master.disconnect_port = swrm_disconnect_port;
+#ifdef CONFIG_MACH_LGE
+	swrm->master.wakeup_soundwire_master = swrm_wakeup_soundwire_master;
+#endif
 	swrm->master.dev.parent = &pdev->dev;
 	swrm->master.dev.of_node = pdev->dev.of_node;
 	swrm->master.num_port = 0;
@@ -1396,12 +1414,16 @@ int swrm_wcd_notify(struct platform_device *pdev, u32 id, void *data)
 	case SWR_DEVICE_UP:
 		dev_dbg(swrm->dev, "%s: swr master up called\n", __func__);
 		mutex_lock(&swrm->mlock);
+		mutex_lock(&swrm->reslock);
 		if ((swrm->state == SWR_MSTR_RESUME) ||
 		    (swrm->state == SWR_MSTR_UP)) {
-			dev_dbg(swrm->dev, "%s: SWR master is already UP: %d\n",
+			pm_runtime_mark_last_busy(&pdev->dev);
+			dev_dbg(swrm->dev, "%s: SWR master is already UP: %d, Just call pm_runtime_mark_last_busy\n",
 				__func__, swrm->state);
 		} else {
+			mutex_unlock(&swrm->reslock);
 			pm_runtime_get_sync(&pdev->dev);
+			mutex_lock(&swrm->reslock);
 			list_for_each_entry(swr_dev, &mstr->devices, dev_list) {
 				ret = swr_reset_device(swr_dev);
 				if (ret) {
@@ -1414,6 +1436,7 @@ int swrm_wcd_notify(struct platform_device *pdev, u32 id, void *data)
 			pm_runtime_mark_last_busy(&pdev->dev);
 			pm_runtime_put_autosuspend(&pdev->dev);
 		}
+		mutex_unlock(&swrm->reslock);
 		mutex_unlock(&swrm->mlock);
 		break;
 	default:

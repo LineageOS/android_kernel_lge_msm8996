@@ -16,15 +16,6 @@ config MSM_BUS_SCALING
 		for the active devices needs without keeping the clocks at max
 		frequency when a slower speed is sufficient.
 
-config MSM_BUSPM_DEV
-	tristate "MSM Bus Performance Monitor Kernel Module"
-	depends on MSM_BUS_SCALING
-	help
-	  This kernel module is used to mmap() hardware registers for the
-	  performance monitors, counters, etc. The module can also be used to
-	  allocate physical memory which is used by bus performance hardware to
-	  dump performance data
-
 config BUS_TOPOLOGY_ADHOC
 	bool "ad-hoc bus scaling topology"
 	help
@@ -280,7 +271,7 @@ config MSM_11AD
 	tristate "Platform driver for 11ad chip"
 	depends on PCI
 	depends on PCI_MSM
-	default y
+	default n
 	---help---
 	  This module adds required platform support for wireless adapter based on
 	  Qualcomm Technologies, Inc. 11ad chip, integrated into MSM platform
@@ -288,6 +279,20 @@ config MSM_11AD
 	  If you choose to build it as a module, it will be called
 	  msm_11ad_proxy.
 
+config LGE_PM_HARDRESET_MODE
+	boolean"LGE add hardrset mode in hiddenmenu"
+	depends on LGE_PM
+	default n
+	help
+	  LGE implements hardrset mode in hiddenmenu app
+
 source "drivers/platform/msm/spmi/Kconfig"
 
+config LGE_QPNP_HAPTIC_OV_RB
+	boolean "LGE Add DIRECT MODE Over Drive, Reverse Brake voltage"
+	depends on QPNP_HAPTIC
+	help
+	  LGE implements Over Drive and Reverse Brake voltage on Direct mode.
+
+	default n
 endmenu

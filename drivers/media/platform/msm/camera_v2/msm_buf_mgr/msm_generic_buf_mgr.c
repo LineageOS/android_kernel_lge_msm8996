@@ -110,6 +110,7 @@ static int32_t msm_buf_mngr_buf_done(struct msm_buf_mngr_device *buf_mngr_dev,
 						buf_info->frame_id,
 						&buf_info->timestamp,
 						buf_info->reserved);
+
 			list_del_init(&bufs->entry);
 			kfree(bufs);
 			break;

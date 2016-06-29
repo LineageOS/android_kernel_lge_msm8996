@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2014, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -24,7 +24,6 @@
 #include <linux/suspend.h>
 #include <soc/qcom/spm.h>
 #include <soc/qcom/pm.h>
-#include <soc/qcom/lpm-stats.h>
 
 #define MAX_STR_LEN 256
 const char *lpm_stats_reset = "reset";
@@ -41,6 +40,24 @@ struct level_stats {
 	int failed_count;
 	int64_t total_time;
 	uint64_t enter_time;
+};
+
+struct lifo_stats {
+	uint32_t last_in;
+	uint32_t first_out;
+};
+
+struct lpm_stats {
+	char name[MAX_STR_LEN];
+	struct level_stats *time_stats;
+	uint32_t num_levels;
+	struct lifo_stats lifo;
+	struct lpm_stats *parent;
+	struct list_head sibling;
+	struct list_head child;
+	struct cpumask mask;
+	struct dentry *directory;
+	bool is_cpu;
 };
 
 static struct level_stats suspend_time_stats;
@@ -408,9 +425,13 @@ static inline void update_exit_stats(struct lpm_stats *stats, uint32_t index,
 	uint64_t exit_time = 0;
 
 	/* Update time stats only when exit is preceded by enter */
-	exit_time = stats->sleep_time;
-	update_level_stats(&stats->time_stats[index], exit_time,
+	if (stats->time_stats[index].enter_time) {
+		exit_time = sched_clock() -
+				stats->time_stats[index].enter_time;
+		update_level_stats(&stats->time_stats[index], exit_time,
 					success);
+		stats->time_stats[index].enter_time = 0;
+	}
 }
 
 static int config_level(const char *name, const char **levels,
@@ -658,6 +679,8 @@ void lpm_stats_cluster_enter(struct lpm_stats *stats, uint32_t index)
 	if (IS_ERR_OR_NULL(stats))
 		return;
 
+	stats->time_stats[index].enter_time = sched_clock();
+
 	update_last_in_stats(stats);
 }
 EXPORT_SYMBOL(lpm_stats_cluster_enter);
@@ -694,15 +717,14 @@ EXPORT_SYMBOL(lpm_stats_cluster_exit);
  * Function to communicate the low power mode level that the cpu is
  * prepared to enter.
  */
-void lpm_stats_cpu_enter(uint32_t index, uint64_t time)
+void lpm_stats_cpu_enter(uint32_t index)
 {
 	struct lpm_stats *stats = &__get_cpu_var(cpu_stats);
-
-	stats->sleep_time = time;
 
 	if (!stats->time_stats)
 		return;
 
+	stats->time_stats[index].enter_time = sched_clock();
 }
 EXPORT_SYMBOL(lpm_stats_cpu_enter);
 
@@ -714,14 +736,12 @@ EXPORT_SYMBOL(lpm_stats_cpu_enter);
  *
  * Function to communicate the low power mode level that the cpu exited.
  */
-void lpm_stats_cpu_exit(uint32_t index, uint64_t time, bool success)
+void lpm_stats_cpu_exit(uint32_t index, bool success)
 {
 	struct lpm_stats *stats = &__get_cpu_var(cpu_stats);
 
 	if (!stats->time_stats)
 		return;
-
-	stats->sleep_time = time - stats->sleep_time;
 
 	update_exit_stats(stats, index, success);
 }

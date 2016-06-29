@@ -1409,6 +1409,27 @@ void sync_inodes_sb(struct super_block *sb)
 	wait_sb_inodes(sb);
 }
 EXPORT_SYMBOL(sync_inodes_sb);
+#ifdef CONFIG_MACH_LGE
+void async_inodes_sb(struct super_block *sb)
+{
+	struct wb_writeback_work *work;
+
+	work = kzalloc(sizeof(*work), GFP_ATOMIC);
+	if (!work) {
+		trace_writeback_nowork(sb->s_bdi);
+		bdi_wakeup_thread(sb->s_bdi);
+		return;
+	}
+
+	work->sb = sb;
+	work->sync_mode = WB_SYNC_NONE;
+	work->nr_pages	= LONG_MAX;
+	work->range_cyclic = 0;
+	work->reason	= WB_REASON_SYNC;
+	bdi_queue_work(sb->s_bdi, work);
+}
+EXPORT_SYMBOL(async_inodes_sb);
+#endif
 
 /**
  * write_inode_now	-	write an inode to disk

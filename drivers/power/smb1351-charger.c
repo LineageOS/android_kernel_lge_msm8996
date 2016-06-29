@@ -11,6 +11,9 @@
  */
 
 #define pr_fmt(fmt) "%s: " fmt, __func__
+#ifdef CONFIG_LGE_PM_PARALLEL_CHARGING
+#define DEFINE
+#endif
 
 #include <linux/i2c.h>
 #include <linux/debugfs.h>
@@ -635,8 +638,13 @@ static int smb1351_usb_suspend(struct smb1351_charger *chip, int reason,
 
 	suspended = chip->usb_suspended_status;
 
+#ifdef CONFIG_LGE_PM_PARALLEL_CHARGING
+	pr_err("reason = %d requested_suspend = %d suspended_status = %d\n",
+						reason, suspend, suspended);
+#else
 	pr_debug("reason = %d requested_suspend = %d suspended_status = %d\n",
 						reason, suspend, suspended);
+#endif
 
 	if (suspend == false)
 		suspended &= ~reason;
@@ -695,6 +703,9 @@ static int smb1351_fastchg_current_set(struct smb1351_charger *chip,
 	int i, rc;
 	bool is_pre_chg = false;
 
+#ifdef CONFIG_LGE_PM_PARALLEL_CHARGING
+	pr_err("%s - fastchg_current[%d]\n", __func__, fastchg_current);
+#endif
 
 	if ((fastchg_current < SMB1351_CHG_PRE_MIN_MA) ||
 		(fastchg_current > SMB1351_CHG_FAST_MAX_MA)) {
@@ -1486,8 +1497,13 @@ static int smb1351_parallel_set_chg_present(struct smb1351_charger *chip,
 			}
 		}
 
+#ifdef CONFIG_LGE_PM_PARALLEL_CHARGING
+		/* set charging enable by I2C */
+		reg = EN_BY_I2C_0_ENABLE | USBCS_CTRL_BY_I2C;
+#else
 		/* set chg en by pin active low  */
 		reg = chip->parallel_pin_polarity_setting | USBCS_CTRL_BY_I2C;
+#endif
 		rc = smb1351_masked_write(chip, CHG_PIN_EN_CTRL_REG,
 					EN_PIN_CTRL_MASK | USBCS_CTRL_BIT, reg);
 		if (rc) {
@@ -1526,6 +1542,33 @@ static int smb1351_parallel_set_chg_present(struct smb1351_charger *chip,
 			pr_err("Couldn't set fastchg current rc=%d\n", rc);
 			return rc;
 		}
+
+#ifdef CONFIG_LGE_PM_PARALLEL_CHARGING
+		/* adapter allowance to 5~9V */
+		rc = smb1351_masked_write(chip, FLEXCHARGER_REG,
+				CHG_CONFIG_MASK, 0);
+
+		if (rc) {
+			pr_err("Couldn't set charger config adapter rc = %d\n", rc);
+			return rc;
+		}
+
+		/* jeita disable */
+		rc = smb1351_masked_write(chip, THERM_A_CTRL_REG,
+				SOFT_COLD_TEMP_LIMIT_MASK, 0);
+		if (rc) {
+			pr_err("Couldn't set soft cold limit rc = %d\n", rc);
+			return rc;
+		}
+
+		rc = smb1351_masked_write(chip, THERM_A_CTRL_REG,
+				SOFT_HOT_TEMP_LIMIT_MASK, 0);
+
+		if (rc) {
+			pr_err("Couldn't set soft hot limit rc = %d\n", rc);
+			return rc;
+		}
+#endif
 	}
 
 	chip->parallel_charger_present = present;

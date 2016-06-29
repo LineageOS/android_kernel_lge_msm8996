@@ -23,6 +23,7 @@ if IPV6
 
 config IPV6_ROUTER_PREF
 	bool "IPv6: Router Preference (RFC 4191) support"
+        default y
 	---help---
 	  Router Preference is an optional extension to the Router
 	  Advertisement message which improves the ability of hosts
@@ -34,6 +35,7 @@ config IPV6_ROUTER_PREF
 config IPV6_ROUTE_INFO
 	bool "IPv6: Route Information (RFC 4191) support"
 	depends on IPV6_ROUTER_PREF
+        default y
 	---help---
 	  This is experimental support of Route Information.
 
@@ -257,5 +259,21 @@ config IPV6_PIMSM_V2
 	---help---
 	  Support for IPv6 PIM multicast routing protocol PIM-SMv2.
 	  If unsure, say N.
+
+config LGP_DATA_TCPIP_SLAAC_IPV6_ALLOCATION_BOOSTER
+        bool "IPv6: LGU+ IPv6 requirements"
+        ---help---
+          When the SLAAC(StateLess Address AoutoCongifutation) process is being operated,
+          we will set the value of waiting time to 0.02 sec for Link-local IPv6 address and will not operate the DAD process for Global IPv6 address.
+
+config LGP_DATA_BUGFIX_IPV6_ADDRCONF_KERNEL_CRASH
+        bool "IPv6: Bug Fix of Kernel Crash"
+        ---help---
+        During DAD process, if the interface of ipv6 were down, kernel crash will be occured.
+
+config LGP_DATA_IMPROVE_QCT_EPDG_CONNECTION_TIME
+        bool "IPv6: reduce QCT ePDG connection time"
+        ---help---
+        remove random delay time before send NS.
 
 endif # IPV6

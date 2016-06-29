@@ -19,6 +19,10 @@
 #include "mdss_debug.h"
 #include "mdss_mdp_trace.h"
 #include "mdss_dsi_clk.h"
+#if defined(CONFIG_LGE_MIPI_H1_INCELL_QHD_CMD_PANEL)
+#include <linux/input/lge_touch_notify.h>
+#include <soc/qcom/lge/board_lge.h>
+#endif
 
 #define MAX_RECOVERY_TRIALS 10
 #define MAX_SESSIONS 2
@@ -29,6 +33,11 @@
 #define POWER_COLLAPSE_TIME msecs_to_jiffies(100)
 #define CMD_MODE_IDLE_TIMEOUT msecs_to_jiffies(16 * 4)
 #define INPUT_EVENT_HANDLER_DELAY_USECS (16000 * 4)
+
+#if defined(CONFIG_LGE_MIPI_H1_INCELL_QHD_CMD_PANEL)
+extern int panel_not_connected;
+extern int skip_lcd_error_check;
+#endif
 
 static DEFINE_MUTEX(cmd_clk_mtx);
 
@@ -794,7 +803,7 @@ int mdss_mdp_resource_control(struct mdss_mdp_ctl *ctl, u32 sw_event)
 		 * 2. Early wakeup cancelled the off work.
 		 * 3. Early wakeup changed the state to ON.
 		 */
-		if (schedule_off) {
+		if (schedule_off && !ctl->mfd->validate_pending) {
 			/*
 			 * Schedule off work after cmd mode idle timeout is
 			 * reached. This is to prevent the case where early wake
@@ -957,6 +966,7 @@ static void mdss_mdp_cmd_pingpong_done(void *arg)
 	struct mdss_mdp_vsync_handler *tmp;
 	ktime_t vsync_time;
 	u32 pp_num;
+	int sppdone = 0;
 
 	if (!ctx) {
 		pr_err("%s: invalid ctx\n", __func__);
@@ -981,11 +991,13 @@ static void mdss_mdp_cmd_pingpong_done(void *arg)
 
 	MDSS_XLOG(ctl->num, atomic_read(&ctx->koff_cnt), pp_num);
 
+	sppdone = mdss_mdp_cmd_do_notifier(ctx);
+
 	if (atomic_add_unless(&ctx->koff_cnt, -1, 0)) {
 		if (atomic_read(&ctx->koff_cnt))
 			pr_err("%s: too many kickoffs=%d!\n", __func__,
 			       atomic_read(&ctx->koff_cnt));
-		if (mdss_mdp_cmd_do_notifier(ctx)) {
+		if (sppdone) {
 			atomic_inc(&ctx->pp_done_cnt);
 			schedule_work(&ctx->pp_done_work);
 
@@ -1284,6 +1296,9 @@ static int mdss_mdp_setup_vsync(struct mdss_mdp_cmd_ctx *ctx,
 			/* disable clocks and irq */
 			mdss_mdp_irq_disable(MDSS_MDP_IRQ_PING_PONG_RD_PTR,
 				ctx->pp_num);
+#ifdef QCT_IRQ_NOC_PATCH
+			wmb();
+#endif
 			/*
 			 * check the intr status and clear the irq before
 			 * disabling the clocks
@@ -1474,11 +1489,39 @@ static int mdss_mdp_cmd_wait4pingpong(struct mdss_mdp_ctl *ctl, void *arg)
 		rc = atomic_read(&ctx->koff_cnt) == 0;
 	}
 
+#if defined(CONFIG_LGE_MIPI_H1_INCELL_QHD_CMD_PANEL)
+	if (rc <= 0 && !panel_not_connected) {
+#else
 	if (rc <= 0) {
+#endif
 		pr_err("%s: wait4pingpong timed out. ctl=%d rc=%d cnt=%d\n",
-				__func__,
-				ctl->num, rc, ctx->pp_timeout_report_cnt);
+                               __func__,
+                               ctl->num, rc, ctx->pp_timeout_report_cnt);
+#if defined(CONFIG_LGE_MIPI_H1_INCELL_QHD_CMD_PANEL)
+		if (lge_get_panel_revision_id() <= LGD_LG4946_REV1){
+			if (touch_notifier_call_chain(LCD_EVENT_READ_REG, NULL))
+				pr_err("Failt to send notify to touch\n");
+			mdss_fb_report_panel_dead(ctl->mfd);
+		}
+		else{
+			if (ctx->pp_timeout_report_cnt == 0) {
+					WARN(1, "mdss_mdp_cmd_wait4pingpong timed out: rc=%d, ctl=%d\n", rc, ctl->num);
+					MDSS_XLOG(0xbad);
+					MDSS_XLOG_TOUT_HANDLER("mdp", "dsi0_ctrl", "dsi0_phy",
+						"dsi1_ctrl", "dsi1_phy", "vbif", "vbif_nrt",
+						"dbg_bus", "vbif_dbg_bus", "panic");
+				} else if (ctx->pp_timeout_report_cnt == MAX_RECOVERY_TRIALS) {
+					MDSS_XLOG(0xbad2);
+					MDSS_XLOG_TOUT_HANDLER("mdp", "dsi0_ctrl", "dsi0_phy",
+						"dsi1_ctrl", "dsi1_phy", "vbif", "vbif_nrt",
+						"dbg_bus", "vbif_dbg_bus", "panic");
+					mdss_fb_report_panel_dead(ctl->mfd);
+				}
+				ctx->pp_timeout_report_cnt++;
+		}
+#else
 		if (ctx->pp_timeout_report_cnt == 0) {
+			WARN(1, "mdss_mdp_cmd_wait4pingpong timed out: rc=%d, ctl=%d\n", rc, ctl->num);
 			MDSS_XLOG(0xbad);
 			MDSS_XLOG_TOUT_HANDLER("mdp", "dsi0_ctrl", "dsi0_phy",
 				"dsi1_ctrl", "dsi1_phy", "vbif", "vbif_nrt",
@@ -1491,6 +1534,7 @@ static int mdss_mdp_cmd_wait4pingpong(struct mdss_mdp_ctl *ctl, void *arg)
 			mdss_fb_report_panel_dead(ctl->mfd);
 		}
 		ctx->pp_timeout_report_cnt++;
+#endif
 		rc = -EPERM;
 		mdss_mdp_ctl_notify(ctl, MDP_NOTIFY_FRAME_TIMEOUT);
 		atomic_add_unless(&ctx->koff_cnt, -1, 0);
@@ -1637,7 +1681,12 @@ static int mdss_mdp_cmd_panel_on(struct mdss_mdp_ctl *ctl,
 			WARN(rc, "intf %d panel on error (%d)\n",
 					ctl->intf_num, rc);
 
+#if defined (CONFIG_LGE_MIPI_H1_INCELL_QHD_CMD_PANEL)
+			if (!skip_lcd_error_check)
+					rc = mdss_mdp_tearcheck_enable(ctl, true);
+#else
 			rc = mdss_mdp_tearcheck_enable(ctl, true);
+#endif
 			WARN(rc, "intf %d tearcheck enable error (%d)\n",
 					ctl->intf_num, rc);
 		}
@@ -1916,7 +1965,14 @@ int mdss_mdp_cmd_restore(struct mdss_mdp_ctl *ctl, bool locked)
 			pr_warn("%s: ctx%d tearcheck setup failed\n", __func__,
 				sctx->pp_num);
 		else
+#if defined (CONFIG_LGE_MIPI_H1_INCELL_QHD_CMD_PANEL)
+		{
+			if (!skip_lcd_error_check)
+				mdss_mdp_tearcheck_enable(ctl, true);
+		}
+#else
 			mdss_mdp_tearcheck_enable(ctl, true);
+#endif
 	}
 
 	return 0;

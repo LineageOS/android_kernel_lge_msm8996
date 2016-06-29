@@ -1,7 +1,7 @@
 config ARM64
 	def_bool y
-	select ARCH_BINFMT_ELF_RANDOMIZE_PIE
 	select ARCH_HAS_ATOMIC64_DEC_IF_POSITIVE
+	select ARCH_HAS_ELF_RANDOMIZE
 	select ARCH_HAS_SG_CHAIN
 	select ARCH_HAS_TICK_BROADCAST if GENERIC_CLOCKEVENTS_BROADCAST
 	select ARCH_USE_CMPXCHG_LOCKREF
@@ -469,13 +469,41 @@ config ARM64_ICACHE_DISABLE
 
 	  If you are not sure what to do, select 'N' here.
 
+config L1_CACHE_SHIFT
+	int "L1_CACHE_SHIFT"
+	depends on ARCH_MSM8996
+	default 7 if ARCH_MSM8996
+	default 6
+	help
+	  define L1 cache shift here.
+
+	  If unsure, leave the default value.
+
+config MSM_APP_API
+	bool "API support to enable / disable app settings for MSM8996"
+	depends on ARCH_MSM8996 && (ENABLE_FP_SIMD_SETTINGS || MSM_APP_SETTINGS)
+	help
+	  Add API support to enable / disable the app settings to be used
+	  by the userspace at runtime.
+
+	  If you are not sure what to do, select 'N' here.
+
 config ENABLE_FP_SIMD_SETTINGS
 	bool "Enable FP(Floating Point) Settings for Qualcomm MSM8996"
-	depends on ARCH_MSM8996
+	select MSM_APP_API
 	help
 	  Enable FP(Floating Point) and SIMD settings for the MSM8996 during
 	  the execution of the aarch32 processes and disable these settings
 	  when you switch to the aarch64 processes.
+
+	  If you are not sure what to do, select 'N' here.
+
+config MSM_APP_SETTINGS
+	bool "Support to enable / disable app settings for MSM8996"
+	select MSM_APP_API
+	help
+	  Expose an interface required to enable / disable the app settings
+	  to be used by the userspace at runtime.
 
 	  If you are not sure what to do, select 'N' here.
 

@@ -10,6 +10,9 @@
  * GNU General Public License for more details.
  */
 
+#ifdef CONFIG_LGE_PM
+#define DEBUG
+#endif
 #include <linux/spinlock.h>
 #include <linux/errno.h>
 #include <linux/bitops.h>
@@ -65,6 +68,11 @@ static int vote_min(struct votable *votable)
 			client_index = i;
 		}
 	}
+
+#ifdef CONFIG_LGE_PM
+	pr_debug("%s: vote_min min_vote=%d, client_index=%d\n",
+		votable->name, min_vote, client_index);
+#endif
 
 	return client_index;
 }
@@ -154,6 +162,11 @@ int vote(struct votable *votable, int client_id, bool state, int val)
 
 	lock_votable(votable);
 
+#ifdef CONFIG_LGE_PM
+	pr_err("%s: name[%s], client_id[%d], state[%d], val[%d]\n",
+		__func__, votable->name, client_id, state, val);
+#endif
+
 	if (votable->votes[client_id].state == state &&
 				votable->votes[client_id].value == val) {
 		pr_debug("%s: votes unchanged; skipping\n", votable->name);
@@ -214,6 +227,9 @@ out:
 struct votable *create_votable(struct device *dev, const char *name,
 					int votable_type,
 					int num_clients,
+#ifdef CONFIG_LGE_PM
+					int effective_result,
+#endif
 					int default_result,
 					int (*callback)(struct device *dev,
 							int effective_result,
@@ -252,12 +268,21 @@ struct votable *create_votable(struct device *dev, const char *name,
 	votable->default_result = default_result;
 	mutex_init(&votable->vote_lock);
 
+#ifdef CONFIG_LGE_PM
+	/*
+	 * These values will be used before the first vote is made and will then
+	 * be discarded
+	 */
+	votable->effective_result = effective_result;
+	votable->effective_client_id = 0;
+#else
 	/*
 	 * Because effective_result and client states are invalid
 	 * before the first vote, initialize them to -EINVAL
 	 */
 	votable->effective_result = -EINVAL;
 	votable->effective_client_id = -EINVAL;
+#endif
 
 	for (i = 0; i < votable->num_clients; i++)
 		votable->votes[i].state = -EINVAL;

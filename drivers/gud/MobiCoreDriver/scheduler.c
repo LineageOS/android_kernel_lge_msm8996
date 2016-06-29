@@ -20,11 +20,10 @@
 #include <linux/stringify.h>
 #include <linux/version.h>
 
-#include "public/mc_linux.h"
+#include "public/mc_user.h"
 
 #include "main.h"
 #include "fastcall.h"
-#include "debug.h"
 #include "logging.h"
 #include "mcp.h"
 #include "scheduler.h"
@@ -124,9 +123,8 @@ static int tee_scheduler(void *arg)
 	int timeslice = 0;	/* Actually scheduling period */
 	int ret = 0;
 
-	MCDRV_DBG("enter");
 	while (1) {
-		int32_t timeout_ms = -1;
+		s32 timeout_ms = -1;
 		bool pm_request = false;
 
 		if (sched_ctx.suspended || mcp_get_idle_timeout(&timeout_ms)) {
@@ -162,6 +160,9 @@ static int tee_scheduler(void *arg)
 			}
 		}
 
+		if (g_ctx.f_time)
+			mcp_update_time();
+
 		sched_ctx.request = NONE;
 		mutex_unlock(&sched_ctx.request_mutex);
 
@@ -195,7 +196,7 @@ static int tee_scheduler(void *arg)
 			complete(&sched_ctx.idle_complete);
 	}
 
-	MCDRV_DBG("exit, ret is %d", ret);
+	mc_dev_devel("exit, ret is %d\n", ret);
 	return ret;
 }
 
@@ -204,7 +205,7 @@ int mc_scheduler_start(void)
 	sched_ctx.thread_run = true;
 	sched_ctx.thread = kthread_run(tee_scheduler, NULL, "tee_scheduler");
 	if (IS_ERR(sched_ctx.thread)) {
-		MCDRV_ERROR("tee_scheduler thread creation failed");
+		mc_dev_err("tee_scheduler thread creation failed\n");
 		return PTR_ERR(sched_ctx.thread);
 	}
 

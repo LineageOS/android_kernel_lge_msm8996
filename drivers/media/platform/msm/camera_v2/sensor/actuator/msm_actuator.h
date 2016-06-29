@@ -18,6 +18,7 @@
 #include <media/v4l2-subdev.h>
 #include <media/msmb_camera.h>
 #include "msm_camera_i2c.h"
+#include "msm_camera_spi.h"
 #include "msm_camera_dt_util.h"
 #include "msm_camera_io_util.h"
 
@@ -77,6 +78,10 @@ struct msm_actuator_ctrl_t {
 	struct platform_driver *pdriver;
 	struct platform_device *pdev;
 	struct msm_camera_i2c_client i2c_client;
+#ifdef CONFIG_LG_OIS
+	struct msm_camera_i2c_client i2c_eeprom_client;
+	struct msm_eeprom_board_info *eboard_info;
+#endif
 	enum msm_camera_device_type_t act_device_type;
 	struct msm_sd_subdev msm_sd;
 	enum af_camera_name cam_name;

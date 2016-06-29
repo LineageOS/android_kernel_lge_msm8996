@@ -165,10 +165,10 @@
 			reg = <0 0x85800000 0 0x3000000>;
 		};
 
-		peripheral_mem: peripheral_region@8ea00000 {
+		peripheral_mem: peripheral_region@8e900000 {
 			compatible = "removed-dma-pool";
 			no-map;
-			reg = <0 0x8ea00000 0 0x2b00000>;
+			reg = <0 0x8e900000 0 0x2b00000>;
 		};
 
 		qseecom_mem: qseecom_region {
@@ -190,7 +190,7 @@
 		modem_mem: modem_region@88800000 {
 			compatible = "removed-dma-pool";
 			no-map;
-			reg = <0 0x88800000 0 0x6200000>;
+			reg = <0 0x88800000 0 0x6100000>;
 		};
 
 		dfps_data_mem: dfps_data_mem@83400000 {
@@ -823,20 +823,22 @@
 		pinctrl-1 = <&spkr_i2s_clk_active>;
 	};
 
+	/* LGE_BROADCAST_ISDBT_JAPAN Start */
+	/*
 	tspp: msm_tspp@075e7000 {
 		compatible = "qcom,msm_tspp";
-		reg = <0x075e7000 0x1000>, /* MSM_TSIF0_PHYS */
-		      <0x075e8000 0x1000>, /* MSM_TSIF1_PHYS */
-		      <0x075e9000 0x1000>, /* MSM_TSPP_PHYS  */
-		      <0x075c4000 0x23000>; /* MSM_TSPP_BAM_PHYS */
+		reg = <0x075e7000 0x1000>, // MSM_TSIF0_PHYS
+		      <0x075e8000 0x1000>, // MSM_TSIF1_PHYS
+		      <0x075e9000 0x1000>, // MSM_TSPP_PHYS
+		      <0x075c4000 0x23000>; // MSM_TSPP_BAM_PHYS
 		reg-names = "MSM_TSIF0_PHYS",
 			"MSM_TSIF1_PHYS",
 			"MSM_TSPP_PHYS",
 			"MSM_TSPP_BAM_PHYS";
-		interrupts = <0 121 0>, /* TSIF_TSPP_IRQ */
-			<0 119 0>, /* TSIF0_IRQ */
-			<0 120 0>, /* TSIF1_IRQ */
-			<0 122 0>; /* TSIF_BAM_IRQ */
+		interrupts = <0 121 0>, // TSIF_TSPP_IRQ
+			<0 119 0>, // TSIF0_IRQ
+			<0 120 0>, // TSIF1_IRQ
+			<0 122 0>; // TSIF_BAM_IRQ
 		interrupt-names = "TSIF_TSPP_IRQ",
 			"TSIF0_IRQ",
 			"TSIF1_IRQ",
@@ -850,28 +852,30 @@
 		qcom,msm-bus,num-cases = <2>;
 		qcom,msm-bus,num-paths = <1>;
 		qcom,msm-bus,vectors-KBps =
-				<82 512 0 0>, /* No vote */
-				<82 512 12288 24576>; /* Max. bandwidth, 2xTSIF, each max of 96Mbps */
+				<82 512 0 0>, // No vote
+				<82 512 12288 24576>; // Max. bandwidth, 2xTSIF, each max of 96Mbps
 
 		pinctrl-names = "disabled",
 			"tsif0-mode1", "tsif0-mode2",
 			"tsif1-mode1", "tsif1-mode2",
 			"dual-tsif-mode1", "dual-tsif-mode2";
 
-		pinctrl-0 = <>;				/* disabled */
-		pinctrl-1 = <&tsif0_signals_active>;	/* tsif0-mode1 */
+		pinctrl-0 = <>;				// disabled
+		pinctrl-1 = <&tsif0_signals_active>;	// tsif0-mode1
 		pinctrl-2 = <&tsif0_signals_active
-			&tsif0_sync_active>;		/* tsif0-mode2 */
-		pinctrl-3 = <&tsif1_signals_active>;	/* tsif1-mode1 */
+			&tsif0_sync_active>;		// tsif0-mode2
+		pinctrl-3 = <&tsif1_signals_active>;	// tsif1-mode1
 		pinctrl-4 = <&tsif1_signals_active
-			&tsif1_sync_active>;		/* tsif1-mode2 */
+			&tsif1_sync_active>;		// tsif1-mode2
 		pinctrl-5 = <&tsif0_signals_active
-			&tsif1_signals_active>;		/* dual-tsif-mode1 */
+			&tsif1_signals_active>;		// dual-tsif-mode1
 		pinctrl-6 = <&tsif0_signals_active
 			&tsif0_sync_active
 			&tsif1_signals_active
-			&tsif1_sync_active>;		/* dual-tsif-mode2 */
+			&tsif1_sync_active>;		// dual-tsif-mode2
 	};
+	*/
+	/* LGE_BROADCAST_ISDBT_JAPAN End */
 
 	slim_msm: slim@91c0000 {
 		cell-index = <1>;
@@ -934,14 +938,14 @@
 						   "cdc-vddpx-1";
 
 			qcom,cdc-micbias1-mv = <1800>;
-			qcom,cdc-micbias2-mv = <1800>;
+			qcom,cdc-micbias2-mv = <2000>;
 			qcom,cdc-micbias3-mv = <1800>;
 			qcom,cdc-micbias4-mv = <1800>;
 
 			qcom,cdc-mclk-clk-rate = <9600000>;
 			qcom,cdc-slim-ifd = "tasha-slim-ifd";
 			qcom,cdc-slim-ifd-elemental-addr = [00 00 A0 01 17 02];
-			qcom,cdc-dmic-sample-rate = <4800000>;
+			qcom,cdc-dmic-sample-rate = <2400000>;
 			qcom,cdc-mad-dmic-rate = <600000>;
 		};
 	};
@@ -1302,6 +1306,8 @@
 		qcom,l1-supported;
 		qcom,l1ss-supported;
 		qcom,aux-clk-sync;
+		qcom,common-clk-en;
+		qcom,clk-power-manage-en;
 
 		qcom,ep-latency = <10>;
 
@@ -2460,7 +2466,6 @@
 			 <&clock_gcc clk_gcc_ce1_ahb_m_clk>,
 			 <&clock_gcc clk_gcc_ce1_axi_m_clk>;
 		qcom,ce-opp-freq = <171430000>;
-		qcom,qsee-reentrancy-support = <2>;
 	};
 
 	qcom,qbt1000 {
@@ -2921,7 +2926,7 @@
 		compatible = "qcom,msm-pcm-dsp";
 		qcom,msm-pcm-dsp-id = <1>;
 		qcom,msm-pcm-low-latency;
-		qcom,latency-level = "ull-pp";
+		qcom,latency-level = "regular";
 	};
 
 	pcm2: qcom,msm-ultra-low-latency {
@@ -3506,9 +3511,8 @@
 };
 
 &gdsc_mdss {
-	clock-names = "bus_clk", "core_clk";
-	clocks = <&clock_mmss clk_mdss_axi_clk>,
-		 <&clock_mmss clk_mdss_mdp_clk>;
+	clock-names = "bus_clk";
+	clocks = <&clock_mmss clk_mdss_axi_clk>;
 	parent-supply = <&gdsc_mmagic_mdss>;
 	proxy-supply = <&gdsc_mdss>;
 	qcom,proxy-consumer-enable;

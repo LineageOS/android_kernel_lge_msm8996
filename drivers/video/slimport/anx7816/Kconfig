@@ -1,0 +1,20 @@
+config SLIMPORT_ANX7816
+	tristate "Analogix Slimport transmitter ANX7816 support"
+	help
+	  Slimport Transmitter is a 2K/4K video transmitter chip
+	  over micro-USB connector for smartphone device.
+
+config SLIMPORT_DYNAMIC_HPD
+	tristate "ANX7816 support for dynamic HDMI HPD control"
+	help
+	  Slimport set HPD when cable is connected,
+	  HDMI clk is off during slimport cable is not connected
+
+config SLIMPORT_4K_IMPROVEMENT
+	tristate "ANX7816 4K performance improvement"
+	help
+	  If AP support below HDMI 1.4 version, fps difference
+	  between video contents and video stream,
+	  as 24fps and 30fps, occur 4k performance issue.
+	  this change maximize 4k video stream fps to solve this issue
+

@@ -253,6 +253,15 @@ struct msm_fb_backup_type {
 	bool   atomic_commit;
 };
 
+#if defined(CONFIG_LGE_PP_AD_SUPPORTED)
+struct msm_fb_ad_info {
+    int is_ad_on;
+    int user_bl_lvl;
+    int ad_weight;
+    int old_ad_brightness;
+};
+#endif
+
 struct msm_fb_data_type {
 	u32 key;
 	u32 index;
@@ -304,7 +313,14 @@ struct msm_fb_data_type {
 	u32 bl_updated;
 	u32 bl_level_scaled;
 	struct mutex bl_lock;
+	bool ipc_resume;
 
+#if defined(CONFIG_LGE_DISPLAY_AOD_SUPPORTED)
+	struct mutex aod_lock;
+#endif
+#if defined(CONFIG_LGE_MIPI_H1_INCELL_QHD_CMD_PANEL)
+	bool recovery;
+#endif
 	struct platform_device *pdev;
 
 	u32 mdp_fb_page_protection;
@@ -357,6 +373,13 @@ struct msm_fb_data_type {
 	bool pending_switch;
 	struct mutex switch_lock;
 	struct input_handler *input_handler;
+	#if defined(CONFIG_LGE_PP_AD_SUPPORTED)
+	struct msm_fb_ad_info ad_info;
+	#endif
+#if defined(CONFIG_LGE_PM_THERMAL_VTS)
+	struct value_sensor *vs;
+	struct value_sensor *vs_clone;
+#endif
 };
 
 static inline void mdss_fb_update_notify_update(struct msm_fb_data_type *mfd)

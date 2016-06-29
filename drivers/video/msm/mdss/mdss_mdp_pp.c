@@ -24,6 +24,21 @@
 #include <linux/msm-bus-board.h>
 #include "mdss_mdp_pp_cache_config.h"
 
+#if defined(CONFIG_LGE_CAM_PREVIEW_TUNE)
+struct mdp_csc_cfg mdp_csc_convert_wideband = {
+	0,
+	{
+		0x0200, 0x0000, 0x02CD,
+		0x0200, 0xFF4F, 0xFE91,
+		0x0200, 0x038B, 0x0000,
+	},
+	{ 0x0, 0xFF80, 0xFF80,},
+	{ 0x0, 0x0, 0x0,},
+	{ 0x0, 0xFF, 0x0, 0xFF, 0x0, 0xFF,},
+	{ 0x0, 0xFF, 0x0, 0xFF, 0x0, 0xFF,},
+	};
+#endif
+
 struct mdp_csc_cfg mdp_csc_8bit_convert[MDSS_MDP_MAX_CSC] = {
 	[MDSS_MDP_CSC_YUV2RGB_601L] = {
 		0,
@@ -122,6 +137,45 @@ struct mdp_csc_cfg mdp_csc_8bit_convert[MDSS_MDP_MAX_CSC] = {
 		{ 0x0, 0xff, 0x0, 0xff, 0x0, 0xff,},
 	},
 };
+
+#if defined(CONFIG_LGE_BROADCAST_TDMB) || defined(CONFIG_LGE_BROADCAST_ISDBT_JAPAN)
+struct mdp_csc_cfg dmb_csc_convert = {
+#if defined(CONFIG_MACH_MSM8992_P1_KR) || defined(CONFIG_MACH_MSM8992_PPLUS_KR) || defined(CONFIG_MACH_MSM8992_P1A4WP_KR) || defined(CONFIG_MACH_MSM8996_H1_KR)
+	0,
+	{
+		0x0236, 0x0000, 0x0331,	/*283*/
+		0x025c, 0xff37, 0xfe60,	/*302*/
+		0x0276, 0x0409, 0x0000,	/*315*/
+	},
+	{ 0xfff0, 0xff80, 0xff80,},
+	{ 0x0, 0x0, 0x0,},
+	{ 0x0, 0xff, 0x0, 0xff, 0x0, 0xff,},
+	{ 0x0, 0xff, 0x0, 0xff, 0x0, 0xff,},
+#elif defined(CONFIG_MACH_MSM8992_P1_KDDI_JP)
+	0,
+	{
+		0x0252, 0x0000, 0x0331,
+		0x0234, 0xff37, 0xfe60,
+		0x0272, 0x0409, 0x0000,
+	},
+	{ 0xfff0, 0xff80, 0xff80,},
+	{ 0x0, 0x0, 0x0,},
+	{ 0x0, 0xff, 0x0, 0xff, 0x0, 0xff,},
+	{ 0x0, 0xff, 0x0, 0xff, 0x0, 0xff,},
+#else
+	0,
+	{
+		0x0254, 0x0000, 0x0331,
+		0x0254, 0xff37, 0xfe60,
+		0x0254, 0x0409, 0x0000,
+	},
+	{ 0xfff0, 0xff80, 0xff80,},
+	{ 0x0, 0x0, 0x0,},
+	{ 0x0, 0xff, 0x0, 0xff, 0x0, 0xff,},
+	{ 0x0, 0xff, 0x0, 0xff, 0x0, 0xff,},
+#endif
+};
+#endif /* LGE_BROADCAST */
 
 struct mdp_csc_cfg mdp_csc_10bit_convert[MDSS_MDP_MAX_CSC] = {
 	[MDSS_MDP_CSC_YUV2RGB_601L] = {
@@ -357,6 +411,7 @@ static u32 igc_limited[IGC_LUT_ENTRIES] = {
 #define PP_AD_STATE_RUN		0x10
 #define PP_AD_STATE_VSYNC	0x20
 #define PP_AD_STATE_BL_LIN	0x40
+#define PP_AD_STATE_IPC		0x80
 
 #define PP_AD_STATE_IS_INITCFG(st)	(((st) & PP_AD_STATE_INIT) &&\
 						((st) & PP_AD_STATE_CFG))
@@ -388,6 +443,8 @@ static u32 igc_limited[IGC_LUT_ENTRIES] = {
 #define MDSS_AD_RUNNING_AUTO_STR(ad) (((ad)->state & PP_AD_STATE_RUN) &&\
 				((ad)->cfg.mode == MDSS_AD_MODE_AUTO_STR))
 #define MDSS_AD_AUTO_TRIGGER 0x80
+#define MDSS_AD_T_FILTER_CTRL_0 0
+#define MDSS_AD_IPC_FRAME_COUNT 2
 
 #define SHARP_STRENGTH_DEFAULT	32
 #define SHARP_EDGE_THR_DEFAULT	112
@@ -399,6 +456,27 @@ static struct mdp_pp_feature_ops *pp_ops;
 
 static DEFINE_MUTEX(mdss_pp_mutex);
 static struct mdss_pp_res_type *mdss_pp_res;
+
+#if defined(CONFIG_LGE_BROADCAST_TDMB) || defined(CONFIG_LGE_BROADCAST_ISDBT_JAPAN)
+static int dmb_status; // on - 1, off - 0
+int pp_set_dmb_status(int flag) {
+	dmb_status = flag;
+	return 0;
+}
+#endif /* LGE_BROADCAST */
+
+#if defined(CONFIG_LGE_CAM_PREVIEW_TUNE)
+static int cam_preview_tune_status; /* on - 1, off - 0 */
+int pp_set_cam_preview_tune_status(int flag) {
+	cam_preview_tune_status = flag;
+	pr_debug("[Display] cam_preview_tune_status=%d\n", cam_preview_tune_status);
+	return 0;
+}
+#endif /* LGE_CAM_PREVIEW_TUNE */
+
+#if defined(CONFIG_LGE_PP_AD_SUPPORTED)
+extern void mdss_fb_ad_set_brightness(struct msm_fb_data_type *mfd, u32 amb_light, int ad_on);
+#endif
 
 static u32 pp_hist_read(char __iomem *v_addr,
 				struct pp_hist_col_info *hist_info);
@@ -975,8 +1053,39 @@ static int pp_vig_pipe_setup(struct mdss_mdp_pipe *pipe, u32 *op)
 		 * is a previously configured pipe need to re-configure
 		 * CSC matrix
 		 */
-		mdss_mdp_csc_setup(MDSS_MDP_BLOCK_SSPP, pipe->num,
-			   pp_vig_csc_pipe_val(pipe));
+#if !defined(CONFIG_LGE_BROADCAST_TDMB)		 
+		#if !defined(CONFIG_LGE_CAM_PREVIEW_TUNE)
+			mdss_mdp_csc_setup(MDSS_MDP_BLOCK_SSPP, pipe->num,
+				   pp_vig_csc_pipe_val(pipe));
+		#else
+			if(cam_preview_tune_status == 1) {
+				mdss_mdp_csc_setup_data(MDSS_MDP_BLOCK_SSPP, pipe->num,
+					&mdp_csc_convert_wideband);
+			} else {
+				mdss_mdp_csc_setup(MDSS_MDP_BLOCK_SSPP, pipe->num,
+					pp_vig_csc_pipe_val(pipe));
+			}
+		#endif
+#else
+#if !defined(CONFIG_LGE_CAM_PREVIEW_TUNE)
+		if(dmb_status == 1) {
+			mdss_mdp_csc_setup_data(MDSS_MDP_BLOCK_SSPP, pipe->num, &dmb_csc_convert);
+		} else {
+			mdss_mdp_csc_setup(MDSS_MDP_BLOCK_SSPP, pipe->num, pp_vig_csc_pipe_val(pipe));
+		}
+#else
+		if(dmb_status == 1) {
+			mdss_mdp_csc_setup_data(MDSS_MDP_BLOCK_SSPP, pipe->num, &dmb_csc_convert);
+		} else {
+			if(cam_preview_tune_status == 1) {
+				mdss_mdp_csc_setup_data(MDSS_MDP_BLOCK_SSPP, pipe->num, &mdp_csc_convert_wideband);
+			} else {
+				mdss_mdp_csc_setup(MDSS_MDP_BLOCK_SSPP, pipe->num, pp_vig_csc_pipe_val(pipe));
+			}
+		}
+#endif
+#endif /* LGE_BROADCAST */
+
 	}
 
 	/* Update CSC state only if tuning mode is enable */
@@ -2272,6 +2381,16 @@ int mdss_mdp_pp_resume(struct msm_fb_data_type *mfd)
 	}
 
 	mutex_lock(&ad->lock);
+	if (mfd->ipc_resume) {
+		mfd->ipc_resume = false;
+		if (PP_AD_STATE_RUN & ad->state) {
+			ad->ipc_frame_count = 0;
+			ad->state |= PP_AD_STATE_IPC;
+			ad->cfg.mode = MDSS_AD_MODE_MAN_IPC;
+			pr_debug("switch mode to %d\n", ad->cfg.mode);
+		}
+	}
+
 	if (PP_AD_STATE_CFG & ad->state)
 		ad->sts |= PP_AD_STS_DIRTY_CFG;
 	if (PP_AD_STATE_INIT & ad->state)
@@ -5194,6 +5313,9 @@ int mdss_mdp_ad_config(struct msm_fb_data_type *mfd,
 	if (!ret && (init_cfg->ops & MDP_PP_OPS_DISABLE)) {
 		ad->sts &= ~PP_STS_ENABLE;
 		mutex_unlock(&ad->lock);
+		#if defined(CONFIG_LGE_PP_AD_SUPPORTED)
+		mdss_fb_ad_set_brightness(mfd, 0, 0);
+		#endif
 		cancel_work_sync(&ad->calc_work);
 		mutex_lock(&ad->lock);
 		ad->mfd = NULL;
@@ -5247,11 +5369,16 @@ int mdss_mdp_ad_input(struct msm_fb_data_type *mfd,
 			goto error;
 		}
 		ad->ad_data_mode = MDSS_AD_INPUT_AMBIENT;
-		pr_debug("ambient = %d\n", input->in.amb_light);
+		pr_err("[AD] ambient = %d\n", input->in.amb_light);
 		ad->ad_data = input->in.amb_light;
 		ad->calc_itr = ad->cfg.stab_itr;
 		ad->sts |= PP_AD_STS_DIRTY_VSYNC;
 		ad->sts |= PP_AD_STS_DIRTY_DATA;
+		#if defined(CONFIG_LGE_PP_AD_SUPPORTED)
+        mutex_unlock(&ad->lock);
+        mdss_fb_ad_set_brightness(mfd, input->in.amb_light, 1);
+        mutex_lock(&ad->lock);
+		#endif
 		break;
 	case MDSS_AD_MODE_TARG_STR:
 	case MDSS_AD_MODE_MAN_STR:
@@ -5323,6 +5450,11 @@ static void pp_ad_input_write(struct mdss_mdp_ad *ad_hw,
 	case MDSS_AD_MODE_MAN_STR:
 		writel_relaxed(ad->bl_data, base + MDSS_MDP_REG_AD_BL);
 		writel_relaxed(ad->ad_data, base + MDSS_MDP_REG_AD_STR_MAN);
+		break;
+	case MDSS_AD_MODE_MAN_IPC:
+		writel_relaxed(ad->bl_data, base + MDSS_MDP_REG_AD_BL);
+		writel_relaxed(ad->ad_data, base + MDSS_MDP_REG_AD_AL);
+		writel_relaxed(ad->last_str, base + MDSS_MDP_REG_AD_STR_MAN);
 		break;
 	default:
 		pr_warn("Invalid mode! %d\n", ad->cfg.mode);
@@ -5477,6 +5609,15 @@ static void pp_ad_cfg_write(struct mdss_mdp_ad *ad_hw, struct mdss_ad_info *ad)
 			       base + MDSS_MDP_REG_AD_MODE_SEL);
 		pr_debug("stab_itr = %d\n", ad->cfg.stab_itr);
 		break;
+	case MDSS_AD_MODE_MAN_IPC:
+		writel_relaxed(MDSS_AD_T_FILTER_CTRL_0,
+				base + MDSS_MDP_REG_AD_TFILT_CTRL);
+		writel_relaxed(ad->cfg.backlight_scale,
+				base + MDSS_MDP_REG_AD_BL_MAX);
+		writel_relaxed(ad->cfg.mode | MDSS_AD_AUTO_TRIGGER,
+			       base + MDSS_MDP_REG_AD_MODE_SEL);
+		pr_debug("stab_itr = %d\n", ad->cfg.stab_itr);
+		break;
 	default:
 		break;
 	}
@@ -5561,26 +5702,32 @@ static int mdss_mdp_ad_setup(struct msm_fb_data_type *mfd)
 	mdata = mfd_to_mdata(mfd);
 
 	mutex_lock(&ad->lock);
+	if ((ad->state & PP_AD_STATE_RUN) && (ad->state & PP_AD_STATE_IPC)) {
+		if (ad->ipc_frame_count == MDSS_AD_IPC_FRAME_COUNT) {
+			ad->cfg.mode = MDSS_AD_MODE_AUTO_STR;
+			ad->sts |= PP_AD_STS_DIRTY_INIT;
+			ad->sts |= PP_AD_STS_DIRTY_CFG;
+			ad->sts |= PP_AD_STS_DIRTY_DATA;
+			ad->state &= ~PP_AD_STATE_IPC;
+			pr_debug("switch mode to %d\n", ad->cfg.mode);
+		}
+		ad->ipc_frame_count++;
+	}
+
 	if (ad->sts != last_sts || ad->state != last_state) {
 		last_sts = ad->sts;
 		last_state = ad->state;
 		pr_debug("begining: ad->sts = 0x%08x, state = 0x%08x\n",
 							ad->sts, ad->state);
 	}
-	if (!PP_AD_STS_IS_DIRTY(ad->sts) &&
-		(ad->sts & PP_AD_STS_DIRTY_DATA)) {
-		/*
-		 * Write inputs to regs when the data has been updated or
-		 * Assertive Display is up and running as long as there are
-		 * no updates to AD init or cfg
-		 */
+
+	if (ad->sts & PP_AD_STS_DIRTY_DATA) {
 		ad->sts &= ~PP_AD_STS_DIRTY_DATA;
 		ad->state |= PP_AD_STATE_DATA;
 		pr_debug("dirty data, last_bl = %d\n", ad->last_bl);
 		bl = bl_mfd->ad_bl_level;
 
-		if ((ad->cfg.mode == MDSS_AD_MODE_AUTO_STR) &&
-							(ad->last_bl != bl)) {
+		if (ad->last_bl != bl) {
 			ad->last_bl = bl;
 			linear_map(bl, &ad->bl_data,
 				bl_mfd->panel_info->bl_max,
@@ -5599,12 +5746,6 @@ static int mdss_mdp_ad_setup(struct msm_fb_data_type *mfd)
 		ad->state |= PP_AD_STATE_CFG;
 
 		ad->reg_sts |= PP_AD_STS_DIRTY_CFG;
-
-		if (!MDSS_AD_MODE_DATA_MATCH(ad->cfg.mode, ad->ad_data_mode)) {
-			ad->sts &= ~PP_AD_STS_DIRTY_DATA;
-			ad->state &= ~PP_AD_STATE_DATA;
-			pr_debug("Mode switched, data invalidated!\n");
-		}
 	}
 	if (ad->sts & PP_AD_STS_DIRTY_INIT) {
 		ad->sts &= ~PP_AD_STS_DIRTY_INIT;
@@ -5733,12 +5874,11 @@ static void pp_ad_calc_worker(struct work_struct *work)
 	if ((PP_AD_STATE_RUN & ad->state) && ad->calc_itr > 0)
 		ad->calc_itr--;
 
-	if (mdata->ad_debugen) {
-		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
-		pr_info("itr number %d str %d\n", ad->calc_itr,
-			readl_relaxed(base + MDSS_MDP_REG_AD_STR_OUT));
-		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
-	}
+	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
+	ad->last_str = 0xFF & readl_relaxed(base + MDSS_MDP_REG_AD_STR_OUT);
+	mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
+	if (mdata->ad_debugen)
+		pr_info("itr number %d str %d\n", ad->calc_itr, ad->last_str);
 	if (mdp5_data) {
 		mdp5_data->ad_events++;
 		sysfs_notify_dirent(mdp5_data->ad_event_sd);

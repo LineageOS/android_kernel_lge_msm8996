@@ -72,7 +72,14 @@
 #define QPNP_HAP_VMAX_MASK		0xC1
 #define QPNP_HAP_VMAX_SHIFT		1
 #define QPNP_HAP_VMAX_MIN_MV		116
+
+/* LGE Add DIRECT MODE Over Drive, Reverse Brake voltage */
+#ifdef CONFIG_LGE_QPNP_HAPTIC_OV_RB
+#define QPNP_HAP_VMAX_MAX_MV		2088
+#else /* QCT original */
 #define QPNP_HAP_VMAX_MAX_MV		3596
+#endif
+
 #define QPNP_HAP_ILIM_MASK		0xFE
 #define QPNP_HAP_ILIM_MIN_MV		400
 #define QPNP_HAP_ILIM_MAX_MV		800
@@ -138,6 +145,10 @@
 #define QPNP_HAP_MAX_RETRIES		5
 #define QPNP_HAP_CYCLS			5
 #define QPNP_TEST_TIMER_MS		5
+
+#ifdef CONFIG_LGE_QPNP_HAPTIC_OV_RB
+#define QPNP_HAP_OV_RB_MV 3016
+#endif
 
 #define AUTO_RES_ENABLE_TIMEOUT		20000
 #define AUTO_RES_ERR_CAPTURE_RES	5
@@ -299,6 +310,9 @@ struct qpnp_hap {
 	enum qpnp_hap_high_z lra_high_z;
 	u32 timeout_ms;
 	u32 vmax_mv;
+#ifdef CONFIG_LGE_QPNP_HAPTIC_OV_RB
+	u32 vmax_mv_orig;
+#endif
 	u32 ilim_ma;
 	u32 sc_deb_cycles;
 	u32 int_pwm_freq_khz;
@@ -331,6 +345,11 @@ struct qpnp_hap {
 	bool correct_lra_drive_freq;
 	bool misc_trim_error_rc19p2_clk_reg_present;
 };
+
+#ifdef CONFIG_LGE_QPNP_HAPTIC_OV_RB
+/* LGE add qpnp_hap_vmax_config function for Overdrive and reverse braking in Direct MODE */
+static int qpnp_hap_vmax_config(struct qpnp_hap *hap, int odrb);
+#endif
 
 static struct qpnp_hap *ghap;
 
@@ -449,12 +468,29 @@ static int qpnp_hap_play(struct qpnp_hap *hap, int on)
 		val |= QPNP_HAP_PLAY_EN;
 	else
 		val &= ~QPNP_HAP_PLAY_EN;
+#ifdef CONFIG_LGE_QPNP_HAPTIC_OV_RB
+	if (hap->play_mode == QPNP_HAP_DIRECT) {
+		if (!on) {
+
+			/* LGE don't use 2 x VMAX */
+#if 0
+			/* 2 x VMAX reverse braking */
+			hap->vmax_mv = hap->vmax_mv_orig * 2;
+#endif
+			/* LGE set Reverse braking tunning voltage */
+			hap->vmax_mv = QPNP_HAP_OV_RB_MV;
+			qpnp_hap_vmax_config(hap,1);
+		}
+	}
+#endif
 
 	rc = qpnp_hap_write_reg(hap, &val,
 			QPNP_HAP_PLAY_REG(hap->base));
 	if (rc < 0)
 		return rc;
-
+#ifdef CONFIG_LGE_QPNP_HAPTIC_OV_RB
+	dev_info(&hap->spmi->dev, "qpnp_hap_play: on = %d, voltage = %d \n", on, hap->vmax_mv);
+#endif
 	hap->reg_play = val;
 
 	return 0;
@@ -690,15 +726,27 @@ static int qpnp_hap_play_mode_config(struct qpnp_hap *hap)
 }
 
 /* configuration api for max volatge */
+#ifdef CONFIG_LGE_QPNP_HAPTIC_OV_RB
+static int qpnp_hap_vmax_config(struct qpnp_hap *hap, int odrb)
+#else
 static int qpnp_hap_vmax_config(struct qpnp_hap *hap)
+#endif
 {
 	u8 reg = 0;
 	int rc, temp;
 
 	if (hap->vmax_mv < QPNP_HAP_VMAX_MIN_MV)
 		hap->vmax_mv = QPNP_HAP_VMAX_MIN_MV;
-	else if (hap->vmax_mv > QPNP_HAP_VMAX_MAX_MV)
+	else if (hap->vmax_mv > QPNP_HAP_VMAX_MAX_MV) {
+#ifdef CONFIG_LGE_QPNP_HAPTIC_OV_RB
+	/* LGE add QPNP_HAP_OV_RB_MV */
+	/* When Over drive or Reverse braking occurs, odrb = 1 */
+	if(odrb)
+		hap->vmax_mv = QPNP_HAP_OV_RB_MV;
+	else
+#endif
 		hap->vmax_mv = QPNP_HAP_VMAX_MAX_MV;
+	}
 
 	rc = qpnp_hap_read_reg(hap, &reg, QPNP_HAP_VMAX_REG(hap->base));
 	if (rc < 0)
@@ -1197,6 +1245,76 @@ static ssize_t qpnp_hap_play_mode_show(struct device *dev,
 	return snprintf(buf, PAGE_SIZE, "%s\n", str);
 }
 
+#ifdef CONFIG_LGE_QPNP_HAPTIC_OV_RB
+/* sysfs show for amp */
+static ssize_t qpnp_hap_amp_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct timed_output_dev *timed_dev = dev_get_drvdata(dev);
+	struct qpnp_hap *hap = container_of(timed_dev, struct qpnp_hap,
+					 timed_dev);
+	u8 reg = 0, temp = 0;
+	int res, ret;
+
+	ret = qpnp_hap_read_reg(hap, &reg, QPNP_HAP_VMAX_REG(hap->base));
+	if (ret < 0) {
+			dev_err(&hap->spmi->dev,
+					"Error reading address: %X\n",
+					QPNP_HAP_VMAX_REG(hap->base));
+	    return ret;
+	}
+
+	reg &= ~QPNP_HAP_VMAX_MASK;
+	temp = reg >> QPNP_HAP_VMAX_SHIFT;
+	res = temp * QPNP_HAP_VMAX_MIN_MV;
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", res);
+}
+
+/* sysfs store for amp */
+static ssize_t qpnp_hap_amp_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct timed_output_dev *timed_dev = dev_get_drvdata(dev);
+	struct qpnp_hap *hap = container_of(timed_dev, struct qpnp_hap,
+					 timed_dev);
+	u8 reg = 0;
+	int temp, ret, value;
+
+	if (sscanf(buf, "%d", &value) != 1)
+		return -EINVAL;
+
+	if (value < QPNP_HAP_VMAX_MIN_MV)
+		value = QPNP_HAP_VMAX_MIN_MV;
+	else if (value > QPNP_HAP_VMAX_MAX_MV)
+		value = QPNP_HAP_VMAX_MAX_MV;
+
+	ret = qpnp_hap_read_reg(hap, &reg, QPNP_HAP_VMAX_REG(hap->base));
+
+	if (ret < 0) {
+			dev_err(&hap->spmi->dev, "Error reading address: %X\n",
+					QPNP_HAP_VMAX_REG(hap->base));
+	}
+
+	reg &= QPNP_HAP_VMAX_MASK;
+	/* Vmax Controlled by 116mV step. So we divide our input Voltage by 116 */
+	temp = value / QPNP_HAP_VMAX_MIN_MV;
+	/* Changed Vmax have to save to hap->vmax_mv and hap->vmax_mv_orig to
+						recover vmax that changed here */
+	hap->vmax_mv = hap->vmax_mv_orig = temp * QPNP_HAP_VMAX_MIN_MV;
+	reg |= (temp << QPNP_HAP_VMAX_SHIFT);
+
+	ret = qpnp_hap_write_reg(hap, &reg, QPNP_HAP_VMAX_REG(hap->base));
+	if (ret < 0) {
+			dev_err(&hap->spmi->dev,
+					"Error writing address: %X\n",
+					QPNP_HAP_VMAX_REG(hap->base));
+	}
+
+	return count;
+}
+#endif
+
 /* sysfs store for ramp test data */
 static ssize_t qpnp_hap_min_max_test_data_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
@@ -1288,7 +1406,6 @@ static ssize_t qpnp_hap_ramp_test_data_show(struct device *dev,
 	return count;
 
 }
-
 /* sysfs attributes */
 static struct device_attribute qpnp_hap_attrs[] = {
 	__ATTR(wf_s0, (S_IRUGO | S_IWUSR | S_IWGRP),
@@ -1330,6 +1447,11 @@ static struct device_attribute qpnp_hap_attrs[] = {
 	__ATTR(dump_regs, (S_IRUGO | S_IWUSR | S_IWGRP),
 			qpnp_hap_dump_regs_show,
 			NULL),
+#ifdef CONFIG_LGE_QPNP_HAPTIC_OV_RB
+	__ATTR(amp, (S_IRUGO | S_IWUSR | S_IWGRP),
+			qpnp_hap_amp_show,
+			qpnp_hap_amp_store),
+#endif
 	__ATTR(ramp_test, (S_IRUGO | S_IWUSR | S_IWGRP),
 			qpnp_hap_ramp_test_data_show,
 			qpnp_hap_ramp_test_data_store),
@@ -1548,6 +1670,9 @@ static void qpnp_hap_td_enable(struct timed_output_dev *dev, int value)
 {
 	struct qpnp_hap *hap = container_of(dev, struct qpnp_hap,
 					 timed_dev);
+#ifdef CONFIG_LGE_QPNP_HAPTIC_OV_RB
+	dev_dbg(&hap->spmi->dev, "qpnp_hap_td_enable: timeout_ms = %d , voltage = %d\n", value , hap->vmax_mv);
+#endif
 
 	mutex_lock(&hap->lock);
 
@@ -1637,6 +1762,45 @@ static void qpnp_hap_worker(struct work_struct *work)
 {
 	struct qpnp_hap *hap = container_of(work, struct qpnp_hap,
 					 work);
+#ifdef CONFIG_LGE_QPNP_HAPTIC_OV_RB
+	u8 reg = 0;
+	int rc;
+
+	if (hap->play_mode == QPNP_HAP_DIRECT) {
+		if (hap->state) {
+			/* haptic on */
+
+			rc = qpnp_hap_read_reg(hap, &reg,
+						QPNP_HAP_STATUS(hap->base));
+			if (rc < 0)
+				return;
+
+			if ((reg & QPNP_HAP_STATUS_BUSY) == 0) {
+				/* LGE add Over Drive time rate*/
+				unsigned long sleep_time;
+				/* LGE don't use 2 x VMAX */
+#if 0
+				/* Over Drive : 2 vmax */
+				hap->vmax_mv = hap->vmax_mv_orig * 2;
+#endif
+				/* LGE set Over Drive tunning voltage */
+				hap->vmax_mv =QPNP_HAP_OV_RB_MV;
+
+				qpnp_hap_vmax_config(hap ,1);
+
+				qpnp_hap_set(hap, 1);
+				/* LGE add Over Drive time rate*/
+				sleep_time = hap->wave_play_rate_us * 2;
+				usleep_range(sleep_time, sleep_time);
+
+				/* recover original vmax */
+				hap->vmax_mv = hap->vmax_mv_orig;
+				qpnp_hap_vmax_config(hap ,0 );
+			}
+		}
+	}
+	qpnp_hap_set(hap, hap->state);
+#else
 	u8 val = 0x00;
 	int rc, reg_en;
 
@@ -1665,6 +1829,7 @@ static void qpnp_hap_worker(struct work_struct *work)
 			pr_err("%s: could not disable vcc_pon regulator\n",
 				 __func__);
 	}
+#endif
 }
 
 /* get time api to know the remaining time */
@@ -1774,7 +1939,11 @@ static int qpnp_hap_config(struct qpnp_hap *hap)
 		return rc;
 
 	/* Configure the VMAX register */
+#ifdef CONFIG_LGE_QPNP_HAPTIC_OV_RB
+	rc = qpnp_hap_vmax_config(hap, 0);
+#else
 	rc = qpnp_hap_vmax_config(hap);
+#endif
 	if (rc)
 		return rc;
 
@@ -2081,6 +2250,9 @@ static int qpnp_hap_parse_dt(struct qpnp_hap *hap)
 			"qcom,vmax-mv", &temp);
 	if (!rc) {
 		hap->vmax_mv = temp;
+#ifdef CONFIG_LGE_QPNP_HAPTIC_OV_RB
+		hap->vmax_mv_orig = hap->vmax_mv;
+#endif
 	} else if (rc != -EINVAL) {
 		dev_err(&spmi->dev, "Unable to read vmax\n");
 		return rc;

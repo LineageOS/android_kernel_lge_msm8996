@@ -47,8 +47,21 @@
 #include <linux/mmc/host.h>
 #include <linux/mmc/mmc.h>
 #include <linux/mmc/sd.h>
+#ifdef CONFIG_MACH_LGE
+#include <linux/mmc/slot-gpio.h>
+#endif
+#ifdef CONFIG_MMC_FFU
+#include <linux/mmc/ffu.h>
+#endif
 
 #include <asm/uaccess.h>
+
+#if defined(CONFIG_LGE_MMC_DYNAMIC_LOG)
+#include <linux/mmc/debug_log.h>
+#endif
+#ifdef CONFIG_MMC_LGE_UTILS
+#include <linux/mmc/lge_mmc_utils.h>
+#endif
 
 #include "queue.h"
 
@@ -694,6 +707,133 @@ static int mmc_blk_ioctl_cmd(struct block_device *bdev,
 		}
 	}
 
+#ifdef CONFIG_LGE_MMC_STOP_BKOPS
+        if(mmc_card_configured_manual_bkops(card))
+		mmc_stop_bkops(card);
+#endif
+
+#ifdef CONFIG_MMC_FFU
+	if(cmd.opcode == MMC_FFU_DOWNLOAD_OP) {
+		err = mmc_ffu_download(card, &cmd, idata->buf,
+				idata->buf_bytes);
+		goto cmd_rel_host;
+	}
+	if(cmd.opcode == MMC_FFU_INSTALL_OP) {
+		err = mmc_ffu_install(card);
+		goto cmd_rel_host;
+	}
+	if(cmd.opcode == MMC_FFU_MID_OP) {
+		printk(KERN_INFO "[LGE][FFU][cid : %u]\n", card->cid.manfid);
+		if (copy_to_user((void __user *)(unsigned long) idata->ic.data_ptr,
+						&card->cid.manfid, sizeof(unsigned int))) {
+			err = -EFAULT;
+		}
+		else{
+			err = 0;
+		}
+		goto cmd_rel_host;
+	}
+	if(cmd.opcode == MMC_FFU_PNM_OP) {
+		printk(KERN_INFO "[LGE][FFU][pnm : %s]\n", card->cid.prod_name);
+		if (copy_to_user((void __user *)(unsigned long) idata->ic.data_ptr,
+						&card->cid.prod_name, idata->ic.blksz)) {
+			err = -EFAULT;
+		}
+		else {
+			err = 0;
+		}
+		goto cmd_rel_host;
+	}
+#endif
+#ifdef CONFIG_MMC_LGE_UTILS
+	if (cmd.opcode == LGE_MMC_FEATURE_BKOPS_INFO_OP){
+		err = lge_mmc_read_bkops_info(card, idata->buf);
+		if(copy_to_user((void __user *)(unsigned long) idata->ic.data_ptr, idata->buf, sizeof(unsigned char))){
+			err = -EFAULT;
+			printk("%s : LGE error get bkopos info\n", __func__);
+		}
+		goto cmd_rel_host;
+	}
+	else if (cmd.opcode == LGE_MMC_FEATURE_PACKED_INFO_OP){
+		err = lge_mmc_read_packed_info(card, idata->buf);
+		if(copy_to_user((void __user *)(unsigned long) idata->ic.data_ptr, idata->buf, sizeof(unsigned char))){
+			err = -EFAULT;
+			printk("%s : LGE error get packed info\n", __func__);
+		}
+		goto cmd_rel_host;
+	}
+	else if (cmd.opcode == LGE_MMC_FEATURE_NUMPACKED_OP){
+		err = lge_mmc_read_num_packed(card, idata->buf);
+		if(copy_to_user((void __user *)(unsigned long) idata->ic.data_ptr, idata->buf, sizeof(unsigned char))){
+			err = -EFAULT;
+			printk("%s : LGE error get num packed\n", __func__);
+		}
+		goto cmd_rel_host;
+	}
+	else if (cmd.opcode == LGE_MMC_FEATURE_CLKSCALING_INFO_OP){
+		err = lge_mmc_read_clkscaling_info(card, idata->buf);
+		if(copy_to_user((void __user *)(unsigned long) idata->ic.data_ptr, idata->buf, sizeof(unsigned char))){
+			err = -EFAULT;
+			printk("%s : LGE error get clk scaling info\n", __func__);
+		}
+		goto cmd_rel_host;
+	}
+	else if (cmd.opcode == LGE_MMC_FEATURE_CACHE_INFO_OP){
+		err = lge_mmc_read_cache_info(card, idata->buf);
+		if(copy_to_user((void __user *)(unsigned long) idata->ic.data_ptr, idata->buf, sizeof(unsigned char))){
+			err = -EFAULT;
+			printk("%s : LGE error get cache info\n", __func__);
+		}
+		goto cmd_rel_host;
+	}
+	else if (cmd.opcode == LGE_MMC_FEATURE_MID_OP){
+		if(copy_to_user((void __user *)(unsigned long) idata->ic.data_ptr,
+					&card->cid.manfid, sizeof(unsigned int))) {
+			err = - EFAULT;
+			printk("%s : LGE Error Get Manufacturer ID of CID\n", __func__);
+		}
+		else{
+			err = 0;
+		}
+		goto cmd_rel_host;
+	}
+	else if (cmd.opcode == LGE_MMC_FEATURE_PNM_OP){
+		if(copy_to_user((void __user *)(unsigned long) idata->ic.data_ptr,
+					&card->cid.prod_name, sizeof(char)*8)){
+			err = -EFAULT;
+			printk("%s : LGE Get Product name of CID\n", __func__);
+		}
+		else{
+			err = 0;
+		}
+		goto cmd_rel_host;
+	}
+	else if (cmd.opcode == LGE_MMC_FEATURE_BASIC_WRITE_OP){
+		err = lge_mmc_basic_write(card, cmd.arg, idata->buf, idata->buf_bytes);
+		if(err)
+			printk("%s : LGE basic write error : %d\n", __func__, err);
+		goto cmd_rel_host;
+	}
+	else if (cmd.opcode == LGE_MMC_FEATURE_BASIC_READ_OP) {
+		err = lge_mmc_basic_read(card, cmd.arg, idata->buf, idata->buf_bytes);
+		if(err)
+			printk("%s : LGE basic read error : %d\n", __func__, err);
+		goto cmd_rel_host;
+	}
+	else if (cmd.opcode == LGE_MMC_FEATURE_BASIC_VERIFY_OP) {
+		err = lge_mmc_basic_verify(card, cmd.arg, idata->buf, idata->buf_bytes);
+		if(err)
+			printk("%s : LGE basic verify error : %d\n", __func__, err);
+		goto cmd_rel_host;
+	}
+	else if (cmd.opcode == LGE_MMC_FEATURE_DISCARD_OP) {
+		err = lge_mmc_discard(card, cmd.arg, idata->buf);
+		if(err)
+			printk("%s : LGE discard error : %d\n", __func__, err);
+		goto cmd_rel_host;
+	}
+#endif
+
 	err = mmc_blk_part_switch(card, md);
 	if (err)
 		goto cmd_rel_host;
@@ -859,6 +999,11 @@ static int mmc_blk_ioctl_rpmb_cmd(struct block_device *bdev,
 				goto cmd_rel_host;
 		}
 	}
+
+#ifdef CONFIG_LGE_MMC_STOP_BKOPS
+        if(mmc_card_configured_manual_bkops(card))
+		mmc_stop_bkops(card);
+#endif
 
 	err = mmc_blk_part_switch(card, md);
 	if (err)
@@ -1344,8 +1489,13 @@ static int mmc_blk_cmd_recovery(struct mmc_card *card, struct request *req,
 			break;
 
 		prev_cmd_status_valid = false;
+		#ifdef CONFIG_MACH_LGE
+		pr_err("[LGE][MMC]%s: error %d sending status command, %sing, cd-gpio:%d\n",
+		       req->rq_disk->disk_name, err, retry ? "retry" : "abort", mmc_gpio_get_cd(card->host));
+		#else
 		pr_err("%s: error %d sending status command, %sing\n",
 		       req->rq_disk->disk_name, err, retry ? "retry" : "abort");
+		#endif
 	}
 
 	/* We couldn't get a response from the card.  Give up. */
@@ -1435,6 +1585,20 @@ static int mmc_blk_reset(struct mmc_blk_data *md, struct mmc_host *host,
 
 	md->reset_done |= type;
 	err = mmc_hw_reset(host);
+/* LGE_CHANGE_S
+ * Author : D3-5T-FS@lge.com
+ * Change : eMMC can recover itself, but if it fails during re-init, recover routine does not activated. (eMMC is not accessible)
+ */
+#if defined (CONFIG_LGE_MMC_RESET_IF_HANG)
+    /* in case that eMMC failed to re-initialize, retry five times and crash if it is eMMC. */
+    if (err == -ETIMEDOUT && host->caps & MMC_CAP_NONREMOVABLE) /* Only for eMMC (NONREMOVABLE) */
+    {
+        err = mmc_hw_reset(host);
+        pr_info("%s:%s: retry mmc_blk_reset() %d\n",
+                    mmc_hostname(host), __func__, err);
+    }
+#endif
+
 	if (err && err != -EOPNOTSUPP) {
 		/* We failed to reset so we need to abort the request */
 		pr_err("%s: %s: failed to reset %d\n", mmc_hostname(host),
@@ -1827,6 +1991,15 @@ static int mmc_blk_err_check(struct mmc_card *card,
 	struct mmc_blk_request *brq = &mq_mrq->brq;
 	struct request *req = mq_mrq->req;
 	int ecc_err = 0, gen_err = 0;
+
+#ifdef CONFIG_MACH_LGE
+	/* LGE_CHANGE, 2015-09-23, H1-BSP-FS@lge.com
+	 * When uSD is not inserted, return proper error-value.
+	 */
+	if(mmc_card_sd(card) && !mmc_gpio_get_cd(card->host)) {
+		return MMC_BLK_NOMEDIUM;
+	}
+#endif
 
 	/*
 	 * sbc.error indicates a problem with the set block count
@@ -3967,6 +4140,18 @@ static int mmc_blk_probe(struct mmc_card *card)
 {
 	struct mmc_blk_data *md, *part_md;
 	char cap_str[10];
+
+	#ifdef CONFIG_MACH_MSM8996_H1
+	/* 2016-02-26, H1-BSP-FS@lge.com
+	 * Work-around patch for duplicated SD noti-bar.
+	 * FS-Team recommend that systemUI uses SD's UUID instead of minor-number.
+	 * But, because of project-schedule, we decided to apply this delay temporally.
+	 * Other project doesn't need to apply below patch (it is needed for only H1).
+	 */
+	if(mmc_card_is_removable(card->host)){
+		msleep(500);
+	}
+	#endif
 
 	/*
 	 * Check that the card supports the command class(es) we need.

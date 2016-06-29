@@ -4527,46 +4527,9 @@ static int qce_dummy_req(struct qce_device *pce_dev)
 static int select_mode(struct qce_device *pce_dev,
 		struct ce_request_info *preq_info)
 {
-	unsigned long flags;
 	struct ce_sps_data *pce_sps_data = &preq_info->ce_sps;
 
-	if (!pce_dev->no_get_around) {
-		_qce_set_flag(&pce_sps_data->out_transfer, SPS_IOVEC_FLAG_INT);
-		return 0;
-	}
-
-	spin_lock_irqsave(&pce_dev->lock, flags);
-	pce_dev->no_of_queued_req++;
-	if (pce_dev->mode == IN_INTERRUPT_MODE) {
-		if (pce_dev->no_of_queued_req >= MAX_BUNCH_MODE_REQ) {
-			pce_dev->mode = IN_BUNCH_MODE;
-			pr_debug("pcedev %d mode switch to BUNCH\n",
-					pce_dev->dev_no);
-			_qce_set_flag(&pce_sps_data->out_transfer,
-					SPS_IOVEC_FLAG_INT);
-			pce_dev->intr_cadence = 0;
-			atomic_set(&pce_dev->bunch_cmd_seq, 1);
-			atomic_set(&pce_dev->last_intr_seq, 1);
-			mod_timer(&(pce_dev->timer),
-					(jiffies + DELAY_IN_JIFFIES));
-		} else {
-			_qce_set_flag(&pce_sps_data->out_transfer,
-					SPS_IOVEC_FLAG_INT);
-		}
-	} else {
-		pce_dev->intr_cadence++;
-		if (pce_dev->intr_cadence >= SET_INTR_AT_REQ) {
-			_qce_set_flag(&pce_sps_data->out_transfer,
-					SPS_IOVEC_FLAG_INT);
-			pce_dev->intr_cadence = 0;
-			atomic_set(&pce_dev->bunch_cmd_seq, 0);
-			atomic_set(&pce_dev->last_intr_seq, 0);
-		} else {
-			atomic_inc(&pce_dev->bunch_cmd_seq);
-		}
-	}
-	spin_unlock_irqrestore(&pce_dev->lock, flags);
-
+	_qce_set_flag(&pce_sps_data->out_transfer, SPS_IOVEC_FLAG_INT);
 	return 0;
 }
 

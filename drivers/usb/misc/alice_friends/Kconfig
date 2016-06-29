@@ -1,0 +1,7 @@
+config LGE_ALICE_FRIENDS
+        bool "Support LGE Alice & Friends"
+        depends on MACH_LGE && LGE_USB_ANX7418
+        help
+          Say Y here to use Alice Friends
+
+        default y

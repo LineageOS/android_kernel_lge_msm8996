@@ -44,7 +44,7 @@ static inline void kref_get(struct kref *kref)
 	 * condition when this kref is freeing by some other thread right now.
 	 * In this case one should use kref_get_unless_zero()
 	 */
-	WARN_ON_ONCE(atomic_inc_return(&kref->refcount) < 2);
+	BUG_ON(atomic_inc_return(&kref->refcount) < 2);
 }
 
 /**

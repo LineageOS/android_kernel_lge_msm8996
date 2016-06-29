@@ -21,6 +21,11 @@ if CRYPTO
 
 comment "Crypto core or helper"
 
+config CRYPTO_CCMODE
+	bool "MDFPP CC Mode"
+	help
+	  This options enables cc mode for MDFPP compliance mode.
+
 config CRYPTO_FIPS
 	bool "FIPS 200 compliance"
 	depends on (CRYPTO_ANSI_CPRNG || CRYPTO_DRBG) && !CRYPTO_MANAGER_DISABLE_TESTS

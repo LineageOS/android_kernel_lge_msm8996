@@ -193,7 +193,7 @@ static void core_temp_notify(enum thermal_trip_type type,
 	trace_temp_notification(cpu_node->sensor_id,
 		type, temp, cpu_node->temp);
 
-	cpu_node->temp = temp;
+	cpu_node->temp = temp / scaling_factor;
 
 	complete(&sampling_completion);
 }
@@ -1101,4 +1101,4 @@ static int __init msm_core_init(void)
 {
 	return platform_driver_register(&msm_core_driver);
 }
-late_initcall(msm_core_init);
+late_initcall_sync(msm_core_init);

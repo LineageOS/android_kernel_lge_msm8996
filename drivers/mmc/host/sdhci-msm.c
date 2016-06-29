@@ -31,6 +31,9 @@
 #include <linux/delay.h>
 #include <linux/scatterlist.h>
 #include <linux/slab.h>
+#ifdef CONFIG_MACH_LGE
+#include "../core/mmc_ops.h"
+#endif
 #include <linux/mmc/slot-gpio.h>
 #include <linux/dma-mapping.h>
 #include <linux/iopoll.h>
@@ -952,6 +955,10 @@ int sdhci_msm_execute_tuning(struct sdhci_host *host, u32 opcode)
 	u8 drv_type = 0;
 	bool drv_type_changed = false;
 	struct mmc_card *card = host->mmc->card;
+#ifdef CONFIG_LGE_MMC_SPECIAL_SDR104
+	int i, st_err = 0;
+	u32 status;
+#endif
 	int sts_retry;
 
 	/*
@@ -1034,7 +1041,11 @@ retry:
 			sts_cmd.opcode = MMC_SEND_STATUS;
 			sts_cmd.arg = card->rca << 16;
 			sts_cmd.flags = MMC_RSP_R1 | MMC_CMD_AC;
+		#ifdef CONFIG_MACH_LGE
+			sts_retry = 100;
+		#else
 			sts_retry = 5;
+		#endif
 			while (sts_retry) {
 				mmc_wait_for_cmd(mmc, &sts_cmd, 0);
 
@@ -1120,8 +1131,24 @@ retry:
 		if (rc)
 			goto kfree;
 		msm_host->saved_tuning_phase = phase;
-		pr_debug("%s: %s: finally setting the tuning phase to %d\n",
+		pr_debug("[FS] %s: %s: finally setting the tuning phase to %d\n",
 				mmc_hostname(mmc), __func__, phase);
+#ifdef CONFIG_LGE_MMC_SPECIAL_SDR104
+		if (card && card->host)
+		{
+		  for(i = 0 ; i < 5 ; i++){
+		    if(mmc_card_sd(card)){
+		      st_err = mmc_send_status(card, &status);
+		      if(st_err)
+			printk(KERN_INFO "[LGE][%-18s( )] Fail to get card status(CMD13), Err no : %d)\n", __func__, st_err);
+		      else {
+			printk(KERN_INFO "[LGE][%-18s( )] Success to get card status\n",__func__);
+			break;
+		      }
+		    }
+		  }
+		}
+#endif
 	} else {
 		if (--tuning_seq_cnt)
 			goto retry;
@@ -2986,7 +3013,11 @@ void sdhci_msm_dump_vendor_regs(struct sdhci_host *host)
 	u32 sts = 0;
 
 	pr_info("----------- VENDOR REGISTER DUMP -----------\n");
+#if defined(CONFIG_MACH_LGE)
+	if(mmc_card_mmc((msm_host->mmc->card)))
+#else
 	if (host->cq_host)
+#endif
 		sdhci_msm_cmdq_dump_debug_ram(msm_host);
 
 	pr_info("Data cnt: 0x%08x | Fifo cnt: 0x%08x | Int sts: 0x%08x\n",
@@ -4103,7 +4134,24 @@ static int sdhci_msm_probe(struct platform_device *pdev)
 	msm_host->mmc->caps2 |= MMC_CAP2_FULL_PWR_CYCLE;
 	msm_host->mmc->caps2 |= MMC_CAP2_ASYNC_SDIO_IRQ_4BIT_MODE;
 	msm_host->mmc->caps2 |= MMC_CAP2_HS400_POST_TUNING;
-	msm_host->mmc->caps2 |= MMC_CAP2_CLK_SCALE;
+#if defined(CONFIG_MMC_SDCARD_NO_CLK_SCALE)
+	/* LGE_CHANGE, 2015-10-28, H1-BSP-FS@lge.com
+	 * SDcard clock scaling disable
+	 * because of improving SDcard Current consumption and Performance.
+	 * If you want to SDcard clock scaling disable,
+	 * you have to measure SDcard Current consumption and Performance.
+	 * http://mlm.lge.com/di/browse/HONE-2441
+	 */
+	if(!(msm_host->pdata->nonremovable))
+		msm_host->mmc->caps2 |= MMC_CAP2_CLK_SCALE;
+#endif
+#if defined (CONFIG_LGE_MMC_BKOPS_ENABLE) && defined(CONFIG_MMC_SDHCI_MSM)
+	/* LGE_CHANGE, 2015-09-23, H1-BSP-FS@lge.com
+	 * Enable BKOPS feature since it has been disabled by default.
+	 * If you want to use bkops, you have to set Y in kernel/arch/arm/configs/XXXX_defconfig file.
+	 */
+	msm_host->mmc->caps2 |= MMC_CAP2_INIT_BKOPS;
+#endif
 	msm_host->mmc->caps2 |= MMC_CAP2_SANITIZE;
 	msm_host->mmc->caps2 |= MMC_CAP2_MAX_DISCARD_SIZE;
 	msm_host->mmc->caps2 |= MMC_CAP2_SLEEP_AWAKE;

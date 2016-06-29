@@ -30,6 +30,7 @@
 #include "diagfwd_socket.h"
 #include "diag_mux.h"
 #include "diag_ipc_logging.h"
+#include "mts_tty.h"
 
 struct data_header {
 	uint8_t control_char;
@@ -307,6 +308,11 @@ static void diagfwd_data_read_done(struct diagfwd_info *fwd_info,
 	}
 
 	if (write_len > 0) {
+		if (mts_tty->run) {
+			if (fwd_info->type == TYPE_DATA)
+				mts_tty_process(write_buf, write_len);
+			goto end;
+		}
 		err = diag_mux_write(DIAG_LOCAL_PROC, write_buf, write_len,
 				     temp_buf->ctxt);
 		if (err) {
@@ -646,6 +652,7 @@ void diagfwd_close_transport(uint8_t transport, uint8_t peripheral)
 	fwd_info = &early_init_info[transport][peripheral];
 	if (fwd_info->p_ops && fwd_info->p_ops->close)
 		fwd_info->p_ops->close(fwd_info->ctxt);
+	mutex_lock(&driver->diagfwd_channel_mutex);
 	fwd_info = &early_init_info[transport_open][peripheral];
 	dest_info = &peripheral_info[TYPE_CNTL][peripheral];
 	dest_info->inited = 1;
@@ -664,6 +671,7 @@ void diagfwd_close_transport(uint8_t transport, uint8_t peripheral)
 		diagfwd_late_open(dest_info);
 	diagfwd_cntl_open(dest_info);
 	init_fn(peripheral);
+	mutex_unlock(&driver->diagfwd_channel_mutex);
 	diagfwd_queue_read(&peripheral_info[TYPE_DATA][peripheral]);
 	diagfwd_queue_read(&peripheral_info[TYPE_CMD][peripheral]);
 }
@@ -1096,18 +1104,26 @@ static void diagfwd_buffers_exit(struct diagfwd_info *fwd_info)
 
 	spin_lock_irqsave(&fwd_info->buf_lock, flags);
 	if (fwd_info->buf_1) {
-		kfree(fwd_info->buf_1->data);
-		fwd_info->buf_1->data = NULL;
-		kfree(fwd_info->buf_1->data_raw);
-		fwd_info->buf_1->data_raw = NULL;
+		if (fwd_info->buf_1->data) {
+			kfree(fwd_info->buf_1->data);
+			fwd_info->buf_1->data = NULL;
+		}
+		if (fwd_info->buf_1->data_raw) {
+			kfree(fwd_info->buf_1->data_raw);
+			fwd_info->buf_1->data_raw = NULL;
+		}
 		kfree(fwd_info->buf_1);
 		fwd_info->buf_1 = NULL;
 	}
 	if (fwd_info->buf_2) {
-		kfree(fwd_info->buf_2->data);
-		fwd_info->buf_2->data = NULL;
-		kfree(fwd_info->buf_2->data_raw);
-		fwd_info->buf_2->data_raw = NULL;
+		if (fwd_info->buf_2->data) {
+			kfree(fwd_info->buf_2->data);
+			fwd_info->buf_2->data = NULL;
+		}
+		if (fwd_info->buf_2->data_raw) {
+			kfree(fwd_info->buf_2->data_raw);
+			fwd_info->buf_2->data_raw = NULL;
+		}
 		kfree(fwd_info->buf_2);
 		fwd_info->buf_2 = NULL;
 	}

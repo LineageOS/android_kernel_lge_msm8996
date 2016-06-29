@@ -503,6 +503,8 @@ int ipa_uc_interface_init(void)
 
 	mutex_init(&ipa_ctx->uc_ctx.uc_lock);
 
+	init_completion(&ipa_ctx->uc_ctx.uc_completion);
+
 	if (ipa_ctx->ipa_hw_type >= IPA_HW_v2_5) {
 		phys_addr = ipa_ctx->ipa_wrapper_base +
 			ipa_ctx->ctrl->ipa_reg_base_ofst +
@@ -583,7 +585,7 @@ int ipa_uc_send_cmd(u32 cmd, u32 opcode, u32 expected_status,
 		return -EBADF;
 	}
 
-	init_completion(&ipa_ctx->uc_ctx.uc_completion);
+	reinit_completion(&ipa_ctx->uc_ctx.uc_completion);
 
 	ipa_ctx->uc_ctx.uc_sram_mmio->cmdParams = cmd;
 	ipa_ctx->uc_ctx.uc_sram_mmio->cmdOp = opcode;
@@ -731,7 +733,7 @@ int ipa_uc_reset_pipe(enum ipa_client_type ipa_client)
 	       IPA_CLIENT_IS_PROD(ipa_client) ? "CONS" : "PROD", ep_idx);
 
 	ret = ipa_uc_send_cmd(cmd.raw32b, IPA_CPU_2_HW_CMD_RESET_PIPE, 0,
-			      true, 10*HZ);
+			      false, 10*HZ);
 
 	return ret;
 }

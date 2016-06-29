@@ -16,6 +16,9 @@
 #include "ufs-qcom.h"
 #include "ufs-qcom-debugfs.h"
 #include "ufs-debugfs.h"
+#ifdef CONFIG_UFS_LGE_FEATURE
+#include <linux/phy/phy-qcom-ufs.h>
+#endif
 
 #define TESTBUS_CFG_BUFF_LINE_SIZE	sizeof("0xXY, 0xXY")
 
@@ -252,6 +255,84 @@ static const struct file_operations ufs_qcom_dbg_pm_qos_desc = {
 	.read		= seq_read,
 };
 
+#ifdef CONFIG_UFS_LGE_FEATURE
+static ssize_t ufs_qcom_phy_drv_str_write(struct file *file,
+					const char __user *ubuf, size_t cnt,
+					loff_t *ppos)
+{
+	struct ufs_qcom_host *host = file->f_mapping->host->i_private;
+	struct phy *phy = host->generic_phy;
+	char set_val[5] = {0};
+	loff_t buff_pos = 0;
+	int ret = 0;
+	int val=0;
+	int tmp;
+	int i;
+
+	ret = simple_write_to_buffer(set_val, 5, &buff_pos, ubuf, cnt);
+	if (ret < 0) {
+		dev_err(host->hba->dev, "%s: failed to read user data\n",
+				__func__);
+		goto out;
+	}
+
+	for(i=0; i<cnt; i++){
+		tmp = set_val[i] - 48;
+		if(tmp < 0 || tmp > 9)
+			break;
+		else {
+			if(val)
+				val *= 10;
+		}
+		val += tmp;
+	}
+
+	if (val > 31 || val < 0) {
+		ret = -1;
+		dev_err(host->hba->dev, "%s: failed invalid value : %d\n",
+				__func__, val);
+		goto out;
+	}
+
+	pm_runtime_get_sync(host->hba->dev);
+	ufshcd_hold(host->hba, false);
+	ufs_qcom_phy_ctrl_tx_drv_strength(phy, 1, &val);
+	ufshcd_release(host->hba, false);
+	pm_runtime_put_sync(host->hba->dev);
+out:
+	return ret? ret:cnt;
+}
+
+static int ufs_qcom_drv_str_show(struct seq_file *file, void *data)
+{
+	u32 val=0;
+	struct ufs_qcom_host *host = (struct ufs_qcom_host *)file->private;
+	struct phy *phy = host->generic_phy;
+
+	pm_runtime_get_sync(host->hba->dev);
+	ufshcd_hold(host->hba, false);
+
+	ufs_qcom_phy_ctrl_tx_drv_strength(phy, 0, &val);
+	seq_printf(file, "Read UFSPHY TX Driver Strength : %d\n", val);
+
+	ufshcd_release(host->hba, false);
+	pm_runtime_put_sync(host->hba->dev);
+
+	return 0;
+}
+
+static int ufs_qcom_phy_drv_str_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, ufs_qcom_drv_str_show, inode->i_private);
+}
+
+static const struct file_operations ufs_qcom_ctrl_drv_str = {
+	.open		= ufs_qcom_phy_drv_str_open,
+	.read		= seq_read,
+	.write		= ufs_qcom_phy_drv_str_write,
+};
+#endif
+
 void ufs_qcom_dbg_add_debugfs(struct ufs_hba *hba, struct dentry *root)
 {
 	struct ufs_qcom_host *host;
@@ -350,7 +431,18 @@ void ufs_qcom_dbg_add_debugfs(struct ufs_hba *hba, struct dentry *root)
 				__func__);
 			goto err;
 		}
-
+#ifdef CONFIG_UFS_LGE_FEATURE
+	host->debugfs_files.phy_tx_drv_str =
+		debugfs_create_file("phy_tx_drv_str", S_IRUSR | S_IWUSR,
+				host->debugfs_files.debugfs_root, host,
+				&ufs_qcom_ctrl_drv_str);
+	if (!host->debugfs_files.phy_tx_drv_str) {
+		dev_err(host->hba->dev,
+				"%s: failed create phy_tx_drv_str debugfs entry\n",
+				__func__);
+		goto err;
+	}
+#endif
 	return;
 
 err:

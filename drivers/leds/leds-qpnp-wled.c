@@ -22,6 +22,7 @@
 #include <linux/err.h>
 #include <linux/delay.h>
 #include <linux/leds-qpnp-wled.h>
+#include <linux/lge_display_debug.h>
 
 #define QPNP_IRQ_FLAGS	(IRQF_TRIGGER_RISING | \
 			IRQF_TRIGGER_FALLING | \
@@ -64,6 +65,9 @@
 #define QPNP_WLED_BOOST_DUTY_MAX_NS	156
 #define QPNP_WLED_DEF_BOOST_DUTY_NS	104
 #define QPNP_WLED_SWITCH_FREQ_MASK	0xF0
+#if defined(CONFIG_LGE_MIPI_H1_INCELL_QHD_CMD_PANEL)
+#define QPNP_WLED_SWITCH_FREQ_600_KHZ	600
+#endif
 #define QPNP_WLED_SWITCH_FREQ_800_KHZ	800
 #define QPNP_WLED_SWITCH_FREQ_1600_KHZ	1600
 #define QPNP_WLED_OVP_MASK		0xFC
@@ -133,6 +137,9 @@
 #define QPNP_WLED_SINK_TEST5_HYB	0x14
 #define QPNP_WLED_SINK_TEST5_DIG	0x1E
 
+#if defined(CONFIG_LGE_MIPI_H1_INCELL_QHD_CMD_PANEL)
+#define QPNP_WLED_SWITCH_FREQ_600_KHZ_CODE	0x8F
+#endif
 #define QPNP_WLED_SWITCH_FREQ_800_KHZ_CODE	0x0B
 #define QPNP_WLED_SWITCH_FREQ_1600_KHZ_CODE	0x05
 
@@ -263,6 +270,10 @@ struct qpnp_wled {
 	bool prev_state;
 };
 
+#if defined(CONFIG_LGE_DISPLAY_AOD_USE_QPNP_WLED)
+struct qpnp_wled *wled_base;
+#endif
+
 /* helper to read a pmic register */
 static int qpnp_wled_read_reg(struct qpnp_wled *wled, u8 *data, u16 addr)
 {
@@ -312,6 +323,7 @@ static int qpnp_wled_set_level(struct qpnp_wled *wled, int level)
 	int i, rc;
 	u8 reg;
 
+	DISP_DEBUG(BL, "Set level : %d\n", level);
 	/* set brightness registers */
 	for (i = 0; i < wled->num_strings; i++) {
 		reg = level & QPNP_WLED_BRIGHT_LSB_MASK;
@@ -375,7 +387,7 @@ static int qpnp_wled_module_en(struct qpnp_wled *wled,
 			QPNP_WLED_MODULE_EN_REG(base_addr));
 	if (rc)
 		return rc;
-
+	udelay(1000); //wled W/A patch
 	/* enable OVP fault interrupt */
 	if (state) {
 		udelay(QPNP_WLED_OVP_FLT_SLEEP_US);
@@ -385,6 +397,7 @@ static int qpnp_wled_module_en(struct qpnp_wled *wled,
 		if (rc)
 			return rc;
 	}
+	pr_info("%s : wled module %s\n", __func__, state ? "enable" : "disable");
 
 	return 0;
 }
@@ -635,6 +648,106 @@ static ssize_t qpnp_wled_fs_curr_ua_show(struct device *dev,
 	return snprintf(buf, PAGE_SIZE, "%d\n", wled->fs_curr_ua);
 }
 
+static ssize_t qpnp_wled_sink_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct qpnp_wled *wled = dev_get_drvdata(dev);
+	int data,rc, i;
+	u8 reg = 0;
+
+	if (sscanf(buf, "%d", &data) != 1)
+		return -EINVAL;
+
+	reg = 0x00;
+	rc = qpnp_wled_write_reg(wled, &reg,
+			QPNP_WLED_CURR_SINK_REG(wled->sink_base));
+	if (rc){
+		pr_err("[Display] disable sinks is failed\n");
+		return rc;
+	}
+	pr_err("[Display] enabled sink : %d\n", data);
+
+	if (data == 0) {
+	/* Enable CABC and return to normal state.*/
+		for (i = 0; i < wled->num_strings; i++) {
+			if (wled->strings[i] >= QPNP_WLED_MAX_STRINGS) {
+				dev_err(&wled->spmi->dev, "Invalid string number\n");
+				return -EINVAL;
+			}
+
+			/* CABC enable */
+			rc = qpnp_wled_read_reg(wled, &reg,
+					QPNP_WLED_CABC_REG(wled->sink_base,
+							wled->strings[i]));
+			if (rc < 0)
+				return rc;
+			reg &= QPNP_WLED_CABC_MASK;
+			reg |= (wled->en_cabc << QPNP_WLED_CABC_SHIFT);
+			rc = qpnp_wled_write_reg(wled, &reg,
+					QPNP_WLED_CABC_REG(wled->sink_base,
+							wled->strings[i]));
+			if (rc)
+				return rc;
+		}
+		mutex_lock(&wled->lock);
+		rc = qpnp_wled_set_level(wled, 0);
+			pr_err("[Display] %s, set_level rc = %d\n", __func__, rc);
+		rc = qpnp_wled_module_en(wled, wled->ctrl_base, 0);
+			pr_err("[Display] %s, module_en rc = %d\n", __func__, rc);
+		mutex_unlock(&wled->lock);
+		/* enable all sinks */
+		reg = 0x70;
+		rc = qpnp_wled_write_reg(wled, &reg,
+				QPNP_WLED_CURR_SINK_REG(wled->sink_base));
+		if (rc) {
+			pr_err("[Display] enable all sinks is failed\n");
+			return rc;
+		}
+	} else {
+	/* Disable CABC to control WLED_SINK in sleep state */
+		for (i = 0; i < wled->num_strings; i++) {
+			if (wled->strings[i] >= QPNP_WLED_MAX_STRINGS) {
+				dev_err(&wled->spmi->dev, "Invalid string number\n");
+				return -EINVAL;
+			}
+			rc = qpnp_wled_read_reg(wled, &reg,
+					QPNP_WLED_CABC_REG(wled->sink_base,
+							wled->strings[i]));
+			if (rc < 0)
+				return rc;
+			reg &= QPNP_WLED_CABC_MASK;
+			rc = qpnp_wled_write_reg(wled, &reg,
+					QPNP_WLED_CABC_REG(wled->sink_base,
+							wled->strings[i]));
+			if (rc)
+				return rc;
+		}
+		if (data == 1)       /* enable sink1 */
+			reg = 0x10;
+		else if (data == 2)  /* enable sink2 */
+			reg = 0x20;
+		else if (data == 3)  /* enable sink3 */
+			reg = 0x40;
+		else                 /* enable all sink */
+			reg = 0x70;
+
+		rc = qpnp_wled_write_reg(wled, &reg,
+				QPNP_WLED_CURR_SINK_REG(wled->sink_base));
+		if (rc) {
+			pr_err("[Display] sinks %d is failed\n", data);
+			return rc;
+		}
+
+		mutex_lock(&wled->lock);
+		rc = qpnp_wled_set_level(wled, 0xFFF);
+			pr_err("[Display] %s, set_level rc = %d\n", __func__, rc);
+		rc = qpnp_wled_module_en(wled, wled->ctrl_base, 1);
+			pr_err("[Display] %s, module_en rc = %d\n", __func__, rc);
+		mutex_unlock(&wled->lock);
+	}
+	return count;
+}
+
 /* sysfs store function for full scale current in ua*/
 static ssize_t qpnp_wled_fs_curr_ua_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
@@ -709,6 +822,9 @@ static struct device_attribute qpnp_wled_attrs[] = {
 	__ATTR(ramp_step, (S_IRUGO | S_IWUSR | S_IWGRP),
 			qpnp_wled_ramp_step_show,
 			qpnp_wled_ramp_step_store),
+	__ATTR(wled_sink, (S_IRUGO | S_IWUSR | S_IWGRP),
+			NULL,
+			qpnp_wled_sink_store),
 };
 
 /* worker for setting wled brightness */
@@ -756,6 +872,84 @@ static enum led_brightness qpnp_wled_get(struct led_classdev *led_cdev)
 	return wled->cdev.brightness;
 }
 
+#if defined(CONFIG_LGE_DISPLAY_AOD_USE_QPNP_WLED)
+int qpnp_wled_set_sink(int enable)
+{
+	int rc, i;
+	u8 reg = 0;
+
+	reg = 0x00;
+	rc = qpnp_wled_write_reg(wled_base, &reg,
+			QPNP_WLED_CURR_SINK_REG(wled_base->sink_base));
+	if (rc){
+		pr_err("[AOD] disable sinks is failed\n");
+		return rc;
+	}
+
+	if (!enable) {
+	/* Enable CABC and return to normal state.*/
+		for (i = 0; i < wled_base->num_strings; i++) {
+			if (wled_base->strings[i] >= QPNP_WLED_MAX_STRINGS) {
+				dev_err(&wled_base->spmi->dev, "Invalid string number\n");
+				return -EINVAL;
+			}
+
+			/* CABC enable */
+			rc = qpnp_wled_read_reg(wled_base, &reg,
+					QPNP_WLED_CABC_REG(wled_base->sink_base,
+							wled_base->strings[i]));
+			if (rc < 0)
+				return rc;
+			reg &= QPNP_WLED_CABC_MASK;
+			reg |= (wled_base->en_cabc << QPNP_WLED_CABC_SHIFT);
+			rc = qpnp_wled_write_reg(wled_base, &reg,
+					QPNP_WLED_CABC_REG(wled_base->sink_base,
+							wled_base->strings[i]));
+			if (rc)
+				return rc;
+		}
+		/* enable all sinks */
+		reg = 0x70;
+		rc = qpnp_wled_write_reg(wled_base, &reg,
+				QPNP_WLED_CURR_SINK_REG(wled_base->sink_base));
+		if (rc) {
+			pr_err("[AOD] enable all sinks is failed\n");
+			return rc;
+		}
+	} else {
+	/* Disable CABC to control WLED_SINK in sleep state */
+		for (i = 0; i < wled_base->num_strings; i++) {
+			if (wled_base->strings[i] >= QPNP_WLED_MAX_STRINGS) {
+				dev_err(&wled_base->spmi->dev, "Invalid string number\n");
+				return -EINVAL;
+			}
+			rc = qpnp_wled_read_reg(wled_base, &reg,
+					QPNP_WLED_CABC_REG(wled_base->sink_base,
+							wled_base->strings[i]));
+			if (rc < 0)
+				return rc;
+			reg &= QPNP_WLED_CABC_MASK;
+			rc = qpnp_wled_write_reg(wled_base, &reg,
+					QPNP_WLED_CABC_REG(wled_base->sink_base,
+							wled_base->strings[i]));
+			if (rc)
+				return rc;
+		}
+		reg = 0x20;	/* enable sink2 */
+		rc = qpnp_wled_write_reg(wled_base, &reg,
+				QPNP_WLED_CURR_SINK_REG(wled_base->sink_base));
+		if (rc) {
+			pr_err("[AOD] sinks enable failed\n");
+			return rc;
+		}
+	}
+	pr_info("[AOD] wled sink %s success\n", enable ? "enable" : "disable");
+	return rc;
+}
+EXPORT_SYMBOL_GPL(qpnp_wled_set_sink);
+
+#endif
+
 /* set api registered with led classdev for wled brightness */
 static void qpnp_wled_set(struct led_classdev *led_cdev,
 				enum led_brightness level)
@@ -772,6 +966,50 @@ static void qpnp_wled_set(struct led_classdev *led_cdev,
 	wled->cdev.brightness = level;
 	schedule_work(&wled->work);
 }
+
+#if defined(CONFIG_LGE_PP_AD_SUPPORTED)
+void qpnp_wled_dimming(int dst_lvl, int current_lvl)
+{
+    struct qpnp_wled *wled;
+    int rc;
+    int current_brightness=0;
+
+    if(dst_lvl <= 0)  // LCD off or wrong input
+        return ;
+
+    wled = wled_base;
+    mutex_lock(&wled->lock);
+//  current_brightness = wled->cdev.brightness;
+    current_brightness = current_lvl;
+
+    while(current_brightness != dst_lvl)
+    {
+        if(current_brightness > dst_lvl)  // dimming down
+        {
+            current_brightness -= 20;  // decrease 20
+            if(current_brightness < 0 || current_brightness < dst_lvl)
+                current_brightness = dst_lvl;
+        }
+        else  // dimming up
+        {
+            current_brightness += 20; // increase 20
+            if(current_brightness > wled->cdev.max_brightness || current_brightness > dst_lvl)
+                current_brightness = dst_lvl;
+        }
+        wled->cdev.brightness = current_brightness;
+
+        rc = qpnp_wled_set_level(wled, wled->cdev.brightness);
+        dev_dbg(&wled->spmi->dev, "[AD] qpnp_wled_set_level : brightness= %d \n", wled->cdev.brightness);
+		if (rc) {
+			dev_err(&wled->spmi->dev, "wled set level failed\n");
+			goto unlock_mutex;
+		}
+        msleep(10);
+    }
+	unlock_mutex:
+    mutex_unlock(&wled->lock);
+}
+#endif
 
 static int qpnp_wled_set_disp(struct qpnp_wled *wled, u16 base_addr)
 {
@@ -920,6 +1158,10 @@ static int qpnp_wled_config(struct qpnp_wled *wled)
 	/* Configure the SWITCHING FREQ register */
 	if (wled->switch_freq_khz == QPNP_WLED_SWITCH_FREQ_1600_KHZ)
 		temp = QPNP_WLED_SWITCH_FREQ_1600_KHZ_CODE;
+#if defined(CONFIG_LGE_MIPI_H1_INCELL_QHD_CMD_PANEL)
+	else if (wled->switch_freq_khz == QPNP_WLED_SWITCH_FREQ_600_KHZ)
+		temp = QPNP_WLED_SWITCH_FREQ_600_KHZ_CODE;
+#endif
 	else
 		temp = QPNP_WLED_SWITCH_FREQ_800_KHZ_CODE;
 
@@ -1454,7 +1696,9 @@ static int qpnp_wled_probe(struct spmi_device *spmi)
 			goto sysfs_fail;
 		}
 	}
-
+#if defined(CONFIG_LGE_DISPLAY_AOD_USE_QPNP_WLED)
+	wled_base = wled;
+#endif
 	return 0;
 
 sysfs_fail:

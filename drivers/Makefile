@@ -171,5 +171,11 @@ obj-$(CONFIG_BIF)		+= bif/
 
 obj-$(CONFIG_SENSORS_SSC)	+= sensors/
 
+#TDMB
+obj-$(CONFIG_LGE_BROADCAST_TDMB) += broadcast/
+
+# LGE_BROADCAST_ISDBT_JAPAN
+obj-$(CONFIG_LGE_BROADCAST_ISDBT_JAPAN) += broadcast/
+
 # <t-base drivers
-obj-$(CONFIG_MOBICORE_DRIVER)	+= gud/
+obj-$(CONFIG_TRUSTONIC_TEE)	+= gud/

@@ -1,0 +1,390 @@
+/*
+ * Copyright (c) 2015 The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+&rpm_bus {
+
+	///////////////////////////////////////////
+	// VT LDO Description
+	///////////////////////////////////////////
+	rpm-regulator-ldoa6 {
+		status = "okay";
+		pm8994_l6: regulator-l6 {
+			regulator-min-microvolt = <1200000>;
+			regulator-max-microvolt = <1200000>;
+			qcom,init-voltage       = <1200000>;
+			status = "okay";
+		};
+	};
+
+	rpm-regulator-ldoa29 {
+		status = "okay";
+		pm8994_l29: regulator-l29 {
+			regulator-min-microvolt = <2800000>;
+			regulator-max-microvolt = <2800000>;
+			qcom,init-voltage       = <2800000>;
+			status = "okay";
+		};
+	};
+
+	/*
+	rpm-regulator-ldoa30 {
+		status = "okay";
+		pm8994_l30: regulator-l30 {
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			qcom,init-voltage       = <1800000>;
+			status = "okay";
+		};
+	};
+	*/
+
+	///////////////////////////////////////////
+	// VT LDO Description (Rev.0)
+	///////////////////////////////////////////
+	rpm-regulator-ldoa14 {
+		status = "okay";
+		pm8994_l14: regulator-l14 {
+			regulator-min-microvolt = <1800000>;
+			regulator-max-microvolt = <1800000>;
+			qcom,init-voltage       = <1800000>;
+			//Comment out for QCT Original Code
+			//proxy-supply = <&pm8994_l14>;
+			//qcom,proxy-consumer-enable;
+			//qcom,proxy-consumer-current = <10000>;
+			status = "okay";
+		};
+	};
+
+	///////////////////////////////////////////
+	// Main Cam0 LDO Description
+	///////////////////////////////////////////
+
+	/*
+	rpm-regulator-ldoa11 {
+		status = "okay";
+		pm8994_l11: regulator-l11 {
+			regulator-min-microvolt = <1050000>;
+			regulator-max-microvolt = <1050000>;
+			qcom,init-voltage       = <1050000>;
+			status = "okay";
+		};
+	};
+	*/
+
+	rpm-regulator-ldoa17 {
+		status = "okay";
+		pm8994_l17: regulator-l17 {
+			regulator-min-microvolt = <2800000>;
+			regulator-max-microvolt = <2800000>;
+			qcom,init-voltage       = <2800000>;
+			status = "okay";
+		};
+	};
+
+	rpm-regulator-ldoa23 {
+		status = "okay";
+		pm8994_l23: regulator-l23 {
+			regulator-min-microvolt = <2800000>;
+			regulator-max-microvolt = <2800000>;
+			qcom,init-voltage       = <2800000>;
+			status = "okay";
+		};
+	};
+
+	rpm-regulator-vsa1 {
+		status = "okay";
+		pm8994_lvs1: regulator-lvs1 {
+			status = "okay";
+		};
+	};
+
+	///////////////////////////////////////////
+	// Main Cam0 LDO Description (Rev.0)
+	///////////////////////////////////////////
+
+	rpm-regulator-ldoa3 {
+		status = "okay";
+		pm8994_l3: regulator-l3 {
+			regulator-min-microvolt = <1050000>;
+			regulator-max-microvolt = <1050000>;
+			qcom,init-voltage       = <1050000>;
+			status = "okay";
+		};
+	};
+
+	rpm-regulator-ldoa18 {
+		status = "okay";
+		pm8994_l18: regulator-l18 {
+			regulator-min-microvolt = <2700000>;
+			regulator-max-microvolt = <2700000>;
+			qcom,init-voltage       = <2700000>;
+			status = "okay";
+		};
+	};
+
+};
+
+&spmi_bus {
+	qcom,pmi8994@3 {
+		qcom,leds@d300 {
+			pmi8994_flash0: qcom,flash_0 {
+				qcom,current = <600>;
+			};
+
+			pmi8994_flash1: qcom,flash_1 {
+				qcom,current = <600>;
+			};
+
+			pmi8994_torch0: qcom,torch_0 {
+				qcom,current = <75>;
+			};
+
+			pmi8994_torch1: qcom,torch_1 {
+				qcom,current = <75>;
+			};
+		};
+	};
+};
+
+&soc {
+	/*
+	led_flash0: qcom,camera-flash {
+		cell-index = <0>;
+		compatible = "qcom,camera-flash";
+		qcom,flash-source = <&pmi8994_flash0 &pmi8994_flash1>;
+		qcom,torch-source = <&pmi8994_torch0 &pmi8994_torch1>;
+	};
+	*/
+};
+
+&cci {
+	ois0: qcom,ois@7c {
+		cell-index      = <0>;
+		reg             = <0x7c>;
+		compatible      = "qcom,ois";
+		qcom,cci-master = <0>;
+	};
+
+	//actuator0: qcom,actuator@0 {
+	actuator0: qcom,actuator@7c {
+		cell-index      = <0>;
+		reg             = <0x7c>; //<0x0>;
+		compatible      = "qcom,actuator";
+		qcom,cci-master = <0>;
+
+		//Power Settings for EEPROM (VCM Version Read)
+		cam_vio-supply     = <&pm8994_lvs1>;
+
+		qcom,cam-vreg-name        = "cam_vdig", "cam_vio";
+		qcom,cam-vreg-type        = <0 0>;
+		qcom,cam-vreg-min-voltage = <1050000 1800000>;
+		qcom,cam-vreg-max-voltage = <1050000 1800000>;
+		qcom,cam-vreg-op-mode     = < 105000  100000>;
+
+		qcom,cam-power-seq-type    = "sensor_vreg";
+		qcom,cam-power-seq-val     = "cam_vio";
+		qcom,cam-power-seq-cfg-val = <1>;
+		qcom,cam-power-seq-delay   = <5>;
+	};
+
+	eeprom_main0_rev0: qcom,eeprom_main_rev0@a8 {
+		cell-index = <0>;
+		reg = <0xa8 0x0>;
+		qcom,eeprom-name = "imx234";
+		compatible = "qcom,eeprom";
+		qcom,slave-addr = <0xa8>;
+		qcom,cci-master = <0>;
+		qcom,num-blocks = <1>;
+		qcom,page0 = <0 0x0 2 0x0 1 20>;
+		qcom,poll0 = <0 0x0 2 0x0 1 20>;
+		qcom,saddr0 = <0xa8>;
+		qcom,mem0 = <0xd80 0x0000 2 0 1 0>;
+
+		cam_vdig-supply    = <&pm8994_l3>;
+		cam_vio-supply     = <&pm8994_lvs1>;
+		cam_vana-supply    = <&pm8994_l18>;
+		cam_oisdvdd-supply = <&pm8994_l23>;
+		cam_oisvdd-supply  = <&pm8994_l17>;
+
+		qcom,cam-vreg-name        = "cam_vdig", "cam_vio", "cam_vana", "cam_vaf", "cam_oisvdd", "cam_oisdvdd";
+		qcom,cam-vreg-type        = <0 0 0 0 0 0>;
+		qcom,cam-vreg-min-voltage = <1050000 1800000 2700000 0 2800000 2800000>;
+		qcom,cam-vreg-max-voltage = <1050000 1800000 2700000 0 2800000 2800000>;
+		qcom,cam-vreg-op-mode     = < 105000  100000  100000 0  100000  100000>; //TODO: CHECK VIO, VANA
+
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk0_active &cam_sensor_rear_active>;
+		pinctrl-1 = <&cam_sensor_mclk0_suspend &cam_sensor_rear_suspend>;
+
+		gpios = <&tlmm 13 0>,  //CAM_MCLK
+				<&tlmm 30 0>,  //CAM_RESET
+				<&tlmm 93 0>;  //OIS_RESET
+
+		qcom,gpio-no-mux    = <0>;
+		qcom,gpio-reset     = <1>;
+		qcom,gpio-ois-reset = <2>;
+
+		qcom,gpio-req-tbl-num   = <0 1 2>;
+		qcom,gpio-req-tbl-flags = <1 0 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK0",
+								  "CAM_RESET0",
+								  "OIS_RESET";
+
+		qcom,cam-power-seq-type    = "sensor_vreg";
+		qcom,cam-power-seq-val     = "cam_vio";
+		qcom,cam-power-seq-cfg-val = <1>;
+		qcom,cam-power-seq-delay   = <5>;
+	};
+
+	eeprom_vt_rev0: qcom,eeprom_front_rev0@a0 {
+		cell-index = <1>;
+		reg = <0x0>;
+		qcom,eeprom-name = "t4ka3";
+		compatible = "qcom,eeprom";
+		qcom,slave-addr = <0xA0>;
+		qcom,cci-master = <1>;
+		qcom,num-blocks = <1>;
+
+		qcom,page0 = <0 0x0 2 0x0 1 20>;
+		qcom,poll0 = <0 0x0 2 0x0 1 20>;
+		qcom,mem0  = <0xD76 0x0000 2 0 1 0>;
+
+		cam_vdig-supply           = <&pm8994_l6>;
+		cam_vio-supply            = <&pm8994_l14>;
+		cam_vana-supply           = <&pm8994_l29>;
+		cam_vi2c-supply           = <&pm8994_lvs1>; //I2C Pull Up
+
+		qcom,cam-vreg-name        = "cam_vdig", "cam_vio", "cam_vana", "cam_vaf", "cam_oisvdd", "cam_oisdvdd", "cam_vi2c";
+		qcom,cam-vreg-type        = <0 0 0 0 0 0 0>;
+		qcom,cam-vreg-min-voltage = <1200000 1800000 2800000 0 0 0 1800000>;
+		qcom,cam-vreg-max-voltage = <1200000 1800000 2800000 0 0 0 1800000>;
+		qcom,cam-vreg-op-mode     = < 105000  105000  105000 0 0 0  105000>;  //TODO: CHECK ALL
+
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk2_active &cam_sensor_front_active>;
+		pinctrl-1 = <&cam_sensor_mclk2_suspend &cam_sensor_front_suspend>;
+
+		gpios     = <&tlmm 15 0>, //VT_CAM_MCLK
+					<&tlmm 23 0>; //VT_CAM_RESET_N
+
+		qcom,gpio-no-mux        = <0>;
+		qcom,gpio-reset         = <1>;
+		qcom,gpio-req-tbl-num   = <0 1>;
+		qcom,gpio-req-tbl-flags = <1 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK2",
+								  "CAM_RESET2";
+
+		qcom,cam-power-seq-type    = "sensor_vreg", "sensor_vreg"; //TODO: Check for each revision
+		qcom,cam-power-seq-val     = "cam_vio", "cam_vi2c";
+		qcom,cam-power-seq-cfg-val = <1 1>;
+		qcom,cam-power-seq-delay   = <5 1>;
+	};
+
+	qcom,camera@0 {
+		cell-index = <0>;
+		compatible = "qcom,camera";
+		reg        = <0x0>;
+
+		qcom,csiphy-sd-index = <0>;
+		qcom,csid-sd-index   = <0>;
+		qcom,mount-angle     = <90>;
+
+		//qcom,led-flash-src = <&led_flash0>;
+		qcom,actuator-src  = <&actuator0>;
+		qcom,ois-src       = <&ois0>;
+		qcom,eeprom-src    = <&eeprom_main0_rev0>;
+
+		cam_vdig-supply    = <&pm8994_l3>;
+		cam_vio-supply     = <&pm8994_lvs1>;
+		cam_vana-supply    = <&pm8994_l18>;
+		cam_oisdvdd-supply = <&pm8994_l23>;
+		cam_oisvdd-supply  = <&pm8994_l17>;
+
+		qcom,cam-vreg-name        = "cam_vdig", "cam_vio", "cam_vana", "cam_vaf", "cam_oisvdd", "cam_oisdvdd";
+		qcom,cam-vreg-type        = <0 0 0 0 0 0>;
+		qcom,cam-vreg-min-voltage = <1050000 1800000 2700000 0 2800000 2800000>;
+		qcom,cam-vreg-max-voltage = <1050000 1800000 2700000 0 2800000 2800000>;
+		qcom,cam-vreg-op-mode     = < 105000  100000  100000 0  100000  100000>; //TODO: CHECK VIO, VANA
+
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk0_active &cam_sensor_rear_active>;
+		pinctrl-1 = <&cam_sensor_mclk0_suspend &cam_sensor_rear_suspend>;
+
+		gpios = <&tlmm 13 0>,  //CAM_MCLK
+		        <&tlmm 30 0>,  //CAM_RESET
+		        <&tlmm 93 0>;  //OIS_RESET
+
+		qcom,gpio-no-mux    = <0>;
+		qcom,gpio-reset     = <1>;
+		qcom,gpio-ois-reset = <2>;
+
+		qcom,gpio-req-tbl-num   = <0 1 2>;
+		qcom,gpio-req-tbl-flags = <1 0 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK0",
+		                          "CAM_RESET0",
+		                          "OIS_RESET";
+
+		qcom,sensor-position = <0>;
+		qcom,sensor-mode = <0>;
+		qcom,cci-master = <0>;
+		status = "ok";
+		clocks = <&clock_mmss clk_mclk0_clk_src>,
+				<&clock_mmss clk_camss_mclk0_clk>;
+		clock-names = "cam_src_clk", "cam_clk";
+	};
+
+	qcom,camera@1 {
+		cell-index = <1>;
+		compatible = "qcom,camera";
+		reg        = <0x1>;
+
+		qcom,csiphy-sd-index = <2>;
+		qcom,csid-sd-index   = <2>;
+		qcom,mount-angle     = <270>;
+
+		qcom,eeprom-src = <&eeprom_vt_rev0>;
+
+		cam_vdig-supply           = <&pm8994_l6>;
+		cam_vio-supply            = <&pm8994_l14>;
+		cam_vana-supply           = <&pm8994_l29>;
+		cam_vi2c-supply           = <&pm8994_lvs1>; //I2C Pull Up
+
+		qcom,cam-vreg-name        = "cam_vdig", "cam_vio", "cam_vana", "cam_vaf", "cam_oisvdd", "cam_oisdvdd", "cam_vi2c";
+		qcom,cam-vreg-type        = <0 0 0 0 0 0 0>;
+		qcom,cam-vreg-min-voltage = <1200000 1800000 2800000 0 0 0 1800000>;
+		qcom,cam-vreg-max-voltage = <1200000 1800000 2800000 0 0 0 1800000>;
+		qcom,cam-vreg-op-mode     = < 105000  105000  105000 0 0 0  105000>;  //TODO: CHECK ALL
+
+		pinctrl-names = "cam_default", "cam_suspend";
+		pinctrl-0 = <&cam_sensor_mclk2_active &cam_sensor_front_active>;
+		pinctrl-1 = <&cam_sensor_mclk2_suspend &cam_sensor_front_suspend>;
+
+		gpios     = <&tlmm 15 0>, //VT_CAM_MCLK
+                    <&tlmm 23 0>; //VT_CAM_RESET_N
+
+		qcom,gpio-no-mux        = <0>;
+		qcom,gpio-reset         = <1>;
+		qcom,gpio-req-tbl-num   = <0 1>;
+		qcom,gpio-req-tbl-flags = <1 0>;
+		qcom,gpio-req-tbl-label = "CAMIF_MCLK2",
+                                  "CAM_RESET2";
+
+		qcom,sensor-position = <1>; //FRONT_CAMERA_B
+		qcom,sensor-mode     = <1>; //CAMERA_MODE_2D_B
+		qcom,cci-master      = <1>;
+
+		status = "ok";
+		clocks = <&clock_mmss clk_mclk2_clk_src>,
+                 <&clock_mmss clk_camss_mclk2_clk>;
+		clock-names = "cam_src_clk", "cam_clk";
+	};
+};

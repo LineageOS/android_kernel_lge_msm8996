@@ -106,3 +106,9 @@ config SCSI_UFS_TEST
 	The UFS unit-tests register as a block device test utility to
 	the test-iosched and will be initiated when the test-iosched will
 	be chosen to be the active I/O scheduler.
+
+config UFS_LGE_FEATURE
+    tristate "Add LGE Feature for UFS device"
+    depends on SCSI_UFSHCD
+    ---help---
+    This Feature adds for LGE modification

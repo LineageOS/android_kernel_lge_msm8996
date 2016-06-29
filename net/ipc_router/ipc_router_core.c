@@ -689,7 +689,7 @@ static void *msm_ipc_router_skb_to_buf(struct sk_buff_head *skb_head,
 
 	temp = skb_peek(skb_head);
 	buf_len = len;
-	buf = kmalloc(buf_len, GFP_KERNEL);
+	buf = kmalloc(buf_len, GFP_NOFS);
 	if (!buf) {
 		IPC_RTR_ERR("%s: cannot allocate buf\n", __func__);
 		return NULL;
@@ -3820,6 +3820,7 @@ static void debugfs_init(void) {}
  */
 static void *ipc_router_create_log_ctx(char *name)
 {
+#ifdef CONFIG_IPC_LOGGING
 	struct ipc_rtr_log_ctx *sub_log_ctx;
 
 	sub_log_ctx = kmalloc(sizeof(struct ipc_rtr_log_ctx),
@@ -3839,6 +3840,9 @@ static void *ipc_router_create_log_ctx(char *name)
 	INIT_LIST_HEAD(&sub_log_ctx->list);
 	list_add_tail(&sub_log_ctx->list, &log_ctx_list);
 	return sub_log_ctx->log_ctx;
+#else
+	return NULL;
+#endif
 }
 
 static void ipc_router_log_ctx_init(void)

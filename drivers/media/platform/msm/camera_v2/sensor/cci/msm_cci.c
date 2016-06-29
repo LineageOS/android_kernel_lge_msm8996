@@ -30,9 +30,11 @@
 #define CCI_I2C_QUEUE_1_SIZE 16
 #define CYCLES_PER_MICRO_SEC_DEFAULT 4915
 #define CCI_MAX_DELAY 1000000
-
+#ifdef CONFIG_LGE_CAMERA_DRIVER
+#define CCI_TIMEOUT msecs_to_jiffies(500)
+#else
 #define CCI_TIMEOUT msecs_to_jiffies(100)
-
+#endif
 /* TODO move this somewhere else */
 #define MSM_CCI_DRV_NAME "msm_cci"
 
@@ -65,6 +67,8 @@ static void msm_cci_dump_registers(struct cci_device *cci_dev,
 	uint32_t read_val = 0;
 	uint32_t i = 0;
 	uint32_t reg_offset = 0;
+
+	dump_stack();	/* LGE_CHANGE, CST, print out backtrace in case of read/write timeout */
 
 	/* CCI Top Registers */
 	CCI_DBG(" **** %s : %d CCI TOP Registers ****\n", __func__, __LINE__);
@@ -116,6 +120,10 @@ static int32_t msm_cci_set_clk_param(struct cci_device *cci_dev,
 	enum cci_i2c_master_t master = c_ctrl->cci_info->cci_i2c_master;
 	enum i2c_freq_mode_t i2c_freq_mode = c_ctrl->cci_info->i2c_freq_mode;
 
+#ifdef CONFIG_LGE_CAMERA_DRIVER
+	i2c_freq_mode = I2C_FAST_MODE;
+#endif
+
 	clk_params = &cci_dev->cci_clk_params[i2c_freq_mode];
 
 	if ((i2c_freq_mode >= I2C_MAX_MODES) || (i2c_freq_mode < 0)) {
@@ -165,6 +173,12 @@ static void msm_cci_flush_queue(struct cci_device *cci_dev,
 {
 	int32_t rc = 0;
 
+	/* LGE_CHANGE, CST, make sure to check cci_state before HALT_REQ*/
+	if (cci_dev->cci_state != CCI_STATE_ENABLED) {
+		pr_err("%s invalid cci state %d\n",
+			__func__, cci_dev->cci_state);
+		return;
+	}
 	msm_camera_io_w_mb(1 << master, cci_dev->base + CCI_HALT_REQ_ADDR);
 	rc = wait_for_completion_timeout(
 		&cci_dev->cci_master_info[master].reset_complete, CCI_TIMEOUT);
@@ -1014,9 +1028,17 @@ static int32_t msm_cci_i2c_write(struct v4l2_subdev *sd,
 		return -EINVAL;
 	}
 	master = c_ctrl->cci_info->cci_i2c_master;
+
+	#ifdef CONFIG_LGE_CAMERA_DRIVER
+	CDBG("%s set param sid: 0x%02X, addr: 0x%02X, data: 0x%02X\n", __func__,
+		c_ctrl->cci_info->sid,
+		c_ctrl->cfg.cci_i2c_write_cfg.reg_setting->reg_addr,
+		c_ctrl->cfg.cci_i2c_write_cfg.reg_setting->reg_data);
+	#else  //QCT Original
 	CDBG("%s set param sid 0x%x retries %d id_map %d\n", __func__,
 		c_ctrl->cci_info->sid, c_ctrl->cci_info->retries,
 		c_ctrl->cci_info->id_map);
+	#endif
 
 	/* Set the I2C Frequency */
 	rc = msm_cci_set_clk_param(cci_dev, c_ctrl);
@@ -1548,9 +1570,18 @@ static int32_t msm_cci_config(struct v4l2_subdev *sd,
 	switch (cci_ctrl->cmd) {
 	case MSM_CCI_INIT:
 		rc = msm_cci_init(sd, cci_ctrl);
+		/*LGE_CHANGE, CST, check if cci is acquired */
+		if(!rc)
+			cci_ctrl->cci_info->cci_acquired = 1;
 		break;
 	case MSM_CCI_RELEASE:
-		rc = msm_cci_release(sd);
+		/*LGE_CHANGE_S, CST, check if cci is acquired */
+		if(cci_ctrl->cci_info) {
+			if(cci_ctrl->cci_info->cci_acquired)
+				rc = msm_cci_release(sd);
+			cci_ctrl->cci_info->cci_acquired = 0;
+		}
+		/*LGE_CHANGE_E, CST, check if cci is acquired */
 		break;
 	case MSM_CCI_I2C_READ:
 		rc = msm_cci_i2c_read_bytes(sd, cci_ctrl);
@@ -1697,6 +1728,7 @@ static long msm_cci_subdev_ioctl(struct v4l2_subdev *sd,
 		break;
 	case MSM_SD_SHUTDOWN: {
 		struct msm_camera_cci_ctrl ctrl_cmd;
+		ctrl_cmd.cci_info = NULL ;		/*LGE_CHANGE, CST, check if cci is acquired */
 		ctrl_cmd.cmd = MSM_CCI_RELEASE;
 		rc = msm_cci_config(sd, &ctrl_cmd);
 		break;

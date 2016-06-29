@@ -109,6 +109,7 @@ config NF_CONNTRACK_EVENTS
 config NF_CONNTRACK_TIMEOUT
 	bool  'Connection tracking timeout'
 	depends on NETFILTER_ADVANCED
+        default y
 	help
 	  This option enables support for connection tracking timeout
 	  extension. This allows you to attach timeout policies to flow
@@ -119,6 +120,7 @@ config NF_CONNTRACK_TIMEOUT
 config NF_CONNTRACK_TIMESTAMP
 	bool  'Connection tracking timestamping'
 	depends on NETFILTER_ADVANCED
+        default y
 	help
 	  This option enables support for connection tracking timestamping.
 	  This allows you to store the flow start-time and to obtain
@@ -629,6 +631,7 @@ config NETFILTER_XT_TARGET_CHECKSUM
 config NETFILTER_XT_TARGET_CLASSIFY
 	tristate '"CLASSIFY" target support'
 	depends on NETFILTER_ADVANCED
+        default y
 	help
 	  This option adds a `CLASSIFY' target, which enables the user to set
 	  the priority of a packet. Some qdiscs can use this value for
@@ -643,6 +646,7 @@ config NETFILTER_XT_TARGET_CONNMARK
 	depends on NF_CONNTRACK
 	depends on NETFILTER_ADVANCED
 	select NETFILTER_XT_CONNMARK
+        default y
 	---help---
 	This is a backwards-compat option for the user's convenience
 	(e.g. when running oldconfig). It selects
@@ -1005,6 +1009,7 @@ config NETFILTER_XT_MATCH_CONNBYTES
 	tristate  '"connbytes" per-connection counter match support'
 	depends on NF_CONNTRACK
 	depends on NETFILTER_ADVANCED
+        default y
 	help
 	  This option adds a `connbytes' match, which allows you to match the
 	  number of bytes and/or packets for each direction within a connection.
@@ -1231,6 +1236,7 @@ config NETFILTER_XT_MATCH_MARK
 config NETFILTER_XT_MATCH_MULTIPORT
 	tristate '"multiport" Multiple port match support'
 	depends on NETFILTER_ADVANCED
+        default y
 	help
 	  Multiport matching allows you to match TCP or UDP packets based on
 	  a series of source or destination ports: normally a rule can only
@@ -1452,6 +1458,7 @@ config NETFILTER_XT_MATCH_STRING
 config NETFILTER_XT_MATCH_TCPMSS
 	tristate '"tcpmss" match support'
 	depends on NETFILTER_ADVANCED
+        default y
 	help
 	  This option adds a `tcpmss' match, which allows you to examine the
 	  MSS value of TCP SYN packets, which control the maximum packet size
@@ -1487,6 +1494,16 @@ config NETFILTER_XT_MATCH_U32
 	  Details and examples are in the kernel module source.
 
 endif # NETFILTER_XTABLES
+
+config LG_VPN_V34
+    tristate "LG VPN ver3.4 Support"
+    default n
+    ---help---
+    This feature is for LG VPN ver3.4 support. It includes interceptor netfilter.
+
+if LG_VPN_V34
+source "net/netfilter/interceptor_v34/Kconfig"
+endif
 
 endmenu
 

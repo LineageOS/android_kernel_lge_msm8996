@@ -1885,35 +1885,39 @@
 			};
 		};
 
+		/* LGE_BROADCAST_ISDBT_JAPAN Start */
+		/*
 		tsif0_signals_active: tsif0_signals_active {
 			tsif1_clk {
-				pins = "gpio89"; /* TSIF0 CLK */
+				pins = "gpio89"; // TSIF0 CLK
 				function = "tsif1_clk";
 			};
 			tsif1_en {
-				pins = "gpio90"; /* TSIF0 Enable */
+				pins = "gpio90"; // TSIF0 Enable
 				function = "tsif1_en";
 			};
 			tsif1_data {
-				pins = "gpio91"; /* TSIF0 DATA */
+				pins = "gpio91"; // TSIF0 DATA
 				function = "tsif1_data";
 			};
 			signals_cfg {
 				pins = "gpio89", "gpio90", "gpio91";
-				drive_strength = <2>;	/* 2 mA */
-				bias-pull-down;		/* pull down */
+				drive_strength = <2>;	// 2 mA
+				bias-pull-down;		// pull down
 			};
 		};
 
-		/* sync signal is only used if configured to mode-2 */
+		// sync signal is only used if configured to mode-2
 		tsif0_sync_active: tsif0_sync_active {
 			tsif1_sync {
-				pins = "gpio39";	/* TSIF0 SYNC */
+				pins = "gpio39";	// TSIF0 SYNC
 				function = "tsif1_sync";
-				drive_strength = <2>;	/* 2 mA */
-				bias-pull-down;		/* pull down */
+				drive_strength = <2>;	// 2 mA
+				bias-pull-down;		// pull down
 			};
 		};
+		*/
+		/* LGE_BROADCAST_ISDBT_JAPAN End */
 
 		tsif1_signals_active: tsif1_signals_active {
 			tsif2_clk {

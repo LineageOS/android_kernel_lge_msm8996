@@ -160,3 +160,15 @@ struct mdss_util_intf *mdss_get_util_intf()
 	return &mdss_util;
 }
 EXPORT_SYMBOL(mdss_get_util_intf);
+
+#ifdef QCT_IRQ_NOC_PATCH
+bool mdss_get_irq_enable_state(struct mdss_hw *hw) {
+	bool is_irq_enabled;
+
+	spin_lock(&mdss_lock);
+	is_irq_enabled = hw->irq_info->irq_ena;
+	spin_unlock(&mdss_lock);
+
+	return is_irq_enabled;
+}
+#endif

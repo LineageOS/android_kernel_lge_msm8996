@@ -47,6 +47,11 @@
 #include <linux/compat.h>
 #endif
 
+#include "mts_tty.h"
+#ifdef CONFIG_LGE_DIAG_BYPASS
+#include "lg_diag_bypass.h"
+#endif
+
 MODULE_DESCRIPTION("Diag Char Driver");
 MODULE_LICENSE("GPL v2");
 MODULE_VERSION("1.0");
@@ -1368,8 +1373,10 @@ static int diag_md_session_check(int curr_mode, int req_mode,
 			 * This case tries to change from USB mode to USB mode.
 			 * There is no change required. Return success.
 			 */
-			*change_mode = 0;
-			return 0;
+			if (!mts_tty->run) {
+				*change_mode = 0;
+				return 0;
+			}
 		}
 
 		/*
@@ -2879,6 +2886,9 @@ static ssize_t diagchar_write(struct file *file, const char __user *buf,
 	int err = 0;
 	int pkt_type = 0;
 	int payload_len = 0;
+#ifdef CONFIG_LGE_DM_APP
+    char *buf_cmp;
+#endif
 	const char __user *payload_buf = NULL;
 
 	/*
@@ -2897,8 +2907,21 @@ static ssize_t diagchar_write(struct file *file, const char __user *buf,
 				   __func__, err);
 		return -EIO;
 	}
+#ifdef CONFIG_LGE_DM_APP
+    if (driver->logging_mode == DM_APP_MODE) {
+        /* only diag cmd #250 for supporting testmode tool */
+        buf_cmp = (char *)buf + 4;
+        if (*(buf_cmp) != 0xFA)
+            return 0;
+    }
+#endif
 
+
+#ifdef CONFIG_LGE_DIAG_BYPASS
+	if (driver->logging_mode == DIAG_USB_MODE && !driver->usb_connected && !lge_bypass_status()) {
+#else
 	if (driver->logging_mode == DIAG_USB_MODE && !driver->usb_connected) {
+#endif
 		if (!((pkt_type == DCI_DATA_TYPE) ||
 		    (pkt_type == DCI_PKT_TYPE) ||
 		    (pkt_type & DATA_TYPE_DCI_LOG) ||
@@ -3209,8 +3232,13 @@ static int diagchar_setup_cdev(dev_t devno)
 		return -1;
 	}
 
+#ifdef CONFIG_LGE_USB_G_ANDROID
+	driver->diag_dev = device_create(driver->diagchar_class, NULL, devno,
+					 (void *)driver, "diag_lge");
+#else
 	driver->diag_dev = device_create(driver->diagchar_class, NULL, devno,
 					 (void *)driver, "diag");
+#endif
 
 	if (!driver->diag_dev)
 		return -EIO;
@@ -3285,6 +3313,7 @@ static int __init diagchar_init(void)
 	mutex_init(&driver->diag_file_mutex);
 	mutex_init(&driver->delayed_rsp_mutex);
 	mutex_init(&apps_data_mutex);
+	mutex_init(&driver->diagfwd_channel_mutex);
 	init_waitqueue_head(&driver->wait_q);
 	INIT_WORK(&(driver->diag_drain_work), diag_drain_work_fn);
 	INIT_WORK(&(driver->update_user_clients),

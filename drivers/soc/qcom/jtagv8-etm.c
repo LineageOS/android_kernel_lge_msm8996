@@ -1582,7 +1582,7 @@ static int jtag_mm_etm_probe(struct platform_device *pdev, uint32_t cpu)
 	spin_lock_init(&etmdata->spinlock);
 	mutex_init(&etmdata->mutex);
 
-	if (cnt++ == 0)
+	if (++cnt >= nr_cpu_ids)
 		register_hotcpu_notifier(&jtag_mm_etm_notifier);
 
 	if (!smp_call_function_single(cpu, etm_init_arch_data, etmdata,

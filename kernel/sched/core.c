@@ -824,6 +824,15 @@ void sched_set_cluster_dstate(const cpumask_t *cluster_cpus, int dstate,
 	}
 }
 
+/* ADAPT_LGE_BMC */
+int
+sched_get_cpu_cstate(int cpu)
+{
+	struct rq *rq = cpu_rq(cpu);
+
+	return rq->cstate;
+}
+
 #endif /* CONFIG_SMP */
 
 #ifdef CONFIG_SCHED_HMP
@@ -4257,6 +4266,11 @@ fire_sched_out_preempt_notifiers(struct task_struct *curr,
 
 #endif /* CONFIG_PREEMPT_NOTIFIERS */
 
+#define APP_SETTING_BIT 30
+
+extern void set_app_setting_bit(uint32_t bit);
+extern void clear_app_setting_bit(uint32_t bit);
+
 /**
  * prepare_task_switch - prepare to switch tasks
  * @rq: the runqueue preparing to switch
@@ -4280,6 +4294,18 @@ prepare_task_switch(struct rq *rq, struct task_struct *prev,
 	fire_sched_out_preempt_notifiers(prev, next);
 	prepare_lock_switch(rq, next);
 	prepare_arch_switch(next);
+
+	if (unlikely(prev->mm && prev->mm->app_setting)) {
+		trace_printk("DEBUG: %s prev %p pid %d\n",
+			__func__, prev, prev->pid);
+		clear_app_setting_bit(APP_SETTING_BIT);
+	}
+
+	if (unlikely(next->mm && next->mm->app_setting)) {
+		trace_printk("DEBUG: %s next %p pid %d\n",
+			__func__, next, next->pid);
+		set_app_setting_bit(APP_SETTING_BIT);
+	}
 }
 
 /**
@@ -4702,8 +4728,12 @@ void preempt_count_add(int val)
 	/*
 	 * Underflow?
 	 */
-	if (DEBUG_LOCKS_WARN_ON((preempt_count() < 0)))
+	if (preempt_count() < 0) {
+		printk(KERN_ERR "%s: %d < 0\n",
+				__func__, preempt_count());
+		DEBUG_LOCKS_WARN_ON(1);
 		return;
+	}
 #endif
 	__preempt_count_add(val);
 #ifdef CONFIG_DEBUG_PREEMPT
@@ -4730,8 +4760,12 @@ void preempt_count_sub(int val)
 	/*
 	 * Underflow?
 	 */
-	if (DEBUG_LOCKS_WARN_ON(val > preempt_count()))
+	if (val > preempt_count()) {
+		printk(KERN_ERR "%s: %d > %d\n",
+				__func__, val, preempt_count());
+		DEBUG_LOCKS_WARN_ON(1);
 		return;
+	}
 	/*
 	 * Is the spinlock portion underflowing?
 	 */

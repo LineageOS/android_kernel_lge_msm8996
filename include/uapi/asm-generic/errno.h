@@ -110,4 +110,11 @@
 
 #define EHWPOISON	133	/* Memory page has hardware error */
 
+#ifdef CONFIG_MACH_LGE
+/* LGE_CHANGE
+ * add ext4 fs errno type for ext4 superblock
+ * 2015-10-26, H1-BSP-FS@lge.com
+ */
+#define ESUPER      150 /*ext4 superblock is damaged */
+#endif
 #endif

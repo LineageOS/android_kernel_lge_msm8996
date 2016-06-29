@@ -23,7 +23,39 @@
 #include <linux/err.h>
 #include <linux/string.h>
 
+#if defined(CONFIG_LGE_MIPI_H1_INCELL_QHD_CMD_PANEL)
+#include <soc/qcom/lge/board_lge.h>
+extern int panel_not_connected;
+int detect_factory_cable(void);
+#endif
+
+#if defined(CONFIG_LGE_PP_AD_SUPPORTED)
+extern void qpnp_wled_dimming(int dst_lvl,int current_lvl);
+#endif
+
 #include "mdss_dsi.h"
+
+#if defined(CONFIG_LGE_MIPI_H1_INCELL_QHD_CMD_PANEL)
+#if defined(CONFIG_LGE_DISPLAY_AOD_SUPPORTED)
+#include "oem_mdss_aod.h"
+#endif
+#include <linux/input/lge_touch_notify.h>
+#endif
+
+#if defined(CONFIG_LGE_LCD_TUNING)
+extern int tun_lcd[128];
+extern char read_cmd[128];
+extern int reg_num;
+int cmd_num;
+#endif
+
+#if defined(CONFIG_LGE_LCD_DYNAMIC_CABC_MIE_CTRL)
+unsigned int cabc_ctrl;
+#endif
+
+#if defined(CONFIG_MACH_LGE)
+struct mdss_panel_data *pdata_base;
+#endif
 
 #define DT_CMD_HDR 6
 #define MIN_REFRESH_RATE 30
@@ -176,8 +208,54 @@ u32 mdss_dsi_panel_cmd_read(struct mdss_dsi_ctrl_pdata *ctrl, char cmd0,
 	return 0;
 }
 
+#if defined (CONFIG_LGE_MIPI_H1_INCELL_QHD_CMD_PANEL)
+#if defined (CONFIG_LGE_LCD_TUNING)
+char lge_dcs_cmd[2] = {0x0A, 0x00}; /* DTYPE_DCS_READ */
+struct dsi_cmd_desc lge_dcs_read_cmd = {
+	{DTYPE_DCS_READ, 1, 0, 1, 5, sizeof(lge_dcs_cmd)},
+	lge_dcs_cmd
+};
+
+void lge_force_mdss_dsi_panel_cmd_read(char cmd0, int cnt)
+{
+  struct dcs_cmd_req cmdreq;
+  struct mdss_dsi_ctrl_pdata *ctrl;
+  char rx_buf[128] = {0x0};
+  int i = 0;
+
+  ctrl = container_of(pdata_base, struct mdss_dsi_ctrl_pdata,
+				panel_data);
+  lge_dcs_cmd[0] = cmd0;
+  memset(&cmdreq, 0, sizeof(cmdreq));
+  cmdreq.cmds = &lge_dcs_read_cmd;
+  cmdreq.cmds_cnt = 1;
+  cmdreq.flags = CMD_REQ_RX | CMD_REQ_COMMIT;
+  cmdreq.rlen = cnt;
+  cmdreq.cb = NULL;
+  cmdreq.rbuf = rx_buf;
+
+  if (ctrl->status_cmds.link_state == DSI_LP_MODE)
+         cmdreq.flags |= CMD_REQ_LP_MODE;
+  else if (ctrl->status_cmds.link_state == DSI_HS_MODE)
+         cmdreq.flags |= CMD_REQ_HS_MODE;
+
+  mdelay(1);
+
+  mdss_dsi_cmdlist_put(ctrl, &cmdreq);
+
+  for(i=0;i<cnt;i++)
+	pr_info("[Display]Reg[0x%x],buf[%d]=0x%x,mode[%d]\n",cmd0, i, rx_buf[i], ctrl->status_cmds.link_state);
+}
+#endif
+#endif
+
+#if defined(CONFIG_LGE_DISPLAY_AOD_SUPPORTED)
+void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
+			struct dsi_panel_cmds *pcmds, u32 flags)
+#else
 static void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
 			struct dsi_panel_cmds *pcmds, u32 flags)
+#endif
 {
 	struct dcs_cmd_req cmdreq;
 	struct mdss_panel_info *pinfo;
@@ -249,12 +327,16 @@ static int mdss_dsi_request_gpios(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 			goto disp_en_gpio_err;
 		}
 	}
+#if defined(CONFIG_LGE_MIPI_H1_INCELL_QHD_CMD_PANEL)
+	/* Reset GPIO already requested when parse gpio */
+#else
 	rc = gpio_request(ctrl_pdata->rst_gpio, "disp_rst_n");
 	if (rc) {
 		pr_err("request reset gpio failed, rc=%d\n",
 			rc);
 		goto rst_gpio_err;
 	}
+#endif
 	if (gpio_is_valid(ctrl_pdata->bklt_en_gpio)) {
 		rc = gpio_request(ctrl_pdata->bklt_en_gpio,
 						"bklt_enable");
@@ -272,6 +354,7 @@ static int mdss_dsi_request_gpios(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 			goto mode_gpio_err;
 		}
 	}
+
 	return rc;
 
 mode_gpio_err:
@@ -279,7 +362,10 @@ mode_gpio_err:
 		gpio_free(ctrl_pdata->bklt_en_gpio);
 bklt_en_gpio_err:
 	gpio_free(ctrl_pdata->rst_gpio);
+#if defined(CONFIG_LGE_MIPI_H1_INCELL_QHD_CMD_PANEL)
+#else
 rst_gpio_err:
+#endif
 	if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
 		gpio_free(ctrl_pdata->disp_en_gpio);
 disp_en_gpio_err:
@@ -330,7 +416,16 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 		if (!pinfo->cont_splash_enabled) {
 			if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
 				gpio_set_value((ctrl_pdata->disp_en_gpio), 1);
-
+#if defined(CONFIG_LGE_DISPLAY_AOD_SUPPORTED)
+			/* Only panel reset when U0 -> U3 or U0 -> U2 Unblank*/
+			if (pinfo->aod_cmd_mode != ON_CMD && pinfo->aod_cmd_mode != ON_AND_AOD && !pinfo->panel_dead)
+				return rc;
+#endif
+			/* Notify to Touch when panel reset */
+#if defined (CONFIG_LGE_MIPI_H1_INCELL_QHD_CMD_PANEL)
+			if (touch_notifier_call_chain(NOTIFY_TOUCH_RESET, NULL))
+				pr_err("Failt to send notify to touch\n");
+#endif
 			for (i = 0; i < pdata->panel_info.rst_seq_len; ++i) {
 				gpio_set_value((ctrl_pdata->rst_gpio),
 					pdata->panel_info.rst_seq[i]);
@@ -564,6 +659,326 @@ static int mdss_dsi_set_col_page_addr(struct mdss_panel_data *pdata,
 end:
 	return 0;
 }
+#if defined(CONFIG_LGE_ENHANCE_GALLERY_SHARPNESS)
+static ssize_t sharpness_get(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
+
+	if(pdata_base == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return -EINVAL;
+	}
+
+	ctrl =  container_of(pdata_base, struct mdss_dsi_ctrl_pdata,
+			panel_data);
+
+	return sprintf(buf, "%x\n", ctrl->sharpness_on_cmds.cmds[2].payload[3]);
+
+}
+
+static ssize_t sharpness_set(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
+	unsigned int param;
+	ssize_t ret = strnlen(buf, PAGE_SIZE);
+
+	if(pdata_base == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return -EINVAL;
+	}
+
+	if(pdata_base->panel_info.panel_power_state == 0){
+		pr_err("%s: Panel off state. Ignore sharpness enhancement cmd\n", __func__);
+		return -EINVAL;
+	}
+
+	ctrl =  container_of(pdata_base, struct mdss_dsi_ctrl_pdata,
+			panel_data);
+
+	sscanf(buf, "%x", &param);
+	ctrl->sharpness_on_cmds.cmds[2].payload[3] = param;
+
+	mdss_dsi_panel_cmds_send(ctrl, &ctrl->sharpness_on_cmds, CMD_REQ_COMMIT);
+
+	pr_info("%s: sent sharpness enhancement cmd : 0x%02X\n",
+			__func__, ctrl->sharpness_on_cmds.cmds[2].payload[3]);
+
+	return ret;
+}
+
+static ssize_t color_enhancement_get(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	int i=0;
+	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
+
+	if(pdata_base == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return -EINVAL;
+	}
+
+	ctrl =  container_of(pdata_base, struct mdss_dsi_ctrl_pdata,
+			panel_data);
+
+	sprintf(buf, "%s 0x%02X 0x%02X\n", buf, ctrl->ce_on_cmds.cmds[1].payload[0]
+		,ctrl->ce_on_cmds.cmds[1].payload[1]);
+
+	for(i=0; i<24; i++){
+		sprintf(buf, "%s 0x%02X", buf, ctrl->ce_on_cmds.cmds[2].payload[i]);
+		if(((i+1)%6) == 0)
+			sprintf(buf, "%s \n", buf);
+	}
+
+	return sprintf(buf, "%s\n", buf);
+}
+
+static ssize_t color_enhancement_set(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t size)
+{
+	ssize_t ret = strnlen(buf, PAGE_SIZE);
+	int set_color_enhancement[128];
+	int i, ie_function;
+
+	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
+
+	if(pdata_base == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return -EINVAL;
+	}
+
+	if(pdata_base->panel_info.panel_power_state == 0){
+		pr_err("%s: Panel off state. Ignore color enhancement cmd\n", __func__);
+		return -EINVAL;
+	}
+
+	ctrl =  container_of(pdata_base, struct mdss_dsi_ctrl_pdata,
+			panel_data);
+
+	memset(set_color_enhancement,0,24*sizeof(int));
+	set_color_enhancement[0] = ctrl->ce_on_cmds.cmds[2].payload[0];
+	sscanf(buf, "%x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x %x",
+		&ie_function,&set_color_enhancement[1],&set_color_enhancement[2],&set_color_enhancement[3],
+		&set_color_enhancement[4],&set_color_enhancement[5],&set_color_enhancement[6],&set_color_enhancement[7],
+		&set_color_enhancement[8],&set_color_enhancement[9],&set_color_enhancement[10],&set_color_enhancement[11],
+		&set_color_enhancement[12],&set_color_enhancement[13],&set_color_enhancement[14],&set_color_enhancement[15],
+		&set_color_enhancement[16],&set_color_enhancement[17],&set_color_enhancement[18],&set_color_enhancement[19],
+		&set_color_enhancement[20],&set_color_enhancement[21],&set_color_enhancement[22],&set_color_enhancement[23]);
+
+	ctrl->ce_on_cmds.cmds[1].payload[1] = ie_function;
+	pr_debug("%s: 0xF0 0x%02X ", __func__, ctrl->ce_on_cmds.cmds[1].payload[1]);
+
+	for(i=0; i<24; i++){
+		ctrl->ce_on_cmds.cmds[2].payload[i] = set_color_enhancement[i];
+		pr_debug("0x%02X ", ctrl->ce_on_cmds.cmds[2].payload[i]);
+	}
+	pr_debug("\n");
+
+	mdss_dsi_panel_cmds_send(ctrl, &ctrl->ce_on_cmds, CMD_REQ_COMMIT);
+	return ret;
+}
+
+static DEVICE_ATTR(sharpness, S_IWUSR|S_IRUGO, sharpness_get, sharpness_set);
+static DEVICE_ATTR(color_enhance, S_IWUSR|S_IRUGO, color_enhancement_get, color_enhancement_set);
+#endif
+
+#if defined(CONFIG_LGE_LCD_DYNAMIC_CABC_MIE_CTRL)
+static ssize_t image_enhance_get(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
+
+	if(pdata_base == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return -EINVAL;
+	}
+	ctrl =  container_of(pdata_base, struct mdss_dsi_ctrl_pdata,
+			panel_data);
+
+	return sprintf(buf, "%d\n", ctrl->ie_on);
+}
+
+static ssize_t image_enhance_set(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
+	ssize_t ret = strnlen(buf, PAGE_SIZE);
+
+	if(pdata_base == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return -EINVAL;
+	}
+
+	if(pdata_base->panel_info.panel_power_state == 0){
+		pr_err("%s: Panel off state. Ignore image enhancement cmd\n", __func__);
+		return -EINVAL;
+	}
+
+	ctrl =  container_of(pdata_base, struct mdss_dsi_ctrl_pdata,
+			panel_data);
+
+	sscanf(buf, "%d", &ctrl->ie_on);
+
+	if(ctrl->ie_on == 1){
+		mdss_dsi_panel_cmds_send(ctrl, &ctrl->ie_on_cmds, CMD_REQ_COMMIT);
+		pr_info("%s: set = %d, image enhance function on\n", __func__, ctrl->ie_on);
+	}
+	else if(ctrl->ie_on == 0){
+		mdss_dsi_panel_cmds_send(ctrl, &ctrl->ie_off_cmds, CMD_REQ_COMMIT);
+		pr_info("%s: set = %d, image enhance funtion off\n", __func__, ctrl->ie_on);
+	}
+	else
+		pr_info("%s: set = %d, wrong set value\n", __func__, ctrl->ie_on);
+
+	return ret;
+}
+
+static ssize_t cabc_get(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", cabc_ctrl);
+}
+
+static ssize_t cabc_set(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
+	ssize_t ret = strnlen(buf, PAGE_SIZE);
+
+	if(pdata_base == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return -EINVAL;
+	}
+
+	if(pdata_base->panel_info.panel_power_state == 0){
+		pr_err("%s: Panel off state. Ignore cabc set cmd\n", __func__);
+		return -EINVAL;
+	}
+
+	ctrl =  container_of(pdata_base, struct mdss_dsi_ctrl_pdata,
+			panel_data);
+
+	sscanf(buf, "%d", &cabc_ctrl);
+
+	if(cabc_ctrl == 20){
+		mdss_dsi_panel_cmds_send(ctrl, &ctrl->cabc_20_cmds, CMD_REQ_COMMIT);
+		pr_info("%s: set = %d, cabc function on at 20%%\n", __func__, cabc_ctrl);
+	}
+	else if(cabc_ctrl == 30){
+		mdss_dsi_panel_cmds_send(ctrl, &ctrl->cabc_30_cmds, CMD_REQ_COMMIT);
+		pr_info("%s: set = %d, cabc funtion on at 30%%\n", __func__, cabc_ctrl);
+	}
+	else
+		pr_info("%s: set = %d, wrong set value\n", __func__, cabc_ctrl);
+
+	return ret;
+}
+
+static DEVICE_ATTR(image_enhance_set, S_IWUSR|S_IRUGO, image_enhance_get, image_enhance_set);
+static DEVICE_ATTR(cabc, S_IWUSR|S_IRUGO, cabc_get, cabc_set);
+#endif
+
+#if defined(CONFIG_LGE_LCD_TUNING)
+int find_lcd_cmd(void)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
+	int i,j;
+	char cmd[128]={0, };
+	memset(read_cmd,0,128*sizeof(char));
+	pr_info("reg_num=%x",reg_num);
+	if(pdata_base == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return -EINVAL;
+	}
+
+	ctrl =  container_of(pdata_base, struct mdss_dsi_ctrl_pdata,
+			panel_data);
+	for(i=0;i<ctrl->on_cmds.cmd_cnt;i++)
+	{
+		pr_info("%s:cmd_cnt(find_lcd_cmd)[%d]=%x",__func__,i,ctrl->on_cmds.cmds[i].payload[0]);
+		if(ctrl->on_cmds.cmds[i].payload[0]==reg_num)
+		{
+			for(j=0;j<ctrl->on_cmds.cmds[i].dchdr.dlen;j++)
+			{
+				cmd[j] = ctrl->on_cmds.cmds[i].payload[j];
+			}
+			memcpy(read_cmd,cmd,128*sizeof(char));
+			cmd_num=ctrl->on_cmds.cmds[i].dchdr.dlen;
+			return cmd_num;
+		}
+	}
+	return 0;
+}
+void put_lcd_cmd(void)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
+	int i,j;
+	pr_info("reg_num=%x",reg_num);
+	if(pdata_base == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return;
+	}
+
+	ctrl =  container_of(pdata_base, struct mdss_dsi_ctrl_pdata,
+			panel_data);
+	for(i=0;i<ctrl->on_cmds.cmd_cnt;i++)
+	{
+		pr_info("%s:cmd_cnt[%d]=%x",__func__,i,ctrl->on_cmds.cmds[i].payload[0]);
+		if(ctrl->on_cmds.cmds[i].payload[0]==reg_num)
+		{
+			for(j=1;j<ctrl->on_cmds.cmds[i].dchdr.dlen;j++)
+			{
+				ctrl->on_cmds.cmds[i].payload[j]=tun_lcd[j];
+				pr_info("%s: cmds[%d].payload[%d]: %x",__func__,i,j,ctrl->on_cmds.cmds[i].payload[j]);
+			}
+			//mdss_dsi_panel_cmds_send(ctrl, &ctrl->on_cmds, CMD_REQ_COMMIT);
+		}
+	}
+}
+
+int get_backlight_map_size(int *bl_size)
+{
+	int ret = 0;
+#if defined(CONFIG_LGE_MIPI_H1_INCELL_QHD_CMD_PANEL)
+	if (pdata_base) {
+		*bl_size = pdata_base->panel_info.blmap_size;
+		pr_info("Current bl map size : %d\n", *bl_size);
+	}
+#else
+	ret = -1;
+#endif
+	return ret;
+}
+
+int get_backlight_map(int *bl_map)
+{
+	int ret = 0;
+#if defined(CONFIG_LGE_MIPI_H1_INCELL_QHD_CMD_PANEL)
+	if (pdata_base) {
+		memcpy(bl_map, pdata_base->panel_info.blmap, sizeof(int) * pdata_base->panel_info.blmap_size);
+	}
+#else
+	ret = -1;
+#endif
+	return ret;
+}
+int set_backlight_map(int bl_size, int *bl_map)
+{
+	int ret = 0;
+#if defined(CONFIG_LGE_MIPI_H1_INCELL_QHD_CMD_PANEL)
+	if (pdata_base) {
+		pdata_base->panel_info.blmap_size = bl_size;
+		memcpy(pdata_base->panel_info.blmap, bl_map, sizeof(int) * bl_size);
+		pr_info("BL map updated with size %d\n", bl_size);
+	}
+#else
+	ret = -1;
+#endif
+	return ret;
+}
+
+#endif
 
 static void mdss_dsi_panel_switch_mode(struct mdss_panel_data *pdata,
 							int mode)
@@ -678,6 +1093,9 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
 	struct mdss_panel_info *pinfo;
 	struct dsi_panel_cmds *on_cmds;
+#if defined(CONFIG_LGE_MIPI_H1_INCELL_QHD_CMD_PANEL)
+	struct dsi_panel_cmds *vcom_cmds;
+#endif
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -696,19 +1114,84 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	}
 
 	on_cmds = &ctrl->on_cmds;
-
+#if defined(CONFIG_LGE_MIPI_H1_INCELL_QHD_CMD_PANEL)
+	vcom_cmds = &ctrl->vcom_cmds;
+#endif
 	if ((pinfo->mipi.dms_mode == DYNAMIC_MODE_SWITCH_IMMEDIATE) &&
 			(pinfo->mipi.boot_mode != pinfo->mipi.mode))
 		on_cmds = &ctrl->post_dms_on_cmds;
 
 	pr_debug("%s: ndx=%d cmd_cnt=%d\n", __func__,
 				ctrl->ndx, on_cmds->cmd_cnt);
+#if defined(CONFIG_LGE_DISPLAY_AOD_SUPPORTED)
+	switch (pinfo->aod_cmd_mode) {
+	case AOD_CMD_ENABLE:
+		mdss_dsi_panel_cmds_send(ctrl, &ctrl->aod_cmds[AOD_PANEL_CMD_U3_TO_U2], CMD_REQ_COMMIT);
+		goto notify;
+	case AOD_CMD_DISABLE:
+		mdss_dsi_panel_cmds_send(ctrl, &ctrl->aod_cmds[AOD_PANEL_CMD_U2_TO_U3], CMD_REQ_COMMIT);
+		goto notify;
+	case ON_AND_AOD:
+#if defined(CONFIG_LGE_MIPI_H1_INCELL_QHD_CMD_PANEL)
+		if (lge_get_panel_maker_id() == LGD_LG4946 &&
+				lge_get_panel_revision_id() == LGD_LG4946_REV0 &&
+				vcom_cmds->cmd_cnt != 0) {
+			pr_err("[Display] send LG4946 REV0 Vcom Setting \n");
+			mdss_dsi_panel_cmds_send(ctrl, vcom_cmds, CMD_REQ_COMMIT);
+		}
+#endif
+		if (on_cmds->cmd_cnt)
+			mdss_dsi_panel_cmds_send(ctrl, on_cmds, CMD_REQ_COMMIT);
 
+#if defined(CONFIG_LGE_LCD_DYNAMIC_CABC_MIE_CTRL)
+		if (ctrl->ie_on == 0)
+			mdss_dsi_panel_cmds_send(ctrl, &ctrl->ie_off_cmds, CMD_REQ_COMMIT);
+#endif
+#if defined(CONFIG_LGE_ENHANCE_GALLERY_SHARPNESS)
+		if (ctrl->sharpness_on_cmds.cmds[2].payload[3] == 0x23)
+			mdss_dsi_panel_cmds_send(ctrl, &ctrl->sharpness_on_cmds, CMD_REQ_COMMIT);
+#endif
+		goto end;
+	case ON_CMD:
+		break;
+	case CMD_SKIP:
+		goto notify;
+	default:
+		pr_err("[AOD] Unknown Mode : %d\n", pinfo->aod_cmd_mode);
+		break;
+	}
+#endif
+#if defined(CONFIG_LGE_MIPI_H1_INCELL_QHD_CMD_PANEL)
+	if (lge_get_panel_maker_id() == LGD_LG4946 &&
+			lge_get_panel_revision_id() == LGD_LG4946_REV0 &&
+			vcom_cmds->cmd_cnt != 0) {
+		pr_err("[Display] send LG4946 REV0 Vcom Setting \n");
+		mdss_dsi_panel_cmds_send(ctrl, vcom_cmds, CMD_REQ_COMMIT);
+	}
+#endif
 	if (on_cmds->cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, on_cmds, CMD_REQ_COMMIT);
-
 	if (pinfo->compression_mode == COMPRESSION_DSC)
 		mdss_dsi_panel_dsc_pps_send(ctrl, pinfo);
+
+#if defined(CONFIG_LGE_LCD_DYNAMIC_CABC_MIE_CTRL)
+	if (ctrl->ie_on == 0)
+		mdss_dsi_panel_cmds_send(ctrl, &ctrl->ie_off_cmds, CMD_REQ_COMMIT);
+#endif
+#if defined(CONFIG_LGE_ENHANCE_GALLERY_SHARPNESS)
+	if (ctrl->sharpness_on_cmds.cmds[2].payload[3] == 0x23)
+		mdss_dsi_panel_cmds_send(ctrl, &ctrl->sharpness_on_cmds, CMD_REQ_COMMIT);
+#endif
+
+#if defined(CONFIG_LGE_DISPLAY_AOD_SUPPORTED)
+notify:
+	{
+		int param;
+		param = pinfo->aod_cur_mode;
+		if(touch_notifier_call_chain(LCD_EVENT_LCD_MODE, (void *)&param))
+			pr_err("[AOD] Failt to send notify to touch\n");
+	}
+#endif
 
 end:
 	pinfo->blank_state = MDSS_PANEL_BLANK_UNBLANK;
@@ -768,8 +1251,35 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 			goto end;
 	}
 
+#if defined(CONFIG_LGE_DISPLAY_AOD_SUPPORTED)
+		switch (pinfo->aod_cmd_mode) {
+		case AOD_CMD_ENABLE:
+			mdss_dsi_panel_cmds_send(ctrl, &ctrl->aod_cmds[AOD_PANEL_CMD_U3_TO_U2], CMD_REQ_COMMIT);
+			goto notify;
+		case AOD_CMD_DISABLE:
+			mdss_dsi_panel_cmds_send(ctrl, &ctrl->aod_cmds[AOD_PANEL_CMD_U2_TO_U3], CMD_REQ_COMMIT);
+			goto notify;
+		case OFF_CMD:
+			break;
+		case CMD_SKIP:
+			goto notify;
+		default:
+			pr_err("[AOD] Unknown Mode : %d\n", pinfo->aod_cmd_mode);
+			break;
+		}
+#endif
 	if (ctrl->off_cmds.cmd_cnt)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->off_cmds, CMD_REQ_COMMIT);
+
+#if defined(CONFIG_LGE_DISPLAY_AOD_SUPPORTED)
+notify:
+	{
+		int param;
+		param = pinfo->aod_cur_mode;
+		if(touch_notifier_call_chain(LCD_EVENT_LCD_MODE, (void *)&param))
+			pr_err("[AOD] Failt to send notify to touch\n");
+	}
+#endif
 
 end:
 	pinfo->blank_state = MDSS_PANEL_BLANK_BLANK;
@@ -824,9 +1334,13 @@ static void mdss_dsi_parse_trigger(struct device_node *np, char *trigger,
 	}
 }
 
-
+#if defined(CONFIG_LGE_DISPLAY_AOD_SUPPORTED)
+int mdss_dsi_parse_dcs_cmds(struct device_node *np,
+		struct dsi_panel_cmds *pcmds, char *cmd_key, char *link_key)
+#else
 static int mdss_dsi_parse_dcs_cmds(struct device_node *np,
 		struct dsi_panel_cmds *pcmds, char *cmd_key, char *link_key)
+#endif
 {
 	const char *data;
 	int blen = 0, len;
@@ -2116,6 +2630,19 @@ int mdss_dsi_panel_timing_switch(struct mdss_dsi_ctrl_pdata *ctrl,
 		pinfo->mipi.dsi_phy_db.timing_8996[i] = pt->phy_timing_8996[i];
 
 	ctrl->on_cmds = pt->on_cmds;
+#if defined(CONFIG_LGE_MIPI_H1_INCELL_QHD_CMD_PANEL)
+	ctrl->vcom_cmds = pt->vcom_cmds;
+#endif
+#if defined(CONFIG_LGE_ENHANCE_GALLERY_SHARPNESS)
+	ctrl->sharpness_on_cmds = pt->sharpness_on_cmds;
+	ctrl->ce_on_cmds = pt->ce_on_cmds;
+#endif
+#if defined(CONFIG_LGE_LCD_DYNAMIC_CABC_MIE_CTRL)
+	ctrl->ie_on_cmds = pt->ie_on_cmds;
+	ctrl->ie_off_cmds = pt->ie_off_cmds;
+	ctrl->cabc_20_cmds = pt->cabc_20_cmds;
+	ctrl->cabc_30_cmds = pt->cabc_30_cmds;
+#endif
 	ctrl->post_panel_on_cmds = pt->post_panel_on_cmds;
 
 	ctrl->panel_data.current_timing = timing;
@@ -2243,7 +2770,33 @@ static int  mdss_dsi_panel_config_res_properties(struct device_node *np,
 	mdss_dsi_parse_dcs_cmds(np, &pt->on_cmds,
 		"qcom,mdss-dsi-on-command",
 		"qcom,mdss-dsi-on-command-state");
-
+#if defined(CONFIG_LGE_MIPI_H1_INCELL_QHD_CMD_PANEL)
+	mdss_dsi_parse_dcs_cmds(np, &pt->vcom_cmds,
+		"qcom,mdss-dsi-vcom-command",
+		"qcom,mdss-dsi-on-command-state");
+#endif
+#if defined(CONFIG_LGE_ENHANCE_GALLERY_SHARPNESS)
+	mdss_dsi_parse_dcs_cmds(np, &pt->sharpness_on_cmds,
+		"qcom,mdss-dsi-sharpness-on-command",
+		"qcom,mdss-dsi-on-command-state");
+	mdss_dsi_parse_dcs_cmds(np, &pt->ce_on_cmds,
+		"qcom,mdss-dsi-ce-on-command",
+		"qcom,mdss-dsi-on-command-state");
+#endif
+#if defined(CONFIG_LGE_LCD_DYNAMIC_CABC_MIE_CTRL)
+	mdss_dsi_parse_dcs_cmds(np, &pt->ie_on_cmds,
+		"qcom,mdss-dsi-ie-on-command",
+		"qcom,mdss-dsi-on-command-state");
+	mdss_dsi_parse_dcs_cmds(np, &pt->ie_off_cmds,
+		"qcom,mdss-dsi-ie-off-command",
+		"qcom,mdss-dsi-on-command-state");
+	mdss_dsi_parse_dcs_cmds(np, &pt->cabc_20_cmds,
+		"qcom,mdss-dsi-cabc-20-command",
+		"qcom,mdss-dsi-on-command-state");
+	mdss_dsi_parse_dcs_cmds(np, &pt->cabc_30_cmds,
+		"qcom,mdss-dsi-cabc-30-command",
+		"qcom,mdss-dsi-on-command-state");
+#endif
 	mdss_dsi_parse_dcs_cmds(np, &pt->post_panel_on_cmds,
 		"qcom,mdss-dsi-post-panel-on-command", NULL);
 
@@ -2344,6 +2897,10 @@ static int mdss_panel_parse_dt(struct device_node *np,
 			struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
 	u32 tmp;
+#if defined(CONFIG_LGE_MIPI_H1_INCELL_QHD_CMD_PANEL)
+	int i;
+	u32 *array;
+#endif
 	int rc;
 	const char *data;
 	static const char *pdest;
@@ -2412,6 +2969,74 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	rc = of_property_read_u32(np, "qcom,mdss-dsi-bl-max-level", &tmp);
 	pinfo->bl_max = (!rc ? tmp : 255);
 	ctrl_pdata->bklt_max = pinfo->bl_max;
+#if defined(CONFIG_LGE_MIPI_H1_INCELL_QHD_CMD_PANEL)
+	rc = of_property_read_u32(np, "qcom,blmap-size", &tmp);
+	pinfo->blmap_size = (!rc ? tmp : 0);
+#if defined(CONFIG_LGE_HIGH_LUMINANCE_MODE)
+	rc = of_property_read_u32(np, "qcom,hl-blmap-size", &tmp);
+	pinfo->hl_blmap_size = (!rc ? tmp : 0);
+#endif
+	if (pinfo->blmap_size) {
+		array = kzalloc(sizeof(u32) * pinfo->blmap_size, GFP_KERNEL);
+
+		if (!array)
+			return -ENOMEM;
+		rc = of_property_read_u32_array(np,
+			"qcom,blmap", array, pinfo->blmap_size);
+
+		if (rc) {
+			pr_err("%s:%d, unable to read backlight map\n",
+					__func__, __LINE__);
+			kfree(array);
+			goto error;
+		}
+
+		pinfo->blmap = kzalloc(sizeof(int) * pinfo->blmap_size,
+					GFP_KERNEL);
+		if (!pinfo->blmap){
+			kfree(array);
+			return -ENOMEM;
+		}
+
+		for (i = 0; i < pinfo->blmap_size; i++)
+			pinfo->blmap[i] = array[i];
+
+		kfree(array);
+	} else {
+		pinfo->blmap = NULL;
+	}
+#if defined(CONFIG_LGE_HIGH_LUMINANCE_MODE)
+	if (pinfo->hl_blmap_size) {
+		array = kzalloc(sizeof(u32) * pinfo->hl_blmap_size, GFP_KERNEL);
+
+		if (!array)
+			return -ENOMEM;
+		rc = of_property_read_u32_array(np,
+			"qcom,hl-blmap", array, pinfo->hl_blmap_size);
+
+		if (rc) {
+			pr_err("%s:%d, unable to read backlight map\n",
+					__func__, __LINE__);
+			kfree(array);
+			goto error;
+		}
+
+		pinfo->hl_blmap = kzalloc(sizeof(int) * pinfo->hl_blmap_size,
+					GFP_KERNEL);
+		if (!pinfo->hl_blmap){
+			kfree(array);
+			return -ENOMEM;
+		}
+
+		for (i = 0; i < pinfo->hl_blmap_size; i++)
+			pinfo->hl_blmap[i] = array[i];
+
+		kfree(array);
+	} else {
+		pinfo->hl_blmap = NULL;
+	}
+#endif
+#endif
 
 	rc = of_property_read_u32(np, "qcom,mdss-dsi-interleave-mode", &tmp);
 	pinfo->mipi.interleave_mode = (!rc ? tmp : 0);
@@ -2562,6 +3187,10 @@ int mdss_dsi_panel_init(struct device_node *node,
 	int rc = 0;
 	static const char *panel_name;
 	struct mdss_panel_info *pinfo;
+#if defined(CONFIG_LGE_MIPI_H1_INCELL_QHD_CMD_PANEL)
+	static struct class *panel = NULL;
+	static struct device *panel_sysfs_dev = NULL;
+#endif
 
 	if (!node || !ctrl_pdata) {
 		pr_err("%s: Invalid arguments\n", __func__);
@@ -2579,6 +3208,29 @@ int mdss_dsi_panel_init(struct device_node *node,
 	} else {
 		pr_info("%s: Panel Name = %s\n", __func__, panel_name);
 		strlcpy(&pinfo->panel_name[0], panel_name, MDSS_MAX_PANEL_LEN);
+
+#if defined(CONFIG_LGE_MIPI_H1_INCELL_QHD_CMD_PANEL)
+		if (strncmp(panel_name, "LGD SIC LG4945", 14) == 0) {
+			pr_err("%s: panel_type is LGD_SIC_LG4945_INCELL_CMD_PANEL\n",
+					__func__);
+			pinfo->panel_type = LGD_SIC_LG4945_INCELL_CMD_PANEL;
+		} else if (strncmp(panel_name, "LGD SIC LG4946", 14) == 0) {
+			pr_err("%s: panel_type is LGD_SIC_LG4946_INCELL_CMD_PANEL\n",
+					__func__);
+			pinfo->panel_type = LGE_SIC_LG4946_INCELL_CND_PANEL;
+		} else if (strncmp(panel_name, "LGD RSP", 7) == 0) {
+			pr_err("%s: panel_type is LGD_R69007_INCELL_CMD_PANEL\n",
+					__func__);
+			pinfo->panel_type = LGD_R69007_INCELL_CMD_PANEL;
+		} else if (strncmp(panel_name, "LGD Synaptics", 13)==0) {
+			pr_err("%s: panel_type is LGD_TD4302_INCELL_CMD_PANEL\n",
+					__func__);
+			pinfo->panel_type = LGE_TD4302_INCELL_CND_PANEL;
+		} else {
+			pr_err("%s: Invalid panel type\n", __func__);
+		}
+		lge_set_panel(pinfo->panel_type);
+#endif
 	}
 	rc = mdss_panel_parse_dt(node, ctrl_pdata);
 	if (rc) {
@@ -2589,13 +3241,68 @@ int mdss_dsi_panel_init(struct device_node *node,
 	pinfo->dynamic_switch_pending = false;
 	pinfo->is_lpm_mode = false;
 	pinfo->esd_rdy = false;
-
+#ifdef CONFIG_LGE_LCD_MFTS_MODE
+	if (lge_get_mfts_mode() || (detect_factory_cable() && panel_not_connected))
+		pinfo->power_ctrl = true;
+#endif
 	ctrl_pdata->on = mdss_dsi_panel_on;
 	ctrl_pdata->post_panel_on = mdss_dsi_post_panel_on;
 	ctrl_pdata->off = mdss_dsi_panel_off;
 	ctrl_pdata->low_power_config = mdss_dsi_panel_low_power_config;
 	ctrl_pdata->panel_data.set_backlight = mdss_dsi_panel_bl_ctrl;
 	ctrl_pdata->switch_mode = mdss_dsi_panel_switch_mode;
-
+#if defined(CONFIG_LGE_LCD_DYNAMIC_CABC_MIE_CTRL)
+	ctrl_pdata->ie_on = 1;
+#endif
+#if defined(CONFIG_LGE_DISPLAY_AOD_SUPPORTED)
+	/* Only parse aod command in DSI0 ctrl */
+	if (ctrl_pdata->panel_data.panel_info.pdest == DISPLAY_1) {
+		rc = oem_mdss_aod_init(node, ctrl_pdata);
+		if (rc) {
+			pr_err("[AOD] %s:%d aod cmd dt parse failed\n", __func__, __LINE__);
+			return rc;
+		}
+	}
+#endif
+#if defined(CONFIG_MACH_LGE)
+	if (ctrl_pdata->panel_data.panel_info.pdest == DISPLAY_1) {
+		if (pdata_base == NULL)
+			pdata_base = &(ctrl_pdata->panel_data);
+	}
+#endif
+#if defined(CONFIG_LGE_MIPI_H1_INCELL_QHD_CMD_PANEL)
+	if(!panel){
+		panel = class_create(THIS_MODULE, "panel");
+		if (IS_ERR(panel))
+			pr_err("%s: Failed to create panel class\n", __func__);
+	}
+	if(!panel_sysfs_dev){
+		panel_sysfs_dev = device_create(panel, NULL, 0, NULL, "img_tune");
+		if (IS_ERR(panel_sysfs_dev)) {
+			pr_err("%s: Failed to create dev(panel_sysfs_dev)!", __func__);
+		}
+		else{
+#if defined(CONFIG_LGE_ENHANCE_GALLERY_SHARPNESS)
+			if (device_create_file(panel_sysfs_dev, &dev_attr_sharpness) < 0)
+				pr_err("%s: add sharpness tuning node fail!", __func__);
+			if (device_create_file(panel_sysfs_dev, &dev_attr_color_enhance) < 0)
+				pr_err("%s: add color enhancement tuning node fail!", __func__);
+#endif
+#if defined(CONFIG_LGE_LCD_DYNAMIC_CABC_MIE_CTRL)
+			if (device_create_file(panel_sysfs_dev, &dev_attr_image_enhance_set) < 0)
+				pr_err("%s: add image enhance set node fail!", __func__);
+			if (device_create_file(panel_sysfs_dev, &dev_attr_cabc) < 0)
+				pr_err("%s: add cabc set node fail!", __func__);
+#endif
+		}
+	}
+#endif
 	return 0;
 }
+
+#if defined(CONFIG_LGE_PP_AD_SUPPORTED)
+void mdss_dsi_panel_dimming_ctrl(int bl_level, int current_bl)
+{
+	qpnp_wled_dimming(bl_level,current_bl);
+}
+#endif

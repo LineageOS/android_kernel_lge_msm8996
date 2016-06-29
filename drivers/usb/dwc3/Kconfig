@@ -126,4 +126,17 @@ config DWC3_HOST_USB3_LPM_ENABLE
 	help
 	  Select this when you want to enable USB3 LPM with dwc3 xhci host.
 
+config LGE_USB_FLOATED_CHARGER_DETECT
+	bool "Floated charger detect"
+	depends on LGE_USB_G_ANDROID
+	default y
+	help
+	  Say Y if APSD can't detect floated charger.
+	  and there is no s/w charger detection codes in phys.
+
+config LGE_USB_BC_12_VZW
+	bool "Support BC 1.2 specification for VZW"
+	default n
+	help
+	  Say y if this must be needed.
 endif

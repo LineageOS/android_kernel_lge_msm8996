@@ -183,7 +183,13 @@ static struct msm_bus_scale_pdata msm_cpp_bus_scale_data = {
 	qcmd;			 \
 })
 
+/* [LGE_CHANGE_S] Change CPP timeout trial 0 to 3 2015/10/15 jinsang.yun@lge.com */
+#if 0 /* QCT original */
 #define MSM_CPP_MAX_TIMEOUT_TRIAL 1
+#else
+#define MSM_CPP_MAX_TIMEOUT_TRIAL 3
+#endif
+/* [LGE_CHANGE_E] Change CPP timeout trial 0 to 3 2015/10/15 jinsang.yun@lge.com */
 
 struct msm_cpp_timer_data_t {
 	struct cpp_device *cpp_dev;
@@ -1127,13 +1133,13 @@ static int cpp_init_hardware(struct cpp_device *cpp_dev)
 			goto req_irq_fail;
 		}
 	}
-
+#if 0 /* LGE_CHANGE, CST, enable power collapse after loading fw */
 	rc = msm_cpp_update_gdscr_status(cpp_dev, true);
 	if (rc < 0) {
 		pr_err("update cpp gdscr status failed\n");
 		goto req_irq_fail;
 	}
-
+#endif
 	cpp_dev->hw_info.cpp_hw_version =
 		msm_camera_io_r(cpp_dev->cpp_hw_base);
 	if (cpp_dev->hw_info.cpp_hw_version == CPP_HW_VERSION_4_1_0) {
@@ -1330,6 +1336,12 @@ static int32_t cpp_load_fw(struct cpp_device *cpp_dev, char *fw_name_bin)
 		ptr_bin++;
 	}
 	msm_camera_io_w_mb(0x00, cpp_dev->cpp_hw_base + 0xC);
+
+        /* LGE_CHANGE, CST, enable power collapse after loading fw */
+	rc = msm_cpp_update_gdscr_status(cpp_dev, true);
+	if (rc < 0)
+		pr_err("update cpp gdscr status failed\n");
+
 	rc = msm_cpp_poll(cpp_dev->base, MSM_CPP_MSG_ID_OK);
 	if (rc) {
 		pr_err("%s:%d] poll command %x failed %d", __func__, __LINE__,
@@ -1566,6 +1578,11 @@ static int msm_cpp_notify_frame_done(struct cpp_device *cpp_dev,
 
 	frame_qcmd = msm_dequeue(queue, list_frame, POP_FRONT);
 	if (frame_qcmd) {
+		/*LGE_CHANGE, CST, check if queue cmd is on heap*/
+		if(put_buf &&  atomic_read(&frame_qcmd->on_heap)) {
+			pr_err("%s: frame_qcmd(%p) is on heap \n", __func__, frame_qcmd);
+			return rc;
+		}
 		processed_frame = frame_qcmd->command;
 		do_gettimeofday(&(processed_frame->out_time));
 		kfree(frame_qcmd);
@@ -1974,7 +1991,7 @@ static int msm_cpp_send_frame_to_hardware(struct cpp_device *cpp_dev,
 		pr_err("process queue full. drop frame\n");
 		goto end;
 	}
-
+	return rc; /*LGE_CHANGE, CST, clear on_heap after enqueued*/
 dequeue_frame:
 	if (rc < 0) {
 		qcmd = msm_dequeue(&cpp_dev->processing_q, list_frame,
@@ -1992,6 +2009,7 @@ dequeue_frame:
 		}
 	}
 end:
+	atomic_set(&frame_qcmd->on_heap, 0); /*LGE_CHANGE, CST, clear on_heap after enqueued*/
 	return rc;
 }
 

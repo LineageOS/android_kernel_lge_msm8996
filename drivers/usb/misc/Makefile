@@ -28,3 +28,6 @@ obj-$(CONFIG_USB_HSIC_USB3503)		+= usb3503.o
 
 obj-$(CONFIG_USB_SISUSBVGA)		+= sisusbvga/
 obj-$(CONFIG_USB_LINK_LAYER_TEST)	+= lvstest.o
+
+obj-$(CONFIG_LGE_USB_ANX7418)		+= anx7418/
+obj-$(CONFIG_LGE_ALICE_FRIENDS)		+= alice_friends/

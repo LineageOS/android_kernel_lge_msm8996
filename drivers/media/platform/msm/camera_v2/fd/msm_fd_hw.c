@@ -1276,6 +1276,8 @@ void msm_fd_hw_put(struct msm_fd_device *fd)
 		msm_fd_hw_bus_release(fd);
 		msm_fd_hw_disable_clocks(fd);
 		msm_fd_hw_disable_regulators(fd);
+		flush_work(&fd->work);  /* LGE_CHANGE, CST, added fd work flush */
+
 	}
 	mutex_unlock(&fd->lock);
 }
@@ -1503,9 +1505,13 @@ void msm_fd_hw_remove_buffers_from_queue(struct msm_fd_device *fd,
 
 			if (atomic_read(&curr_buff->active))
 				active_buffer = curr_buff;
-			else
+			else {
+/* LGE_CNANGE_S, Do buffer done on all buffers, 2015-12-18, gayoung85.lee@lge.com */
+			//Do a Buffer done on all the other buffers
+				vb2_buffer_done(&curr_buff->vb, VB2_BUF_STATE_DONE);
+/* LGE_CNANGE_E, Do buffer done on all buffers, 2015-12-18, gayoung85.lee@lge.com */
 				list_del(&curr_buff->list);
-
+			}
 		}
 	}
 	spin_unlock(&fd->slock);

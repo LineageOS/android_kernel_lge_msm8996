@@ -9,6 +9,12 @@ config MSM_CAMERA_SENSOR
           data for camera support. The driver support V4L2
           subdev APIs.
 
+config LG_TCS
+        bool "Qualcomm MSM camera TCS support"
+        depends on MSMB_CAMERA
+        ---help---
+        Enable support for true color sensor for msm camera.
+
 config MSM_CPP
         bool "Qualcomm MSM Camera Post Processing Engine support"
         depends on MSMB_CAMERA
@@ -122,6 +128,15 @@ config MSM_ISPIF_V2
           of any CID of CSID can be routed to of pixel
           or raw data interface in VFE.
 
+config IMX234
+	bool "Sensor IMX234 (BAYER 16M)"
+	depends on MSMB_CAMERA
+	---help---
+		Sony 16 MP Bayer Sensor with auto focus, uses
+		4 mipi lanes full resolution @30fps and
+		HFR @60fps and @120fps,
+		Video HDR support.
+
 config IMX134
 	bool "Sensor IMX134 (BAYER 8M)"
 	depends on MSMB_CAMERA
@@ -203,6 +218,13 @@ config OV12830
 		snapshot config = 4224 * 3000 at 15 fps.
 		2 lanes max fps is 18, 4 lanes max fps is 24.
 
+config T4KA3
+	bool "Sensor T4KA3 (Bayer 8M)"
+	depends on MSMB_CAMERA
+	---help---
+		Toshiba 8 MP Bayer Sensor with a fixed focus
+		4 mipi lanes full resolution @30fps and
+
 config MSM_V4L2_VIDEO_OVERLAY_DEVICE
 	tristate "Qualcomm MSM V4l2 video overlay device"
 	---help---
@@ -241,3 +263,27 @@ config MSM_JPEGDMA
         select V4L2_MEM2MEM_DEV
 	---help---
 	  Enable support for Jpeg dma engine.
+
+config LGE_CAMERA_DRIVER
+	bool "LG Camera Support"
+	depends on MSMB_CAMERA
+    ---help---
+      This flag enables support for LG Camera
+
+config LGE_EEPROM
+	bool "LG Camera EEPROM Support"
+	depends on MSM_EEPROM
+    ---help---
+      This flag enables support for LG Camera
+      
+config LG_OIS
+	bool "LG Camera OIS support"
+	depends on MSMB_CAMERA
+	---help---
+	Enable support for ois for LG Camera.
+
+config LG_PROXY
+    bool "Qualcomm MSM camera proxy support"
+    depends on MSMB_CAMERA
+    ---help---
+    Enable support for proxy sensor for msm camera.

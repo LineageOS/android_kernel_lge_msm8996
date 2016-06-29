@@ -1,0 +1,19 @@
+#
+# LGE touch core configuration
+#
+
+if INPUT_TOUCHSCREEN
+
+menuconfig LGE_TOUCH_SYNAPTICS_S3320
+	bool "LGE Touch Core ODM Device Driver - Synaptics(s3320)"
+	depends on LGE_TOUCH_CORE_BASE
+	help
+	  If your device is synaptics(s3320), say Y
+
+menuconfig LGE_TOUCH_SYNAPTICS_TD4302
+	bool "LGE Touch Core ODM Device Driver - Synaptics(td4302)"
+	depends on LGE_TOUCH_CORE_BASE
+	help
+	  If your device is synaptics(td4302), say Y
+
+endif

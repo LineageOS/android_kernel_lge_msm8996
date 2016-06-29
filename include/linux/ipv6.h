@@ -304,12 +304,14 @@ static inline struct ipv6_pinfo * inet6_sk(const struct sock *__sk)
 	return NULL;
 }
 
+#ifdef CONFIG_LGP_DATA_TCPIP_MPTCP
+#else
 static inline struct inet6_request_sock *
 			inet6_rsk(const struct request_sock *rsk)
 {
 	return NULL;
 }
-
+#endif
 static inline struct raw6_sock *raw6_sk(const struct sock *sk)
 {
 	return NULL;

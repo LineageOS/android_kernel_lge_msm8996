@@ -2173,6 +2173,8 @@ extern void sched_set_cpu_cstate(int cpu, int cstate,
 			 int wakeup_energy, int wakeup_latency);
 extern void sched_set_cluster_dstate(const cpumask_t *cluster_cpus, int dstate,
 				int wakeup_energy, int wakeup_latency);
+/* ADAPT_LGE_BMC */
+extern int sched_get_cpu_cstate(int cpu);
 #else
 static inline void do_set_cpus_allowed(struct task_struct *p,
 				      const struct cpumask *new_mask)
@@ -2192,6 +2194,11 @@ sched_set_cpu_cstate(int cpu, int cstate, int wakeup_energy, int wakeup_latency)
 
 static inline void sched_set_cluster_dstate(const cpumask_t *cluster_cpus,
 			int dstate, int wakeup_energy, int wakeup_latency)
+{
+}
+
+/* ADAPT_LGE_BMC */
+static inline int sched_get_cpu_cstate(int cpu)
 {
 }
 #endif

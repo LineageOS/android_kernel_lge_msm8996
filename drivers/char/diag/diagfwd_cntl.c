@@ -27,6 +27,10 @@
 
 #define FEATURE_SUPPORTED(x)	((feature_mask << (i * 8)) & (1 << x))
 
+#ifdef CONFIG_LGE_USB_DIAG_LOCK_SPR
+extern int user_diag_enable;
+#endif
+
 /* tracks which peripheral is undergoing SSR */
 static uint16_t reg_dirty;
 static void diag_notify_md_client(uint8_t peripheral, int data);
@@ -642,6 +646,10 @@ static void process_build_mask_report(uint8_t *buf, uint32_t len,
 	}
 }
 
+#ifdef CONFIG_LGE_USB_DIAG_LOCK_SPR
+extern int set_diag_enable(int);
+#endif
+
 void diag_cntl_process_read_data(struct diagfwd_info *p_info, void *buf,
 				 int len)
 {
@@ -649,6 +657,9 @@ void diag_cntl_process_read_data(struct diagfwd_info *p_info, void *buf,
 	int header_len = sizeof(struct diag_ctrl_pkt_header_t);
 	uint8_t *ptr = buf;
 	struct diag_ctrl_pkt_header_t *ctrl_pkt = NULL;
+#ifdef CONFIG_LGE_USB_DIAG_LOCK_SPR
+	struct diag_ctrl_cmd_reg *reg = NULL;
+#endif
 
 	if (!buf || len <= 0 || !p_info)
 		return;
@@ -694,6 +705,13 @@ void diag_cntl_process_read_data(struct diagfwd_info *p_info, void *buf,
 			process_pd_status(ptr, ctrl_pkt->len,
 						p_info->peripheral);
 			break;
+#ifdef CONFIG_LGE_USB_DIAG_LOCK_SPR
+		case DIAG_CTRL_MSG_LGE_DIAG_ENABLE:
+			reg = (struct diag_ctrl_cmd_reg *)ptr;
+			user_diag_enable = reg->cmd_code;
+			pr_info("diag: In %s, diag_enable: %d\n", __func__, reg->cmd_code);
+			break;
+#endif
 		default:
 			pr_debug("diag: Control packet %d not supported\n",
 				 ctrl_pkt->pkt_id);

@@ -96,6 +96,16 @@ unsigned int tune2;
 module_param(tune2, uint, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(tune2, "QUSB PHY TUNE2");
 
+#ifdef CONFIG_LGE_USB_G_ANDROID
+static uint32_t qusb2phy_port_tune[4] = {0, 0x43, 0, 0};
+module_param_array(qusb2phy_port_tune, uint, NULL, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(qusb2phy_port_tune, "Override QUSB2PHY_PORT_TUNEs");
+
+static uint32_t qusb2phy_port_tune_otg[4] = {0, 0x43, 0, 0};
+module_param_array(qusb2phy_port_tune_otg, uint, NULL, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(qusb2phy_port_tune_otg, "Override QUSB2PHY_PORT_TUNEs for OTG");
+#endif
+
 struct qusb_phy {
 	struct usb_phy		phy;
 	void __iomem		*base;
@@ -137,6 +147,30 @@ struct qusb_phy {
 	int			emu_dcm_reset_seq_len;
 	spinlock_t		pulse_lock;
 };
+
+#ifdef CONFIG_LGE_USB_FLOATED_CHARGER_DETECT
+void qusb_phy_set_nondrive_mode(struct usb_phy *phy)
+{
+	struct qusb_phy *qphy = container_of(phy, struct qusb_phy, phy);
+
+	/*
+	 * Phy in non-driving mode leaves Dp and Dm lines in
+	 * high-Z state. Controller power collapse is not
+	 * switching phy to non-driving mode causing charger
+	 * detection failure. Bring phy to non-driving mode by
+	 * overriding controller output via UTMI interface.
+	 */
+
+	if (!qphy->suspended) {
+		writel_relaxed(TERM_SELECT | XCVR_SELECT_FS | OP_MODE_NON_DRIVE,
+				qphy->base + QUSB2PHY_PORT_UTMI_CTRL1);
+		writel_relaxed(UTMI_ULPI_SEL | UTMI_TEST_MUX_SEL,
+				qphy->base + QUSB2PHY_PORT_UTMI_CTRL2);
+	} else {
+		pr_info("%s: qphy is already in suspended\n", __func__);
+	}
+}
+#endif
 
 static void qusb_phy_enable_clocks(struct qusb_phy *qphy, bool on)
 {
@@ -306,6 +340,22 @@ err_vdd:
 	dev_dbg(qphy->phy.dev, "QUSB PHY's regulators are turned OFF.\n");
 	return ret;
 }
+
+#ifdef CONFIG_LGE_USB_FLOATED_CHARGER_DETECT
+static void qusb_phy_read_dpdm(struct usb_phy *phy, int *dp, int*dm)
+{
+	struct qusb_phy *qphy = container_of(phy, struct qusb_phy, phy);
+	u32 linestate = 0;
+
+	linestate = readl_relaxed(qphy->base +
+			QUSB2PHY_PORT_UTMI_STATUS);
+
+	*dp = (int)((linestate & LINESTATE_DP));
+	*dm = (int)((linestate & LINESTATE_DM) >> 1);
+
+	pr_info("%s: LINESTATE_DP(%d), LINESTATE_DM(%d)\n", __func__, *dp, *dm);
+}
+#endif
 
 #define PHY_PULSE_TIME_USEC		250
 static int qusb_phy_update_dpdm(struct usb_phy *phy, int value)
@@ -525,6 +575,10 @@ static int qusb_phy_init(struct usb_phy *phy)
 {
 	struct qusb_phy *qphy = container_of(phy, struct qusb_phy, phy);
 	int ret;
+#ifdef CONFIG_LGE_USB_G_ANDROID
+	uint32_t *tune;
+	int i;
+#endif
 
 	dev_dbg(phy->dev, "%s\n", __func__);
 
@@ -615,6 +669,32 @@ static int qusb_phy_init(struct usb_phy *phy)
 				qphy->base + QUSB2PHY_PORT_TUNE2);
 	}
 
+#ifdef CONFIG_LGE_USB_G_ANDROID
+	if (qphy->phy.flags & PHY_OTG_MODE)
+		tune = qusb2phy_port_tune_otg;
+	else
+		tune = qusb2phy_port_tune;
+
+	for (i = 0; i < 4; i++) {
+		if (tune[i]) {
+			pr_debug("%s(): Programming TUNE%d parameter as:%x\n",
+					__func__, i + 1, tune[i]);
+			writel_relaxed(tune[i], qphy->base
+					+ QUSB2PHY_PORT_TUNE1 + (0x04 * i));
+		} else {
+			tune[i] = readl_relaxed(qphy->base
+					+ QUSB2PHY_PORT_TUNE1 + (0x04 * i)) & 0xFF;
+		}
+	}
+	pr_debug("%s:(): qusb2phy_port_tune%s = 0x%02X,0x%02X,0x%02X,0x%02X\n",
+			__func__,
+			(qphy->phy.flags & PHY_OTG_MODE) ? "_otg" : "",
+			tune[0],
+			tune[1],
+			tune[2],
+			tune[3]);
+#endif
+
 	/* ensure above writes are completed before re-enabling PHY */
 	wmb();
 
@@ -672,6 +752,10 @@ static int qusb_phy_set_suspend(struct usb_phy *phy, int suspend)
 {
 	struct qusb_phy *qphy = container_of(phy, struct qusb_phy, phy);
 	u32 linestate = 0, intr_mask = 0;
+#ifdef CONFIG_LGE_USB_G_ANDROID
+	uint32_t *tune;
+	int i;
+#endif
 
 	if (qphy->suspended && suspend) {
 		dev_dbg(phy->dev, "%s: USB PHY is already suspended\n",
@@ -723,9 +807,16 @@ static int qusb_phy_set_suspend(struct usb_phy *phy, int suspend)
 			writel_relaxed(TERM_SELECT | XCVR_SELECT_FS |
 				OP_MODE_NON_DRIVE,
 				qphy->base + QUSB2PHY_PORT_UTMI_CTRL1);
+
 			writel_relaxed(UTMI_ULPI_SEL | UTMI_TEST_MUX_SEL,
 				qphy->base + QUSB2PHY_PORT_UTMI_CTRL2);
 
+			/* Put PHY into power down mode */
+			writel_relaxed(CLAMP_N_EN | FREEZIO_N | POWER_DOWN,
+				qphy->base + QUSB2PHY_PORT_POWERDOWN);
+
+			/* Make sure that abov write is completed */
+			wmb();
 
 			qusb_phy_enable_clocks(qphy, false);
 			qusb_phy_enable_power(qphy, false, true);
@@ -743,6 +834,33 @@ static int qusb_phy_set_suspend(struct usb_phy *phy, int suspend)
 			qusb_phy_enable_power(qphy, true, true);
 			qusb_phy_enable_clocks(qphy, true);
 		}
+
+#ifdef CONFIG_LGE_USB_G_ANDROID
+		if (qphy->phy.flags & PHY_OTG_MODE)
+			tune = qusb2phy_port_tune_otg;
+		else
+			tune = qusb2phy_port_tune;
+
+		for (i = 0; i < 4; i++) {
+			if (tune[i]) {
+				pr_debug("%s(): Programming TUNE%d parameter as:%x\n",
+						__func__, i + 1, tune[i]);
+				writel_relaxed(tune[i], qphy->base
+						+ QUSB2PHY_PORT_TUNE1 + (0x04 * i));
+			} else {
+				tune[i] = readl_relaxed(qphy->base
+						+ QUSB2PHY_PORT_TUNE1 + (0x04 * i)) & 0xFF;
+			}
+		}
+		pr_debug("%s:(): qusb2phy_port_tune%s = 0x%02X,0x%02X,0x%02X,0x%02X\n",
+				__func__,
+				(qphy->phy.flags & PHY_OTG_MODE) ? "_otg" : "",
+				tune[0],
+				tune[1],
+				tune[2],
+				tune[3]);
+#endif
+
 		qphy->suspended = false;
 	}
 
@@ -1033,6 +1151,10 @@ static int qusb_phy_probe(struct platform_device *pdev)
 	qphy->phy.set_suspend           = qusb_phy_set_suspend;
 	qphy->phy.shutdown		= qusb_phy_shutdown;
 	qphy->phy.change_dpdm		= qusb_phy_update_dpdm;
+#ifdef CONFIG_LGE_USB_FLOATED_CHARGER_DETECT
+	qphy->phy.read_dpdm		= qusb_phy_read_dpdm;
+	qphy->phy.set_nondrive_mode = qusb_phy_set_nondrive_mode;
+#endif
 	qphy->phy.type			= USB_PHY_TYPE_USB2;
 
 	if (qphy->qscratch_base) {

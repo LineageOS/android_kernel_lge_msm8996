@@ -1063,6 +1063,7 @@ static int armv8pmu_request_irq(struct arm_pmu *cpu_pmu, irq_handler_t handler)
 			return err;
 		}
 
+		cpu_pmu->percpu_irq = irq;
 		on_each_cpu(armpmu_enable_percpu_irq, &irq, 1);
 	} else {
 		for (i = 0; i < irqs; ++i) {
@@ -1511,7 +1512,7 @@ static int __cpuinit cpu_pmu_notify(struct notifier_block *b,
 				smp_call_function_single(cpu,
 					armpmu_hotplug_disable, cpu_pmu, 1);
 			/* Disarm the PMU IRQ before disappearing. */
-			if (cpu_pmu->plat_device) {
+			if (cpu_pmu->percpu_irq) {
 				irq = cpu_pmu->percpu_irq;
 				smp_call_function_single(cpu,
 					    armpmu_disable_percpu_irq, &irq, 1);
@@ -1528,7 +1529,7 @@ static int __cpuinit cpu_pmu_notify(struct notifier_block *b,
 			cpu_pmu->restore_pm_registers(hcpu);
 		if (cpu_pmu->pmu_state == ARM_PMU_STATE_RUNNING) {
 			/* Arm the PMU IRQ before appearing. */
-			if (cpu_pmu->plat_device) {
+			if (cpu_pmu->percpu_irq) {
 				irq = cpu_pmu->percpu_irq;
 				armpmu_enable_percpu_irq(&irq);
 			}

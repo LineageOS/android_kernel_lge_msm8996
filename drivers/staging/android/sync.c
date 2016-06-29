@@ -26,12 +26,15 @@
 #include <linux/uaccess.h>
 #include <linux/anon_inodes.h>
 #include <linux/sync.h>
+#include <linux/spinlock.h>
 
 #define CREATE_TRACE_POINTS
 #include "trace/sync.h"
 
 static const struct fence_ops android_fence_ops;
 static const struct file_operations sync_fence_fops;
+
+DEFINE_SPINLOCK(debug_lock);
 
 struct sync_timeline *sync_timeline_create(const struct sync_timeline_ops *ops,
 					   int size, const char *name)
@@ -103,11 +106,13 @@ EXPORT_SYMBOL(sync_timeline_destroy);
 void sync_timeline_signal(struct sync_timeline *obj)
 {
 	unsigned long flags;
+	unsigned long debug_flags;
 	LIST_HEAD(signaled_pts);
 	struct sync_pt *pt, *next;
 
 	trace_sync_timeline(obj);
 
+	spin_lock_irqsave(&debug_lock, debug_flags);
 	spin_lock_irqsave(&obj->child_list_lock, flags);
 
 	list_for_each_entry_safe(pt, next, &obj->active_list_head,
@@ -117,6 +122,7 @@ void sync_timeline_signal(struct sync_timeline *obj)
 	}
 
 	spin_unlock_irqrestore(&obj->child_list_lock, flags);
+	spin_unlock_irqrestore(&debug_lock, debug_flags);
 }
 EXPORT_SYMBOL(sync_timeline_signal);
 
@@ -519,13 +525,16 @@ static void sync_fence_free(struct kref *kref)
 {
 	struct sync_fence *fence = container_of(kref, struct sync_fence, kref);
 	int i, status = atomic_read(&fence->status);
+	unsigned long debug_flags;
 
+	spin_lock_irqsave(&debug_lock, debug_flags);
 	for (i = 0; i < fence->num_fences; ++i) {
 		if (status)
 			fence_remove_callback(fence->cbs[i].sync_pt,
 					      &fence->cbs[i].cb);
 		fence_put(fence->cbs[i].sync_pt);
 	}
+	spin_unlock_irqrestore(&debug_lock, debug_flags);
 
 	kfree(fence);
 }

@@ -18,7 +18,11 @@
 
 #ifdef CONFIG_SPARSEMEM
 #define MAX_PHYSMEM_BITS	48
+#if defined(CONFIG_LGE_DDR_SECTION_SIZE_CHANGE)
+#define SECTION_SIZE_BITS	29
+#else
 #define SECTION_SIZE_BITS	30
+#endif
 #endif
 
 #endif

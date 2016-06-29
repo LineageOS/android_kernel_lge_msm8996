@@ -1306,7 +1306,11 @@ static void namespace_unlock(void)
 
 	up_write(&namespace_sem);
 
+#ifdef CONFIG_MACH_LGE
+	synchronize_rcu_expedited();
+#else
 	synchronize_rcu();
+#endif
 
 	while (!hlist_empty(&head)) {
 		mnt = hlist_entry(head.first, struct mount, mnt_hash);

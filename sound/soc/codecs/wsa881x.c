@@ -35,6 +35,9 @@
 #include "wsa881x.h"
 #include "wsa881x-temp-sensor.h"
 
+#ifdef CONFIG_MACH_LGE
+#include <soc/qcom/lge/board_lge.h>
+#endif
 #define WSA881X_NUM_RETRY	5
 
 enum {
@@ -910,6 +913,7 @@ static void wsa881x_init(struct snd_soc_codec *codec)
 	snd_soc_update_bits(codec, WSA881X_CDC_RST_CTL, 0x01, 0x01);
 
 	if (WSA881X_IS_2_0(wsa881x->version)) {
+		dev_info(codec->dev, "%s: WSA881X_IS_2_0\n", __func__);
 		snd_soc_update_bits(codec, WSA881X_CLOCK_CONFIG, 0x10, 0x10);
 		snd_soc_update_bits(codec, WSA881X_SPKR_OCP_CTL, 0x02, 0x02);
 		snd_soc_update_bits(codec, WSA881X_SPKR_MISC_CTL1, 0xC0, 0x80);
@@ -941,6 +945,7 @@ static void wsa881x_init(struct snd_soc_codec *codec)
 		snd_soc_update_bits(codec, WSA881X_BONGO_RESRV_REG2,
 				    0xFF, 0x05);
 	} else {
+		dev_info(codec->dev, "%s: WSA881X_IS_NOT_2_0\n", __func__);
 		/* Set DAC polarity to Rising */
 		snd_soc_update_bits(codec, WSA881X_SPKR_DAC_CTL, 0x02, 0x02);
 		/* set Bias Ref ctrl to 1.225V */
@@ -1033,6 +1038,9 @@ static int wsa881x_probe(struct snd_soc_codec *codec)
 	wsa881x->codec = codec;
 	mutex_init(&wsa881x->bg_lock);
 	mutex_init(&wsa881x->res_lock);
+#ifdef CONFIG_MACH_LGE
+	swr_wakeup_soundwire_master(dev);
+#endif
 	wsa881x_init(codec);
 	snprintf(wsa881x->tz_pdata.name, sizeof(wsa881x->tz_pdata.name),
 		"%s.%x", "wsatz", (u8)dev->addr);
@@ -1268,7 +1276,15 @@ static int wsa881x_swr_down(struct swr_device *pdev)
 		dev_err(&pdev->dev, "%s: wsa881x is NULL\n", __func__);
 		return -EINVAL;
 	}
+#ifdef CONFIG_MACH_LGE
+	if (wsa881x->state == WSA881X_DEV_UP) {
+		cancel_delayed_work_sync(&wsa881x->ocp_ctl_work);
+	} else {
+		dev_err(&pdev->dev, "%s: do not cancel in WSA881X_DEV_DOWN status\n", __func__);
+	}
+#else
 	cancel_delayed_work_sync(&wsa881x->ocp_ctl_work);
+#endif
 	ret = wsa881x_gpio_ctrl(wsa881x, false);
 	if (ret)
 		dev_err(&pdev->dev, "%s: Failed to disable gpio\n", __func__);

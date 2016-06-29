@@ -3310,6 +3310,11 @@ static void mdss_mdp_ctl_restore_sub(struct mdss_mdp_ctl *ctl)
 			MDSS_MDP_REG_DISP_INTF_SEL);
 
 	if (ctl->mfd && ctl->panel_data) {
+		/* sleep some time to make sure AD auto-reinitialization
+		   is completed */
+		udelay(10);
+		mdss_set_mdp_cbcr_exit_memory_retention();
+		ctl->mfd->ipc_resume = true;
 		mdss_mdp_pp_resume(ctl->mfd);
 
 		if (ctl->panel_data->panel_info.compression_mode ==

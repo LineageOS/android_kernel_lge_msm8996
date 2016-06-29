@@ -507,5 +507,8 @@ int hdmi_hdcp2p2_ddc_check_status(struct hdmi_tx_ddc_ctrl *ctrl);
 int hdmi_hdcp2p2_ddc_read_rxstatus(struct hdmi_tx_ddc_ctrl *ctrl);
 int hdmi_utils_get_timeout_in_hysnc(struct msm_hdmi_mode_timing_info *timing,
 	u32 timeout_ms);
+#ifdef CONFIG_SLIMPORT_COMMON
+int msm_hdmi_get_timing_info(struct msm_hdmi_mode_timing_info *mode, int id);
+#endif
 
 #endif /* __HDMI_UTIL_H__ */

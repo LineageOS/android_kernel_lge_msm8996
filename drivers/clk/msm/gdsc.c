@@ -579,7 +579,11 @@ static int __init gdsc_init(void)
 {
 	return platform_driver_register(&gdsc_driver);
 }
+#ifdef CONFIG_MACH_LGE
+arch_initcall_sync(gdsc_init);
+#else
 subsys_initcall(gdsc_init);
+#endif
 
 static void __exit gdsc_exit(void)
 {

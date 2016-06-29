@@ -32,6 +32,8 @@
 #include "cam_hw_ops.h"
 #include <media/msmb_generic_buf_mgr.h>
 
+/*LGE_CHANGE, CST, added variable for debugfs*/
+static uint8_t msm_debug;
 
 static struct v4l2_device *msm_v4l2_dev;
 static struct list_head    ordered_sd_list;
@@ -195,6 +197,18 @@ static inline int __msm_queue_find_command_ack_q(void *d1, void *d2)
 	return (ack->stream_id == *(unsigned int *)d2) ? 1 : 0;
 }
 
+/* LGE_CHANGE, CST, check whether v4l2 events are subscribed */
+static inline bool msm_event_subscribed(
+               struct v4l2_fh *fh, u32 type, u32 id)
+{
+	struct v4l2_subscribed_event *sev;
+	assert_spin_locked(&fh->vdev->fh_lock);
+
+	list_for_each_entry(sev, &fh->subscribed, list)
+		if (sev->type == type && sev->id == id)
+			return true;
+	return false;
+}
 
 struct msm_session *msm_session_find(unsigned int session_id)
 {
@@ -400,6 +414,7 @@ int msm_create_command_ack_q(unsigned int session_id, unsigned int stream_id)
 				__func__, __LINE__);
 		return -EINVAL;
 	}
+	pr_err("%s: session_id = %d, stream_id = %d\n", __func__,session_id,stream_id); /*LGE_CHANGE, add the mutex to fix the poison overwritten, 2015-03-31, freeso.kim@lge.com*/
 	mutex_lock(&session->lock);
 	cmd_ack = kzalloc(sizeof(*cmd_ack), GFP_KERNEL);
 	if (!cmd_ack) {
@@ -430,6 +445,7 @@ void msm_delete_command_ack_q(unsigned int session_id, unsigned int stream_id)
 		list, __msm_queue_find_session, &session_id);
 	if (!session)
 		return;
+	pr_err("%s: session_id = %d, stream_id = %d\n", __func__,session_id,stream_id); /*LGE_CHANGE, add the mutex to fix the poison overwritten, 2015-03-31, freeso.kim@lge.com*/
 	mutex_lock(&session->lock);
 
 	cmd_ack = msm_queue_find(&session->command_ack_q,
@@ -532,6 +548,7 @@ int msm_destroy_session(unsigned int session_id)
 	struct v4l2_subdev *buf_mgr_subdev;
 	struct msm_sd_close_ioctl session_info;
 
+	pr_err("%s: session_id = %d\n", __func__,session_id); /*LGE_CHANGE, add the mutex to fix the poison overwritten, 2015-03-31, freeso.kim@lge.com*/
 	session = msm_queue_find(msm_session_q, struct msm_session,
 		list, __msm_queue_find_session, &session_id);
 	if (!session)
@@ -711,6 +728,20 @@ static void msm_print_event_error(struct v4l2_event *event)
 		event_data->session_id, event_data->stream_id,
 		event_data->arg_value);
 }
+/*LGE_CHANGE, CST, shutting down whent timed out in posting events */
+void msm_shutdown_imaging_server(struct video_device *vdev) {
+	struct v4l2_event event;
+	pr_err("%s: sending event to shutdown qcamsvr\n",__func__);
+
+	event.type = MSM_CAMERA_V4L2_EVENT_TYPE;
+	event.id = MSM_CAMERA_SHUTDOWN;
+	v4l2_event_queue(vdev, &event);
+	BIT_SET(msm_debug, LGE_DEBUG_BLOCK_POST_EVENT);
+
+	/* send v4l2_event to HAL next*/
+	msm_queue_traverse_action(msm_session_q, struct msm_session, list,
+		__msm_close_destry_session_notify_apps, NULL);
+}
 
 /* something seriously wrong if msm_close is triggered
  *   !!! user space imaging server is shutdown !!!
@@ -726,6 +757,7 @@ int msm_post_event(struct v4l2_event *event, int timeout)
 	struct msm_command *cmd;
 	int session_id, stream_id;
 	unsigned long flags = 0;
+	struct v4l2_fh *fh; /* LGE_CHANGE, CST, v4l2 subscription check */
 
 	session_id = event_data->session_id;
 	stream_id = event_data->stream_id;
@@ -741,6 +773,26 @@ int msm_post_event(struct v4l2_event *event, int timeout)
 
 	vdev = msm_eventq->vdev;
 
+	/* LGE_CHANGE, CST, check whether v4l2 events are subscribed */
+	if(event->id == MSM_CAMERA_NEW_SESSION) {
+		spin_lock_irqsave(&vdev->fh_lock, flags);
+		fh = (struct v4l2_fh *)vdev->fh_list.next;
+		if(!msm_event_subscribed(fh, event->type, event->id)) {
+			pr_err("%s :%d v4l2 events not subscribed yet! type(0x%x) id(0x%x)\n",
+				__func__, __LINE__, event->type, event->id);
+			spin_unlock_irqrestore(&vdev->fh_lock, flags);
+			return -EIO;  //-EAGAIN;  HAL to reopen camera repeatedly
+		}
+		spin_unlock_irqrestore(&vdev->fh_lock, flags);
+		if(BIT_ISSET(msm_debug, LGE_DEBUG_BLOCK_POST_EVENT))
+			BIT_CLR(msm_debug, LGE_DEBUG_BLOCK_POST_EVENT);
+	}
+
+	if(BIT_ISSET(msm_debug, LGE_DEBUG_BLOCK_POST_EVENT)) {
+		pr_err("%s:%d] blocking events while restarting qcamsvr\n",
+			__func__, __LINE__);
+		return rc;
+	}
 	/* send to imaging server and wait for ACK */
 	session = msm_queue_find(msm_session_q, struct msm_session,
 		list, __msm_queue_find_session, &session_id);
@@ -771,27 +823,34 @@ int msm_post_event(struct v4l2_event *event, int timeout)
 				__func__, __LINE__);
 		return rc;
 	}
-
+/* LGE_CHANGE_S, camera stability task, added  msm-config debugfs*/
+	if(unlikely(BIT_ISSET(msm_debug, LGE_DEBUG_DISABLE_TIMEOUT))) {
+		msm_print_event_error(event);
+		wait_for_completion(&cmd_ack->wait_complete);
+	} else {
 	/* should wait on session based condition */
-	rc = wait_for_completion_timeout(&cmd_ack->wait_complete,
-			msecs_to_jiffies(timeout));
+		rc = wait_for_completion_timeout(&cmd_ack->wait_complete,
+				msecs_to_jiffies(timeout));
 
-
-	if (list_empty_careful(&cmd_ack->command_q.list)) {
-		if (!rc) {
-			pr_err("%s: Timed out\n", __func__);
-			msm_print_event_error(event);
-			mutex_unlock(&session->lock);
-			return -ETIMEDOUT;
-		} else {
-			pr_err("%s: Error: No timeout but list empty!",
-					__func__);
-			msm_print_event_error(event);
-			mutex_unlock(&session->lock);
-			return -EINVAL;
+		if (list_empty_careful(&cmd_ack->command_q.list)) {
+			if (!rc) {
+				pr_err("%s: Timed out\n", __func__);
+				msm_print_event_error(event);
+				mutex_unlock(&session->lock);
+				BUG_ON(unlikely(BIT_ISSET(msm_debug, LGE_DEBUG_PANIC_ON_TIMEOUT)));
+				dump_stack();
+				msm_shutdown_imaging_server(vdev);
+				return -ETIMEDOUT;
+			} else {
+				pr_err("%s: Error: No timeout but list empty!",
+						__func__);
+				msm_print_event_error(event);
+				mutex_unlock(&session->lock);
+				return -EINVAL;
+			}
 		}
 	}
-
+/* LGE_CHANGE_E, camera stability task, added  msm-config debugfs*/
 	cmd = msm_dequeue(&cmd_ack->command_q,
 		struct msm_command, list);
 	if (!cmd) {
@@ -1028,6 +1087,54 @@ static void msm_sd_notify(struct v4l2_subdev *sd,
 		break;
 	}
 }
+/* LGE_CHANGE_S, camera stability task, added  msm-config debugfs*/
+static int msm_config_debugfs_get(void *data, u64 *val)
+{
+       *val = msm_debug;
+       return 0;
+}
+
+static int msm_config_debugfs_set(void  *data, u64 val)
+{
+	uint32_t key = LGE_DEBUG_PANIC_ON_TIMEOUT
+			^ LGE_DEBUG_DISABLE_TIMEOUT;
+	if(!val) {
+		pr_err("clear all bits \n");
+		msm_debug = 0;
+		return 0;
+	} else if(val > LGE_DEBUG_PANIC_ON_TIMEOUT) {
+		pr_err("bit(%d) is either reserved or disallowed\n",(int)val);
+		return 0;
+	} else {
+		pr_err("bit(%d) is set(prev(%x) \n", (int)val, msm_debug);
+		if(BIT_ISSET(msm_debug, LGE_DEBUG_DISABLE_TIMEOUT)
+			||BIT_ISSET(msm_debug, LGE_DEBUG_PANIC_ON_TIMEOUT)) {
+			BIT_CLR(msm_debug, (val^key));
+		}
+		BIT_SET(msm_debug, (uint8_t)val);
+	}
+	return 0;
+}
+
+DEFINE_SIMPLE_ATTRIBUTE(msm_config_debugfs, msm_config_debugfs_get,
+       msm_config_debugfs_set, "%llu\n");
+
+static int msm_config_create_debugfs(struct video_device *ctrl_t)
+{
+	struct dentry *debugfs_base;
+	char dirname[32] = {0};
+
+	snprintf(dirname, sizeof(dirname), "msm-config");
+	debugfs_base = debugfs_create_dir(dirname, NULL);
+	if (!debugfs_base)
+		return -ENOMEM;
+	if (!debugfs_create_file("timeout", S_IRUGO | S_IWUSR, debugfs_base,
+		ctrl_t, &msm_config_debugfs))
+		return -ENOMEM;
+
+	return 0;
+}
+/* LGE_CHANGE_E, camera stability task, added debugfs for msm-config*/
 
 static ssize_t write_logsync(struct file *file, const char __user *buf,
 		size_t count, loff_t *ppos)
@@ -1132,7 +1239,10 @@ static int msm_probe(struct platform_device *pdev)
 	msm_session_q = kzalloc(sizeof(*msm_session_q), GFP_KERNEL);
 	if (WARN_ON(!msm_session_q))
 		goto v4l2_fail;
-
+/* LGE_CHANGE_S, camera stability task, added  msm-config debugfs*/
+	msm_config_create_debugfs(pvdev->vdev);
+	msm_debug = 0;
+/* LGE_CHANGE_E, camera stability task, added  msm-config debugfs*/
 	msm_init_queue(msm_session_q);
 	spin_lock_init(&msm_eventq_lock);
 	spin_lock_init(&msm_pid_lock);
@@ -1144,7 +1254,12 @@ static int msm_probe(struct platform_device *pdev)
 		pr_warn("NON-FATAL: failed to create logsync base directory\n");
 	} else {
 		if (!debugfs_create_file(MSM_CAM_LOGSYNC_FILE_NAME,
+		//CTS Issue Fix (MLM HONE-5010, Case#02316080)
+		#ifdef CONFIG_LGE_CAMERA_DRIVER
+					 0644,
+		#else //QCT Original
 					 0666,
+		#endif
 					 cam_debugfs_root,
 					 NULL,
 					 &logsync_fops))

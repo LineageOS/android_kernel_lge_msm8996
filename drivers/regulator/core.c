@@ -280,6 +280,12 @@ static int regulator_mode_constrain(struct regulator_dev *rdev, int *mode)
 	case REGULATOR_MODE_NORMAL:
 	case REGULATOR_MODE_IDLE:
 	case REGULATOR_MODE_STANDBY:
+#if defined(CONFIG_LGE_MIPI_H1_INCELL_QHD_CMD_PANEL)
+	case REGULATOR_MODE_SHUTDOWN:
+	case REGULATOR_MODE_SPARE_ON:
+	case REGULATOR_MODE_TTW_ON:
+	case REGULATOR_MODE_TTW_OFF:
+#endif
 		break;
 	default:
 		rdev_err(rdev, "invalid mode %x specified\n", *mode);

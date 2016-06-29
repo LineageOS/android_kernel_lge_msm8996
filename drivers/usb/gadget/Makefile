@@ -19,3 +19,5 @@ obj-$(CONFIG_USB_G_ANDROID)	+= g_android.o
 obj-$(CONFIG_USB_CI13XXX_MSM)	+= ci13xxx_msm.o
 
 obj-$(CONFIG_USB_CI13XXX_MSM_HSIC)	+= ci13xxx_msm_hsic.o
+
+obj-$(CONFIG_LGE_USB_G_ANDROID)	+= u_lgeusb.o

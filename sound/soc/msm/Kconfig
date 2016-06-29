@@ -183,4 +183,40 @@ config SND_SOC_MSM8X16
 	 the machine driver and the corresponding
 	 DAI-links
 
+config SND_LGE_EFFECT
+	bool "LGE DSP EFFECT"
+	default y
+	help
+	 To support LGE DSP EFFECT
+
+config SND_LGE_NORMALIZER
+	bool "LGE DSP NORMALIZER"
+	default y
+	help
+	 To support LGE DSP NORMALIZER
+
+config SND_LGE_MABL
+	bool "LGE DSP MABL"
+	default y
+	help
+	 To support LGE DSP MABL
+
+config SND_LGE_USE_PHONE_MEMO
+	bool "LGE PHONE MEMO"
+	default n
+	help
+	 To support LGE PHONE MEMO TX MUTE
+
+config SND_LGE_DSDP_DUAL_AUDIO
+	bool "LGE DSDP DUAL AUDIO"
+	default n
+	help
+	 To support LGE Sound DSDP Dual Audio
+
+config SND_USE_QUAT_MI2S
+	bool "USE QUAT MI2S PORT"
+	default n
+	help
+	 To support MSM QUAT MI2S PORT for LG FM RADIO
+
 endmenu

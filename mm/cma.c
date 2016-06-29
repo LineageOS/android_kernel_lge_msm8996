@@ -367,13 +367,13 @@ struct page *cma_alloc(struct cma *cma, size_t count, unsigned int align)
 		if (bitmap_no >= bitmap_maxno) {
 			if (retry_after_sleep < 2) {
 				start = 0;
+				pr_debug("%s: Memory range busy," "retry after sleep\n", __func__);
 				/*
 				* Page may be momentarily pinned by some other
 				* process which has been scheduled out, eg.
-				* in exit path, during unmap call, or process
-				* fork and so cannot be freed there. Sleep
-				* for 100ms and retry twice to see if it has
-				* been freed later.
+				* in exit path or during unmap call,and so
+				* cannot be freed there. Sleep for 100ms and
+				* retry twice to see if it has been freed later.
 				*/
 				mutex_unlock(&cma->lock);
 				msleep(100);

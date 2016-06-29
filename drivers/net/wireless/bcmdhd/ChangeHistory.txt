@@ -1,0 +1,44 @@
+BCM43XX DHD 1.363.70 for M OS Release Note.
+
+DHD 1.363.70.4 (2016.01.19)
+  - Fixed wakelock held issues (CSP#998561)
+  - Fixed kernel panic after hang up process has done (CSP#1004363)
+  - Fixed kernel panic due to memory violation at OOB status (CSP#1005456)
+  - Fixed kernel NOC error due to scheduled tasklet (CSP#1002728)
+  - Fixed watchdog by rtnl_lock (CSP#1010735)
+  - Apply google patches to prevent possible memory violation (CSP#1010150)
+  - Enhance DMA logic (CSP#1012336)
+  - Fixed kernel crash at dhd_set_mast_list_handler during Autonomous GO/GC connect/disconnect test (CSP#1007897)
+  - Add private command to enhance ping delay issue for SCC P2P file transfer (CSP#1008536)
+  - Disable RuntimePM for during connection in progress (CSP#1001232. CSP#996797)
+  - Keep roam off flag for OTA enabled case (CSP#1000034)
+  - Fixed wrong return value in __wl_cfg80211_scan() (CSP#1007696)
+  - Fixed RPM watchdog bite crash (CSP#1011410)
+  - Fixed current consumption issue after hotspot off due to wakelock has held (CSP#1010972)
+
+DHD 1.363.70.3 (2015.12.10)
+  - Fixed kernel panic at start_xmit with TCPACK_SUPPRESS feature enable (CSP#998984)
+  - Split event wakelock to simplify to debug wake lock issues (CSP#998561)
+  - Fixed base current issues (CSP#983678, CSP#984445)
+  - Fixed scan loss issue (CSP#997737)
+  - Fixed Tput issues (CSP#993662, CSP#993883, CSP#982286)
+  - Fixed Kernel panic during P2P connection (CSP#999727)
+  - Fixed Kernel warning on wifi direct/p2p disconnect moment(CSP#994834, CSP#999728)
+  - Fixed probe delay issue (CSP#992375)
+  - Fixed RuntimePM lockup issue (CSP#994442)
+  - Fixed MFP set failure issue (CSP#987292)
+  - Fixed compile error when WAPI is defined (CSP#992225)
+  NOTE: Please create "/data/log/" as writable directory. FW_CORE_DUMP feature
+  has enabled from 1.363.70.3 so "/data/log/" directory is required, otherwise,
+  kernel panic can happens during mem_dump routine proceed.
+
+DHD 1.363.70.2 (2015.11.13)
+  - Fixed Wi-Fi connection failure during On/Off test (CSP#990454)
+  - Fixed Runtime suspend fail because wl_wifi is locked (CSP#983390)
+  - Fixed Kernel panic at suspend and Resume stability test (CSP#980656)
+  - Fixed kernel panic on memory shortage situation (CSP#980725)
+  - Fixed sys NOC error on stability test (CSP#983191)
+
+DHD 1.363.70.1 (2015.10.14)
+  - Initial release for M OS
+

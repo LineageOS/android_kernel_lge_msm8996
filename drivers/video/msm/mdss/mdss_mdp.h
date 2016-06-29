@@ -87,6 +87,8 @@
 #define HW_CURSOR_STAGE(mdata) \
 	(((mdata)->max_target_zorder + MDSS_MDP_STAGE_0) - 1)
 
+#define QCT_MM_NOC_PATCH /*temp patch for MM NOC error SR#02184707*/
+
 enum mdss_mdp_perf_state_type {
 	PERF_SW_COMMIT_STATE = 0,
 	PERF_HW_MDP_STATE,
@@ -487,6 +489,7 @@ struct mdss_ad_info {
 	u32 state;
 	u32 ad_data;
 	u32 ad_data_mode;
+	u32 ipc_frame_count;
 	struct mdss_ad_init init;
 	struct mdss_ad_cfg cfg;
 	struct mutex lock;
@@ -1259,6 +1262,8 @@ void mdss_mdp_pp_term(struct device *dev);
 int mdss_mdp_pp_overlay_init(struct msm_fb_data_type *mfd);
 
 int mdss_mdp_pp_resume(struct msm_fb_data_type *mfd);
+void mdss_set_mdp_cbcr_enter_memory_retention(void);
+void mdss_set_mdp_cbcr_exit_memory_retention(void);
 
 int mdss_mdp_pp_setup(struct mdss_mdp_ctl *ctl);
 int mdss_mdp_pp_setup_locked(struct mdss_mdp_ctl *ctl);

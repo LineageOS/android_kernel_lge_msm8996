@@ -170,6 +170,9 @@ struct kgsl_memdesc {
 	uint64_t flags;
 	struct device *dev;
 	struct dma_attrs attrs;
+#ifdef CONFIG_LGE_KGSL_OFFSET_SEARCH
+	unsigned int offseted_sg;
+#endif
 };
 
 /*

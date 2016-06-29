@@ -1776,6 +1776,16 @@ static const struct msm_pingroup msm8996_groups[] = {
 		 NA, NA),
 	PINGROUP(57, qua_mi2s, gcc_gp1_clk_a, NA, qdss_tracedata_b,
 		 dac_calib16, NA, NA, NA, NA),
+#ifdef CONFIG_LGE_BROADCAST_TDMB
+	PINGROUP(58, qua_mi2s, NA, blsp_spi11, blsp_uart11, blsp_uim11,
+		 gcc_gp2_clk_a, NA, qdss_tracedata_b, NA),
+	PINGROUP(59, qua_mi2s, NA, blsp_spi11, blsp_uart11, blsp_uim11,
+		 gcc_gp3_clk_a, NA, NA, NA),
+	PINGROUP(60, qua_mi2s, NA, blsp_spi11, blsp_uart11, blsp_i2c11, cri_trng0,
+		 NA, NA, NA),
+	PINGROUP(61, qua_mi2s, NA, blsp_spi11, blsp_uart11, blsp_i2c11, cri_trng1,
+		 NA, NA, NA),
+#else
 	PINGROUP(58, qua_mi2s, uim4, blsp_spi11, blsp_uart11, blsp_uim11,
 		 gcc_gp2_clk_a, NA, qdss_tracedata_b, dac_calib17),
 	PINGROUP(59, qua_mi2s, uim4, blsp_spi11, blsp_uart11, blsp_uim11,
@@ -1784,6 +1794,7 @@ static const struct msm_pingroup msm8996_groups[] = {
 		 cri_trng0, NA, dac_calib19, NA),
 	PINGROUP(61, qua_mi2s, uim4, blsp_spi11, blsp_uart11,
 		 blsp_i2c11, cri_trng1, NA, dac_calib20, NA),
+#endif
 	PINGROUP(62, qua_mi2s, cri_trng, NA, dac_calib21, NA, NA, NA, NA, NA),
 	PINGROUP(63, qua_mi2s, NA, NA, qdss_stm18, qdss_tracedata_a,
 		 dac_calib22, NA, NA, NA),

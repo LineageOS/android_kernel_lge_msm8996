@@ -571,6 +571,107 @@ config MSM_BCL_PERIPHERAL_CTL
 	  provides routines to configure and monitor the BCL
 	  PMIC peripheral.
 
+config LGE_PM
+	tristate "MSM8996 LGE POWER Feature"
+	depends on SPMI || MSM_SPMI
+	help
+	  Say Y here to enable support for pm8994/pmi8994 chip lge feature.
+	  Power Management, Battery charging, Battery Monitoring System
+	  with battery FET and fuel gauge.
+
+config LGE_PM_FACTORY_CABLE
+	tristate "support FACTORY CABLE Feature"
+	default n
+	depends on MACH_LGE
+	help
+	  cable detection for factory mode, etc
+
+config LGE_PM_PARALLEL_CHARGING
+	tristate "LGE parallel charging feature"
+	default n
+	depends on MACH_LGE
+	help
+	  lge parallel charging feature
+
+config LGE_PM_BATTERY_ID_CHECKER
+	tristate "Virtual Device for LGE Battery ID Checker"
+	depends on LGE_PM
+	default n
+	help
+	  Say Y to enable LGE Battery ID Checker. Manufacturer have their own
+	  systematic identification of cell types, and protect the system from
+	  problems as using non-standard or unexpected types. so cross-
+	  reference battery identification are useful to identify.
+
+config LGE_PM_FACTORY_TESTMODE
+	bool "Support factory testmode for AT Command"
+	depends on LGE_PM
+	default n
+	help
+	  Say Y to enable factory testmode in qpnp-smbcharger
+
+config LGE_PM_MAXIM_EVP_CONTROL
+	bool "add evp control func."
+	default n
+	depends on QPNP_SMBCHARGER
+	depends on LGE_PM
+	help
+	  add evp control func.
+
+config LGE_PM_USB_CURRENT_MAX_MODE
+	tristate "LGE_PM Support USB current max mode"
+	default n
+	depends on MACH_LGE
+	help
+	  Say Y to enable LGE PM USB current max mode
+	  for MST, Auto Testing with USB
+
+config LGE_PM_SOC_SCALING
+       bool "Battery Capacity Scaling"
+       depends on LGE_PM
+       help
+         Say Y here to enable the battery capacity to be scaled.
+
+config LGE_PM_VZW_REQ
+	 tristate "Implementation of power requirements of Verizon"
+	 default n
+	 help
+	   power requirements for Verizon Wireless
+
+config LGE_PM_CHARGERLOGO_WAIT_FOR_FG_INIT
+	bool "Wait for FG init in LGE Chargerlogo"
+	default n
+	depends on LGE_PM
+	depends on QPNP_FG
+	help
+	  It is wait for FG init in LGE Chargerlogo.
+
+config LGE_PM_LLK_MODE
+	tristate "Implementation of power requirements of retail mode"
+	default n
+	help
+	  power requirements for Verizon retail mode
+
+config LGE_PM_WAKE_LOCK_FOR_CHG_LOGO
+	bool "Wakelocks for LGE Chargerlogo"
+	depends on LGE_PM
+	help
+	  It enables wakelocks for LGE Chargerlogo.
+
+config LGE_PM_BATT_MANAGER
+	tristate "LGE battery management feature"
+	default n
+	depends on LGE_PM
+	help
+	  lge battery management scenario feature
+
+config LGE_PM_WEAK_BATT_PACK
+	bool "support for weak battery pack"
+	default n
+	depends on LGE_PM
+	help
+	  support for weak battery pack
+
 source "drivers/power/reset/Kconfig"
 
 endif # POWER_SUPPLY

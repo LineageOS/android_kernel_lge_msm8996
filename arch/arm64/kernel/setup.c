@@ -72,6 +72,9 @@ EXPORT_SYMBOL_GPL(elf_hwcap);
 char* (*arch_read_hardware_id)(void);
 EXPORT_SYMBOL(arch_read_hardware_id);
 
+unsigned int system_rev;
+EXPORT_SYMBOL(system_rev);
+
 #ifdef CONFIG_COMPAT
 #define COMPAT_ELF_HWCAP_DEFAULT	\
 				(COMPAT_HWCAP_HALF|COMPAT_HWCAP_THUMB|\
@@ -246,6 +249,9 @@ static void __init setup_processor(void)
 			cls);
 	if (L1_CACHE_BYTES < cls)
 		pr_warn("L1_CACHE_BYTES smaller than the Cache Writeback Granule (%d < %d)\n",
+			L1_CACHE_BYTES, cls);
+	else
+		pr_info("L1_CACHE_BYTES (%d) Cache Writeback Granule (%d)\n",
 			L1_CACHE_BYTES, cls);
 
 	/*
@@ -550,6 +556,7 @@ static int c_show(struct seq_file *m, void *v)
 		seq_printf(m, "CPU part\t: 0x%03x\n", MIDR_PARTNUM(midr));
 		seq_printf(m, "CPU revision\t: %d\n\n", MIDR_REVISION(midr));
 	}
+	seq_printf(m, "Revision\t: %04x\n", system_rev);
 
 	return 0;
 }

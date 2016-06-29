@@ -60,6 +60,9 @@ struct wakeup_source {
 	unsigned long		relax_count;
 	unsigned long		expire_count;
 	unsigned long		wakeup_count;
+#ifdef CONFIG_LGE_PM_DEBUG
+	unsigned long           pending_count;
+#endif
 	bool			active:1;
 	bool			autosleep_enabled:1;
 };

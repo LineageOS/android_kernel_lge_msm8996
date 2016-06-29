@@ -19,6 +19,10 @@
 
 #include "power_supply.h"
 
+#ifdef CONFIG_LGE_PM_PSEUDO_BATTERY
+#include <soc/qcom/lge/lge_pseudo_batt.h>
+#endif
+
 /*
  * This is because the name "current" breaks the device attr macro.
  * The "current" word resolves to "(get_current())" so instead of
@@ -37,6 +41,24 @@
 	.show = power_supply_show_property,				\
 	.store = power_supply_store_property,				\
 }
+
+#ifdef CONFIG_LGE_PM_PSEUDO_BATTERY
+#define PSEUDO_BATT_ATTR(_name)                                         \
+{                                                                       \
+	.attr = { .name = #_name, .mode = 0644},                        \
+	.show = pseudo_batt_show_property,                              \
+	.store = pseudo_batt_store_property,                            \
+}
+#endif
+
+#ifdef CONFIG_LGE_PM_LLK_MODE
+#define STORE_DEMO_ENABLED_ATTR(_name)				\
+{													\
+	.attr = { .name = #_name, .mode = 0644},		\
+	.show =  power_supply_show_property,			\
+	.store =  power_supply_store_property,			\
+}
+#endif
 
 static struct device_attribute power_supply_attrs[];
 
@@ -139,6 +161,64 @@ static ssize_t power_supply_store_property(struct device *dev,
 	return count;
 }
 
+#ifdef CONFIG_LGE_PM_PSEUDO_BATTERY
+static ssize_t pseudo_batt_show_property(struct device *dev,
+		struct device_attribute *attr,
+		char *buf)
+{
+	ssize_t ret;
+	struct power_supply *psy = dev_get_drvdata(dev);
+	const ptrdiff_t off = attr - power_supply_attrs;
+	union power_supply_propval value;
+
+	static char *pseudo_batt[] = {
+		"NORMAL", "PSEUDO",
+	};
+
+	ret = psy->get_property(psy, off, &value);
+
+	if (ret < 0) {
+		if (ret != -ENODEV)
+			dev_err(dev, "failed to report `%s' property\n",
+					attr->attr.name);
+		return ret;
+	}
+	if (off == POWER_SUPPLY_PROP_PSEUDO_BATT)
+		return sprintf(buf, "[%s]\nusage: echo [modei] [ID]"
+				"[therm] [temp] [volt] [cap] [charging]"
+				"> pseudo_batt\n",
+				pseudo_batt[value.intval]);
+
+	return 0;
+}
+
+static ssize_t pseudo_batt_store_property(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	int ret = -EINVAL;
+	struct pseudo_batt_info_type info;
+
+	if (sscanf(buf, "%d %d %d %d %d %d %d",
+				&info.mode, &info.id,
+				&info.therm, &info.temp,
+				&info.volt, &info.capacity,
+				&info.charging) != 7) {
+		if (info.mode == 1) {
+			pr_err("usage : echo [mode] [ID] [therm]"
+					"[temp] [volt] [cap] [charging]"
+					"> pseudo_batt");
+			goto out;
+		}
+	}
+	set_pseudo_batt_info(&info);
+	ret = count;
+
+out:
+	return ret;
+}
+#endif
+
 /* Must be in the same order as POWER_SUPPLY_PROP_* */
 static struct device_attribute power_supply_attrs[] = {
 	/* Properties of type `int' */
@@ -227,8 +307,28 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(resistance),
 	POWER_SUPPLY_ATTR(resistance_capacitive),
 	POWER_SUPPLY_ATTR(resistance_id),
+#ifdef CONFIG_LGE_PM_PSEUDO_BATTERY
+	PSEUDO_BATT_ATTR(pseudo_batt),
+#endif
+#ifdef CONFIG_LGE_PM_USB_CURRENT_MAX_MODE
+	POWER_SUPPLY_ATTR(usb_current_max_mode),
+#endif
+#ifdef CONFIG_LGE_PM_VZW_REQ
+	POWER_SUPPLY_ATTR(vzw_chg),
+#endif
+#ifdef CONFIG_LGE_PM_LLK_MODE
+	STORE_DEMO_ENABLED_ATTR(store_demo_enabled),
+#endif
 	POWER_SUPPLY_ATTR(resistance_now),
 	POWER_SUPPLY_ATTR(flash_current_max),
+#ifdef CONFIG_LGE_PM_MAXIM_EVP_CONTROL
+	POWER_SUPPLY_ATTR(is_evp_ta),
+#endif
+#ifdef CONFIG_LGE_USB_MAXIM_EVP
+	POWER_SUPPLY_ATTR(evp_vol),
+	POWER_SUPPLY_ATTR(hvdcp_type),
+	POWER_SUPPLY_ATTR(evp_detect_start),
+#endif
 	POWER_SUPPLY_ATTR(update_now),
 	POWER_SUPPLY_ATTR(esr_count),
 	POWER_SUPPLY_ATTR(safety_timer_enabled),
@@ -242,6 +342,13 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(cycle_count_id),
 	POWER_SUPPLY_ATTR(safety_timer_expired),
 	POWER_SUPPLY_ATTR(restricted_charging),
+#ifdef CONFIG_LGE_PM_BATTERY_ID_CHECKER
+	POWER_SUPPLY_ATTR(batt_id),
+	POWER_SUPPLY_ATTR(valid_batt_id),
+#endif
+#ifdef CONFIG_LGE_PM_CHARGERLOGO_WAIT_FOR_FG_INIT
+	POWER_SUPPLY_ATTR(first_soc_est_done),
+#endif
 	/* Local extensions of type int64_t */
 	POWER_SUPPLY_ATTR(charge_counter_ext),
 	/* Properties of type `const char *' */

@@ -8,6 +8,8 @@
 
 enum aspect_ratio {
 	HDMI_RES_AR_INVALID,
+	/* Add LGVR SVD */
+	HDMI_RES_AR_3_2,
 	HDMI_RES_AR_4_3,
 	HDMI_RES_AR_5_4,
 	HDMI_RES_AR_16_9,
@@ -246,7 +248,19 @@ struct msm_hdmi_mode_timing_info {
 #define HDMI_VFRMT_RESERVE8		RESERVE_OFF(8)
 #define RESERVE_VFRMT_END		HDMI_VFRMT_RESERVE8
 
-#define HDMI_VFRMT_MAX			(RESERVE_VFRMT_END + 1)
+/* Disable to add timing parameter for LG VR */
+//#define HDMI_VFRMT_MAX		(RESERVE_VFRMT_END + 1)
+
+/* Add LGVR SVD LGE_S */
+/* R1 TIMING I */
+#define LGVR_OFF(x)			(RESERVE_VFRMT_END + x)
+
+#define HDMI_VFRMT_1440x960p60_3_2	LGVR_OFF(1)
+#define HDMI_VFRMT_1440x960p57_3_2	LGVR_OFF(2)
+#define LGVR_VFRMT_END			HDMI_VFRMT_1440x960p57_3_2
+
+#define HDMI_VFRMT_MAX			(LGVR_VFRMT_END + 1)
+/* Add LGVR SVD LGE_E */
 
 /* Timing information for supported modes */
 #define VFRMT_NOT_SUPPORTED(VFRMT) \
@@ -425,6 +439,16 @@ struct msm_hdmi_mode_timing_info {
 	{HDMI_VFRMT_3840x2160p60_64_27, 3840, 176, 88, 296, false,       \
 	 2160, 8, 10, 72, false, 594000, 60000, false, true, \
 		HDMI_RES_AR_64_27, 0}
+/* Add LGVR SVD LGE_S */
+#define HDMI_VFRMT_1440x960p60_3_2_TIMING                             \
+	{HDMI_VFRMT_1440x960p60_3_2, 1440, 52, 2, 60, false,       \
+	 960, 16, 4, 16, false, 93000, 60000, false, true, \
+		HDMI_RES_AR_3_2, 0}
+#define HDMI_VFRMT_1440x960p57_3_2_TIMING                             \
+	{HDMI_VFRMT_1440x960p57_3_2, 1440, 52, 4, 60, false,       \
+	 960, 16, 4, 16, false, 89000, 57000, false, true, \
+		HDMI_RES_AR_3_2, 0}
+/* Add LGVR SVD LGE_E */
 
 #define MSM_HDMI_MODES_SET_TIMING(LUT, MODE) do {		\
 	struct msm_hdmi_mode_timing_info mode = MODE##_TIMING;	\
@@ -508,6 +532,10 @@ do {	\
 			HDMI_VFRMT_3840x2160p50_64_27); \
 		MSM_HDMI_MODES_SET_TIMING(__lut,	\
 			HDMI_VFRMT_3840x2160p60_64_27); \
+		MSM_HDMI_MODES_SET_TIMING(__lut,	\
+			HDMI_VFRMT_1440x960p60_3_2); \
+		MSM_HDMI_MODES_SET_TIMING(__lut,	\
+			HDMI_VFRMT_1440x960p57_3_2); \
 	}	\
 	if (__type & MSM_HDMI_MODES_XTND) {	\
 		MSM_HDMI_MODES_SET_TIMING(__lut,	\

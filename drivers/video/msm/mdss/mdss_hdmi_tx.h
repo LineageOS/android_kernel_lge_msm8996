@@ -129,6 +129,9 @@ struct hdmi_tx_ctrl {
 	struct msm_hdmi_audio_setup_params audio_data;
 
 	struct mutex mutex;
+#ifdef CONFIG_SLIMPORT_DYNAMIC_HPD
+	struct mutex mutex_hpd;
+#endif
 	struct mutex lut_lock;
 	struct mutex power_mutex;
 	struct mutex cable_notify_mutex;

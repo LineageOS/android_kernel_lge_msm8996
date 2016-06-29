@@ -126,7 +126,6 @@ typedef struct user_fpsimd_state elf_fpregset_t;
  * the loader.  We need to make sure that it is out of the way of the program
  * that it will "exec", and that there is sufficient room for the brk.
  */
-extern unsigned long randomize_et_dyn(unsigned long base);
 #define ELF_ET_DYN_BASE	(2 * TASK_SIZE_64 / 3)
 
 /*
@@ -185,8 +184,6 @@ typedef compat_elf_greg_t		compat_elf_gregset_t[COMPAT_ELF_NGREG];
 #define compat_start_thread		compat_start_thread
 #define COMPAT_SET_PERSONALITY(ex)					\
 do {									\
-	if (current->mm)						\
-		fpsimd_enable_trap();					\
 	set_thread_flag(TIF_32BIT);					\
 } while (0)
 

@@ -94,6 +94,7 @@ struct mem_entry_stats {
 		mem_entry_max_show), \
 }
 
+static inline int get_page_size(size_t size, unsigned int align);
 static void kgsl_cma_unlock_secure(struct kgsl_memdesc *memdesc);
 
 /**
@@ -361,6 +362,44 @@ static int kgsl_page_alloc_vmfault(struct kgsl_memdesc *memdesc,
 		return VM_FAULT_SIGBUS;
 
 	pgoff = offset >> PAGE_SHIFT;
+#ifdef CONFIG_LGE_KGSL_OFFSET_SEARCH
+	if (memdesc->offseted_sg == 0x0FF5E7ED) {
+#define SCALED_FACTOR   (_get_page_size / PAGE_SIZE)
+
+		struct page *page;
+		int sg_offset, sg_offset_4k;
+		int _pgoff;
+		int _get_page_size = get_page_size(SZ_4M, ilog2(SZ_4M));
+
+		sg_offset_4k = ((memdesc->size >> PAGE_SHIFT) - memdesc->sgt->nents)
+			/ (SCALED_FACTOR - 1);
+
+		_pgoff = pgoff - sg_offset_4k * SCALED_FACTOR;
+
+		if (_pgoff < 0) {
+			sg_offset = pgoff / SCALED_FACTOR;
+			pgoff -= sg_offset * SCALED_FACTOR;
+			sg_offset_4k=0;
+		} else {
+			s = &s[sg_offset_4k];
+			sg_offset = _pgoff;
+			pgoff = 0;
+		}
+
+		if (sg_offset + sg_offset_4k > memdesc->sgt->nents) {
+			goto orginal_code;
+		}
+
+		page = sg_page(&s[sg_offset]);
+		page = nth_page(page, pgoff);
+
+		get_page(page);
+		vmf->page = page;
+
+		return 0;
+	}
+orginal_code:
+#endif
 
 	/*
 	 * The sglist might be comprised of mixed blocks of memory depending
@@ -684,6 +723,9 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 	void *ptr;
 	unsigned int align;
 	unsigned int step = ((VMALLOC_END - VMALLOC_START)/8) >> PAGE_SHIFT;
+#ifdef CONFIG_LGE_KGSL_OFFSET_SEARCH
+	int sglen = 0;
+#endif
 
 	align = (memdesc->flags & KGSL_MEMALIGN_MASK) >> KGSL_MEMALIGN_SHIFT;
 
@@ -714,6 +756,21 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 	if (memdesc->sgt == NULL)
 		return -ENOMEM;
 
+#ifdef CONFIG_LGE_KGSL_OFFSET_SEARCH
+	memdesc->sgt->sgl = kgsl_malloc(len_alloc * sizeof(struct scatterlist));
+
+	if (memdesc->sgt->sgl == NULL) {
+		kfree(memdesc->sgt);
+		memdesc->sgt = NULL;
+		return -ENOMEM;
+
+	}
+
+	if (!is_vmalloc_addr(memdesc->sgt->sgl))
+		kmemleak_not_leak(memdesc->sgt->sgl);
+
+	sg_init_table(memdesc->sgt->sgl, len_alloc);
+#endif
 	/*
 	 * Allocate space to store the list of pages to send to vmap. This is an
 	 * array of pointers so we can track 1024 pages per page of allocation
@@ -727,6 +784,10 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 	}
 
 	len = size;
+
+#ifdef CONFIG_LGE_KGSL_OFFSET_SEARCH
+	memdesc->offseted_sg = 0x0FF5E7ED;
+#endif
 
 	while (len > 0) {
 		struct page *page;
@@ -764,6 +825,11 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 			 * in kgsl_sharedmem_free().
 			 */
 			memdesc->size = (size - len);
+#ifdef CONFIG_LGE_KGSL_OFFSET_SEARCH
+			memdesc->sgt->nents = sglen;
+			if (sglen > 0)
+				sg_mark_end(&memdesc->sgt->sgl[sglen - 1]);
+#endif
 
 			if (sharedmem_noretry_flag != true)
 				KGSL_CORE_ERR(
@@ -777,14 +843,25 @@ _kgsl_sharedmem_page_alloc(struct kgsl_memdesc *memdesc,
 		for (j = 0; j < page_size >> PAGE_SHIFT; j++)
 			pages[pcount++] = nth_page(page, j);
 
+#ifdef CONFIG_LGE_KGSL_OFFSET_SEARCH
+		sg_set_page(&memdesc->sgt->sgl[sglen++], page, page_size, 0);
+#endif
 		len -= page_size;
+#ifndef CONFIG_LGE_KGSL_OFFSET_SEARCH
 		memdesc->size += page_size;
+#endif
 	}
 
+#ifdef CONFIG_LGE_KGSL_OFFSET_SEARCH
+	memdesc->sgt->nents = sglen;
+	memdesc->size = size;
+	sg_mark_end(&memdesc->sgt->sgl[sglen - 1]);
+#else
 	ret = sg_alloc_table_from_pages(memdesc->sgt, pages, pcount, 0,
 				memdesc->size, GFP_KERNEL);
 	if (ret)
 		goto done;
+#endif
 
 	/* Call to the hypervisor to lock any secure buffer allocations */
 	if (memdesc->flags & KGSL_MEMFLAGS_SECURE) {
@@ -866,6 +943,9 @@ done:
 			__free_pages(pages[j], compound_order(pages[j]));
 		}
 
+#ifdef CONFIG_LGE_KGSL_OFFSET_SEARCH
+		kgsl_free(memdesc->sgt->sgl);
+#endif
 		kfree(memdesc->sgt);
 		memset(memdesc, 0, sizeof(*memdesc));
 	}
@@ -901,7 +981,11 @@ void kgsl_sharedmem_free(struct kgsl_memdesc *memdesc)
 		memdesc->ops->free(memdesc);
 
 	if (memdesc->sgt) {
+#ifdef CONFIG_LGE_KGSL_OFFSET_SEARCH
+		kgsl_free(memdesc->sgt->sgl);
+#else
 		sg_free_table(memdesc->sgt);
+#endif
 		kfree(memdesc->sgt);
 	}
 

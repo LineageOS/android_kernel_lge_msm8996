@@ -62,3 +62,121 @@ config FB_MSM_MDSS_XLOG_DEBUG
 	features to: Dump MDSS registers during driver errors, panic
 	driver during fatal errors and enable some display-driver logging
 	into an internal buffer (this avoids logging overhead).
+
+config LGE_MIPI_H1_INCELL_QHD_CMD_PANEL
+	bool "LGE_MIPI_H1_INCELL_QHD_CMD_PANEL"
+	default n
+	help
+	  if you say yes here you get support for the Incell Panel.
+
+config LGE_DISPLAY_AOD_SUPPORTED
+	bool "Enable AOD function"
+	default n
+	---help---
+	Feature for AOD (Always on Display) scenario.
+
+config LGE_DISPLAY_AOD_USE_QPNP_WLED
+	depends on LGE_DISPLAY_AOD_SUPPORTED
+	bool "Enable wled feature for AOD"
+	default n
+	---help---
+	Feature for AOD (Always on Display) backlight mode control.
+
+config LGE_LCD_OFF_DIMMING
+	bool "Enable LCD DIMMING for FOTA"
+	depends on MACH_LGE
+	default n
+	---help---
+	Support for LCD DIMMING (for FOTA)
+
+config LGE_SP_MIRRORING_CTRL_BL
+	bool "SP_MIRRORING_CTRL_BL"
+	default n
+	help
+	  if you say yes here you get support for sp mirroring backlight control
+
+config LGE_LCD_TUNING
+	bool "Enable LCD Tuning interface only userdebug"
+	default n
+	---help---
+	Support LCD tuning interface userdebug
+
+config LGE_DISPLAY_DYNAMIC_LOG
+	depends on LGE_LCD_TUNING
+	bool "Dynamic Log"
+	default y
+	---help---
+	If you say Y here, developers can enable/disable display logs through adb
+	by accessing /sys/class/graphics/fb0/debug_level
+	ex. echo {debug_level} > sys/class/graphics/fb0/debug_level
+
+config LGE_HIGH_LUMINANCE_MODE
+	bool "LGE_HIGH_LUMINANCE_MODE"
+	default n
+	help
+	  if you say yes here you get support for high luminance mode
+
+config LGE_PP_SUPPORT_WITH_PARTIAL_UPDATE
+	bool "LGE_PP_SUPPORT_WITH_PARTIAL_UPDATE"
+	default n
+	help
+	  if you say yes here you get support Post Processing(Color convert) with Partial Update
+
+config LGE_PP_AD_SUPPORTED
+	bool "LGE_ALICE_AD_SUPPORTED"
+	default n
+	help
+	if you say yes here you get support for Display Driver AD function.
+
+config LGE_ENHANCE_GALLERY_SHARPNESS
+	depends on LGE_MIPI_H1_INCELL_QHD_CMD_PANEL
+	bool "CONFIG_LGE_ENHANCE_GALLERY_SHARPNESS"
+	default y
+	help
+	if you say yes here you get support for enhance sharpness at gallery app
+
+config LGE_VSYNC_SKIP
+	bool "MDSS VSYNC Skip scheme"
+	default n
+	---help---
+	This feature provides VSYNC skip scheme.
+
+config LGE_LCD_POWER_CTRL
+	depends on  LGE_MIPI_H1_INCELL_QHD_CMD_PANEL
+	bool "LCD power control mode"
+	default y
+	---help---
+	if you say yes here you get support for lcd power on/off control.
+
+config LGE_PANEL_RECOVERY
+	depends on  LGE_MIPI_H1_INCELL_QHD_CMD_PANEL
+	bool "Panel recovery support"
+	default y
+	---help---
+	if you say yes here, you get support for panel recovery routine.
+
+config LGE_THERMAL_BL_MAX
+	bool "LGE_ALICE_THERMAL_BL_MAX"
+	default n
+	---help---
+	if you say yes here you get support for thermal bl max value.
+
+config LGE_LCD_MFTS_MODE
+	depends on LGE_LCD_POWER_CTRL
+	bool "LCD MFTS mode"
+	default y
+	---help---
+	if you say yes here you get support for lcd mfts control.
+
+config LGE_CAM_PREVIEW_TUNE
+	bool "Enable LGE_CAM_PREVIEW_TUNE"
+	default n
+	---help---
+	if you say yes here you get support for enhance low-gradation at camera preview
+
+config LGE_LCD_DYNAMIC_CABC_MIE_CTRL
+	depends on LGE_MIPI_H1_INCELL_QHD_CMD_PANEL
+	bool "LGE_LCD_DYNAMIC_CABC_MIE_CTRL"
+	default y
+	help
+	if you say yes here you get support for cabc, image enhance function dynamic control

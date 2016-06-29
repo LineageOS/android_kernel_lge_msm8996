@@ -1541,8 +1541,17 @@ static int hub_configure(struct usb_hub *hub,
 			dev_warn(hub_dev,
 					"insufficient power available "
 					"to use all downstream ports\n");
+#ifdef CONFIG_LGE_USB_G_ANDROID
+		/*We don't need to allow unit_load each port,
+		 * allow that remaining variable current divide by maxchild.
+		 */
+		if (maxchild == 0 || remaining < unit_load)
+			hub->mA_per_port = unit_load;
+		else
+			hub->mA_per_port = remaining / maxchild;
+#else
 		hub->mA_per_port = unit_load;	/* 7.2.1 */
-
+#endif
 	} else {	/* Self-powered external hub */
 		/* FIXME: What about battery-powered external hubs that
 		 * provide less current per port? */

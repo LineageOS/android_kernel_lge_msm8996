@@ -601,6 +601,16 @@ config PGTABLE_MAPPING
 	  You can check speed with zsmalloc benchmark:
 	  https://github.com/spartacus06/zsmapbench
 
+config ZSMALLOC_STAT
+	bool "Export zsmalloc statistics"
+	depends on ZSMALLOC
+	select DEBUG_FS
+	help
+	  This option enables code in the zsmalloc to collect various
+	  statistics about whats happening in zsmalloc and exports that
+	  information to userspace via debugfs.
+	  If unsure, say N.
+
 config GENERIC_EARLY_IOREMAP
 	bool
 
@@ -667,3 +677,46 @@ config PROCESS_RECLAIM
 	 (addr, addr + size-bytes) of the process.
 
 	 Any other vaule is ignored.
+
+config LGE_DDR_SECTION_SIZE_CHANGE
+	bool "Enable section size change"
+	depends on MACH_MSM8996_H1
+	default n
+	help
+	  This change decreases sparse memory model granuality
+	  from 1GiB to 512MiB which in turn can increase
+	  the amount of wasted memory in memmap when the memory
+	  sections aren't aligned. The amount of wastage can be a few
+	  MiB per unaligned section
+
+config LGE_DDR_SECTION_SIZE_CHANGE
+	bool "Enable section size change"
+	depends on MACH_MSM8996_ELSA
+	default n
+	help
+	  This change decreases sparse memory model granuality
+	  from 1GiB to 512MiB which in turn can increase
+	  the amount of wasted memory in memmap when the memory
+	  sections aren't aligned. The amount of wastage can be a few
+	  MiB per unaligned section
+
+config READAHEAD_MMAP_SIZE_ENABLE
+	bool "readahead mmap size set enable"
+	default n
+	help
+	  readahead mmap size set enable
+
+config READAHEAD_MMAP_PAGE_CNT
+	int "readahead mmap page count set"
+	depends on READAHEAD_MMAP_SIZE_ENABLE
+	help
+	  Select readahead mmap page count
+	  Examples:
+		128 ==>512KB
+		64 ==>256KB
+		32 ==>128KB
+		16 ==>64 KB
+		8 ==>32 KB
+		4 ==>16 KB
+		2 ==>8 KB
+		1 ==>4 KB

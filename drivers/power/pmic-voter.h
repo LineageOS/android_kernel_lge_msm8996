@@ -30,6 +30,9 @@ int get_effective_client_id_locked(struct votable *votable);
 int vote(struct votable *votable, int client_id, bool state, int val);
 struct votable *create_votable(struct device *dev, const char *name,
 				int votable_type, int num_clients,
+#ifdef CONFIG_LGE_PM
+				int effective_result,
+#endif
 				int default_result,
 				int (*callback)(struct device *dev,
 						int effective_result,

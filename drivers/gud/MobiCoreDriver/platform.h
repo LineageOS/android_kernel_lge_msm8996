@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2015 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -15,7 +15,7 @@
 #define _MC_PLATFORM_H_
 
 /* MobiCore Interrupt for Qualcomm (DT IRQ has priority if present) */
-#define MC_INTR_SSIQ						280
+#define MC_INTR_SSIQ	280
 
 /* Use SMC for fastcalls */
 #define MC_SMC_FASTCALL
@@ -96,16 +96,10 @@ static inline int smc_fastcall(void *fc_generic, size_t size)
 			fc_generic, size);
 }
 
-/* Fastcall value should be the one for armv7, even if on armv8,
- * as long as the __aarch32__ flag is not activated in SW.
- * But for 8996, architecture is armv8 with __aarch32__ in Sw.
- */
-#if !defined(CONFIG_ARCH_MSM8996)
-#define MC_ARMV7_FC
-#endif
-
 #if defined(CONFIG_ARCH_MSM8996)
+#ifndef CONFIG_TRUSTONIC_TEE_LPAE
 #define CONFIG_TRUSTONIC_TEE_LPAE
+#endif
 #endif
 
 /*
@@ -115,8 +109,7 @@ static inline int smc_fastcall(void *fc_generic, size_t size)
  *     "core_clk"
  *     "iface_clk"
  */
-#if (!defined(CONFIG_ARCH_MSM8960) && !defined(CONFIG_ARCH_MSM8994)) || \
-		defined(CONFIG_ARCH_MSM8996)
+#if !defined(CONFIG_ARCH_MSM8994) || defined(CONFIG_ARCH_MSM8996)
 #define MC_CRYPTO_CLOCK_MANAGEMENT
 #endif
 
@@ -132,13 +125,7 @@ static inline int smc_fastcall(void *fc_generic, size_t size)
 #endif /* MC_CRYPTO_CLOCK_MANAGEMENT */
 #endif
 
-
 #if !defined(CONFIG_ARCH_MSM8996)
-/* uid/gid behave like old kernels but with new types */
-/* This flag does not exist on 8996 3.10 kernel version */
-#if !defined(CONFIG_UIDGID_STRICT_TYPE_CHECKS)
-#define MC_UIDGID_OLDSTYLE
-#endif
 /* Fastcall value should be the one for armv7, even if on armv8,
  * as long as the __aarch32__ flag is not activated in SW.
  * But for 8996, architecture is armv8 with __aarch32__ in Sw.
@@ -146,5 +133,9 @@ static inline int smc_fastcall(void *fc_generic, size_t size)
 #define MC_ARMV7_FC
 #endif /* not CONFIG_ARCH_MSM8996 */
 
-#endif /* _MC_PLATFORM_H_ */
+/* uidgid.h does not exist in kernels before 3.5 */
+#if defined(CONFIG_ARCH_MSM8226)
+#define MC_NO_UIDGIT_H
+#endif /* CONFIG_ARCH_MSM8226 */
 
+#endif /* _MC_PLATFORM_H_ */

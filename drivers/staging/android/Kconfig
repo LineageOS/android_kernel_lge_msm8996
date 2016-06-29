@@ -110,6 +110,13 @@ config ONESHOT_SYNC_USER
 	help
 	  Provide a userspace API for creating oneshot sync objects.
 
+config MDFPP_CCAUDIT
+	bool "Audit for Common Criteria Requirement"
+    default n
+	help
+	  This adds support for ccaudit logging using additional fifth buffer
+
+
 source "drivers/staging/android/ion/Kconfig"
 
 source "drivers/staging/android/fiq_debugger/Kconfig"

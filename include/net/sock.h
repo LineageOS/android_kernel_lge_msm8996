@@ -70,6 +70,8 @@
 #include <net/tcp_states.h>
 #include <linux/net_tstamp.h>
 
+//add_to_scale
+#define TCP_BACKLOG_SCALE 4
 struct cgroup;
 struct cgroup_subsys;
 #ifdef CONFIG_NET
@@ -713,6 +715,9 @@ enum sock_flags {
 		     */
 	SOCK_FILTER_LOCKED, /* Filter cannot be changed anymore */
 	SOCK_SELECT_ERR_QUEUE, /* Wake select on error queue */
+	#ifdef CONFIG_LGP_DATA_TCPIP_MPTCP
+	SOCK_MPTCP, /* MPTCP set on this socket */
+	#endif
 };
 
 static inline void sock_copy_flags(struct sock *nsk, struct sock *osk)
@@ -816,7 +821,9 @@ static inline bool sk_rcvqueues_full(const struct sock *sk, unsigned int limit)
 static inline __must_check int sk_add_backlog(struct sock *sk, struct sk_buff *skb,
 					      unsigned int limit)
 {
-	if (sk_rcvqueues_full(sk, limit))
+//add_to_scale	
+	//if (sk_rcvqueues_full(sk, limit))
+	if (sk_rcvqueues_full(sk, limit * TCP_BACKLOG_SCALE))
 		return -ENOBUFS;
 
 	__sk_add_backlog(sk, skb);
@@ -912,6 +919,18 @@ void sk_set_memalloc(struct sock *sk);
 void sk_clear_memalloc(struct sock *sk);
 
 int sk_wait_data(struct sock *sk, long *timeo);
+
+#ifdef CONFIG_LGP_DATA_TCPIP_MPTCP
+/* START - needed for MPTCP */
+struct sock *sk_prot_alloc(struct proto *prot, gfp_t priority, int family);
+void sock_lock_init(struct sock *sk);
+
+extern struct lock_class_key af_callback_keys[AF_MAX];
+extern char *const af_family_clock_key_strings[AF_MAX+1];
+
+#define SK_FLAGS_TIMESTAMP ((1UL << SOCK_TIMESTAMP) | (1UL << SOCK_TIMESTAMPING_RX_SOFTWARE))
+/* END - needed for MPTCP */
+#endif
 
 struct request_sock_ops;
 struct timewait_sock_ops;

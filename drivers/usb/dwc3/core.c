@@ -1021,6 +1021,14 @@ static int dwc3_probe(struct platform_device *pdev)
 			goto err_gadget_exit;
 		}
 	}
+
+#ifdef CONFIG_LGE_USB_MAXIM_EVP
+	if (dwc->dr_mode == USB_DR_MODE_OTG ||
+		dwc->dr_mode ==  USB_DR_MODE_PERIPHERAL) {
+		INIT_DELAYED_WORK(&dwc->dcp_check_work, dwc_dcp_check_work);
+	}
+#endif
+
 	dwc3_notify_event(dwc, DWC3_CONTROLLER_POST_INITIALIZATION_EVENT);
 
 	return 0;
@@ -1046,6 +1054,9 @@ static int dwc3_remove(struct platform_device *pdev)
 	dwc3_event_buffers_cleanup(dwc);
 	dwc3_free_event_buffers(dwc);
 
+#ifdef CONFIG_LGE_USB_MAXIM_EVP
+	cancel_delayed_work_sync(&dwc->dcp_check_work);
+#endif
 	phy_power_off(dwc->usb2_generic_phy);
 	phy_power_off(dwc->usb3_generic_phy);
 

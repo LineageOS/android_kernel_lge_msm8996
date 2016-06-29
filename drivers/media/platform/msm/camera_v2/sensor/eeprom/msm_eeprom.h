@@ -22,6 +22,10 @@
 #include "msm_camera_io_util.h"
 #include "msm_camera_dt_util.h"
 
+#ifdef CONFIG_LGE_EEPROM
+#define MODULE_VENDOR_ID 0x700
+#endif
+
 struct msm_eeprom_ctrl_t;
 
 #define DEFINE_MSM_MUTEX(mutexname) \
@@ -45,6 +49,12 @@ struct msm_eeprom_ctrl_t {
 	uint32_t subdev_id;
 	uint8_t *read_mem;
 	int32_t read_data_size;
+
+#ifdef CONFIG_LGE_EEPROM
+	struct list_head link;
+	enum camb_position_t position;
+#endif
 };
+
 
 #endif

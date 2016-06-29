@@ -91,6 +91,9 @@ module_param(modem_dbg_cfg, uint, S_IRUGO | S_IWUSR);
 
 static void modem_log_rmb_regs(void __iomem *base)
 {
+	if (system_state == SYSTEM_RESTART || system_state == SYSTEM_POWER_OFF)
+		return;
+
 	pr_err("RMB_MBA_IMAGE: %08x\n", readl_relaxed(base + RMB_MBA_IMAGE));
 	pr_err("RMB_PBL_STATUS: %08x\n", readl_relaxed(base + RMB_PBL_STATUS));
 	pr_err("RMB_MBA_COMMAND: %08x\n",
@@ -251,12 +254,16 @@ static int pil_msa_wait_for_mba_ready(struct q6v5_data *drv)
 	ret = readl_poll_timeout(drv->rmb_base + RMB_MBA_STATUS, status,
 		status != 0, POLL_INTERVAL_US, pbl_mba_boot_timeout_ms * 1000);
 	if (ret) {
-		dev_err(dev, "MBA boot timed out\n");
+        dev_err(dev, "MBA boot timed out\n");
+        modem_log_rmb_regs(drv->rmb_base);
+        subsystem_restart("modem");
 		return ret;
 	}
 	if (status != STATUS_XPU_UNLOCKED &&
 	    status != STATUS_XPU_UNLOCKED_SCRIBBLED) {
 		dev_err(dev, "MBA returned unexpected status %d\n", status);
+        modem_log_rmb_regs(drv->rmb_base);
+        subsystem_restart("modem");
 		return -EINVAL;
 	}
 
@@ -319,6 +326,12 @@ int __pil_mss_deinit_image(struct pil_desc *pil, bool err_path)
 
 	if (q6_drv->ahb_clk_vote)
 		clk_disable_unprepare(q6_drv->ahb_clk);
+
+	if (system_state == SYSTEM_RESTART ||
+		system_state == SYSTEM_POWER_OFF) {
+		pr_err("Leaking MBA memory to prevent access during lockdown\n");
+		return ret;
+	}
 
 	/* In case of any failure where reclaiming MBA and DP memory
 	 * could not happen, free the memory here */
@@ -485,6 +498,7 @@ int pil_mss_reset_load_mba(struct pil_desc *pil)
 	if (ret) {
 		dev_err(pil->dev, "Failed to locate %s\n",
 						fw_name_p);
+		subsystem_restart("modem");
 		return ret;
 	}
 
@@ -492,6 +506,7 @@ int pil_mss_reset_load_mba(struct pil_desc *pil)
 	if (!data) {
 		dev_err(pil->dev, "MBA data is NULL\n");
 		ret = -ENOMEM;
+		subsystem_restart("modem");
 		goto err_invalid_fw;
 	}
 
@@ -520,7 +535,8 @@ int pil_mss_reset_load_mba(struct pil_desc *pil)
 	if (!mba_dp_virt) {
 		dev_err(pil->dev, "MBA metadata buffer allocation failed\n");
 		ret = -ENOMEM;
-		goto err_invalid_fw;
+		subsystem_restart("modem");
+        goto err_invalid_fw;
 	}
 
 	drv->mba_dp_phys = mba_dp_phys;
@@ -555,6 +571,8 @@ int pil_mss_reset_load_mba(struct pil_desc *pil)
 	ret = pil_mss_reset(pil);
 	if (ret) {
 		dev_err(pil->dev, "MBA boot failed.\n");
+		modem_log_rmb_regs(drv->rmb_base);
+		subsystem_restart("modem");
 		goto err_mss_reset;
 	}
 
@@ -598,6 +616,7 @@ static int pil_msa_auth_modem_mdt(struct pil_desc *pil, const u8 *metadata,
 	if (!mdata_virt) {
 		dev_err(pil->dev, "MBA metadata buffer allocation failed\n");
 		ret = -ENOMEM;
+		subsystem_restart("modem");
 		goto fail;
 	}
 	memcpy(mdata_virt, metadata, size);
@@ -626,9 +645,13 @@ static int pil_msa_auth_modem_mdt(struct pil_desc *pil, const u8 *metadata,
 		POLL_INTERVAL_US, modem_auth_timeout_ms * 1000);
 	if (ret) {
 		dev_err(pil->dev, "MBA authentication of headers timed out\n");
+		modem_log_rmb_regs(drv->rmb_base);
+		subsystem_restart("modem");
 	} else if (status < 0) {
 		dev_err(pil->dev, "MBA returned error %d for headers\n",
 				status);
+		modem_log_rmb_regs(drv->rmb_base);
+		subsystem_restart("modem");
 		ret = -EINVAL;
 	}
 
@@ -660,11 +683,12 @@ static int pil_msa_mss_reset_mba_load_auth_mdt(struct pil_desc *pil,
 				  const u8 *metadata, size_t size)
 {
 	int ret;
-
+	dev_info(pil->dev, "pil : mss reset and load mba\n");
 	ret = pil_mss_reset_load_mba(pil);
 	if (ret)
 		return ret;
 
+	dev_info(pil->dev, "pil : msa auth modem.mdt.\n");
 	return pil_msa_auth_modem_mdt(pil, metadata, size);
 }
 
@@ -707,8 +731,12 @@ static int pil_msa_mba_auth(struct pil_desc *pil)
 			50, modem_auth_timeout_ms * 1000);
 	if (ret) {
 		dev_err(pil->dev, "MBA authentication of image timed out\n");
+		modem_log_rmb_regs(drv->rmb_base);
+		subsystem_restart("modem");
 	} else if (status < 0) {
 		dev_err(pil->dev, "MBA returned error %d for image\n", status);
+		modem_log_rmb_regs(drv->rmb_base);
+		subsystem_restart("modem");
 		ret = -EINVAL;
 	}
 
