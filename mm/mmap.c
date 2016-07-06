@@ -1265,9 +1265,12 @@ static inline int mlock_future_check(struct mm_struct *mm,
  * The caller must hold down_write(&current->mm->mmap_sem).
  */
 
+
+#if 0
 extern void set_app_setting_bit(uint32_t bit);
 extern char *lib_names[];
-extern unsigned int lib_name_entries;
+extern unsigned int count;
+#endif
 
 unsigned long do_mmap_pgoff(struct file *file, unsigned long addr,
 			unsigned long len, unsigned long prot,
@@ -1278,12 +1281,13 @@ unsigned long do_mmap_pgoff(struct file *file, unsigned long addr,
 	vm_flags_t vm_flags;
 
 	*populate = 0;
+#if 0
 	if (file && file->f_path.dentry) {
 		const char *name = file->f_path.dentry->d_name.name;
 		bool found = false;
 		int i;
 
-		for (i = 0; i < lib_name_entries; i++) {
+		for (i = 0; i < count; i++) {
 			if (unlikely(!strcmp(name, lib_names[i]))) {
 				found = true;
 				break;
@@ -1299,6 +1303,7 @@ unsigned long do_mmap_pgoff(struct file *file, unsigned long addr,
 			preempt_enable();
 		}
 	}
+#endif
 
 #ifdef CONFIG_SDCARD_FS_ANDROID_M
 	while (file && (file->f_mode & FMODE_NOMAPPABLE))
