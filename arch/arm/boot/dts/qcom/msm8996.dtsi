@@ -165,10 +165,10 @@
 			reg = <0 0x85800000 0 0x3000000>;
 		};
 
-		peripheral_mem: peripheral_region@8e900000 {
+		peripheral_mem: peripheral_region@8ea00000 {
 			compatible = "removed-dma-pool";
 			no-map;
-			reg = <0 0x8e900000 0 0x2b00000>;
+			reg = <0 0x8ea00000 0 0x2b00000>;
 		};
 
 		qseecom_mem: qseecom_region {
@@ -187,16 +187,10 @@
 			size = <0 0x5c00000>;
 		};
 
-		//modem_mem: modem_region@88800000 {
-		//	compatible = "removed-dma-pool";
-		//	no-map;
-		//	reg = <0 0x88800000 0 0x6100000>;
-		//};
-
-		mba_mem: mba_region@0 {
-			linux,reserve-contiguous-region;
-			reg = <0 0x2080000 0 0x6100000>;
-			label = "mba_mem";
+		modem_mem: modem_region@88800000 {
+			compatible = "removed-dma-pool";
+			no-map;
+			reg = <0 0x88800000 0 0x6200000>;
 		};
 
 		dfps_data_mem: dfps_data_mem@83400000 {
@@ -2314,7 +2308,7 @@
 		qcom,ahb-clk-vote;
 		qcom,pnoc-clk-vote;
 		qcom,qdsp6v56-1-5;
-		memory-region = <&mba_mem>;
+		memory-region = <&modem_mem>;
 		qcom,mem-protect-id = <0xF>;
 
 		/* GPIO inputs from mss */
