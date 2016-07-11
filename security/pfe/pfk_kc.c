@@ -415,6 +415,7 @@ int pfk_kc_remove_key_with_salt(const unsigned char *key, size_t key_size,
 	return 0;
 }
 
+
 /**
  * pfk_kc_remove_key() - remove the key from cache and from ICE engine
  * when no salt is available. Will only search key part, if there are several,
