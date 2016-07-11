@@ -2182,7 +2182,7 @@
 
 				config {
 					pins = "gpio6", "gpio7";
-					drive-strength = <2>;
+					drive-strength = <4>;
 					bias-disable;
 				};
 			};
@@ -2195,7 +2195,7 @@
 
 				config {
 					pins = "gpio6", "gpio7";
-					drive-strength = <2>;
+					drive-strength = <4>;
 					bias-pull-up;
 				};
 			};
