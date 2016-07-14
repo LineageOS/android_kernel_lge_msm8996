@@ -407,10 +407,6 @@ assign_new_owner:
 }
 #endif /* CONFIG_MEMCG */
 
-#define APP_SETTING_BIT 30
-
-extern void clear_app_setting_bit(uint32_t bit);
-
 /*
  * Turn us into a lazy TLB process if we
  * aren't already..
@@ -420,7 +416,6 @@ static void exit_mm(struct task_struct *tsk)
 	struct mm_struct *mm = tsk->mm;
 	struct core_state *core_state;
 	int mm_released;
-	int app_setting;
 
 	mm_release(tsk, mm);
 	if (!mm)
@@ -463,7 +458,6 @@ static void exit_mm(struct task_struct *tsk)
 	/* more a memory barrier than a real lock */
 	task_lock(tsk);
 	tsk->mm = NULL;
-	app_setting = mm->app_setting;
 	up_read(&mm->mmap_sem);
 	enter_lazy_tlb(mm, current);
 	task_unlock(tsk);
@@ -473,12 +467,6 @@ static void exit_mm(struct task_struct *tsk)
 	clear_thread_flag(TIF_MEMDIE);
 	if (mm_released)
 		set_tsk_thread_flag(tsk, TIF_MM_RELEASED);
-
-	if (unlikely(mm_released && app_setting)) {
-		trace_printk("DEBUG: %s - disable app_setting\n",
-				__func__);
-		clear_app_setting_bit(APP_SETTING_BIT);
-	}
 }
 
 /*
