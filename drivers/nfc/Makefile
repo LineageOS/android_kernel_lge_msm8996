@@ -14,7 +14,7 @@ obj-$(CONFIG_NFC_TRF7970A)	+= trf7970a.o
 obj-$(CONFIG_NFC_ST21NFCA)  	+= st21nfca/
 obj-$(CONFIG_NFC_ST21NFCB)	+= st21nfcb/
 obj-$(CONFIG_NFC_NQ)		+= nq-nci.o
-obj-$(CONFIG_NFC_PN548)		+= pn548.o p61.o
+obj-$(CONFIG_NFC_PN548)		+= pn548.o pn548_hwadapter.o
 
 obj-$(CONFIG_NFC_BCM2079X)	+= bcm2079x.o
 obj-$(CONFIG_CXD224X_NFC)  += cxd224x-i2c.o

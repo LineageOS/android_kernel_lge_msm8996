@@ -10,7 +10,6 @@
  * GNU General Public License for more details.
  */
 
-#include "../../qcom/msm8996-pinctrl.dtsi"
 #include "msm8996-h1_us-pinctrl.dtsi"
 #include "msm8996-h1_us-misc.dtsi"
 #include "msm8996-h1_us-panel.dtsi"
