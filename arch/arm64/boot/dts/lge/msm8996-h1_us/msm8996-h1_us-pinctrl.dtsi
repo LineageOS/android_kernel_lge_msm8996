@@ -965,7 +965,7 @@
 					bias-disable;
 				};
 			};
-			
+
 			anx7418_interrupt_sleep: anx7418_interrupt_sleep {
 				mux {
 					pins = "gpio132";
@@ -1060,7 +1060,7 @@
 					bias-pull-up;
 				};
 			};
-			
+
 			pcie1_perst_default: pcie1_perst_default {
 				mux {
 					pins = "gpio130";
@@ -1073,7 +1073,7 @@
 					bias-pull-down;
 				};
 			};
-			
+
 			pcie1_wake_default: pcie1_wake_default {
 				mux {
 					pins = "gpio132";
@@ -1098,8 +1098,8 @@
 					drive-strength = <2>;
 					bias-disable;
 				};
-			}; 
-			
+			};
+
 			pcie1_wake_sleep: pcie1_wake_sleep {
 				mux {
 					pins = "gpio132";
@@ -2171,97 +2171,6 @@
 				};
 			 };
 		};
-
-		/* NFC Start */
-		i2c_8 {
-			i2c_8_active: i2c_8_active {
-				mux {
-					pins = "gpio6", "gpio7";
-					function = "blsp_i2c8";
-				};
-
-				config {
-					pins = "gpio6", "gpio7";
-					drive-strength = <4>;
-					bias-disable;
-				};
-			};
-
-			i2c_8_sleep: i2c_8_sleep {
-				mux {
-					pins = "gpio6", "gpio7";
-					function = "blsp_i2c8";
-				};
-
-				config {
-					pins = "gpio6", "gpio7";
-					drive-strength = <4>;
-					bias-pull-up;
-				};
-			};
-
-		};
-
-		pmx_rd_nfc_int{
-			label = "pmx_nfc_int";
-			nfc_int_active: active {
-				pins = "gpio9";
-				drive-strength = <6>;
-				bias-disable;
-			};
-			nfc_int_suspend: suspend {
-				pins = "gpio9";
-				drive-strength = <6>;
-				bias-disable;
-			};
-		};
-
-		pmx_nfc_reset{
-			label = "pmx_nfc_disable";
-			nfc_disable_active: active {
-				pins = "gpio12";
-				drive-strength = <6>;
-				bias-disable;
-			};
-
-			nfc_disable_suspend: suspend {
-				pins = "gpio12";
-				drive-strength = <6>;
-				bias-disable;
-			};
-		};
-
-		pmx_nfc_mode{
-			label = "pmx_nfc_mode";
-
-			nfc_mode_active: active {
-				pins = "gpio11";
-				drive-strength = <6>;
-				bias-disable;
-			};
-
-			nfc_mode_suspend: suspend {
-				pins = "gpio11";
-				drive-strength = <6>;
-				 bias-disable;
-			};
-		};
-
-		pmx_nfc_wake{
-			label = "pmx_nfc_wake";
-
-			nfc_wake_active: active {
-				pins = "gpio11";
-				drive-strength = <6>;
-				bias-pull-up;
-			};
-			nfc_wake_suspend: suspend {
-				pins = "gpio11";
-				drive-strength = <6>;
-				bias-disable;
-			};
-		};
-		/* NFC End */
 
 		/* pin set for IrRC */
 		irrc_uart {

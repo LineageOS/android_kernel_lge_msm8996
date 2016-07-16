@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2010 NXP Semiconductors
+ * Copyright (C) 2010 Trusted Logic S.A.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -8,476 +8,1045 @@
  *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
- * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  *
  */
+ /******************************************************************************
+  *
+  *  The original Work has been changed by NXP Semiconductors.
+  *
+  *  Copyright (C) 2015 NXP Semiconductors
+  *
+  *  Licensed under the Apache License, Version 2.0 (the "License");
+  *  you may not use this file except in compliance with the License.
+  *  You may obtain a copy of the License at
+  *
+  *  http://www.apache.org/licenses/LICENSE-2.0
+  *
+  *  Unless required by applicable law or agreed to in writing, software
+  *  distributed under the License is distributed on an "AS IS" BASIS,
+  *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  *  See the License for the specific language governing permissions and
+  *  limitations under the License.
+  *
+  ******************************************************************************/
 
-#include <linux/nfc/pn548.h>
-#include <linux/nfc/pn548_hwadapter.h>
+#include <linux/kernel.h>
+#include <linux/module.h>
+#include <linux/fs.h>
+#include <linux/slab.h>
+#include <linux/init.h>
+#include <linux/list.h>
+#include <linux/i2c.h>
+#include <linux/irq.h>
+#include <linux/jiffies.h>
+#include <linux/uaccess.h>
+#include <linux/delay.h>
+#include <linux/interrupt.h>
+#include <linux/io.h>
+#include <linux/platform_device.h>
+#include <linux/gpio.h>
 #include <linux/of_gpio.h>
+#include <linux/miscdevice.h>
+#include <linux/spinlock.h>
+#include <linux/nfc/pn548.h>
+#include <asm/siginfo.h>
+#include <linux/rcupdate.h>
+#include <linux/sched.h>
+#include <linux/signal.h>
 
-#include <linux/wakelock.h>
-#include <linux/async.h>
+//ruanbanmao add
+#include <linux/clk.h>
+#include <linux/regulator/consumer.h>
 
-#define NFC_POWER_OFF       false
-#define NFC_POWER_ON        true
+#define DRAGON_NFC 1
+#define SIG_NFC 44
+#define MAX_BUFFER_SIZE 512
 
-#define MAX_BUFFER_SIZE     512
-#define NFC_TIMEOUT_MS      2000
+struct pn548_dev    {
+    wait_queue_head_t   read_wq;
+    struct mutex        read_mutex;
+    struct i2c_client   *client;
+    struct miscdevice   pn548_device;
+    unsigned int        ven_gpio;
+    unsigned int        firm_gpio;
+    unsigned int        irq_gpio;
+    unsigned int        ese_pwr_gpio; /* gpio used by SPI to provide power to p61 via NFCC */
+    struct mutex        p61_state_mutex; /* used to make p61_current_state flag secure */
+    p61_access_state_t  p61_current_state; /* stores the current P61 state */
+    bool                nfc_ven_enabled; /* stores the VEN pin state powered by Nfc */
+    bool                spi_ven_enabled; /* stores the VEN pin state powered by Spi */
+    bool                irq_enabled;
+    spinlock_t          irq_enabled_lock;
+    long                nfc_service_pid; /*used to signal the nfc the nfc service */
+	const char *clk_src_name; /*ruanbanmao add for 15801 nfc 2015/10/16*/
+	unsigned int clk_gpio; /*ruanbanmao add for 15801 nfc 2015/10/16*/
+	struct	clk	*s_clk;
+	struct regulator *p548_regulator;
+	struct regulator *p548_regulator_s4;
 
-static bool sIsWakeLocked = false;
+};
 
-static bool sPowerState = NFC_POWER_OFF;
+/*ruanbanmao add for debug 2015/1217*/
+/* Different driver debug lever */
+#if 0
+enum Pn548_DEBUG_LEVEL {
+    Pn548_DEBUG_OFF,
+    Pn548_FULL_DEBUG
+};
 
-static struct i2c_client *pn548_client;
+static unsigned char debug_level = Pn548_FULL_DEBUG;
+//#define P61_DBG_MSG(msg...)  printk(KERN_INFO "[NXP-P61] :  " msg);
 
-struct wake_lock nfc_wake_lock;
+#define Pn548_DBG_MSG(msg...)  \
+        switch(debug_level)      \
+        {                        \
+        case Pn548_DEBUG_OFF:      \
+        break;                 \
+        case Pn548_FULL_DEBUG:     \
+        printk(KERN_INFO "[NXP-pn548] :  " msg); \
+        break; \
+        default:                 \
+        printk(KERN_ERR "[NXP-pn548] :  Wrong debug level %d", debug_level); \
+        break; \
+        } \
+
+#define Pn548_ERR_MSG(msg...) printk(KERN_ERR "[NFC-pn548] : " msg );
+#endif
+/*ruanbanmao add for debug 2015/1217*/
+
+//#define NFC_DEBUG
+
+#ifdef NFC_DEBUG
+
+#ifdef pr_err
+#undef pr_err
+#endif
+
+#ifdef pr_warning
+#undef pr_warning
+#endif
+
+#ifdef pr_info
+#undef pr_info
+#endif
+
+#ifdef pr_debug
+#undef pr_debug
+#endif
+
+
+#define pr_debug(msg...) printk(KERN_ERR "[NXP-pn548] :  " msg);
+#define pr_err(msg...) printk(KERN_ERR "[NXP-pn548] :  " msg);
+#define pr_warning(msg...) printk(KERN_ERR "[NXP-pn548] :  " msg);
+#define pr_info(msg...) printk(KERN_ERR "[NXP-pn548] :  " msg);
+
+#endif
 
 static void pn548_disable_irq(struct pn548_dev *pn548_dev)
 {
-	unsigned long flags;
+    unsigned long flags;
 
-	spin_lock_irqsave(&pn548_dev->irq_enabled_lock, flags);
-	if (pn548_dev->irq_enabled) {
-		disable_irq_nosync(pn548_get_irq_pin(pn548_dev));
-		disable_irq_wake(pn548_get_irq_pin(pn548_dev));
-		pn548_dev->irq_enabled = false;
-		pr_debug(PN548_DRV_NAME ":%s disable IRQ\n", __func__);
-	} else {
-		pr_debug("%s IRQ is already disabled!\n", __func__);
-	}
-
-	spin_unlock_irqrestore(&pn548_dev->irq_enabled_lock, flags);
-}
-
-static void pn548_enable_irq(struct pn548_dev *pn548_dev)
-{
-	unsigned long flags;
-
-	spin_lock_irqsave(&pn548_dev->irq_enabled_lock, flags);
-
-	if (!pn548_dev->irq_enabled) {
-		pn548_dev->irq_enabled = true;
-		enable_irq(pn548_dev->client->irq);
-		enable_irq_wake(pn548_dev->client->irq);
-		pr_debug(PN548_DRV_NAME ":%s enable IRQ\n", __func__);
-	} else {
-		pr_debug("%s IRQ is already enabled!\n", __func__);
-	}
-
-	spin_unlock_irqrestore(&pn548_dev->irq_enabled_lock, flags);
+    spin_lock_irqsave(&pn548_dev->irq_enabled_lock, flags);
+    if (pn548_dev->irq_enabled) {
+        disable_irq_nosync(pn548_dev->client->irq);
+        pn548_dev->irq_enabled = false;
+    }
+    spin_unlock_irqrestore(&pn548_dev->irq_enabled_lock, flags);
 }
 
 static irqreturn_t pn548_dev_irq_handler(int irq, void *dev_id)
 {
-	struct pn548_dev *pn548_dev = dev_id;
-	unsigned long flags;
-	unsigned int irq_gpio_val;
+    struct pn548_dev *pn548_dev = dev_id;
+    pr_debug("%s ",__func__);
 
-	irq_gpio_val = gpio_get_value(pn548_dev->irq_gpio);
 
-	if (irq_gpio_val == 0) {
-		pr_err("%s: False Interrupt!\n", __func__);
-		return IRQ_HANDLED;
-	}
+    pn548_disable_irq(pn548_dev);
 
-	if (sPowerState == NFC_POWER_ON) {
-		spin_lock_irqsave(&pn548_dev->irq_enabled_lock, flags);
-		/* Wake up waiting readers */
-		wake_up(&pn548_dev->read_wq);
-		if (sIsWakeLocked == false) {
-			wake_lock(&nfc_wake_lock);
-			sIsWakeLocked = true;
-		} else {
-			pr_debug("%s already wake locked!\n", __func__);
-		}
-		spin_unlock_irqrestore(&pn548_dev->irq_enabled_lock, flags);
-	} else {
-		pr_err("%s, NFC IRQ Triggered during NFC OFF\n", __func__);
-	}
+    /* Wake up waiting readers */
+    wake_up(&pn548_dev->read_wq);
 
-	return IRQ_HANDLED;
+    return IRQ_HANDLED;
 }
 
 static ssize_t pn548_dev_read(struct file *filp, char __user *buf,
-					size_t count, loff_t *offset)
+        size_t count, loff_t *offset)
 {
-	struct pn548_dev *pn548_dev = filp->private_data;
-	static char tmp[MAX_BUFFER_SIZE];
-	int ret;
-	static bool isFirstPacket = true;
-	unsigned long flags;
+    struct pn548_dev *pn548_dev = filp->private_data;
+    char tmp[MAX_BUFFER_SIZE];
+    int ret;
 
-	if (count > MAX_BUFFER_SIZE)
-	count = MAX_BUFFER_SIZE;
+    if (count > MAX_BUFFER_SIZE)
+        count = MAX_BUFFER_SIZE;
 
-	if (isFirstPacket == false) {
-		ret = wait_event_interruptible_timeout(pn548_dev->read_wq,
-				gpio_get_value(pn548_dev->irq_gpio),
-				msecs_to_jiffies(NFC_TIMEOUT_MS));
-		if (ret == 0) {
-			pr_err("%s: no more interrupt after %dms (%d)!\n",
-			       __func__, NFC_TIMEOUT_MS,
-			       gpio_get_value(pn548_dev->irq_gpio));
-			spin_lock_irqsave(&pn548_dev->irq_enabled_lock, flags);
-			if (sIsWakeLocked == true) {
-				wake_unlock(&nfc_wake_lock);
-				sIsWakeLocked = false;
-			}
-			spin_unlock_irqrestore(&pn548_dev->irq_enabled_lock,
-					       flags);
-			isFirstPacket = true;
-		}
-	}
+    pr_debug("%s : reading   %zu bytes. irqgpio=%d\n", __func__, count,gpio_get_value(pn548_dev->irq_gpio));
 
-	if (isFirstPacket == true)
-	{
-		ret = wait_event_interruptible(pn548_dev->read_wq,
-					gpio_get_value(pn548_dev->irq_gpio));
-		if (ret == 0)
-			isFirstPacket = false;
-	}
+    mutex_lock(&pn548_dev->read_mutex);
 
-	if (ret == -ERESTARTSYS)
-		return ret;
+    if (!gpio_get_value(pn548_dev->irq_gpio)) {
+        if (filp->f_flags & O_NONBLOCK) {
+            ret = -EAGAIN;
+            goto fail;
+        }
 
-	/* Read data */
-	mutex_lock(&pn548_dev->read_mutex);
-	memset(tmp, 0x00, MAX_BUFFER_SIZE);
-	ret = i2c_master_recv(pn548_dev->client, tmp, count);
-	mutex_unlock(&pn548_dev->read_mutex);
-	if (count == 0) {
-		pr_err("%s: reading 0 bytes! skip! (%d)\n", __func__, ret);
-		return ret;
-	}
-	if (ret < 0) {
-		pr_err("%s: i2c_master_recv returned %d\n", __func__, ret);
-		return ret;
-	}
+        while (1) {
+            ret = 0;
+            pn548_dev->irq_enabled = true;
+            enable_irq(pn548_dev->client->irq);
+            /*If IRQ line is already high, which means IRQ was high
+              just before enabling the interrupt, skip waiting for interrupt,
+              as interrupt would have been disabled by then in the interrupt handler*/
+            if (!gpio_get_value(pn548_dev->irq_gpio)){
+            ret = wait_event_interruptible(
+                    pn548_dev->read_wq,
+                    !pn548_dev->irq_enabled);
+            }
 
-	if (ret > count) {
-		pr_err("%s: received too many bytes from i2c (%d)\n",
-							__func__, ret);
-		return -EIO;
-	}
 
-	if (copy_to_user(buf, tmp, ret)) {
-		pr_warning("%s : failed to copy to user space\n", __func__);
-		return -EFAULT;
-	}
+            pn548_disable_irq(pn548_dev);
 
-	return ret;
+            if (ret)
+                goto fail;
+
+            if (gpio_get_value(pn548_dev->irq_gpio))
+                break;
+
+            pr_warning("%s: spurious interrupt detected\n", __func__);
+        }
+    }
+
+    /* Read data */
+    ret = i2c_master_recv(pn548_dev->client, tmp, count);
+
+    mutex_unlock(&pn548_dev->read_mutex);
+
+    /* pn548 seems to be slow in handling I2C read requests
+     * so add 1ms delay after recv operation */
+    udelay(1000);
+
+    if (ret < 0) {
+        pr_err("%s: i2c_master_recv returned %d\n", __func__, ret);
+        return ret;
+    }
+    if (ret > count) {
+        pr_err("%s: received too many bytes from i2c (%d)\n",
+                __func__, ret);
+        return -EIO;
+    }
+    if (copy_to_user(buf, tmp, ret)) {
+        pr_warning("%s : failed to copy to user space\n", __func__);
+        return -EFAULT;
+    }
+    return ret;
+
+    fail:
+    mutex_unlock(&pn548_dev->read_mutex);
+    return ret;
 }
 
 static ssize_t pn548_dev_write(struct file *filp, const char __user *buf,
-						size_t count, loff_t *offset)
+        size_t count, loff_t *offset)
 {
-	struct pn548_dev  *pn548_dev;
-	static char tmp[MAX_BUFFER_SIZE];
-	int ret;
+    struct pn548_dev  *pn548_dev;
+    char tmp[MAX_BUFFER_SIZE];
+    int ret;
 
-	pn548_dev = filp->private_data;
+    pn548_dev = filp->private_data;
 
-	if (count > MAX_BUFFER_SIZE)
-		count = MAX_BUFFER_SIZE;
+    if (count > MAX_BUFFER_SIZE)
+        count = MAX_BUFFER_SIZE;
 
-	memset(tmp, 0x00, MAX_BUFFER_SIZE);
-	if (copy_from_user(tmp, buf, count)) {
-		pr_err(PN548_DRV_NAME ":%s : failed to copy from user space\n",
-								__func__);
-		return -EFAULT;
-	}
+    if (copy_from_user(tmp, buf, count)) {
+        pr_err("%s : failed to copy from user space\n", __func__);
+        return -EFAULT;
+    }
 
-	mutex_lock(&pn548_dev->read_mutex);
-	ret = i2c_master_send(pn548_dev->client, tmp, count);
-	mutex_unlock(&pn548_dev->read_mutex);
-	if (ret != count) {
-		pr_err("%s : i2c_master_send returned %d\n", __func__, ret);
-		ret = -EIO;
-	}
+    pr_debug("%s : writing %zu bytes.\n", __func__, count);
+    /* Write data */
+    ret = i2c_master_send(pn548_dev->client, tmp, count);
+    if (ret != count) {
+        pr_err("%s : i2c_master_send returned %d\n", __func__, ret);
+        ret = -EIO;
+    }
 
-	return ret;
+    /* pn548 seems to be slow in handling I2C write requests
+     * so add 1ms delay after I2C send oparation */
+    udelay(1000);
+
+    return ret;
 }
 
+static void p61_update_access_state(struct pn548_dev *pn548_dev, p61_access_state_t current_state, bool set)
+{
+    pr_info("%s: Enter current_state = %x\n", __func__, pn548_dev->p61_current_state);
+    if (current_state)
+    {
+        if(set){
+            if(pn548_dev->p61_current_state == P61_STATE_IDLE)
+                pn548_dev->p61_current_state = P61_STATE_INVALID;
+            pn548_dev->p61_current_state |= current_state;
+        }
+        else{
+            pn548_dev->p61_current_state ^= current_state;
+            if(!pn548_dev->p61_current_state)
+                pn548_dev->p61_current_state = P61_STATE_IDLE;
+        }
+    }
+    pr_info("%s: Exit current_state = %x\n", __func__, pn548_dev->p61_current_state);
+}
+
+static void p61_get_access_state(struct pn548_dev *pn548_dev, p61_access_state_t *current_state)
+{
+
+    if (current_state == NULL) {
+        //*current_state = P61_STATE_INVALID;
+        pr_err("%s : invalid state of p61_access_state_t current state  \n", __func__);
+    } else {
+        *current_state = pn548_dev->p61_current_state;
+    }
+}
+static void p61_access_lock(struct pn548_dev *pn548_dev)
+{
+    pr_info("%s: Enter\n", __func__);
+    mutex_lock(&pn548_dev->p61_state_mutex);
+    pr_info("%s: Exit\n", __func__);
+}
+static void p61_access_unlock(struct pn548_dev *pn548_dev)
+{
+    pr_info("%s: Enter\n", __func__);
+    mutex_unlock(&pn548_dev->p61_state_mutex);
+    pr_info("%s: Exit\n", __func__);
+}
+
+static void signal_handler(p61_access_state_t state, long nfc_pid)
+{
+    struct siginfo sinfo;
+    pid_t pid;
+    struct task_struct *task;
+    int sigret = 0;
+    pr_info("%s: Enter\n", __func__);
+
+    memset(&sinfo, 0, sizeof(struct siginfo));
+    sinfo.si_signo = SIG_NFC;
+    sinfo.si_code = SI_QUEUE;
+    sinfo.si_int = state;
+    pid = nfc_pid;
+
+    task = pid_task(find_vpid(pid), PIDTYPE_PID);
+    if(task)
+    {
+        pr_info("%s.\n", task->comm);
+        sigret = send_sig_info(SIG_NFC, &sinfo, task);
+        if(sigret < 0){
+            pr_info("send_sig_info failed..... sigret %d.\n", sigret);
+            //msleep(60);
+        }
+    }
+    else{
+        pr_info("finding task from PID failed\r\n");
+    }
+    pr_info("%s: Exit\n", __func__);
+}
 static int pn548_dev_open(struct inode *inode, struct file *filp)
 {
-	struct pn548_dev *pn548_dev = i2c_get_clientdata(pn548_client);
+    struct pn548_dev *pn548_dev = container_of(filp->private_data,
+            struct pn548_dev,
+            pn548_device);
 
-	filp->private_data = pn548_dev;
-	pr_debug("%s : %d,%d\n", __func__, imajor(inode), iminor(inode));
+    filp->private_data = pn548_dev;
 
-	return 0;
+    pr_debug("%s : %d,%d\n", __func__, imajor(inode), iminor(inode));
+
+    return 0;
 }
 
-static long pn548_dev_unlocked_ioctl(struct file *filp,
-				unsigned int cmd, unsigned long arg)
+static long  pn548_dev_ioctl(struct file *filp, unsigned int cmd,
+        unsigned long arg)
 {
-	struct pn548_dev *pn548_dev = filp->private_data;
-	unsigned long flags;
+    struct pn548_dev *pn548_dev = filp->private_data;
+    pr_info("%s : cmd = %d, arg = %ld\n", __func__, cmd, arg);
+    p61_access_lock(pn548_dev);
+    switch (cmd) {
+    case PN548_SET_PWR:
+    {
+        p61_access_state_t current_state = P61_STATE_INVALID;
+        p61_get_access_state(pn548_dev, &current_state);
+        if (arg == 2) {
+            if (current_state & (P61_STATE_SPI|P61_STATE_SPI_PRIO))
+            {
+                /* NFCC fw/download should not be allowed if p61 is used
+                 * by SPI
+                 */
+                pr_info("%s NFCC should not be allowed to reset/FW download \n", __func__);
+                p61_access_unlock(pn548_dev);
+                return -EBUSY; /* Device or resource busy */
+            }
+            pn548_dev->nfc_ven_enabled = true;
+            if (pn548_dev->spi_ven_enabled == false)
+            {
+                /* power on with firmware download (requires hw reset)
+                 */
+                pr_info("%s power on with firmware\n", __func__);
+                gpio_set_value(pn548_dev->ven_gpio, 1);
+                msleep(10);
+                if (pn548_dev->firm_gpio) {
+                    p61_update_access_state(pn548_dev, P61_STATE_DWNLD, true);
+                    gpio_set_value(pn548_dev->firm_gpio, 1);
+                }
+                msleep(10);
+                gpio_set_value(pn548_dev->ven_gpio, 0);
+                msleep(10);
+                gpio_set_value(pn548_dev->ven_gpio, 1);
+                msleep(10);
+            }
+        } else if (arg == 1) {
+            /* power on */
+            pr_info("%s power on\n", __func__);
+            if (pn548_dev->firm_gpio) {
+                if ((current_state & (P61_STATE_WIRED|P61_STATE_SPI|P61_STATE_SPI_PRIO))== 0){
+                    p61_update_access_state(pn548_dev, P61_STATE_IDLE, true);
+                }
+                gpio_set_value(pn548_dev->firm_gpio, 0);
+            }
 
-	switch (cmd) {
-	case pn548_SET_PWR:
-		if (arg == 2) {
-			/*  power on with firmware download */
-			dprintk(PN548_DRV_NAME
-				":%s power on with firmware\n",
-				__func__);
-			gpio_set_value(pn548_dev->ven_gpio, 1);
-			gpio_set_value(pn548_dev->firm_gpio, 1);
-			msleep(10);
-			gpio_set_value(pn548_dev->ven_gpio, 0);
-			msleep(10);
-			gpio_set_value(pn548_dev->ven_gpio, 1);
-			msleep(10);
-		} else if (arg == 1) {
-			/* power on */
-			pr_info(PN548_DRV_NAME ":%s power on\n", __func__);
-			if (sPowerState == NFC_POWER_OFF) {
-				gpio_set_value(pn548_dev->firm_gpio, 0);
-				gpio_set_value(pn548_dev->ven_gpio, 1);
-				msleep(10);
+            pn548_dev->nfc_ven_enabled = true;
+            if (pn548_dev->spi_ven_enabled == false) {
+                gpio_set_value(pn548_dev->ven_gpio, 1);
+            }
+        } else if (arg == 0) {
+            /* power off */
+            pr_info("%s power off\n", __func__);
+            if (pn548_dev->firm_gpio) {
+                if ((current_state & (P61_STATE_WIRED|P61_STATE_SPI|P61_STATE_SPI_PRIO))== 0){
+                    p61_update_access_state(pn548_dev, P61_STATE_IDLE, true);
+                }
+                gpio_set_value(pn548_dev->firm_gpio, 0);
+            }
 
-				pn548_enable_irq(pn548_dev);
-				spin_lock_irqsave(&pn548_dev->irq_enabled_lock, flags);
-				sPowerState = NFC_POWER_ON;
-				spin_unlock_irqrestore(&pn548_dev->irq_enabled_lock, flags);
-			} else {
-				pr_err("%s NFC is alread On!\n", __func__);
-			}
-		} else  if (arg == 0) {
-			/* power off */
-			pr_info(PN548_DRV_NAME ":%s power off\n", __func__);
-			if (sPowerState == NFC_POWER_ON) {
-				gpio_set_value(pn548_dev->firm_gpio, 0);
-				gpio_set_value(pn548_dev->ven_gpio, 0);
-				msleep(10);
+            pn548_dev->nfc_ven_enabled = false;
+            /* Don't change Ven state if spi made it high */
+            if (pn548_dev->spi_ven_enabled == false) {
+                gpio_set_value(pn548_dev->ven_gpio, 0);
+            }
+        } else {
+            pr_err("%s bad arg %lu\n", __func__, arg);
+            /* changed the p61 state to idle*/
+            p61_access_unlock(pn548_dev);
+            return -EINVAL;
+        }
+    }
+    break;
+    case P61_SET_SPI_PWR:
+    {
+        p61_access_state_t current_state = P61_STATE_INVALID;
+        p61_get_access_state(pn548_dev, &current_state);
+        if (arg == 1) {
+            pr_info("%s : PN61_SET_SPI_PWR - power on ese\n", __func__);
+            if ((current_state & (P61_STATE_SPI|P61_STATE_SPI_PRIO)) == 0)
+            {
+                p61_update_access_state(pn548_dev, P61_STATE_SPI, true);
+                /*To handle triple mode protection signal
+                NFC service when SPI session started*/
+                if (current_state & P61_STATE_WIRED){
+                    if(pn548_dev->nfc_service_pid){
+                        pr_info("nfc service pid %s   ---- %ld", __func__, pn548_dev->nfc_service_pid);
+                        signal_handler(P61_STATE_SPI, pn548_dev->nfc_service_pid);
+                    }
+                    else{
+                        pr_info(" invalid nfc service pid....signalling failed%s   ---- %ld", __func__, pn548_dev->nfc_service_pid);
+                    }
+                }
+                pn548_dev->spi_ven_enabled = true;
+                if (pn548_dev->nfc_ven_enabled == false)
+                {
+                    /* provide power to NFCC if, NFC service not provided */
+                    gpio_set_value(pn548_dev->ven_gpio, 1);
+                    msleep(10);
+                }
+                /* pull the gpio to high once NFCC is power on*/
+                gpio_set_value(pn548_dev->ese_pwr_gpio, 1);
+            } else {
+                pr_info("%s : PN61_SET_SPI_PWR -  power on ese failed \n", __func__);
+                p61_access_unlock(pn548_dev);
+                return -EBUSY; /* Device or resource busy */
+            }
+        } else if (arg == 0) {
+            pr_info("%s : PN61_SET_SPI_PWR - power off ese\n", __func__);
+            if(current_state & P61_STATE_SPI_PRIO){
+                p61_update_access_state(pn548_dev, P61_STATE_SPI_PRIO, false);
+                if (current_state & P61_STATE_WIRED)
+                {
+                    if(pn548_dev->nfc_service_pid){
+                        pr_info("nfc service pid %s   ---- %ld", __func__, pn548_dev->nfc_service_pid);
+                        signal_handler(P61_STATE_SPI_PRIO_END, pn548_dev->nfc_service_pid);
+                }
+                else{
+                    pr_info(" invalid nfc service pid....signalling failed%s   ---- %ld", __func__, pn548_dev->nfc_service_pid);
+                }
+                }
+                if (!(current_state & P61_STATE_WIRED))
+                    gpio_set_value(pn548_dev->ese_pwr_gpio, 0);
+                pn548_dev->spi_ven_enabled = false;
+                 if (pn548_dev->nfc_ven_enabled == false) {
+                     gpio_set_value(pn548_dev->ven_gpio, 0);
+                     msleep(10);
+                 }
+              }else if(current_state & P61_STATE_SPI){
+                  p61_update_access_state(pn548_dev, P61_STATE_SPI, false);
+                  if (!(current_state & P61_STATE_WIRED))
+                  {
+                      gpio_set_value(pn548_dev->ese_pwr_gpio, 0);
+                  }
+                  /*If JCOP3.2 or 3.3 for handling triple mode
+                  protection signal NFC service */
+                  else
+                  {
+                      if (current_state & P61_STATE_WIRED)
+                      {
+                          if(pn548_dev->nfc_service_pid){
+                              pr_info("nfc service pid %s   ---- %ld", __func__, pn548_dev->nfc_service_pid);
+                              signal_handler(P61_STATE_SPI_END, pn548_dev->nfc_service_pid);
+                           }
+                           else{
+                               pr_info(" invalid nfc service pid....signalling failed%s   ---- %ld", __func__, pn548_dev->nfc_service_pid);
+                           }
+                      }
+                  }
+                  pn548_dev->spi_ven_enabled = false;
+                  if (pn548_dev->nfc_ven_enabled == false) {
+                      gpio_set_value(pn548_dev->ven_gpio, 0);
+                      msleep(10);
+                  }
+            } else {
+                pr_err("%s : PN61_SET_SPI_PWR - failed, current_state = %x \n",
+                        __func__, pn548_dev->p61_current_state);
+                p61_access_unlock(pn548_dev);
+                return -EPERM; /* Operation not permitted */
+            }
+        }else if (arg == 2) {
+            pr_info("%s : PN61_SET_SPI_PWR - reset\n", __func__);
+            if (current_state & (P61_STATE_IDLE|P61_STATE_SPI|P61_STATE_SPI_PRIO)) {
+                if (pn548_dev->spi_ven_enabled == false)
+                {
+                    pn548_dev->spi_ven_enabled = true;
+                    if (pn548_dev->nfc_ven_enabled == false) {
+                        /* provide power to NFCC if, NFC service not provided */
+                        gpio_set_value(pn548_dev->ven_gpio, 1);
+                        msleep(10);
+                    }
+                }
+                gpio_set_value(pn548_dev->ese_pwr_gpio, 0);
+                msleep(10);
+                gpio_set_value(pn548_dev->ese_pwr_gpio, 1);
+                msleep(10);
+            } else {
+                pr_info("%s : PN61_SET_SPI_PWR - reset  failed \n", __func__);
+                p61_access_unlock(pn548_dev);
+                return -EBUSY; /* Device or resource busy */
+            }
+        }else if (arg == 3) {
+            pr_info("%s : PN61_SET_SPI_PWR - Prio Session Start power on ese\n", __func__);
+            if ((current_state & (P61_STATE_SPI|P61_STATE_SPI_PRIO)) == 0) {
+                p61_update_access_state(pn548_dev, P61_STATE_SPI_PRIO, true);
+                if (current_state & P61_STATE_WIRED){
+                    if(pn548_dev->nfc_service_pid){
+                        pr_info("nfc service pid %s   ---- %ld", __func__, pn548_dev->nfc_service_pid);
+                        signal_handler(P61_STATE_SPI_PRIO, pn548_dev->nfc_service_pid);
+                    }
+                    else{
+                        pr_info(" invalid nfc service pid....signalling failed%s   ---- %ld", __func__, pn548_dev->nfc_service_pid);
+                    }
+                }
+                pn548_dev->spi_ven_enabled = true;
+                if (pn548_dev->nfc_ven_enabled == false) {
+                    /* provide power to NFCC if, NFC service not provided */
+                    gpio_set_value(pn548_dev->ven_gpio, 1);
+                    msleep(10);
+                }
+                /* pull the gpio to high once NFCC is power on*/
+                gpio_set_value(pn548_dev->ese_pwr_gpio, 1);
+            }else {
+                pr_info("%s : Prio Session Start power on ese failed \n", __func__);
+                p61_access_unlock(pn548_dev);
+                return -EBUSY; /* Device or resource busy */
+            }
+        }else if (arg == 4) {
+            if (current_state & P61_STATE_SPI_PRIO)
+            {
+                pr_info("%s : PN61_SET_SPI_PWR - Prio Session Ending...\n", __func__);
+                p61_update_access_state(pn548_dev, P61_STATE_SPI_PRIO, false);
+                /*after SPI prio timeout, the state is changing from SPI prio to SPI */
+                p61_update_access_state(pn548_dev, P61_STATE_SPI, true);
+                if (current_state & P61_STATE_WIRED)
+                {
+                    if(pn548_dev->nfc_service_pid){
+                        pr_info("nfc service pid %s   ---- %ld", __func__, pn548_dev->nfc_service_pid);
+                        signal_handler(P61_STATE_SPI_PRIO_END, pn548_dev->nfc_service_pid);
+                    }
+                    else{
+                        pr_info(" invalid nfc service pid....signalling failed%s   ---- %ld", __func__, pn548_dev->nfc_service_pid);
+                    }
+               }
+            }
+            else
+            {
+                pr_info("%s : PN61_SET_SPI_PWR -  Prio Session End failed \n", __func__);
+                p61_access_unlock(pn548_dev);
+                return -EBADRQC; /* Device or resource busy */
+            }
+        }else {
+            pr_info("%s bad ese pwr arg %lu\n", __func__, arg);
+            p61_access_unlock(pn548_dev);
+            return -EBADRQC; /* Invalid request code */
+        }
+    }
+    break;
 
-				pn548_disable_irq(pn548_dev);
-				spin_lock_irqsave(&pn548_dev->irq_enabled_lock, flags);
+    case P61_GET_PWR_STATUS:
+    {
+        p61_access_state_t current_state = P61_STATE_INVALID;
+        p61_get_access_state(pn548_dev, &current_state);
+        pr_info("%s: P61_GET_PWR_STATUS  = %x",__func__, current_state);
+        put_user(current_state, (int __user *)arg);
+    }
+    break;
 
-				if (sIsWakeLocked == true) {
-					pr_err("%s: Release Wake_Lock\n", __func__);
-					wake_unlock(&nfc_wake_lock);
-					sIsWakeLocked = false;
-				}
-				sPowerState = NFC_POWER_OFF;
-				spin_unlock_irqrestore(&pn548_dev->irq_enabled_lock, flags);
-			} else {
-				pr_err("%s NFC is alread Off!\n", __func__);
-			}
-		} else {
-			pr_err("%s bad arg %ld\n", __func__, arg);
-			return -EINVAL;
-		}
-		break;
+    case P61_SET_WIRED_ACCESS:
+    {
+        p61_access_state_t current_state = P61_STATE_INVALID;
+        p61_get_access_state(pn548_dev, &current_state);
+        if (arg == 1)
+        {
+            if (current_state)
+            {
+                pr_info("%s : P61_SET_WIRED_ACCESS - enabling\n", __func__);
+                p61_update_access_state(pn548_dev, P61_STATE_WIRED, true);
+                if (current_state & P61_STATE_SPI_PRIO)
+                {
+                    if(pn548_dev->nfc_service_pid){
+                        pr_info("nfc service pid %s   ---- %ld", __func__, pn548_dev->nfc_service_pid);
+                        signal_handler(P61_STATE_SPI_PRIO, pn548_dev->nfc_service_pid);
+                    }
+                    else{
+                        pr_info(" invalid nfc service pid....signalling failed%s   ---- %ld", __func__, pn548_dev->nfc_service_pid);
+                    }
+                }
+                if((current_state & (P61_STATE_SPI|P61_STATE_SPI_PRIO)) == 0)
+                    gpio_set_value(pn548_dev->ese_pwr_gpio, 1);
+            } else {
+                pr_info("%s : P61_SET_WIRED_ACCESS -  enabling failed \n", __func__);
+                p61_access_unlock(pn548_dev);
+                return -EBUSY; /* Device or resource busy */
+            }
+        } else if (arg == 0) {
+            pr_info("%s : P61_SET_WIRED_ACCESS - disabling \n", __func__);
+            if (current_state & P61_STATE_WIRED){
+                p61_update_access_state(pn548_dev, P61_STATE_WIRED, false);
+                if((current_state & (P61_STATE_SPI|P61_STATE_SPI_PRIO)) == 0)
+                    gpio_set_value(pn548_dev->ese_pwr_gpio, 0);
+            } else {
+                pr_err("%s : P61_SET_WIRED_ACCESS - failed, current_state = %x \n",
+                        __func__, pn548_dev->p61_current_state);
+                p61_access_unlock(pn548_dev);
+                return -EPERM; /* Operation not permitted */
+            }
+        }
+        else {
+            pr_info("%s P61_SET_WIRED_ACCESS - bad arg %lu\n", __func__, arg);
+            p61_access_unlock(pn548_dev);
+            return -EBADRQC; /* Invalid request code */
+        }
+    }
+    break;
+    case P548_SET_NFC_SERVICE_PID:
+    {
+        pr_info("%s : The NFC Service PID is %ld\n", __func__, arg);
+        pn548_dev->nfc_service_pid = arg;
 
-	case pn548_HW_REVISION:
-		return pn548_get_hw_revision();
-
-	default:
-		pr_err("%s bad ioctl %d\n", __func__, cmd);
-		return -EINVAL;
-	}
-
-	return 0;
+    }
+    break;
+    default:
+        pr_err("%s bad ioctl %u\n", __func__, cmd);
+        p61_access_unlock(pn548_dev);
+        return -EINVAL;
+    }
+    p61_access_unlock(pn548_dev);
+    return 0;
 }
 
 static const struct file_operations pn548_dev_fops = {
-	.owner  = THIS_MODULE,
-	.llseek = no_llseek,
-	.read   = pn548_dev_read,
-	.write  = pn548_dev_write,
-	.open   = pn548_dev_open,
-	.unlocked_ioctl = pn548_dev_unlocked_ioctl,
-	.compat_ioctl   = pn548_dev_unlocked_ioctl,
+        .owner  = THIS_MODULE,
+        .llseek = no_llseek,
+        .read   = pn548_dev_read,
+        .write  = pn548_dev_write,
+        .open   = pn548_dev_open,
+        .unlocked_ioctl  = pn548_dev_ioctl,
 };
+#if DRAGON_NFC
+static int pn548_parse_dt(struct device *dev,
+    struct pn548_i2c_platform_data *data)
+{
+    struct device_node *np = dev->of_node;
+    int errorno = 0;
+    int r =0;
+        data->irq_gpio = of_get_named_gpio(np, "nxp,pn548-irq", 0);
+        if ((!gpio_is_valid(data->irq_gpio)))
+                return -EINVAL;
+
+        data->ven_gpio = of_get_named_gpio(np, "nxp,pn548-ven", 0);
+        if ((!gpio_is_valid(data->ven_gpio)))
+                return -EINVAL;
+
+        data->firm_gpio = of_get_named_gpio(np, "nxp,pn548-fw-dwnld", 0);
+        if ((!gpio_is_valid(data->firm_gpio)))
+                return -EINVAL;
+
+        data->ese_pwr_gpio = of_get_named_gpio(np, "nxp,pn548-ese-pwr", 0);
+        if ((!gpio_is_valid(data->ese_pwr_gpio)))
+                return -EINVAL;
+		//ruanbanmao add for 15801 nfc begin.
+        data->clk_gpio = of_get_named_gpio(np, "nxp,pn548-clk-gpio", 0);
+        if ((!gpio_is_valid(data->clk_gpio)))
+                return -EINVAL;
+        r = of_property_read_string(np, "qcom,clk-src", &data->clk_src_name);
+        //ruanbanmao add for 15801 nfc, end
+
+    pr_info("%s: %d, %d, %d, %d ,%d, %d\n", __func__,
+        data->irq_gpio, data->ven_gpio, data->firm_gpio, data->ese_pwr_gpio, data->clk_gpio, errorno);
+
+    return errorno;
+}
+#endif
 
 static int pn548_probe(struct i2c_client *client,
-				const struct i2c_device_id *id)
+        const struct i2c_device_id *id)
 {
-	int ret;
-	struct pn548_dev *pn548_dev = NULL;
+    int ret;
+    struct pn548_i2c_platform_data *platform_data;
+    struct pn548_dev *pn548_dev;
+#if !DRAGON_NFC
+    platform_data = client->dev.platform_data;
+#else
+    struct device_node *node = client->dev.of_node;
+    pr_info("Enter %s !!!\n",__func__);//ruanbanmao add for debug
 
-	pn548_client = client;
-	pn548_dev = kzalloc(sizeof(*pn548_dev), GFP_KERNEL);
-	if (pn548_dev == NULL) {
-		dev_err(&client->dev,
-			"failed to allocate memory for module data\n");
-		ret = -ENOMEM;
-		goto err_exit;
-	}
+    if (node) {
+        platform_data = devm_kzalloc(&client->dev,
+            sizeof(struct pn548_i2c_platform_data), GFP_KERNEL);
+        if (!platform_data) {
+            dev_err(&client->dev,
+                "nfc-nci probe: Failed to allocate memory\n");
+            return -ENOMEM;
+        }
+        ret = pn548_parse_dt(&client->dev, platform_data);
+        if (ret)
+        {
+            pr_info("%s pn548_parse_dt failed", __func__);
+        }
+        client->irq = gpio_to_irq(platform_data->irq_gpio);
+        if (client->irq < 0)
+        {
+            pr_info("%s gpio to irq failed", __func__);
+        }
+    } else {
+        platform_data = client->dev.platform_data;
+    }
+#endif
+    if (platform_data == NULL) {
+        pr_err("%s : nfc probe fail\n", __func__);
+        return  -ENODEV;
+    }
 
-	pn548_parse_dt(&client->dev, pn548_dev);
+    if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
+        pr_err("%s : need I2C_FUNC_I2C\n", __func__);
+        return  -ENODEV;
+    }
+//ruanbanmao modify for 15801,2015/10/20
+//#if !DRAGON_NFC
+#if 1
+    ret = gpio_request(platform_data->irq_gpio, "nfc_int");
+    if (ret)
+        return  -ENODEV;
+    ret = gpio_request(platform_data->ven_gpio, "nfc_ven");
+    if (ret)
+        goto err_ven;
+    ret = gpio_request(platform_data->ese_pwr_gpio, "nfc_ese_pwr");
+    if (ret)
+        goto err_ese_pwr;
+    ret = gpio_request(platform_data->clk_gpio, "nfc_clk_gpio");
+    if(ret)
+        goto err_clk_gpio;
+    if (platform_data->firm_gpio) {
+        ret = gpio_request(platform_data->firm_gpio, "nfc_firm");
+        if (ret)
+            goto err_firm;
+    }
+#endif
+    pn548_dev = kzalloc(sizeof(*pn548_dev), GFP_KERNEL);
+    if (pn548_dev == NULL) {
+        dev_err(&client->dev,
+                "failed to allocate memory for module data\n");
+        ret = -ENOMEM;
+        goto err_exit;
+    }
+    /*NFC don't contrl ldo 9 .ldo 9 contrled by modem, this will cause can,t recognise sim card*/
+    /*
+	//ruanbanmao add for 15801 nfc, 2015/10/20, begin
+    pn548_dev->p548_regulator = regulator_get( &client->dev, "nfc_voltage");
+    if (IS_ERR(pn548_dev->p548_regulator))
+    {
+        ret = PTR_ERR(pn548_dev->p548_regulator);
+        pr_err(" Error to get nfc_voltage. (error code) = %d\n", ret);
+		 goto err_get_nfc_voltage;
+    }
+    else
+    {
+        pr_info("successfully got nfc_voltage\n");
+    }
 
-	pn548_dev->client   = client;
-
-	ret = gpio_request(pn548_dev->irq_gpio, "nfc_int");
-	if (ret) {
-		pr_err(PN548_DRV_NAME ": nfc_int request failed!\n");
-		goto err_int;
-	}
-
-	ret = gpio_request(pn548_dev->ven_gpio, "nfc_ven");
-	if (ret) {
-		pr_err(PN548_DRV_NAME ": nfc_ven request failed!\n");
-		goto err_ven;
-	}
-
-	ret = gpio_request(pn548_dev->firm_gpio, "nfc_firm");
-	if (ret) {
-		pr_err(PN548_DRV_NAME ": nfc_firm request failed!\n");
-		goto err_firm;
-	}
-
-	pn548_gpio_enable(pn548_dev);
-
-	ret = gpio_direction_output(pn548_dev->ven_gpio,0);
-	ret = gpio_direction_output(pn548_dev->firm_gpio,0);
-	ret = gpio_direction_input(pn548_dev->irq_gpio);
-
-	/* init mutex and queues */
-	init_waitqueue_head(&pn548_dev->read_wq);
-	mutex_init(&pn548_dev->read_mutex);
-	spin_lock_init(&pn548_dev->irq_enabled_lock);
-
-	pn548_dev->pn548_device.minor = MISC_DYNAMIC_MINOR;
-	pn548_dev->pn548_device.name = PN548_DRV_NAME;
-	pn548_dev->pn548_device.fops = &pn548_dev_fops;
-
-	ret = misc_register(&pn548_dev->pn548_device);
-	if (ret) {
-		pr_err("%s : misc_register failed\n", __func__);
-		goto err_misc_register;
-	}
-
-	wake_lock_init(&nfc_wake_lock, WAKE_LOCK_SUSPEND, "NFCWAKE");
-
-	/* request irq.  the irq is set whenever the chip has data available
-	* for reading.  it is cleared when all data has been read.
+    ret = regulator_set_voltage(pn548_dev->p548_regulator, 1800000, 1800000);
+    if (ret != 0)
+    {
+        pr_err("Error setting the nfc_voltage. (error code)= %d\n", ret);
+        goto err_set_nfc_voltage;//ruanbanmao modify
+    }
+    else
+    {
+        ret = regulator_enable(pn548_dev->p548_regulator);
+        pr_info("successfully set nfc_voltage\n");
+    }
 	*/
-	ret = request_irq(pn548_gpio_to_irq(pn548_dev), pn548_dev_irq_handler,
-				IRQF_TRIGGER_RISING|IRQF_NO_SUSPEND,
-				client->name, pn548_dev);
-	if (ret) {
-		dev_err(&client->dev, "request_irq failed\n");
-		goto err_request_irq_failed;
-	}
+    pn548_dev->p548_regulator_s4= regulator_get( &client->dev, "nfc_voltage_s4");
+    if (IS_ERR(pn548_dev->p548_regulator_s4))
+    {
+        ret = PTR_ERR(pn548_dev->p548_regulator_s4);
+        pr_err(" Error to get p548_regulator_s4. (error code) = %d\n", ret);
+       goto err_set_nfc_voltage;
+    }
+    else
+    {
+        pr_info("successfully got regulator_s4\n");
+    }
 
-	/*
-	* Below code does not pack with pn548_enable_irq
-	* request irq make irq enable.
-	* so if irq enable in pn548_enable_irq called,
-	* unbalanced enable log will be appeared.
-	*/
-	pn548_dev->irq_enabled = true;
-	enable_irq_wake(pn548_get_irq_pin(pn548_dev));
-	pn548_disable_irq(pn548_dev);
-	i2c_set_clientdata(client, pn548_dev);
+    ret = regulator_set_voltage(pn548_dev->p548_regulator_s4, 1800000, 1800000);
+    if (ret != 0)
+    {
+        pr_err("Error setting the regulator voltage_s4. (error code)= %d\n", ret);
+        goto err_set_p548_regulator_s4;
+		 }
+    else
+    {
+        ret = regulator_enable(pn548_dev->p548_regulator_s4);
+        pr_info("successfully set regulator voltage_s4\n");
+    }
+    //ruanbanmao add for 15801 nfc, 2015/10/20, end
 
-	pr_info("%s done\n", __func__);
+    pn548_dev->irq_gpio = platform_data->irq_gpio;
+    pn548_dev->ven_gpio  = platform_data->ven_gpio;
+    pn548_dev->firm_gpio  = platform_data->firm_gpio;
+    pn548_dev->ese_pwr_gpio  = platform_data->ese_pwr_gpio;
+    pn548_dev->p61_current_state = P61_STATE_IDLE;
+    pn548_dev->nfc_ven_enabled = false;
+    pn548_dev->spi_ven_enabled = false;
+    pn548_dev->client   = client;
 
-	return 0;
+	//ruanbanmao add for 15801 nfc, 2015/10/20, begin
+    // get and set clock.
+	pn548_dev->clk_src_name = platform_data->clk_src_name;
+	pn548_dev->clk_gpio = platform_data->clk_gpio;
 
-err_request_irq_failed:
-	misc_deregister(&pn548_dev->pn548_device);
+    if (!strcmp(pn548_dev->clk_src_name, "BBCLK2")) {
+        pr_info("get BBCLK2!!!\n");
+        pn548_dev->s_clk = clk_get(&pn548_dev->client->dev, "ref_clk");
+        if (IS_ERR(pn548_dev->s_clk)) {
+        pr_err("no pclk defined\n");
+		goto err_set_p548_regulator_s4;
+        }
+    }
+    clk_set_rate(pn548_dev->s_clk, 19200000);
+    ret = clk_prepare_enable(pn548_dev->s_clk);
+    pr_info("clk_prepare_enable. ret = %d\n", ret);
+    if (ret) {
+        pr_err("Can't enable s_clk\n");
+		   // return err;
+    }
+	//ruanbanmao add for 15801 nfc, 2015/10/20, end
 
-err_misc_register:
-	mutex_destroy(&pn548_dev->read_mutex);
-	gpio_free(pn548_dev->firm_gpio);
+    ret = gpio_direction_input(pn548_dev->irq_gpio);
+    if (ret < 0) {
+        pr_err("%s :not able to set irq_gpio as input\n", __func__);
+        //ruanbanmao modify for 15801 nfc.
+        goto err_gpio_set;
+    }
+    ret = gpio_direction_output(pn548_dev->ven_gpio, 0);
+    if (ret < 0) {
+        pr_err("%s : not able to set ven_gpio as output\n", __func__);
+        //ruanbanmao modify for 15801 nfc.
+        goto err_gpio_set;
+    }
+    ret = gpio_direction_output(pn548_dev->ese_pwr_gpio, 0);
+    if (ret < 0) {
+        pr_err("%s : not able to set ese_pwr gpio as output\n", __func__);
+        //ruanbanmao modify for 15801 nfc.
+        goto err_gpio_set;
+    }
+    if (platform_data->firm_gpio) {
+        ret = gpio_direction_output(pn548_dev->firm_gpio, 0);
+        if (ret < 0) {
+            pr_err("%s : not able to set firm_gpio as output\n",
+                    __func__);
+        //ruanbanmao modify for 15801 nfc.
+        goto err_gpio_set;
+        }
+    }
+    //ruanbanmao add for NFC clock. 2016-01-06
+    ret = gpio_direction_input(pn548_dev->clk_gpio);
+    if(ret <0){
+        pr_err("%s : not able to set clk_gpio as input\n",
+                    __func__);
+        goto err_gpio_set;
+    }
+    /* init mutex and queues */
+    init_waitqueue_head(&pn548_dev->read_wq);
+    mutex_init(&pn548_dev->read_mutex);
+    mutex_init(&pn548_dev->p61_state_mutex);
+    spin_lock_init(&pn548_dev->irq_enabled_lock);
 
-err_firm:
-	gpio_free(pn548_dev->ven_gpio);
+    pn548_dev->pn548_device.minor = MISC_DYNAMIC_MINOR;
+    pn548_dev->pn548_device.name = "pn548";
+    pn548_dev->pn548_device.fops = &pn548_dev_fops;
 
-err_ven:
-	gpio_free(pn548_dev->irq_gpio);
+    ret = misc_register(&pn548_dev->pn548_device);
+    if (ret) {
+        pr_err("%s : misc_register failed\n", __FILE__);
+        goto err_misc_register;
+    }
 
-err_int:
-	kfree(pn548_dev);
+    /* request irq.  the irq is set whenever the chip has data available
+     * for reading.  it is cleared when all data has been read.
+     */
+    pr_info("%s : requesting IRQ %d\n", __func__, client->irq);
+    pn548_dev->irq_enabled = true;
+    ret = request_irq(client->irq, pn548_dev_irq_handler,
+            IRQF_TRIGGER_HIGH, client->name, pn548_dev);
+    if (ret) {
+        dev_err(&client->dev, "request_irq failed\n");
+        goto err_request_irq_failed;
+    }
+    pn548_disable_irq(pn548_dev);
+    i2c_set_clientdata(client, pn548_dev);
+    /*add for wake up ap side*/
+    enable_irq_wake(pn548_dev->client->irq);
+    //push_component_info(NFC, "NQ220", "NXP");
+    return 0;
 
-err_exit:
-
-	return ret;
+    err_request_irq_failed:
+    misc_deregister(&pn548_dev->pn548_device);
+    err_misc_register:
+    mutex_destroy(&pn548_dev->read_mutex);
+    mutex_destroy(&pn548_dev->p61_state_mutex);
+    //ruanbanmao add for 15801 nfc, 2015/10/20, begin
+    err_gpio_set:
+    clk_disable(pn548_dev->s_clk);
+    clk_put(pn548_dev->s_clk);
+    err_set_p548_regulator_s4:
+    regulator_put(pn548_dev->p548_regulator_s4);
+    err_set_nfc_voltage:
+    regulator_put(pn548_dev->p548_regulator);
+	//err_get_nfc_voltage:
+    ////ruanbanmao add for 15801 nfc, 2015/10/20, end
+    kfree(pn548_dev);
+    err_exit:
+    if (pn548_dev->firm_gpio)
+        gpio_free(platform_data->firm_gpio);
+    err_clk_gpio:
+    gpio_free(platform_data->clk_gpio);
+    err_firm:
+    gpio_free(platform_data->ese_pwr_gpio);
+    err_ese_pwr:
+    gpio_free(platform_data->ven_gpio);
+    err_ven:
+    gpio_free(platform_data->irq_gpio);
+    return ret;
 }
 
 static int pn548_remove(struct i2c_client *client)
 {
-	struct pn548_dev *pn548_dev;
+    struct pn548_dev *pn548_dev;
 
-	pn548_dev = i2c_get_clientdata(client);
-	free_irq(pn548_gpio_to_irq(pn548_dev), pn548_dev);
-	misc_deregister(&pn548_dev->pn548_device);
-	mutex_destroy(&pn548_dev->read_mutex);
-	gpio_free(pn548_dev->firm_gpio);
-	gpio_free(pn548_dev->ven_gpio);
-	gpio_free(pn548_dev->irq_gpio);
-	kfree(pn548_dev);
+    pn548_dev = i2c_get_clientdata(client);
+    //ruanbanmao add for p61, begin
+    clk_disable(pn548_dev->s_clk);
+    clk_put(pn548_dev->s_clk);
+    regulator_put(pn548_dev->p548_regulator_s4);
+    regulator_put(pn548_dev->p548_regulator);
+    //end
+    free_irq(client->irq, pn548_dev);
+    misc_deregister(&pn548_dev->pn548_device);
+    mutex_destroy(&pn548_dev->read_mutex);
+    mutex_destroy(&pn548_dev->p61_state_mutex);
+    gpio_free(pn548_dev->irq_gpio);
+    gpio_free(pn548_dev->ven_gpio);
+    gpio_free(pn548_dev->ese_pwr_gpio);
+    pn548_dev->p61_current_state = P61_STATE_INVALID;
+    pn548_dev->nfc_ven_enabled = false;
+    pn548_dev->spi_ven_enabled = false;
 
-	return 0;
-}
+    if (pn548_dev->firm_gpio)
+        gpio_free(pn548_dev->firm_gpio);
+    kfree(pn548_dev);
 
-static void pn548_shutdown(struct i2c_client *client)
-{
-	struct pn548_dev *pn548_dev;
-
-	pn548_dev = i2c_get_clientdata(client);
-	pn548_shutdown_cb(pn548_dev);
-
-	return;
+    return 0;
 }
 
 static const struct i2c_device_id pn548_id[] = {
-	{ PN548_DRV_NAME, 0 },
-	{ }
+        { "pn548", 0 },
+        { }
 };
-
-static struct of_device_id pn548_match_table[] = {
-	{ .compatible = "nxp,pn548",},
-	{ },
+#if DRAGON_NFC
+static struct of_device_id pn548_i2c_dt_match[] = {
+    {
+        .compatible = "nxp,pn548",
+    },
+    {}
 };
-
+#endif
 static struct i2c_driver pn548_driver = {
-	.driver = {
-		.owner = THIS_MODULE,
-		.name = PN548_DRV_NAME,
-		.of_match_table = pn548_match_table,
-	},
-	.probe      = pn548_probe,
-	.remove     = pn548_remove,
-	.shutdown   = pn548_shutdown,
-	.id_table   = pn548_id,
+        .id_table   = pn548_id,
+        .probe      = pn548_probe,
+        .remove     = pn548_remove,
+        .driver     = {
+                .owner = THIS_MODULE,
+                .name  = "pn548",
+#if DRAGON_NFC
+                .of_match_table = pn548_i2c_dt_match,
+#endif
+        },
 };
 
-static void async_dev_init(void *data, async_cookie_t cookie)
-{
-	int ret = 0;
-
-	ret = i2c_add_driver(&pn548_driver);
-	if (ret < 0)
-		pr_err("[NFC]failed to i2c_add_driver\n");
-	return;
-}
+/*
+ * module load/unload record keeping
+ */
 
 static int __init pn548_dev_init(void)
 {
-	async_schedule(async_dev_init, NULL);
-
-	return 0;
+    pr_info("Loading pn548 driver\n");
+    return i2c_add_driver(&pn548_driver);
 }
-
 module_init(pn548_dev_init);
 
 static void __exit pn548_dev_exit(void)
 {
-	i2c_del_driver(&pn548_driver);
+    pr_info("Unloading pn548 driver\n");
+    i2c_del_driver(&pn548_driver);
 }
 module_exit(pn548_dev_exit);
 
-MODULE_DEVICE_TABLE(i2c, pn548_id);
 MODULE_AUTHOR("Sylvain Fonteneau");
 MODULE_DESCRIPTION("NFC PN548 driver");
 MODULE_LICENSE("GPL");
