@@ -1137,10 +1137,12 @@ static int lg4946_lpwg(struct device *dev, u32 code, void *param)
 
 	case LPWG_TAP_COUNT:
 		ts->tci.info[TCI_2].tap_count = value[0];
+		TOUCH_I("LPWG_TAP_COUNT: x0[%d]\n", value[0]);
 		break;
 
 	case LPWG_DOUBLE_TAP_CHECK:
 		ts->tci.double_tap_check = value[0];
+		TOUCH_I("LPWG_DOUBLE_TAP_CHECK: x0[%d]\n", value[0]);
 		break;
 
 	case LPWG_UPDATE_ALL:
