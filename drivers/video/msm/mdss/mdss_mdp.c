@@ -176,20 +176,15 @@ u32 mdss_mdp_fb_stride(u32 fb_index, u32 xres, int bpp)
 static irqreturn_t mdss_irq_handler(int irq, void *ptr)
 {
 	struct mdss_data_type *mdata = ptr;
-#ifdef QCT_IRQ_NOC_PATCH
-	u32 intr = 0;
-#else
-	u32 intr = MDSS_REG_READ(mdata, MDSS_REG_HW_INTR_STATUS);
-#endif
+	u32 intr;
 
 	if (!mdata)
 		return IRQ_NONE;
-#ifdef QCT_IRQ_NOC_PATCH
 	else if (!mdss_get_irq_enable_state(&mdss_mdp_hw))
 		return IRQ_HANDLED;
 
 	intr = MDSS_REG_READ(mdata, MDSS_REG_HW_INTR_STATUS);
-#endif
+
 	mdss_mdp_hw.irq_info->irq_buzy = true;
 
 	if (intr & MDSS_INTR_MDP) {
@@ -608,9 +603,7 @@ void mdss_mdp_intr_check_and_clear(u32 intr_type, u32 intf_num)
 		writel_relaxed(irq, mdata->mdp_base + MDSS_MDP_REG_INTR_CLEAR);
 	}
 	spin_unlock_irqrestore(&mdp_lock, irq_flags);
-#ifdef QCT_IRQ_NOC_PATCH
 	wmb();
-#endif
 }
 
 void mdss_mdp_hist_irq_disable(u32 irq)
