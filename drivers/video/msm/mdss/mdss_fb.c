@@ -2468,15 +2468,13 @@ static int mdss_fb_blank_blank(struct msm_fb_data_type *mfd,
 			pr_info("[AOD] Don't off backlight when U2 Blank\n");
 			mfd->unset_bl_level = 0;
 		} else {
-			mfd->allow_bl_update = true;
 			mdss_fb_set_backlight(mfd, 0);
-			mfd->bl_updated = 0;
+			mfd->allow_bl_update = true;
 			mfd->unset_bl_level = 0;
 		}
 #else
-		mfd->allow_bl_update = true;
 		mdss_fb_set_backlight(mfd, 0);
-		mfd->allow_bl_update = false;
+		mfd->allow_bl_update = true;
 		mfd->unset_bl_level = current_bl;
 #endif
 		mutex_unlock(&mfd->bl_lock);
