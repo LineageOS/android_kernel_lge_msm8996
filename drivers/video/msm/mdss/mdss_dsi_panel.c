@@ -35,7 +35,6 @@ extern void qpnp_wled_dimming(int dst_lvl,int current_lvl);
 
 #include "mdss_dsi.h"
 #include "mdss_dba_utils.h"
-#include "mdss_livedisplay.h"
 
 #if defined(CONFIG_LGE_MIPI_H1_INCELL_QHD_CMD_PANEL)
 #if defined(CONFIG_LGE_DISPLAY_AOD_SUPPORTED)
@@ -234,8 +233,13 @@ void lge_force_mdss_dsi_panel_cmd_read(char cmd0, int cnt)
 #endif
 #endif
 
+#if defined(CONFIG_LGE_DISPLAY_AOD_SUPPORTED)
 void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
 			struct dsi_panel_cmds *pcmds, u32 flags)
+#else
+static void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
+			struct dsi_panel_cmds *pcmds, u32 flags)
+#endif
 {
 	struct dcs_cmd_req cmdreq;
 	struct mdss_panel_info *pinfo;
@@ -1214,11 +1218,6 @@ notify:
 
 	if (ctrl->ds_registered && pinfo->is_pluggable)
 		mdss_dba_utils_video_on(pinfo->dba_data, pinfo);
-
-	if (pdata->event_handler)
-		pdata->event_handler(pdata, MDSS_EVENT_UPDATE_LIVEDISPLAY,
-				(void *)(unsigned long) MODE_UPDATE_ALL);
-
 end:
 	pr_debug("%s:-\n", __func__);
 	return ret;
@@ -1367,8 +1366,13 @@ static void mdss_dsi_parse_trigger(struct device_node *np, char *trigger,
 	}
 }
 
+#if defined(CONFIG_LGE_DISPLAY_AOD_SUPPORTED)
 int mdss_dsi_parse_dcs_cmds(struct device_node *np,
 		struct dsi_panel_cmds *pcmds, char *cmd_key, char *link_key)
+#else
+static int mdss_dsi_parse_dcs_cmds(struct device_node *np,
+		struct dsi_panel_cmds *pcmds, char *cmd_key, char *link_key)
+#endif
 {
 	const char *data;
 	int blen = 0, len;
@@ -2788,6 +2792,10 @@ static int mdss_panel_parse_dt(struct device_node *np,
 #if defined(CONFIG_LGE_MIPI_H1_INCELL_QHD_CMD_PANEL)
 	rc = of_property_read_u32(np, "qcom,blmap-size", &tmp);
 	pinfo->blmap_size = (!rc ? tmp : 0);
+#if defined(CONFIG_LGE_HIGH_LUMINANCE_MODE)
+	rc = of_property_read_u32(np, "qcom,hl-blmap-size", &tmp);
+	pinfo->hl_blmap_size = (!rc ? tmp : 0);
+#endif
 	if (pinfo->blmap_size) {
 		array = kzalloc(sizeof(u32) * pinfo->blmap_size, GFP_KERNEL);
 
@@ -2817,6 +2825,37 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	} else {
 		pinfo->blmap = NULL;
 	}
+#if defined(CONFIG_LGE_HIGH_LUMINANCE_MODE)
+	if (pinfo->hl_blmap_size) {
+		array = kzalloc(sizeof(u32) * pinfo->hl_blmap_size, GFP_KERNEL);
+
+		if (!array)
+			return -ENOMEM;
+		rc = of_property_read_u32_array(np,
+			"qcom,hl-blmap", array, pinfo->hl_blmap_size);
+
+		if (rc) {
+			pr_err("%s:%d, unable to read backlight map\n",
+					__func__, __LINE__);
+			kfree(array);
+			goto error;
+		}
+
+		pinfo->hl_blmap = kzalloc(sizeof(int) * pinfo->hl_blmap_size,
+					GFP_KERNEL);
+		if (!pinfo->hl_blmap){
+			kfree(array);
+			return -ENOMEM;
+		}
+
+		for (i = 0; i < pinfo->hl_blmap_size; i++)
+			pinfo->hl_blmap[i] = array[i];
+
+		kfree(array);
+	} else {
+		pinfo->hl_blmap = NULL;
+	}
+#endif
 #endif
 
 	rc = of_property_read_u32(np, "qcom,mdss-dsi-interleave-mode", &tmp);
@@ -2958,8 +2997,6 @@ static int mdss_panel_parse_dt(struct device_node *np,
 
 	pinfo->is_dba_panel = of_property_read_bool(np,
 			"qcom,dba-panel");
-
-	mdss_livedisplay_parse_dt(np, pinfo);
 
 	return 0;
 

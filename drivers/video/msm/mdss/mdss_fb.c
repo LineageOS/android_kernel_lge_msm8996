@@ -54,7 +54,6 @@
 #include "mdss_debug.h"
 #include "mdss_smmu.h"
 #include "mdss_mdp.h"
-#include "mdss_livedisplay.h"
 
 #ifdef CONFIG_MACH_LGE
 #include <soc/qcom/lge/board_lge.h>
@@ -383,9 +382,22 @@ static void mdss_fb_set_bl_brightness(struct led_classdev *led_cdev,
 #endif
 
 #if defined(CONFIG_LGE_MIPI_H1_INCELL_QHD_CMD_PANEL)
+#if defined(CONFIG_LGE_HIGH_LUMINANCE_MODE)
+	if(mfd->panel_info->hl_mode_on){
+		if (mfd->panel_info->hl_blmap)
+			bl_lvl = mfd->panel_info->hl_blmap[value];
+		pr_info("hl-mode value(%d) -> bl_lvl(%d)\n", value, bl_lvl);
+	}
+	else{
+		if (mfd->panel_info->blmap)
+			bl_lvl = mfd->panel_info->blmap[value];
+		pr_info("value(%d) -> bl_lvl(%d)\n", value, bl_lvl);
+	}
+#else
 	if (mfd->panel_info->blmap)
 		bl_lvl = mfd->panel_info->blmap[value];
 	pr_info("value(%d) -> bl_lvl(%d)\n", value, bl_lvl);
+#endif
 #else
 	/* This maps android backlight level 0 to 255 into
 	   driver backlight level 0 to bl_max with rounding */
@@ -1195,6 +1207,56 @@ static ssize_t mdss_fb_get_keep_aod(struct device *dev,
 
 #endif
 
+#if defined(CONFIG_LGE_HIGH_LUMINANCE_MODE)
+static ssize_t hl_mode_show(struct device *dev,
+		struct device_attribute *attr,
+		char *buf)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+	struct mdss_panel_data *pdata;
+	struct mdss_panel_info *pinfo;
+	int ret;
+
+	pdata = dev_get_platdata(&mfd->pdev->dev);
+
+	if (!pdata) {
+		pr_err("[hl_mode] no panel connected!\n");
+		return -EINVAL;
+	}
+	pinfo = &pdata->panel_info;
+
+	ret = scnprintf(buf, PAGE_SIZE, "%d\n", pinfo->hl_mode_on);
+	return ret;
+}
+
+static ssize_t hl_mode_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t len)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+	struct mdss_panel_data *pdata;
+	struct mdss_panel_info *pinfo;
+
+	pdata = dev_get_platdata(&mfd->pdev->dev);
+	if (!pdata) {
+		pr_err("[hl_mode] no panel connected!\n");
+		return len;
+	}
+	pinfo = &pdata->panel_info;
+
+	pinfo->hl_mode_on = simple_strtoul(buf, NULL, 10);
+
+	if(pinfo->hl_mode_on == 1)
+		pr_info("[hl_mode] hl_mode on\n");
+	else
+		pr_info("[hl_mode] hl_mode off\n");
+
+	return len;
+}
+#endif
+
 #if defined(CONFIG_LGE_THERMAL_BL_MAX)
 static ssize_t thermal_blmax_show(struct device *dev,
 		struct device_attribute *attr,
@@ -1366,6 +1428,10 @@ static DEVICE_ATTR(aod, S_IWUSR|S_IRUGO, mdss_fb_get_aod, mdss_fb_set_aod);
 static DEVICE_ATTR(keep_aod, S_IWUSR|S_IRUGO, mdss_fb_get_keep_aod, mdss_fb_set_keep_aod);
 #endif
 
+#if defined(CONFIG_LGE_HIGH_LUMINANCE_MODE)
+static DEVICE_ATTR(hl_mode, S_IWUSR|S_IRUGO, hl_mode_show, hl_mode_store);
+#endif
+
 #ifdef CONFIG_LGE_LCD_MFTS_MODE
 static DEVICE_ATTR(mfts_auto_touch_test_mode, S_IWUSR|S_IRUGO, mdss_get_mfts_auto_touch , mdss_set_mfts_auto_touch);
 #endif
@@ -1400,6 +1466,9 @@ static struct attribute *mdss_fb_attrs[] = {
 	&dev_attr_cur_panel_mode.attr,
 	&dev_attr_keep_aod.attr,
 #endif
+#if defined(CONFIG_LGE_HIGH_LUMINANCE_MODE)
+	&dev_attr_hl_mode.attr,
+#endif
 #ifdef CONFIG_LGE_LCD_MFTS_MODE
 	&dev_attr_mfts_auto_touch_test_mode.attr,
 #endif
@@ -1423,8 +1492,7 @@ static int mdss_fb_create_sysfs(struct msm_fb_data_type *mfd)
 	rc = sysfs_create_group(&mfd->fbi->dev->kobj, &mdss_fb_attr_group);
 	if (rc)
 		pr_err("sysfs group creation failed, rc=%d\n", rc);
-
-	return mdss_livedisplay_create_sysfs(mfd);
+	return rc;
 }
 
 static void mdss_fb_remove_sysfs(struct msm_fb_data_type *mfd)
@@ -1713,6 +1781,9 @@ static int mdss_fb_probe(struct platform_device *pdev)
 	mfd->ad_bl_level = 0;
 	mfd->fb_imgType = MDP_RGBA_8888;
 	mfd->calib_mode_bl = 0;
+#if defined(CONFIG_LGE_HIGH_LUMINANCE_MODE)
+	mfd->panel_info->hl_mode_on = 0;
+#endif
 
 #if defined(CONFIG_LGE_PP_AD_SUPPORTED)
     mfd->ad_info.is_ad_on = 0;
@@ -5635,7 +5706,7 @@ void mdss_fb_ad_set_brightness(struct msm_fb_data_type *mfd, u32 amb_light, int 
     {
         bl_lvl = mfd->panel_info->blmap[user_bl];
         //mdss_fb_ad_set_backlight(mfd, user_bl,user_bl);
-        if (bl_lvl) {
+        if (bl_lvl && (mfd->panel_info->hl_mode_on == 0 )) {
 		    mutex_lock(&mfd->bl_lock);
             mdss_fb_set_backlight(mfd, bl_lvl);
 		    pr_err("[Display] AD Off bl_lvl=%d\n",bl_lvl);
