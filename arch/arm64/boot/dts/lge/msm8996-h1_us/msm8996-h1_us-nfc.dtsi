@@ -43,8 +43,8 @@
 
 &i2c_8 {
 	qcom,clk-freq-out = <400000>;
-	pn548@28 {
-		compatible = "nxp,pn548";
+	pn547@28 {
+		compatible = "nxp,pn547";
 		reg = <0x28>;
 		status = "ok";
 		nxp,gpio_sda = <&tlmm 6 0x00>;

@@ -7,12 +7,61 @@ menu "Near Field Communication (NFC) devices"
 
 endmenu
 
+config LGE_NFC
+	bool "NFC Device Enabled for LGE"
+	default n
+
 config NFC_BCM2079X
 	bool "Broadcom 2079X NFC Controller Driver"
 	depends on I2C
 	select CRC_CCITT
 	help
 	  Broadcom 2079X Near Field Communication controller support.
+
+config LGE_NFC_PN547_C2
+	bool "PN547 C2 NFC driver"
+	depends on I2C
+	select CRC_CCITT
+	default n
+	---help---
+	  Say yes if you want PN547 Near Field Communication driver.
+	  This is for i2c connected version. If unsure, say N here.
+
+	  To compile this driver as a module, choose m here. The module will
+	  be called pn547.
+
+config LGE_NFC_PRESTANDBY
+	bool "NFC STANBY MODE"
+	default n
+	---help---
+	  Say yes if you want to change a power state of pn544 to stanby mode in Kernel.
+	  If unsure, say N here.
+
+config LGE_NFC_MULTICORE_FASTBOOT
+	bool "NFC MultiThread"
+	default n
+	---help---
+	  Say yes if multi thread is applied for pre-standby.
+	  If unsure, say N here.
+
+config LGE_NFC_SET_IRQ_WAKEUP
+	bool "NFC Set IRQ wakeup when NFC ON"
+	default n
+	---help---
+	  Say yes if Set IRQ Wakeup NFC ON.
+	  If unsure, say N here.
+
+config LGE_NFC_DEBUG_MESSAGE
+	bool "NFC Debug Message"
+	default n
+
+config LGE_NFC_USE_PMIC
+	bool "NFC Using PMIC Clock"
+	default n
+	---help---
+	  Say yes if you want to use PMIC Clock.
+	  If use XTAL or unsure, say N here.
+	  Please refer to [NFC-367] for more details.
 
 config NFC_NQ
 	tristate "Qualcomm NCI based NFC Controller Driver for NQx"
@@ -21,15 +70,6 @@ config NFC_NQ
 	  This enables the NFC driver for NQx based devices.
 	  This is for i2c connected version. NCI protocol logic
 	  resides in the usermode and it has no other NFC dependencies.
-
-config NFC_PN548
-	tristate "PN548 NFC driver"
-	help
-	  NXP PN548 driver.
-	  This driver provides support for NFC NXP PN548 devices.
-
-	  Say Y here to compile support for PN548 devices into the
-	  kernel or say M to compile it as module (pn548).
 
 config CXD224X_NFC
     tristate "CXD224X NFC driver"
