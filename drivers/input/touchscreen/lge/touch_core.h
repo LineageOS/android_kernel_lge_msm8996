@@ -299,6 +299,13 @@ enum {
 	TOUCH_UEVENT_SIZE,
 };
 
+enum {
+	LPWG_SET_COORDS = 3,
+	LPWG_SET_TAPS = 4,
+	LPWG_ENABLE_TAP_LISTENER = 8,
+	LPWG_MASTER = 9,
+};
+
 struct state_info {
 	atomic_t core;
 	atomic_t pm;
