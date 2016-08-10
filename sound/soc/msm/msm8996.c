@@ -61,6 +61,8 @@
 #define WSA8810_NAME_1 "wsa881x.20170211"
 #define WSA8810_NAME_2 "wsa881x.20170212"
 
+#define CONFIG_SND_DISABLE_DUMMY_DAI
+
 static int slim0_rx_sample_rate = SAMPLING_RATE_48KHZ;
 static int slim0_tx_sample_rate = SAMPLING_RATE_48KHZ;
 static int slim1_tx_sample_rate = SAMPLING_RATE_48KHZ;
