@@ -183,24 +183,6 @@ config SND_SOC_MSM8X16
 	 the machine driver and the corresponding
 	 DAI-links
 
-config SND_LGE_EFFECT
-	bool "LGE DSP EFFECT"
-	default y
-	help
-	 To support LGE DSP EFFECT
-
-config SND_LGE_NORMALIZER
-	bool "LGE DSP NORMALIZER"
-	default y
-	help
-	 To support LGE DSP NORMALIZER
-
-config SND_LGE_MABL
-	bool "LGE DSP MABL"
-	default y
-	help
-	 To support LGE DSP MABL
-
 config SND_LGE_USE_PHONE_MEMO
 	bool "LGE PHONE MEMO"
 	default n
