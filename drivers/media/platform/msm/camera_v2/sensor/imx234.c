@@ -60,14 +60,12 @@ static struct msm_sensor_power_setting imx234_power_setting_rev_0[] = {
 		.config_val = 0,
 		.delay = 1,
 	},
-#if 0
 	{
 		.seq_type = SENSOR_GPIO,
 		.seq_val = SENSOR_GPIO_LDAF_EN,
 		.config_val = GPIO_OUT_HIGH,
 		.delay = 1,
 	},
-#endif
 	{
 		.seq_type = SENSOR_GPIO,
 		.seq_val = SENSOR_GPIO_RESET,
@@ -149,14 +147,12 @@ static struct msm_sensor_power_setting imx234_power_down_setting_rev_0[] = {
 		.config_val = 0,
 		.delay = 1,
 	},
-#if 0
 	{
 		.seq_type = SENSOR_GPIO,
 		.seq_val = SENSOR_GPIO_LDAF_EN,
 		.config_val = GPIO_OUT_LOW,
 		.delay = 1,
 	},
-#endif
 };
 
 static struct msm_sensor_power_setting imx234_power_setting_hdk[] = {
@@ -202,14 +198,12 @@ static struct msm_sensor_power_setting imx234_power_setting_hdk[] = {
 		.config_val = 0,
 		.delay = 1,
 	},
-#if 0
 	{
 		.seq_type = SENSOR_GPIO,
 		.seq_val = SENSOR_GPIO_LDAF_EN,
 		.config_val = GPIO_OUT_HIGH,
 		.delay = 1,
 	},
-#endif
 	{
 		.seq_type = SENSOR_GPIO,
 		.seq_val = SENSOR_GPIO_RESET,
@@ -291,14 +285,12 @@ static struct msm_sensor_power_setting imx234_power_down_setting_hdk[] = {
 		.config_val = GPIO_OUT_LOW,
 		.delay = 1,
 	},
-#if 0
 	{
 		.seq_type = SENSOR_GPIO,
 		.seq_val = SENSOR_GPIO_LDAF_EN,
 		.config_val = GPIO_OUT_LOW,
 		.delay = 1,
 	},
-#endif
 };
 
 static struct v4l2_subdev_info imx234_subdev_info[] = {
