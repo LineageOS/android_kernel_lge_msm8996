@@ -273,9 +273,9 @@ static ssize_t pn547_dev_write(struct file *filp, const char __user *buf,
         return -EFAULT;
     }
 
-    //pr_debug("%s : writing %zu bytes.\n", __func__, count);
+    pr_debug("%s : writing %zu bytes.\n", __func__, count);
     /* Write data */
-    //dprintk(PN547_DRV_NAME ":write: pn547_write len=:%d\n", count);
+    dprintk(PN547_DRV_NAME ":write: pn547_write len=:%d\n", count);
 
     mutex_lock(&pn547_dev->read_mutex);
     ret = i2c_master_send(pn547_dev->client, tmp, count);
@@ -284,6 +284,7 @@ static ssize_t pn547_dev_write(struct file *filp, const char __user *buf,
     if (ret != count) {
         pr_err("%s : i2c_master_send returned %d\n", __func__, ret);
         ret = -EIO;
+        pr_err("%s : error %d occurred\n", __func__, ret);
     }
 
     return ret;
