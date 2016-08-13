@@ -69,8 +69,6 @@
 #define WSA8810_NAME_1 "wsa881x.20170211"
 #define WSA8810_NAME_2 "wsa881x.20170212"
 
-#define CONFIG_SND_DISABLE_DUMMY_DAI
-
 static int slim0_rx_sample_rate = SAMPLING_RATE_48KHZ;
 static int slim0_tx_sample_rate = SAMPLING_RATE_48KHZ;
 static int slim1_tx_sample_rate = SAMPLING_RATE_48KHZ;
@@ -3728,14 +3726,8 @@ static struct snd_soc_dai_link msm8996_hdmi_dai_link[] = {
 		.ignore_suspend = 1,
 	},
 };
-#ifndef CONFIG_SND_DISABLE_DUMMY_DAI
-/* DAI LINKs added by lge should be here
- * Number of Qualcomm DAI should be smaller than LGE_DAI_LINK_ID_BASE
- * When you create new DAI link, you should add new one at the tail of list
- * You should place a dummy DAI instead of removed DAI when you defeature a function */
 
-#define LGE_DAI_LINK_ID_BASE	80
-
+#if defined(CONFIG_SND_USE_QUAT_MI2S) || defined(CONFIG_SND_LGE_DSDP_DUAL_AUDIO) || defined(CONFIG_SND_USE_SEC_MI2S) || defined(CONFIG_SND_USE_TERT_MI2S)
 static struct snd_soc_dai_link msm8996_lge_dai_links[] = {
 #ifdef CONFIG_SND_USE_QUAT_MI2S
 	{
@@ -3767,67 +3759,11 @@ static struct snd_soc_dai_link msm8996_lge_dai_links[] = {
 		.ops = &msm8996_quat_mi2s_be_ops,
 		.ignore_suspend = 1,
 	},
-#else
-	/* DUMMY DAI Link 80 */
-	{
-		.name = "Dummy DAI 80",
-		.stream_name = "MultiMedia2",
-		.cpu_dai_name = "MultiMedia2",
-		.platform_name = "msm-pcm-dsp.0",
-		.dynamic = 1,
-		.dpcm_playback = 1,
-		.dpcm_capture = 1,
-		.codec_dai_name = "snd-soc-dummy-dai",
-		.codec_name = "snd-soc-dummy",
-		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
-			SND_SOC_DPCM_TRIGGER_POST},
-		.ignore_suspend = 1,
-		/* this dainlink has playback support */
-		.ignore_pmdown_time = 1,
-		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA2,
-	},
-	/* DUMMY DAI Link 81 */
-	{
-		.name = "Dummy DAI 81",
-		.stream_name = "MultiMedia2",
-		.cpu_dai_name = "MultiMedia2",
-		.platform_name = "msm-pcm-dsp.0",
-		.dynamic = 1,
-		.dpcm_playback = 1,
-		.dpcm_capture = 1,
-		.codec_dai_name = "snd-soc-dummy-dai",
-		.codec_name = "snd-soc-dummy",
-		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
-			SND_SOC_DPCM_TRIGGER_POST},
-		.ignore_suspend = 1,
-		/* this dainlink has playback support */
-		.ignore_pmdown_time = 1,
-		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA2,
-	},
-#endif
+#endif	/* CONFIG_SND_USE_QUAT_MI2S */
 #ifdef CONFIG_SND_LGE_DSDP_DUAL_AUDIO
 	{
 		.name = "Dual Audio",
 		.stream_name = "Dual audio",
-		.cpu_dai_name = "MultiMedia2",
-		.platform_name = "msm-pcm-dsp.0",
-		.dynamic = 1,
-		.dpcm_playback = 1,
-		.dpcm_capture = 1,
-		.codec_dai_name = "snd-soc-dummy-dai",
-		.codec_name = "snd-soc-dummy",
-		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
-			SND_SOC_DPCM_TRIGGER_POST},
-		.ignore_suspend = 1,
-		/* this dainlink has playback support */
-		.ignore_pmdown_time = 1,
-		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA2,
-	},
-#else
-	/* DUMMY DAI Link 82 */
-	{
-		.name = "Dummy DAI 82",
-		.stream_name = "MultiMedia2",
 		.cpu_dai_name = "MultiMedia2",
 		.platform_name = "msm-pcm-dsp.0",
 		.dynamic = 1,
@@ -3858,25 +3794,6 @@ static struct snd_soc_dai_link msm8996_lge_dai_links[] = {
 		.ops = &msm8996_sec_mi2s_be_ops,
 		.ignore_suspend = 1,
 	},
-#else
-	/* DUMMY DAI Link 83 */
-	{
-		.name = "Dummy DAI 83",
-		.stream_name = "MultiMedia2",
-		.cpu_dai_name = "MultiMedia2",
-		.platform_name = "msm-pcm-dsp.0",
-		.dynamic = 1,
-		.dpcm_playback = 1,
-		.dpcm_capture = 1,
-		.codec_dai_name = "snd-soc-dummy-dai",
-		.codec_name = "snd-soc-dummy",
-		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
-			SND_SOC_DPCM_TRIGGER_POST},
-		.ignore_suspend = 1,
-		/* this dainlink has playback support */
-		.ignore_pmdown_time = 1,
-		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA2,
-	},
 #endif /* CONFIG_SND_USE_SEC_MI2S */
 #ifdef CONFIG_SND_USE_TERT_MI2S
 	{
@@ -3893,62 +3810,27 @@ static struct snd_soc_dai_link msm8996_lge_dai_links[] = {
 		.ops = &msm8996_tert_mi2s_be_ops,
 		.ignore_suspend = 1,
 	},
-#else
-	/* DUMMY DAI Link 84 */
-	{
-		.name = "Dummy DAI 84",
-		.stream_name = "MultiMedia2",
-		.cpu_dai_name = "MultiMedia2",
-		.platform_name = "msm-pcm-dsp.0",
-		.dynamic = 1,
-		.dpcm_playback = 1,
-		.dpcm_capture = 1,
-		.codec_dai_name = "snd-soc-dummy-dai",
-		.codec_name = "snd-soc-dummy",
-		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
-			SND_SOC_DPCM_TRIGGER_POST},
-		.ignore_suspend = 1,
-		/* this dainlink has playback support */
-		.ignore_pmdown_time = 1,
-		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA2,
-	},
 #endif /* CONFIG_SND_USE_TERT_MI2S */
 
 };
+#endif	/* CONFIG_SND_USE_QUAT_MI2S || CONFIG_SND_LGE_DSDP_DUAL_AUDIO || CONFIG_SND_USE_SEC_MI2S || CONFIG_SND_USE_TERT_MI2S */
 
-static struct snd_soc_dai_link msm8996_dummy_dai_link[] = {
-	/* DUMMY DAI Link Template */
-	{
-		.name = "Dummy DAI",
-		.stream_name = "MultiMedia2",
-		.cpu_dai_name = "MultiMedia2",
-		.platform_name = "msm-pcm-dsp.0",
-		.dynamic = 1,
-		.dpcm_playback = 1,
-		.dpcm_capture = 1,
-		.codec_dai_name = "snd-soc-dummy-dai",
-		.codec_name = "snd-soc-dummy",
-		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
-			SND_SOC_DPCM_TRIGGER_POST},
-		.ignore_suspend = 1,
-		/* this dainlink has playback support */
-		.ignore_pmdown_time = 1,
-		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA2,
-	},
-};
-#endif	/* CONFIG_SND_DISABLE_DUMMY_DAI */
-
+#if defined(CONFIG_SND_USE_QUAT_MI2S) || defined(CONFIG_SND_LGE_DSDP_DUAL_AUDIO) || defined(CONFIG_SND_USE_SEC_MI2S) || defined(CONFIG_SND_USE_TERT_MI2S)
 static struct snd_soc_dai_link msm8996_tasha_dai_links[
-#ifndef CONFIG_SND_DISABLE_DUMMY_DAI
-			 LGE_DAI_LINK_ID_BASE +
+			 ARRAY_SIZE(msm8996_common_dai_links) +
+			 ARRAY_SIZE(msm8996_tasha_fe_dai_links) +
+			 ARRAY_SIZE(msm8996_common_be_dai_links) +
+			 ARRAY_SIZE(msm8996_tasha_be_dai_links) +
+			 ARRAY_SIZE(msm8996_hdmi_dai_link) +
 			 ARRAY_SIZE(msm8996_lge_dai_links)];
 #else
+static struct snd_soc_dai_link msm8996_tasha_dai_links[
 			 ARRAY_SIZE(msm8996_common_dai_links) +
 			 ARRAY_SIZE(msm8996_tasha_fe_dai_links) +
 			 ARRAY_SIZE(msm8996_common_be_dai_links) +
 			 ARRAY_SIZE(msm8996_tasha_be_dai_links) +
 			 ARRAY_SIZE(msm8996_hdmi_dai_link)];
-#endif	/* CONFIG_SND_DISABLE_DUMMY_DAI */
+#endif	/* CONFIG_SND_USE_QUAT_MI2S || CONFIG_SND_LGE_DSDP_DUAL_AUDIO || CONFIG_SND_USE_SEC_MI2S || CONFIG_SND_USE_TERT_MI2S */
 
 static int msm8996_wsa881x_init(struct snd_soc_component *component)
 {
@@ -4172,6 +4054,7 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 		len_1 = ARRAY_SIZE(msm8996_common_dai_links);
 		len_2 = len_1 + ARRAY_SIZE(msm8996_tasha_fe_dai_links);
 		len_3 = len_2 + ARRAY_SIZE(msm8996_common_be_dai_links);
+		len_4 = len_3 + ARRAY_SIZE(msm8996_tasha_be_dai_links);
 
 		memcpy(msm8996_tasha_dai_links,
 		       msm8996_common_dai_links,
@@ -4185,9 +4068,14 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 		memcpy(msm8996_tasha_dai_links + len_3,
 		       msm8996_tasha_be_dai_links,
 		       sizeof(msm8996_tasha_be_dai_links));
+#if defined(CONFIG_SND_USE_QUAT_MI2S) || defined(CONFIG_SND_LGE_DSDP_DUAL_AUDIO) || defined(CONFIG_SND_USE_SEC_MI2S) || defined(CONFIG_SND_USE_TERT_MI2S)
+		memcpy(msm8996_tasha_dai_links + len_4,
+		       msm8996_lge_dai_links,
+		       sizeof(msm8996_lge_dai_links));
+		len_4 += ARRAY_SIZE(msm8996_lge_dai_links);
+#endif
 
 		dailink = msm8996_tasha_dai_links;
-		len_4 = len_3 + ARRAY_SIZE(msm8996_tasha_be_dai_links);
 	}
 
 	if (of_property_read_bool(dev->of_node, "qcom,hdmi-audio-rx")) {
@@ -4204,44 +4092,6 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 		card->dai_link = dailink;
 		card->num_links = len_4;
 	}
-#ifndef CONFIG_SND_DISABLE_DUMMY_DAI
-	if (card) {
-		{
-			static char dummy_dai_name[LGE_DAI_LINK_ID_BASE][20];
-			int i;
-
-			for (i = card->num_links ; i < LGE_DAI_LINK_ID_BASE ; i++) {
-				struct snd_soc_dai_link *link = msm8996_tasha_dai_links + i;
-				memcpy(link, msm8996_dummy_dai_link, sizeof(msm8996_dummy_dai_link));
-				snprintf(&dummy_dai_name[i][0],20, "Dummy DAI %d", i);
-				link->name = &dummy_dai_name[i][0];
-			}
-			card->num_links = LGE_DAI_LINK_ID_BASE;
-		}
-#ifdef CONFIG_SND_SOC_ES9018
-#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_BOARD_REVISION
-		lge_hw_rev_lpc = lge_power_get_by_name("lge_hw_rev");
-		if (lge_hw_rev_lpc) {
-			rc = lge_hw_rev_lpc->get_property(lge_hw_rev_lpc,
-					LGE_POWER_PROP_HW_REV, &lge_val);
-			hw_rev = lge_val.intval;
-		} else {
-			pr_err("[SOUND] Failed to get hw_rev property\n");
-			hw_rev = HW_REV_EVB1;
-		}
-		if (hw_rev <= HW_REV_0_1) {
-#else
-        if (lge_get_board_revno() <= HW_REV_0_1) {
-#endif
-            if (!strcmp(msm8996_lge_dai_links[3].codec_name, "es9018-codec.6-0048"))
-                msm8996_lge_dai_links[3].codec_name = "es9018-codec.3-0048";
-        }
-#endif
-		memcpy(msm8996_tasha_dai_links + card->num_links,
-			   msm8996_lge_dai_links, sizeof(msm8996_lge_dai_links));
-		card->num_links += ARRAY_SIZE(msm8996_lge_dai_links);
-	}
-#endif	/* CONFIG_SND_DISABLE_DUMMY_DAI */
 
 	return card;
 }
