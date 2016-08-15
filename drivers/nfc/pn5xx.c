@@ -90,9 +90,6 @@ static void release_ese_lock(p61_access_state_t  p61_current_state);
 int get_ese_lock(p61_access_state_t  p61_current_state, int timeout);
 static void p61_get_access_state(struct pn5xx_dev*, p61_access_state_t*);
 
-static int pn5xx_open = 0; /* used to prevent concurent access into the device */
-static int pn5xx_power_state = 0; /* used to prevent duplicate power on/off commands */
-
 /**********************************************************
  * Interrupt control and handler
  **********************************************************/
@@ -439,17 +436,6 @@ static int pn5xx_dev_open(struct inode *inode, struct file *filp)
     struct pn5xx_dev *pn5xx_dev = container_of(filp->private_data,
                                                struct pn5xx_dev,
                                                pn5xx_device);
-    int ret;
-
-    /* we don't want to open multiple instances off the same device file */
-    if (pn5xx_open) {
-      ret = -EBUSY;
-      pr_err("%s: %d device file is already open!", __func__, ret);
-      return ret;
-    }
-
-    /* increment this so the check actually works */
-    pn5xx_open = 1;
 
     filp->private_data = pn5xx_dev;
 
@@ -465,13 +451,6 @@ static int pn5xx_dev_release(struct inode *inode, struct file *filp)
     // struct pn5xx_dev *pn5xx_dev = container_of(filp->private_data,
     //                                           struct pn5xx_dev,
     //                                           pn5xx_device);
-
-    /* we don't want to attempt to close multiple instances off the same device file */
-    if (pn5xx_open)
-      pr_err("%s: device file is already closed!", __func__);
-
-    /* reset the check */
-    pn5xx_open = 0;
 
     pr_info("%s : closing pn5xx %d,%d\n", __func__, imajor(inode), iminor(inode));
 
@@ -494,37 +473,18 @@ long  pn5xx_dev_ioctl(struct file *filp, unsigned int cmd,
     p61_access_lock(pn5xx_dev);
     switch (cmd) {
     case PN5XX_SET_PWR:
-        if (arg == 2) { /* power on w/FW */
-            /* check if pn5xx is already powered on */
-            if (pn5xx_power_state == 0) {
-              pn5xx_enable(pn5xx_dev, arg);
-              pr_info("%s: powering on pn5xx with fw download", __func__);
-              pn5xx_power_state = 1;
-            } else {
-              pr_err("%s: pn5xx already powered on!", __func__);
-              return -EBUSY;
-            }
-        } else if (arg == 1) { /* power on */
-            /* check if pn5xx is already powered on */
-            if (pn5xx_power_state == 0) {
-              pn5xx_enable(pn5xx_dev, arg);
-              pr_info("%s: powering on pn5xx", __func__);
-              pn5xx_power_state = 1;
-            } else {
-              pr_err("%s: pn5xx already powered on!", __func__);
-              return -EBUSY;
-            }
-        } else if (arg == 0) { /* power off */
-            /* check if pn5xx is already powered off, however don't
-             * error if if is, continue like normal */
-            if (pn5xx_power_state > 0) {
-              pn5xx_disable(pn5xx_dev);
-              pr_info("%s: powering down pn5xx", __func__);
-              /* reset the check */
-              pn5xx_power_state = 0;
-            } else {
-              pr_err("%s: pn5xx already powered off!", __func__);
-            }
+        if (arg == 2) {
+            /* power on w/FW */
+            pn5xx_enable(pn5xx_dev, arg);
+            pr_info("%s: powering on pn5xx with fw download", __func__);
+        } else if (arg == 1) {
+            /* power on */
+            pn5xx_enable(pn5xx_dev, arg);
+            pr_info("%s: powering on pn5xx", __func__);
+        } else if (arg == 0) {
+            /* power off */
+            pn5xx_disable(pn5xx_dev);
+            pr_info("%s: powering down pn5xx", __func__);
         } else {
             pr_err("%s bad SET_PWR arg %lu\n", __func__, arg);
             return -EINVAL;
