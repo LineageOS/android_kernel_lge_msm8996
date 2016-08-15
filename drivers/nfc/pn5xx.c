@@ -439,7 +439,7 @@ static int pn5xx_dev_open(struct inode *inode, struct file *filp)
 
     filp->private_data = pn5xx_dev;
 
-    pr_info("%s : %d,%d\n", __func__, imajor(inode), iminor(inode));
+    pr_info("%s : opening pn5xx %d,%d\n", __func__, imajor(inode), iminor(inode));
 
     // pn5xx_enable(pn5xx_dev, MODE_RUN);
 
@@ -452,7 +452,7 @@ static int pn5xx_dev_release(struct inode *inode, struct file *filp)
     //                                           struct pn5xx_dev,
     //                                           pn5xx_device);
 
-    pr_info("%s : closing %d,%d\n", __func__, imajor(inode), iminor(inode));
+    pr_info("%s : closing pn5xx %d,%d\n", __func__, imajor(inode), iminor(inode));
 
     // pn5xx_disable(pn5xx_dev);
 
@@ -464,7 +464,7 @@ long  pn5xx_dev_ioctl(struct file *filp, unsigned int cmd,
 {
     struct pn5xx_dev *pn5xx_dev = filp->private_data;
 
-    pr_info("%s, cmd=%d, arg=%lu\n", __func__, cmd, arg);
+    pr_info("%s, recieved cmd=%d, arg=%lu\n", __func__, cmd, arg);
 
     if (cmd == PN5XX_GET_ESE_ACCESS)
     {
@@ -476,12 +476,15 @@ long  pn5xx_dev_ioctl(struct file *filp, unsigned int cmd,
         if (arg == 2) {
             /* power on w/FW */
             pn5xx_enable(pn5xx_dev, arg);
+            pr_info("%s: powering on pn5xx with fw download", __func__);
         } else if (arg == 1) {
             /* power on */
             pn5xx_enable(pn5xx_dev, arg);
-        } else  if (arg == 0) {
+            pr_info("%s: powering on pn5xx", __func__);
+        } else if (arg == 0) {
             /* power off */
             pn5xx_disable(pn5xx_dev);
+            pr_info("%s: powering down pn5xx", __func__);
         } else {
             pr_err("%s bad SET_PWR arg %lu\n", __func__, arg);
             return -EINVAL;
@@ -900,13 +903,8 @@ static int pn5xx_get_pdata(struct device *dev,
 /*
  *  pn5xx_probe
  */
-#ifdef KERNEL_3_4_AND_OLDER
- static int __devinit pn5xx_probe(struct i2c_client *client,
-        const struct i2c_device_id *id)
-#else
 static int pn5xx_probe(struct i2c_client *client,
         const struct i2c_device_id *id)
-#endif
 {
     int ret;
     struct pn5xx_i2c_platform_data *pdata;  // gpio values, from board file or DT
@@ -933,13 +931,13 @@ static int pn5xx_probe(struct i2c_client *client,
     }
 
     if (pdata == NULL) {
-        pr_err("%s : nfc probe fail\n", __func__);
+        pr_err("%s: nfc probe fail\n", __func__);
         return  -ENODEV;
     }
 
     /* validate the the adapter has basic I2C functionality */
     if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
-        pr_err("%s : need I2C_FUNC_I2C\n", __func__);
+        pr_err("%s: need I2C_FUNC_I2C\n", __func__);
         return  -ENODEV;
     }
 
@@ -947,12 +945,12 @@ static int pn5xx_probe(struct i2c_client *client,
     pr_info("%s: request irq_gpio %d\n", __func__, pdata->irq_gpio);
     ret = gpio_request(pdata->irq_gpio, "nfc_int");
     if (ret){
-        pr_err("%s :not able to get GPIO irq_gpio\n", __func__);
+        pr_err("%s: not able to get GPIO irq_gpio\n", __func__);
         return  -ENODEV;
     }
     ret = gpio_to_irq(pdata->irq_gpio);
     if (ret < 0){
-        pr_err("%s :not able to map GPIO irq_gpio to an IRQ\n", __func__);
+        pr_err("%s: not able to map GPIO irq_gpio to an IRQ\n", __func__);
         goto err_ven;
     }
     else{
@@ -962,7 +960,7 @@ static int pn5xx_probe(struct i2c_client *client,
     pr_info("%s: request ven_gpio %d\n", __func__, pdata->ven_gpio);
     ret = gpio_request(pdata->ven_gpio, "nfc_ven");
     if (ret){
-        pr_err("%s :not able to get GPIO ven_gpio\n", __func__);
+        pr_err("%s: not able to get GPIO ven_gpio\n", __func__);
         goto err_ven;
     }
 
@@ -970,7 +968,7 @@ static int pn5xx_probe(struct i2c_client *client,
         pr_info("%s: request firm_gpio %d\n", __func__, pdata->firm_gpio);
         ret = gpio_request(pdata->firm_gpio, "nfc_firm");
         if (ret){
-            pr_err("%s :not able to get GPIO firm_gpio\n", __func__);
+            pr_err("%s: not able to get GPIO firm_gpio\n", __func__);
             goto err_firm;
         }
     }
@@ -979,7 +977,7 @@ static int pn5xx_probe(struct i2c_client *client,
         pr_info("%s: request ese_pwr_gpio %d\n", __func__, pdata->ese_pwr_gpio);
         ret = gpio_request(pdata->ese_pwr_gpio, "nfc_ese_pwr");
         if (ret){
-            pr_err("%s :not able to get GPIO ese_pwr_gpio\n", __func__);
+            pr_err("%s: not able to get GPIO ese_pwr_gpio\n", __func__);
             goto err_ese_pwr;
         }
     }
@@ -1020,20 +1018,20 @@ static int pn5xx_probe(struct i2c_client *client,
     /* finish configuring the I/O */
     ret = gpio_direction_input(pn5xx_dev->irq_gpio);
     if (ret < 0) {
-        pr_err("%s :not able to set irq_gpio as input\n", __func__);
+        pr_err("%s: not able to set irq_gpio as input\n", __func__);
         goto err_exit;
     }
 
     ret = gpio_direction_output(pn5xx_dev->ven_gpio, 0);
     if (ret < 0) {
-        pr_err("%s : not able to set ven_gpio as output\n", __func__);
+        pr_err("%s: not able to set ven_gpio as output\n", __func__);
         goto err_exit;
     }
 
     if (gpio_is_valid(pn5xx_dev->firm_gpio)) {
         ret = gpio_direction_output(pn5xx_dev->firm_gpio, 0);
         if (ret < 0) {
-            pr_err("%s : not able to set firm_gpio as output\n",
+            pr_err("%s: not able to set firm_gpio as output\n",
                  __func__);
             goto err_exit;
         }
@@ -1041,14 +1039,14 @@ static int pn5xx_probe(struct i2c_client *client,
 
     ret = gpio_direction_output(pn5xx_dev->ese_pwr_gpio, 0);
     if (ret < 0) {
-        pr_err("%s : not able to set ese_pwr gpio as output\n", __func__);
+        pr_err("%s: not able to set ese_pwr gpio as output\n", __func__);
         goto err_ese_pwr;
     }
 
     if (gpio_is_valid(pn5xx_dev->clkreq_gpio)) {
         ret = gpio_direction_output(pn5xx_dev->clkreq_gpio, 0);
         if (ret < 0) {
-            pr_err("%s : not able to set clkreq_gpio as output\n",
+            pr_err("%s: not able to set clkreq_gpio as output\n",
                    __func__);
             goto err_exit;
         }
@@ -1067,14 +1065,14 @@ static int pn5xx_probe(struct i2c_client *client,
     pn5xx_dev->pn5xx_device.fops = &pn5xx_dev_fops;
     ret = misc_register(&pn5xx_dev->pn5xx_device);
     if (ret) {
-        pr_err("%s : misc_register failed\n", __FILE__);
+        pr_err("%s: misc_register failed\n", __FILE__);
         goto err_misc_register;
     }
 
     /* request irq.  the irq is set whenever the chip has data available
      * for reading.  it is cleared when all data has been read.
      */
-    pr_info("%s : requesting IRQ %d\n", __func__, client->irq);
+    pr_info("%s: requesting IRQ %d\n", __func__, client->irq);
     pn5xx_dev->irq_enabled = true;
     ret = request_irq(client->irq, pn5xx_dev_irq_handler,
               IRQF_TRIGGER_HIGH, client->name, pn5xx_dev);
@@ -1110,11 +1108,7 @@ err_ven:
     return ret;
 }
 
-#ifdef KERNEL_3_4_AND_OLDER
-static int __devexit pn5xx_remove(struct i2c_client *client)
-#else
 static int pn5xx_remove(struct i2c_client *client)
-#endif
 {
     struct pn5xx_dev *pn5xx_dev;
 
@@ -1160,8 +1154,7 @@ MODULE_DEVICE_TABLE(of, pn5xx_dt_match);
 #endif
 
 static const struct i2c_device_id pn5xx_id[] = {
-    { "pn547", 0 },
-    { "pn548", 1 },
+    { "pn548", 0 },
     { },
 };
 MODULE_DEVICE_TABLE(i2c, pn5xx_id);
@@ -1169,11 +1162,7 @@ MODULE_DEVICE_TABLE(i2c, pn5xx_id);
 static struct i2c_driver pn5xx_driver = {
     .id_table    = pn5xx_id,
     .probe        = pn5xx_probe,
-#ifdef KERNEL_3_4_AND_OLDER
-    .remove        = __devexit_p(pn5xx_remove),
-#else
     .remove        = pn5xx_remove,
-#endif
     .driver        = {
         .owner    = THIS_MODULE,
         .name    = "pn544",
