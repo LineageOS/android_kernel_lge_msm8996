@@ -3607,13 +3607,6 @@ static int selinux_file_close(struct file *file)
 	return pft_file_close(file);
 }
 
-
-static bool selinux_allow_merge_bio(struct bio *bio1, struct bio *bio2)
-{
-	return pft_allow_merge_bio(bio1, bio2) &&
-		pfk_allow_merge_bio(bio1, bio2);
-}
-
 /* task security operations */
 
 static int selinux_task_create(unsigned long clone_flags)
@@ -6092,7 +6085,6 @@ static struct security_operations selinux_ops = {
 
 	.file_open =			selinux_file_open,
 	.file_close =			selinux_file_close,
-	.allow_merge_bio =		selinux_allow_merge_bio,
 
 	.task_create =			selinux_task_create,
 	.cred_alloc_blank =		selinux_cred_alloc_blank,

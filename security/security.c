@@ -841,14 +841,6 @@ int security_file_close(struct file *file)
 	return 0;
 }
 
-bool security_allow_merge_bio(struct bio *bio1, struct bio *bio2)
-{
-	if (security_ops->allow_merge_bio)
-		return security_ops->allow_merge_bio(bio1, bio2);
-
-	return true;
-}
-
 int security_task_create(unsigned long clone_flags)
 {
 	return security_ops->task_create(clone_flags);
