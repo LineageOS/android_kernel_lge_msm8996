@@ -30,6 +30,62 @@ static int32_t msm_sensor_driver_platform_probe(struct platform_device *pdev);
 /* Static declaration */
 static struct msm_sensor_ctrl_t *g_sctrl[MAX_CAMERAS];
 
+// Power up/down settings obtained from LGH850v10E logs
+// Should be moved into a driver file like imx234.c
+// imx234.c settings do not seem to be parsed 
+// even when "obj-$(CONFIG_IMX234) += imx234.o" is enabled in the Makefile
+#ifdef CONFIG_LGE_CAMERA_DRIVER
+static struct msm_sensor_power_setting imx234_power_up[] = {
+	{.seq_type = 1, .seq_val = 0, .config_val = 0, .delay = 1,},
+    {.seq_type = 1, .seq_val = 8, .config_val = 0, .delay = 1,},
+    {.seq_type = 1, .seq_val = 4, .config_val = 2, .delay = 1,},
+    {.seq_type = 2, .seq_val = 0, .config_val = 0, .delay = 1,},
+    {.seq_type = 2, .seq_val = 1, .config_val = 0, .delay = 1,},
+    {.seq_type = 2, .seq_val = 4, .config_val = 0, .delay = 1,},
+    {.seq_type = 2, .seq_val = 5, .config_val = 0, .delay = 1,},
+    {.seq_type = 1, .seq_val = 7, .config_val = 2, .delay = 1,},
+    {.seq_type = 1, .seq_val = 0, .config_val = 2, .delay = 1,},
+    {.seq_type = 1, .seq_val = 8, .config_val = 2, .delay = 21,},
+    {.seq_type = 0, .seq_val = 0, .config_val = 24000000, .delay = 1,},
+    {.seq_type = 3, .seq_val = 0, .config_val = 0, .delay = 10,},
+};
+static struct msm_sensor_power_setting imx234_power_down[] = {
+	{.seq_type = 3, .seq_val = 0, .config_val = 0, .delay = 2,},
+    {.seq_type = 0, .seq_val = 0, .config_val = 0, .delay = 1,},
+    {.seq_type = 1, .seq_val = 0, .config_val = 0, .delay = 1,},
+    {.seq_type = 1, .seq_val = 8, .config_val = 0, .delay = 1,},
+    {.seq_type = 1, .seq_val = 4, .config_val = 0, .delay = 1,},
+    {.seq_type = 2, .seq_val = 0, .config_val = 0, .delay = 1,},
+    {.seq_type = 2, .seq_val = 1, .config_val = 0, .delay = 0,},
+    {.seq_type = 2, .seq_val = 5, .config_val = 0, .delay = 1,},
+    {.seq_type = 2, .seq_val = 4, .config_val = 0, .delay = 1,},
+    {.seq_type = 1, .seq_val = 7, .config_val = 0, .delay = 1,},
+};
+// Power up/down settings obtained from LGH850v10E logs
+// Should be moved into a driver file like imx268.c
+static struct msm_sensor_power_setting imx268_power_up[] = {
+	{.seq_type = 1, .seq_val = 0, .config_val = 0, .delay = 1,},
+    {.seq_type = 1, .seq_val = 4, .config_val = 2, .delay = 1,},
+    {.seq_type = 2, .seq_val = 1, .config_val = 0, .delay = 1,},
+    {.seq_type = 2, .seq_val = 0, .config_val = 0, .delay = 1,},
+    {.seq_type = 0, .seq_val = 0, .config_val = 24000000, .delay = 1,},
+    {.seq_type = 1, .seq_val = 0, .config_val = 2, .delay = 13,},
+    {.seq_type = 3, .seq_val = 0, .config_val = 0, .delay = 10,},
+    {.seq_type = 2, .seq_val = 7, .config_val = 0, .delay = 1,},
+    {.seq_type = 1, .seq_val = 9, .config_val = 2, .delay = 1,},
+};
+static struct msm_sensor_power_setting imx268_power_down[] = {
+	{.seq_type = 1, .seq_val = 9, .config_val = 0, .delay = 1,},
+    {.seq_type = 2, .seq_val = 7, .config_val = 0, .delay = 1,},
+    {.seq_type = 3, .seq_val = 0, .config_val = 0, .delay = 2,},
+    {.seq_type = 0, .seq_val = 0, .config_val = 0, .delay = 1,},
+    {.seq_type = 1, .seq_val = 0, .config_val = 0, .delay = 1,},
+    {.seq_type = 1, .seq_val = 4, .config_val = 0, .delay = 0,},
+    {.seq_type = 2, .seq_val = 1, .config_val = 0, .delay = 0,},
+    {.seq_type = 2, .seq_val = 0, .config_val = 0, .delay = 1,},
+};
+#endif
+
 static int msm_sensor_platform_remove(struct platform_device *pdev)
 {
 	struct msm_sensor_ctrl_t  *s_ctrl;
@@ -594,6 +650,15 @@ static int32_t msm_sensor_get_power_down_settings(void *setting,
 	size_down = slave_info->power_setting_array.size_down;
 	if (!size_down || size_down > MAX_POWER_CONFIG)
 		size_down = slave_info->power_setting_array.size;
+    #ifdef CONFIG_LGE_CAMERA_DRIVER
+    if(slave_info->camera_id == 0){
+        size_down = ARRAY_SIZE(imx234_power_down);
+    }
+    else if(slave_info->camera_id == 2){
+        size_down = ARRAY_SIZE(imx268_power_down);
+    }
+    #endif
+    
 	/* Validate size_down */
 	if (size_down > MAX_POWER_CONFIG) {
 		pr_err("failed: invalid size_down %d", size_down);
@@ -607,9 +672,34 @@ static int32_t msm_sensor_get_power_down_settings(void *setting,
 	if (slave_info->power_setting_array.power_down_setting) {
 #ifdef CONFIG_COMPAT
 		if (is_compat_task()) {
+            #ifdef CONFIG_LGE_CAMERA_DRIVER
+            if(slave_info->camera_id == 0){
+            pr_err("msm_sensor_get_power_down_settings: forcing imx234_power_down\n");
+            for (i = 0; i < size_down; i++) {
+		      pd[i].config_val = imx234_power_down[i].config_val;
+		      pd[i].delay = imx234_power_down[i].delay;
+		      pd[i].seq_type = imx234_power_down[i].seq_type;
+		      pd[i].seq_val = imx234_power_down[i].seq_val;
+	        }
+            rc = 1;
+        }
+		else if(slave_info->camera_id == 2){
+            pr_err("msm_sensor_get_power_down_settings: forcing imx268_power_down\n");
+            for (i = 0; i < size_down; i++) {
+		      pd[i].config_val = imx268_power_down[i].config_val;
+		      pd[i].delay = imx268_power_down[i].delay;
+		      pd[i].seq_type = imx268_power_down[i].seq_type;
+		      pd[i].seq_val = imx268_power_down[i].seq_val;
+	        }
+            rc = 1;
+        }
+        else
+        #endif
+        {
 			rc = msm_sensor_get_pw_settings_compat(
 				pd, slave_info->power_setting_array.
 				power_down_setting, size_down);
+        }
 			if (rc < 0) {
 				pr_err("failed");
 				kfree(pd);
@@ -640,7 +730,7 @@ static int32_t msm_sensor_get_power_down_settings(void *setting,
 
 	/* Print power setting */
 	for (i = 0; i < size_down; i++) {
-		CDBG("DOWN seq_type %d seq_val %d config_val %ld delay %d",
+		CDBG("DOWN seq_type %d seq_val %d config_val %ld delay %d\n",
 			pd[i].seq_type, pd[i].seq_val,
 			pd[i].config_val, pd[i].delay);
 	}
@@ -657,6 +747,15 @@ static int32_t msm_sensor_get_power_up_settings(void *setting,
 	struct msm_sensor_power_setting *pu = NULL;
 
 	size = slave_info->power_setting_array.size;
+    
+    #ifdef CONFIG_LGE_CAMERA_DRIVER
+    if(slave_info->camera_id == 0){
+        size = ARRAY_SIZE(imx234_power_up);
+    }
+    else if(slave_info->camera_id == 2){
+        size = ARRAY_SIZE(imx268_power_up);
+    }
+    #endif
 
 	/* Validate size */
 	if ((size == 0) || (size > MAX_POWER_CONFIG)) {
@@ -671,9 +770,34 @@ static int32_t msm_sensor_get_power_up_settings(void *setting,
 
 #ifdef CONFIG_COMPAT
 	if (is_compat_task()) {
-		rc = msm_sensor_get_pw_settings_compat(pu,
+        #ifdef CONFIG_LGE_CAMERA_DRIVER
+		if(slave_info->camera_id == 0){
+            pr_err("msm_sensor_get_power_up_settings: forcing imx234_power_up\n");
+            for (i = 0; i < size; i++) {
+		      pu[i].config_val = imx234_power_up[i].config_val;
+		      pu[i].delay = imx234_power_up[i].delay;
+		      pu[i].seq_type = imx234_power_up[i].seq_type;
+		      pu[i].seq_val = imx234_power_up[i].seq_val;
+	        }
+            rc = 1;
+        }
+		else if(slave_info->camera_id == 2){
+            pr_err("msm_sensor_get_power_up_settings: forcing imx268_power_up\n");
+            for (i = 0; i < size; i++) {
+		      pu[i].config_val = imx268_power_up[i].config_val;
+		      pu[i].delay = imx268_power_up[i].delay;
+		      pu[i].seq_type = imx268_power_up[i].seq_type;
+		      pu[i].seq_val = imx268_power_up[i].seq_val;
+	        }
+            rc = 1;
+        }
+        else
+        #endif
+        {
+        rc = msm_sensor_get_pw_settings_compat(pu,
 			slave_info->power_setting_array.
 				power_setting, size);
+        }
 		if (rc < 0) {
 			pr_err("failed");
 			kfree(pu);
@@ -693,7 +817,7 @@ static int32_t msm_sensor_get_power_up_settings(void *setting,
 
 	/* Print power setting */
 	for (i = 0; i < size; i++) {
-		CDBG("UP seq_type %d seq_val %d config_val %ld delay %d",
+		CDBG("UP seq_type %d seq_val %d config_val %ld delay %d\n",
 			pu[i].seq_type, pu[i].seq_val,
 			pu[i].config_val, pu[i].delay);
 	}
