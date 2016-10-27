@@ -3,13 +3,13 @@
  * Basically selected code segments from usb-cdc.c and usb-rndis.c
  *
  * Copyright (C) 1999-2016, Broadcom Corporation
- * 
+ *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
  * following added to such license:
- * 
+ *
  *      As a special exception, the copyright holders of this software give you
  * permission to link this software with independent modules, and to copy and
  * distribute the resulting executable under terms of your choice, provided that
@@ -17,7 +17,7 @@
  * the license of that module.  An independent module is a module which is not
  * derived from this software.  The special exception does not apply to any
  * modifications of the software.
- * 
+ *
  *      Notwithstanding the above, under no circumstances may you combine this
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
@@ -305,7 +305,7 @@ extern void dhd_enable_oob_intr(struct dhd_bus *bus, bool enable);
 #endif /* defined(OOB_INTR_ONLY) || defined(BCMSPI_ANDROID) */
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 27))
 static void dhd_hang_process(void *dhd_info, void *event_data, u8 event);
-#endif 
+#endif
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 0))
 MODULE_LICENSE("GPL and additional rights");
 #endif /* LinuxVer */
@@ -4012,7 +4012,7 @@ dhd_start_xmit(struct sk_buff *skb, struct net_device *net)
 	uint8 htsfdlystat_sz = dhd->pub.htsfdlystat_sz;
 #else
 	uint8 htsfdlystat_sz = 0;
-#endif 
+#endif
 #ifdef DHD_WMF
 	struct ether_header *eh;
 	uint8 *iph;
@@ -4167,7 +4167,7 @@ dhd_start_xmit(struct sk_buff *skb, struct net_device *net)
 			eh->ether_type = hton16(ETHER_TYPE_BRCM_PKTDLYSTATS);
 		}
 	}
-#endif 
+#endif
 
 #ifdef DHD_WMF
 	eh = (struct ether_header *)PKTDATA(dhd->pub.osh, pktbuf);
@@ -5134,7 +5134,7 @@ dhd_dpc_thread(void *data)
 			if (dhd->pub.busstate != DHD_BUS_DOWN) {
 #if defined(CUSTOMER_HW4)
 				int resched_cnt = 0;
-#endif 
+#endif
 				dhd_os_wd_timer_extend(&dhd->pub, TRUE);
 				while (dhd_bus_dpc(dhd->pub.bus)) {
 					/* process all data */
@@ -5148,7 +5148,7 @@ dhd_dpc_thread(void *data)
 						resched_cnt = 0;
 						OSL_SLEEP(1);
 					}
-#endif 
+#endif
 				}
 				dhd_os_wd_timer_extend(&dhd->pub, FALSE);
 				DHD_OS_WAKE_UNLOCK(&dhd->pub);
@@ -5677,7 +5677,7 @@ static bool dhd_check_hang(struct net_device *net, dhd_pub_t *dhdp, int error)
 		DHD_ERROR(("%s : skipped due to negative pid - unloading?\n", __FUNCTION__));
 		return FALSE;
 	}
-#endif 
+#endif
 	if (error == -ETIMEDOUT && dhdp->busstate != DHD_BUS_DOWN) {
 		if (dhd_os_socram_dump(net, &dump_len) == BCME_OK) {
 			dhd_dbg_send_urgent_evt(dhdp, NULL, 0);
@@ -6173,7 +6173,7 @@ exit:
 		}
 	}
 #endif /* SUPPORT_DEEP_SLEEP */
-#endif 
+#endif
 	dhd->pub.hang_was_sent = 0;
 
 	/* Clear country spec for for built-in type driver */
@@ -6299,7 +6299,7 @@ dhd_open(struct net_device *net)
 		goto exit;
 	}
 
-#endif 
+#endif
 
 	ifidx = dhd_net2idx(dhd, net);
 	DHD_TRACE(("%s: ifidx %d\n", __FUNCTION__, ifidx));
@@ -6353,7 +6353,7 @@ dhd_open(struct net_device *net)
 			dhd_fix_cpu_freq(dhd);
 		}
 #endif /* defined(CUSTOMER_HW4) && defined(FIX_CPU_MIN_CLOCK) */
-#endif 
+#endif
 
 		if (dhd->pub.busstate != DHD_BUS_DATA) {
 
@@ -6737,7 +6737,7 @@ dhd_remove_if(dhd_pub_t *dhdpub, int ifidx, bool need_rtnl_lock)
 #if (defined(DHDTCPACK_SUPPRESS) && defined(BCMPCIE))
 				dhd_tcpack_suppress_set(dhdpub, TCPACK_SUP_OFF);
 #endif /* DHDTCPACK_SUPPRESS && BCMPCIE */
-#endif 
+#endif
 				if (need_rtnl_lock)
 					unregister_netdev(ifp->net);
 				else
@@ -6983,7 +6983,7 @@ dhd_attach(osl_t *osh, struct dhd_bus *bus, uint bus_hdrlen)
 	/* will implement get_ids for DBUS later */
 #if defined(BCMSDIO)
 	dhd_bus_get_ids(bus, &bus_type, &bus_num, &slot_num);
-#endif 
+#endif
 	adapter = dhd_wifi_platform_get_adapter(bus_type, bus_num, slot_num);
 
 	/* Allocate primary dhd_info */
@@ -7276,7 +7276,7 @@ dhd_attach(osl_t *osh, struct dhd_bus *bus, uint bus_hdrlen)
 	dhd_tcpack_suppress_set(&dhd->pub, TCPACK_SUP_OFF);
 #else
 	dhd_tcpack_suppress_set(&dhd->pub, TCPACK_SUP_HOLD);
-#endif 
+#endif
 #else
 	dhd_tcpack_suppress_set(&dhd->pub, TCPACK_SUP_OFF);
 #endif /* BCMSDIO */
@@ -7874,7 +7874,7 @@ void dhd_tdls_update_peer_info(struct net_device *dev, bool connect, uint8 *da)
 	}
 }
 #endif /* PCIE_FULL_DONGLE */
-#endif 
+#endif
 
 bool dhd_is_concurrent_mode(dhd_pub_t *dhd)
 {
@@ -7948,7 +7948,7 @@ dhd_get_concurrent_capabilites(dhd_pub_t *dhd)
 	}
 	return 0;
 }
-#endif 
+#endif
 
 #ifdef SUPPORT_AP_POWERSAVE
 #define RXCHAIN_PWRSAVE_PPS			10
@@ -8300,7 +8300,7 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 #endif
 #if defined(CUSTOM_AMPDU_BA_WSIZE)
 	uint32 ampdu_ba_wsize = 0;
-#endif 
+#endif
 #if defined(CUSTOM_AMPDU_MPDU)
 	int32 ampdu_mpdu = 0;
 #endif
@@ -8318,7 +8318,7 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	uint32 hostreorder = 1;
 #endif /* DISABLE_11N */
 #endif /* PROP_TXSTATUS */
-#endif 
+#endif
 #ifdef PCIE_FULL_DONGLE
 	uint32 wl_ap_isolate;
 #endif /* PCIE_FULL_DONGLE */
@@ -8645,7 +8645,7 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 		}
 #else
 	(void)concurrent_mode;
-#endif 
+#endif
 	}
 
 	DHD_ERROR(("Firmware up: op_mode=0x%04x, MAC="MACDBG"\n",
@@ -8801,7 +8801,7 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	if (ap_fw_loaded == TRUE) {
 		dhd_wl_ioctl_cmd(dhd, WLC_SET_DTIMPRD, (char *)&dtim, sizeof(dtim), TRUE, 0);
 	}
-#endif 
+#endif
 
 #if defined(KEEP_ALIVE)
 	{
@@ -8810,7 +8810,7 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 
 #if defined(SOFTAP)
 	if (ap_fw_loaded == FALSE)
-#endif 
+#endif
 		if (!(dhd->op_mode &
 			(DHD_FLAG_HOSTAP_MODE | DHD_FLAG_MFG_MODE))) {
 			if ((res = dhd_keep_alive_onoff(dhd)) < 0)
@@ -8874,7 +8874,7 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 				__FUNCTION__, ampdu_ba_wsize, ret));
 		}
 	}
-#endif 
+#endif
 
 	iov_buf = (char*)kmalloc(WLC_IOCTL_SMLEN, GFP_KERNEL);
 	if (iov_buf == NULL) {
@@ -9117,7 +9117,7 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	if (arpoe && !ap_fw_loaded) {
 #else
 	if (arpoe) {
-#endif 
+#endif
 		dhd_arp_offload_enable(dhd, TRUE);
 		dhd_arp_offload_set(dhd, dhd_arp_mode);
 	} else {
@@ -11861,7 +11861,7 @@ void * dhd_dev_process_anqpo_result(struct net_device *dev,
 	return (dhd_pno_process_anqpo_result(&dhd->pub, data, event, send_evt_bytes));
 }
 #endif /* GSCAN_SUPPORT */
-#endif 
+#endif
 
 #ifdef RSSI_MONITOR_SUPPORT
 int
@@ -12709,7 +12709,7 @@ int dhd_net_set_fw_path(struct net_device *dev, char *fw)
 		DHD_INFO(("GOT STA FIRMWARE\n"));
 		ap_fw_loaded = FALSE;
 	}
-#endif 
+#endif
 	return 0;
 }
 
@@ -12849,39 +12849,6 @@ dhd_wait_pend8021x(struct net_device *dev)
 }
 
 #ifdef DHD_DEBUG
-static void
-dhd_convert_memdump_type_to_str(uint32 type, char *buf)
-{
-	char *type_str = NULL;
-
-	switch (type) {
-		case DUMP_TYPE_RESUMED_ON_TIMEOUT:
-			type_str = "resumed_on_timeout";
-			break;
-		case DUMP_TYPE_D3_ACK_TIMEOUT:
-			type_str = "D3_ACK_timeout";
-			break;
-		case DUMP_TYPE_DONGLE_TRAP:
-			type_str = "Dongle_Trap";
-			break;
-		case DUMP_TYPE_MEMORY_CORRUPTION:
-			type_str = "Memory_Corruption";
-			break;
-		case DUMP_TYPE_PKTID_AUDIT_FAILURE:
-			type_str = "PKTID_AUDIT_Fail";
-			break;
-		case DUMP_TYPE_SCAN_TIMEOUT:
-			type_str = "SCAN_timeout";
-			break;
-		default:
-			type_str = "Unknown_type";
-			break;
-	}
-
-	strncpy(buf, type_str, strlen(type_str));
-	buf[strlen(type_str)] = 0;
-}
-
 int
 write_to_file(dhd_pub_t *dhd, uint8 *buf, int size)
 {
@@ -14510,7 +14477,7 @@ bool dhd_sta_associated(dhd_pub_t *dhdp, uint32 bssidx, uint8 *mac)
 {
 	return dhd_find_sta(dhdp, bssidx, mac) ? TRUE : FALSE;
 }
-#endif 
+#endif
 
 #ifdef DHD_L2_FILTER
 arp_table_t*
@@ -14809,7 +14776,7 @@ void custom_rps_map_clear(struct netdev_rx_queue *queue)
 		DHD_INFO(("%s : rps_cpus map clear.\n", __FUNCTION__));
 	}
 }
-#endif 
+#endif
 
 
 
