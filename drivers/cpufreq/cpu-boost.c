@@ -114,6 +114,84 @@ static const struct kernel_param_ops param_ops_input_boost_freq = {
 };
 module_param_cb(input_boost_freq, &param_ops_input_boost_freq, NULL, 0644);
 
+static DEFINE_PER_CPU(unsigned int, multi_boost_freq_sync_info);
+
+#define INPUT_SAMPLING_TIME (40 * USEC_PER_MSEC)
+#define MAX_MULTI_BOOST 200
+
+static bool multi_boost_enabled;
+static unsigned int multi_boost_ms = 0;
+static bool multi_boost_started;
+
+static struct work_struct input_boost_multi;
+
+static int set_multi_boost_freq(const char *buf, const struct kernel_param *kp)
+{
+	int i, ntokens = 0;
+	unsigned int val, cpu;
+	const char *cp = buf;
+	bool enabled = false;
+
+	while ((cp = strpbrk(cp + 1, " :")))
+		ntokens++;
+
+	/* single number: apply to all CPUs */
+	if (!ntokens) {
+		if (sscanf(buf, "%u\n", &val) != 1)
+			return -EINVAL;
+		for_each_possible_cpu(i)
+			per_cpu(multi_boost_freq_sync_info, i) = val;
+		goto check_enable;
+	}
+
+	/* CPU:value pair */
+	if (!(ntokens % 2))
+		return -EINVAL;
+
+	cp = buf;
+	for (i = 0; i < ntokens; i += 2) {
+		if (sscanf(cp, "%u:%u", &cpu, &val) != 2)
+			return -EINVAL;
+		if (cpu > num_possible_cpus())
+			return -EINVAL;
+
+		per_cpu(multi_boost_freq_sync_info, cpu) = val;
+		cp = strchr(cp, ' ');
+		cp++;
+	}
+
+check_enable:
+	for_each_possible_cpu(i) {
+		if (per_cpu(multi_boost_freq_sync_info, i)) {
+			enabled = true;
+			break;
+		}
+	}
+	multi_boost_enabled = enabled;
+
+	return 0;
+}
+
+static int get_multi_boost_freq(char *buf, const struct kernel_param *kp)
+{
+	int cnt = 0, cpu;
+	unsigned int val;
+
+	for_each_possible_cpu(cpu) {
+		val = per_cpu(multi_boost_freq_sync_info, cpu);
+		cnt += snprintf(buf + cnt, PAGE_SIZE - cnt,
+				"%d:%u ", cpu, val);
+	}
+	cnt += snprintf(buf + cnt, PAGE_SIZE - cnt, "\n");
+	return cnt;
+}
+
+static const struct kernel_param_ops param_ops_multi_boost_freq = {
+	.set = set_multi_boost_freq,
+	.get = get_multi_boost_freq,
+};
+module_param_cb(multi_boost_freq, &param_ops_multi_boost_freq, NULL, 0644);
+
 /*
  * The CPUFREQ_ADJUST notifier is used to override the current policy min to
  * make sure policy min >= boost_min. The cpufreq framework then does the job
@@ -190,6 +268,8 @@ static void do_input_boost_rem(struct work_struct *work)
 			pr_err("cpu-boost: HMP boost disable failed\n");
 		sched_boost_active = false;
 	}
+
+	multi_boost_ms = 0;
 }
 
 static void do_input_boost(struct work_struct *work)
@@ -226,6 +306,72 @@ static void do_input_boost(struct work_struct *work)
 					msecs_to_jiffies(input_boost_ms));
 }
 
+static void do_input_boost_multi(struct work_struct *work)
+{
+	unsigned int i, ret;
+	struct cpu_sync *i_sync_info;
+
+	if (multi_boost_ms == 0) {
+
+		cancel_delayed_work_sync(&input_boost_rem);
+		if (sched_boost_active) {
+			sched_set_boost(0);
+			sched_boost_active = false;
+		}
+
+		/* Set the input_boost_min for all CPUs in the system */
+		for_each_possible_cpu(i) {
+			i_sync_info = &per_cpu(sync_info, i);
+			i_sync_info->input_boost_min = i_sync_info->input_boost_freq;
+		}
+
+		/* Update policies for all online CPUs */
+		update_policy_online();
+
+		/* Enable scheduler boost to migrate tasks to big cluster */
+		if (sched_boost_on_input) {
+			ret = sched_set_boost(1);
+			if (ret)
+				pr_err("cpu-boost: HMP boost enable failed\n");
+			else
+				sched_boost_active = true;
+		}
+
+		queue_delayed_work(cpu_boost_wq, &input_boost_rem,
+						msecs_to_jiffies(input_boost_ms  * 2));
+
+		multi_boost_started = true;
+	}
+	else {
+		if (multi_boost_started == true && multi_boost_ms >= MAX_MULTI_BOOST) {
+			/* lower the input_boost_min for all CPUs in the system */
+			for_each_possible_cpu(i) {
+				i_sync_info = &per_cpu(sync_info, i);
+				i_sync_info->input_boost_min = per_cpu(multi_boost_freq_sync_info, i);
+			}
+
+			/* Update policies for all online CPUs */
+			update_policy_online();
+
+			if (sched_boost_active) {
+				ret = sched_set_boost(0);
+				if (ret)
+					pr_err("cpu-boost: HMP boost disable failed\n");
+				sched_boost_active = false;
+			}
+
+			multi_boost_started = false;
+		}
+
+		mod_delayed_work(cpu_boost_wq, &input_boost_rem,
+						msecs_to_jiffies(input_boost_ms * 2));
+	}
+
+	pr_debug("Setting multi boost #%d for all CPUs\n", multi_boost_ms);
+
+	multi_boost_ms += input_boost_ms;
+}
+
 static void cpuboost_input_event(struct input_handle *handle,
 		unsigned int type, unsigned int code, int value)
 {
@@ -233,6 +379,19 @@ static void cpuboost_input_event(struct input_handle *handle,
 
 	if (!input_boost_enabled)
 		return;
+
+	if (multi_boost_enabled) {
+		now = ktime_to_us(ktime_get());
+		if (now - last_input_time < INPUT_SAMPLING_TIME)
+			return;
+
+		if (work_pending(&input_boost_multi))
+			return;
+
+		queue_work(cpu_boost_wq, &input_boost_multi);
+		last_input_time = ktime_to_us(ktime_get());
+		return;
+	}
 
 	now = ktime_to_us(ktime_get());
 	if (now - last_input_time < MIN_INPUT_INTERVAL)
@@ -327,6 +486,7 @@ static int cpu_boost_init(void)
 
 	INIT_WORK(&input_boost_work, do_input_boost);
 	INIT_DELAYED_WORK(&input_boost_rem, do_input_boost_rem);
+	INIT_WORK(&input_boost_multi, do_input_boost_multi);
 
 	for_each_possible_cpu(cpu) {
 		s = &per_cpu(sync_info, cpu);

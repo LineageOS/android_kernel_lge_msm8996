@@ -212,6 +212,15 @@ config BATTERY_MAX17042
 	  with MAX17042. This driver also supports max17047/50 chips which are
 	  improved version of max17042.
 
+config BATTERY_MAX17050
+    tristate "Maxim MAX17050 fuel gauge external driver"
+    depends on I2C
+    default n
+    help
+      MAX17050 is fuel-gauge systems for lithium-ion (Li+) batteries
+      in handheld and portable equipment. The MAX17048 is configured
+      to operate with a single lithium cell.
+
 config BATTERY_Z2
 	tristate "Z2 battery driver"
 	depends on I2C && MACH_ZIPIT2
@@ -615,6 +624,169 @@ config MSM_BCL_PERIPHERAL_CTL
 	  Say Y here to enable this BCL PMIC peripheral driver. This driver
 	  provides routines to configure and monitor the BCL
 	  PMIC peripheral.
+
+config LGE_PM
+	tristate "MSM8996 LGE POWER Feature"
+	depends on SPMI || MSM_SPMI
+	help
+	  Say Y here to enable support for pm8994/pmi8994 chip lge feature.
+	  Power Management, Battery charging, Battery Monitoring System
+	  with battery FET and fuel gauge.
+
+config LGE_PM_FACTORY_CABLE
+	tristate "support FACTORY CABLE Feature"
+	default n
+	depends on MACH_LGE
+	help
+	  cable detection for factory mode, etc
+
+config LGE_PM_PARALLEL_CHARGING
+	tristate "LGE parallel charging feature"
+	default n
+	depends on MACH_LGE
+	help
+	  lge parallel charging feature
+
+config LGE_PM_BATTERY_ID_CHECKER
+	tristate "Virtual Device for LGE Battery ID Checker"
+	depends on LGE_PM
+	default n
+	help
+	  Say Y to enable LGE Battery ID Checker. Manufacturer have their own
+	  systematic identification of cell types, and protect the system from
+	  problems as using non-standard or unexpected types. so cross-
+	  reference battery identification are useful to identify.
+
+config LGE_PM_FACTORY_TESTMODE
+	bool "Support factory testmode for AT Command"
+	depends on LGE_PM
+	default n
+	help
+	  Say Y to enable factory testmode in qpnp-smbcharger
+
+config LGE_PM_MAXIM_EVP_CONTROL
+	bool "add evp control func."
+	default n
+	depends on QPNP_SMBCHARGER
+	depends on LGE_PM
+	help
+	  add evp control func.
+
+config LGE_PM_USB_CURRENT_MAX_MODE
+	tristate "LGE_PM Support USB current max mode"
+	default n
+	depends on MACH_LGE
+	help
+	  Say Y to enable LGE PM USB current max mode
+	  for MST, Auto Testing with USB
+
+config LGE_PM_RESTORE_BATT_INFO
+       bool "Battery Capacity Scaling"
+       depends on LGE_PM
+       help
+         Say Y here to be able to restore the SOC again,
+         if the same battery is removed and inserted again
+
+config LGE_PM_SOC_SCALING
+       bool "Battery Capacity Scaling"
+       depends on LGE_PM
+       help
+         Say Y here to enable the battery capacity to be scaled.
+
+config LGE_PM_SOC_RECHARGING_WA
+       bool "LGE_PM Support recharging by SOC"
+       depends on LGE_PM
+       help
+         Say Y here to recharging by SOC
+
+config LGE_PM_VZW_REQ
+	 tristate "Implementation of power requirements of Verizon"
+	 default n
+	 help
+	   power requirements for Verizon Wireless
+
+config LGE_PM_CHARGERLOGO_WAIT_FOR_FG_INIT
+	bool "Wait for FG init in LGE Chargerlogo"
+	default n
+	depends on LGE_PM
+	depends on QPNP_FG
+	help
+	  It is wait for FG init in LGE Chargerlogo.
+
+config LGE_PM_LLK_MODE
+	tristate "Implementation of power requirements of retail mode"
+	default n
+	help
+	  power requirements for Verizon retail mode
+
+config LGE_PM_WAKE_LOCK_FOR_CHG_LOGO
+	bool "Wakelocks for LGE Chargerlogo"
+	depends on LGE_PM
+	help
+	  It enables wakelocks for LGE Chargerlogo.
+
+config LGE_PM_BATT_MANAGER
+	tristate "LGE battery management feature"
+	default n
+	depends on LGE_PM
+	help
+	  lge battery management scenario feature
+
+config LGE_PM_WEAK_BATT_PACK
+	bool "support for weak battery pack"
+	default n
+	depends on LGE_PM
+	help
+	  support for weak battery pack
+
+config LGE_APPS_PORT_FRIENDS
+	tristate "LGE's friend for detection by detecting gpio"
+	default n
+	depends on LGE_PM
+	help
+	  For the detection of to detect the LGE's friends by irq
+
+config LGE_APPS_PORT_FRIENDS_ONE_WIRE
+	tristate "one wire communication"
+	default n
+	depends on LGE_PM
+	help
+	  For the communication of LGE's friends by one wire
+
+config LGE_PM_BATTERY_SWAP
+	bool "LGE battery swap feature"
+	default n
+	depends on LGE_PM
+	help
+	  lge battery swap feature
+
+config LGE_PM_SUPPORT_LG_POWER_CLASS
+	bool "LG power class driver feature"
+	default n
+	depends on LGE_PM
+	help
+	  Support lge power class for charging scenario on LGE
+
+config LGE_PM_STEP_DECREASING_TAPER_CHARGING
+	bool "LGE taper charging by decreasing per step"
+	default n
+	depends on LGE_PM
+	help
+	  Support taper charging by decreasing per step
+
+config LGE_PM_OTP_SCENARIO_FOR_VZW
+	tristate "LGE OTP SCENARIO FOR VZW"
+	default n
+	depends on LGE_PM
+	help
+	  Support otp scenario for vzw on LGE
+
+config LGE_PM_OTP_SCENARIO_FOR_SPRINT
+	tristate "LGE OTP SCENARIO FOR SPRINT"
+	default n
+	depends on LGE_PM
+	help
+	  Support otp scenario for sprint on LGE
 
 source "drivers/power/reset/Kconfig"
 

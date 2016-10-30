@@ -233,12 +233,36 @@ static ssize_t stable_pages_required_show(struct device *dev,
 			bdi_cap_stable_pages_required(bdi) ? 1 : 0);
 }
 static DEVICE_ATTR_RO(stable_pages_required);
+#ifdef CONFIG_MACH_LGE
+static ssize_t max_sync_count_for_suspend_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct backing_dev_info *bdi = dev_get_drvdata(dev);
+	unsigned int max_sync_count;
+	ssize_t ret;
+
+	ret = kstrtouint(buf, 10, &max_sync_count);
+	if (ret < 0)
+		return ret;
+
+	ret = bdi_set_max_sync_count(bdi, max_sync_count);
+	if (!ret)
+		ret = count;
+
+	return ret;
+}
+BDI_SHOW(max_sync_count_for_suspend, bdi->max_sync_count)
+#endif
+
 
 static struct attribute *bdi_dev_attrs[] = {
 	&dev_attr_read_ahead_kb.attr,
 	&dev_attr_min_ratio.attr,
 	&dev_attr_max_ratio.attr,
 	&dev_attr_stable_pages_required.attr,
+#ifdef CONFIG_MACH_LGE
+	&dev_attr_max_sync_count_for_suspend.attr,
+#endif
 	NULL,
 };
 ATTRIBUTE_GROUPS(bdi_dev);

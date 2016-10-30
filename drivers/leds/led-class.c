@@ -89,6 +89,41 @@ static ssize_t max_brightness_store(struct device *dev,
 }
 static DEVICE_ATTR_RW(max_brightness);
 
+#ifdef CONFIG_LGE_PM
+static int lge_thm_status;
+static ssize_t thermald_status_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", lge_thm_status);
+}
+
+static ssize_t thermald_status_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct led_classdev *led_cdev = dev_get_drvdata(dev);
+	unsigned long state = 0;
+	int rc = 1;
+
+	if (strncmp(buf, "0", 1) == 0) {
+		lge_thm_status = 0;
+	} else if (strncmp(buf, "1", 1) == 0) {
+		state = LED_FULL;
+		led_cdev->max_brightness = state;
+		led_set_brightness(led_cdev, led_cdev->brightness);
+		lge_thm_status = 1;
+	}
+	return rc;
+}
+static DEVICE_ATTR(thermald_status, 0644, thermald_status_show, thermald_status_store);
+static struct attribute *led_thermald_status_attrs[] = {
+	&dev_attr_thermald_status.attr,
+	NULL,
+};
+static const struct attribute_group led_thermald_status_group = {
+	.attrs = led_thermald_status_attrs,
+};
+#endif
+
 #ifdef CONFIG_LEDS_TRIGGERS
 static DEVICE_ATTR(trigger, 0644, led_trigger_show, led_trigger_store);
 static struct attribute *led_trigger_attrs[] = {
@@ -112,6 +147,9 @@ static const struct attribute_group led_group = {
 
 static const struct attribute_group *led_groups[] = {
 	&led_group,
+#ifdef CONFIG_LGE_PM
+	&led_thermald_status_group,
+#endif
 #ifdef CONFIG_LEDS_TRIGGERS
 	&led_trigger_group,
 #endif

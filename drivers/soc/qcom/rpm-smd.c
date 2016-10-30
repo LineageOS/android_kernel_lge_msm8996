@@ -1167,7 +1167,7 @@ static int msm_rpm_glink_send_buffer(char *buf, uint32_t size, bool noirq)
 {
 	int ret;
 	unsigned long flags;
-	int timeout = 5;
+	int timeout = 100;
 
 	spin_lock_irqsave(&msm_rpm_data.smd_lock_write, flags);
 	do {
@@ -1183,6 +1183,11 @@ static int msm_rpm_glink_send_buffer(char *buf, uint32_t size, bool noirq)
 			} else {
 				udelay(100);
 			}
+
+			/* The udelay(50) will affect starting timeout 50 */
+			if (timeout < 51)
+				udelay(50);
+
 			timeout--;
 		} else {
 			ret = 0;
@@ -1190,10 +1195,12 @@ static int msm_rpm_glink_send_buffer(char *buf, uint32_t size, bool noirq)
 	} while (ret && timeout);
 	spin_unlock_irqrestore(&msm_rpm_data.smd_lock_write, flags);
 
-	if (!timeout)
+	if (!timeout) {
+		printk("rpm_glink_send_buffer is failed finally (noirq:%d, ret:%d)\n", noirq, ret);
 		return 0;
-	else
+	} else {
 		return size;
+	}
 }
 
 static int msm_rpm_send_data(struct msm_rpm_request *cdata,

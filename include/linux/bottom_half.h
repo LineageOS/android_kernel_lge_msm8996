@@ -18,6 +18,9 @@ static inline void local_bh_disable(void)
 	__local_bh_disable_ip(_THIS_IP_, SOFTIRQ_DISABLE_OFFSET);
 }
 
+#ifdef CONFIG_LGCRYPTO_FIPS_ENABLE
+extern void _local_bh_disable(void);
+#endif
 extern void _local_bh_enable(void);
 extern void __local_bh_enable_ip(unsigned long ip, unsigned int cnt);
 

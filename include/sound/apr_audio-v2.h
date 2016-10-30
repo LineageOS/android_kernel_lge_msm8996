@@ -3380,6 +3380,11 @@ struct asm_softvolume_params {
 
 #define ASM_MEDIA_FMT_MULTI_CHANNEL_PCM_V2 0x00010DA5
 
+#if defined(CONFIG_SND_LGE_EFFECT) || defined(CONFIG_SND_LGE_NORMALIZER) || defined(CONFIG_SND_LGE_MABL)
+#define ASM_STREAM_POSTPROC_TOPO_ID_DEFAULT_LGE 0x10009009
+#define ASM_STREAM_POSTPROC_TOPO_ID_OFFLOAD_LGE 0x10009010
+#endif
+
 #define ASM_MEDIA_FMT_MULTI_CHANNEL_PCM_V3 0x00010DDC
 
 #define ASM_MEDIA_FMT_EVRCB_FS 0x00010BEF
@@ -8676,8 +8681,7 @@ struct afe_clk_set {
 	 * for enable and disable clock.
 	 *	"clk_freq_in_hz", "clk_attri", and "clk_root"
 	 *	are ignored in disable clock case.
-	 *	@values 
-	 *	- 0 -- Disabled
+	 *	@values?	 *	- 0 -- Disabled
 	 *	- 1 -- Enabled  @tablebulletend
 	 */
 	uint32_t enable;
@@ -9003,6 +9007,12 @@ struct afe_port_cmd_set_aanc_acdb_table {
 #define CUSTOM_STEREO_INDEX_PARAM	0x0002
 #define Q14_GAIN_ZERO_POINT_FIVE	0x2000
 #define Q14_GAIN_UNITY			0x4000
+
+struct default_chmixer_param_id_coeff {
+	uint32_t	index;
+	uint16_t	num_output_channels;
+	uint16_t	num_input_channels;
+};
 
 struct afe_svc_cmd_set_clip_bank_selection {
 	struct apr_hdr hdr;

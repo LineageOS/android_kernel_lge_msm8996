@@ -751,6 +751,10 @@ struct dwc3_scratchpad_array {
 #define DWC3_CONTROLLER_RESTART_USB_SESSION		11
 #define DWC3_CONTROLLER_NOTIFY_DISABLE_UPDXFER		12
 
+#ifdef CONFIG_LGE_USB_MAXIM_EVP
+#define DWC3_EVP_CONNECT_EVENT				255
+#endif
+
 #define MAX_INTR_STATS					10
 /**
  * struct dwc3 - representation of our controller
@@ -979,6 +983,11 @@ struct dwc3 {
 	unsigned                bh_completion_time[MAX_INTR_STATS];
 	unsigned                bh_handled_evt_cnt[MAX_INTR_STATS];
 	unsigned                bh_dbg_index;
+#ifdef CONFIG_LGE_USB_MAXIM_EVP
+	struct delayed_work	dcp_check_work;
+	unsigned int		evp_usbctrl_err_cnt;
+	bool evp_connect;
+#endif
 	ktime_t			irq_start_time[MAX_INTR_STATS];
 	ktime_t			t_pwr_evt_irq;
 	unsigned                irq_completion_time[MAX_INTR_STATS];
@@ -1151,6 +1160,9 @@ static inline void dwc3_host_exit(struct dwc3 *dwc)
 #if IS_ENABLED(CONFIG_USB_DWC3_GADGET) || IS_ENABLED(CONFIG_USB_DWC3_DUAL_ROLE)
 int dwc3_gadget_init(struct dwc3 *dwc);
 void dwc3_gadget_exit(struct dwc3 *dwc);
+#ifdef CONFIG_LGE_USB_MAXIM_EVP
+void dwc_dcp_check_work(struct work_struct *w);
+#endif
 void dwc3_gadget_restart(struct dwc3 *dwc);
 int dwc3_gadget_set_test_mode(struct dwc3 *dwc, int mode);
 int dwc3_gadget_get_link_state(struct dwc3 *dwc);

@@ -39,8 +39,11 @@ struct blkcg_gq;
 struct blk_flush_queue;
 
 #define BLKDEV_MIN_RQ	4
+#ifdef CONFIG_MACH_LGE
+#define BLKDEV_MAX_RQ	256	/* Default maximum */
+#else
 #define BLKDEV_MAX_RQ	128	/* Default maximum */
-
+#endif
 /*
  * Maximum number of blkcg policies allowed to be registered concurrently.
  * Defined here to simplify include dependency.

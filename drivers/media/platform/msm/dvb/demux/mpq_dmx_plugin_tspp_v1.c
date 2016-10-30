@@ -83,7 +83,12 @@ enum mem_buffer_allocation_mode {
 };
 
 /* module parameters for load time configuration */
+#ifdef CONFIG_LGE_BROADCAST_ISDBT_JAPAN
+static int allocation_mode = MPQ_DMX_TSPP_CONTIGUOUS_PHYS_ALLOC;
+#else /* CONFIG_LGE_BROADCAST_ISDBT_JAPAN */
 static int allocation_mode = MPQ_DMX_TSPP_INTERNAL_ALLOC;
+#endif /* CONFIG_LGE_BROADCAST_ISDBT_JAPAN */
+
 static int tspp_out_buffer_size = TSPP_BUFFER_SIZE;
 static int tspp_desc_size = TSPP_DEFAULT_DESCRIPTOR_SIZE;
 static int tspp_notification_size =

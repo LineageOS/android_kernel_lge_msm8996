@@ -178,9 +178,16 @@ int __do_page_cache_readahead(struct address_space *mapping, struct file *filp,
 		rcu_read_lock();
 		page = radix_tree_lookup(&mapping->page_tree, page_offset);
 		rcu_read_unlock();
+#ifdef CONFIG_LGE_ADAPTIVE_READAHEAD
+		if(page && !radix_tree_exceptional_entry(page)) {
+			if(page_idx == nr_to_read - lookahead_size)
+				SetPageReadahead(page);
+			continue;
+		}
+#else
 		if (page && !radix_tree_exceptional_entry(page))
 			continue;
-
+#endif
 		page = page_cache_alloc_readahead(mapping);
 		if (!page)
 			break;
@@ -423,7 +430,14 @@ ondemand_readahead(struct address_space *mapping,
 		ra->size = start - offset;	/* old async_size */
 		ra->size += req_size;
 		ra->size = get_next_ra_size(ra, max);
+#ifdef CONFIG_LGE_ADAPTIVE_READAHEAD
+		if(ra->size == max)
+			ra->async_size = ra->size;
+		else
+			ra->async_size = ra->size - ra->size/3;
+#else
 		ra->async_size = ra->size;
+#endif
 		goto readit;
 	}
 

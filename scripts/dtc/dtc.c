@@ -29,6 +29,7 @@ int reservenum;		/* Number of memory reservation slots */
 int minsize;		/* Minimum blob size */
 int padsize;		/* Additional padding to blob */
 int phandle_format = PHANDLE_BOTH;	/* Use linux,phandle or phandle properties */
+int show_deleted_list;
 
 static void fill_fullpaths(struct node *tree, const char *prefix)
 {
@@ -49,7 +50,7 @@ static void fill_fullpaths(struct node *tree, const char *prefix)
 
 /* Usage related data. */
 static const char usage_synopsis[] = "dtc [options] <input file>";
-static const char usage_short_opts[] = "qI:O:o:V:d:R:S:p:fb:i:H:sW:E:hv";
+static const char usage_short_opts[] = "qI:O:o:V:d:R:S:p:fb:i:H:sW:E:Dhv";
 static struct option const usage_long_opts[] = {
 	{"quiet",            no_argument, NULL, 'q'},
 	{"in-format",         a_argument, NULL, 'I'},
@@ -67,6 +68,7 @@ static struct option const usage_long_opts[] = {
 	{"phandle",           a_argument, NULL, 'H'},
 	{"warning",           a_argument, NULL, 'W'},
 	{"error",             a_argument, NULL, 'E'},
+	{"deleted-list",     no_argument, NULL, 'D'},
 	{"help",             no_argument, NULL, 'h'},
 	{"version",          no_argument, NULL, 'v'},
 	{NULL,               no_argument, NULL, 0x0},
@@ -94,9 +96,15 @@ static const char * const usage_opts_help[] = {
 	"\n\tValid phandle formats are:\n"
 	 "\t\tlegacy - \"linux,phandle\" properties only\n"
 	 "\t\tepapr  - \"phandle\" properties only\n"
-	 "\t\tboth   - Both \"linux,phandle\" and \"phandle\" properties",
+	 "\t\tboth   - Both \"linux,phandle\" and \"phandle\" properties"
+	 "\n\t\tspecific - '&phandle' appears instead of phandle id\n"
+	 "\t\t\tto distinguish between cell data and phandle.\n"
+	 "\t\t\tIt is just for only comparing trees. So, do not use\n"
+	 "\t\t\toutput as runtime dts.\n"
+	 "\t\tspecific2 - '&phandle(id)' instead of '&phandle'",
 	"\n\tEnable/disable warnings (prefix with \"no-\")",
 	"\n\tEnable/disable errors (prefix with \"no-\")",
+	"\n\tShow list of deleted nodes and properties at end of dts(dts to dts only)",
 	"\n\tPrint this help and exit",
 	"\n\tPrint version and exit",
 	NULL,
@@ -168,6 +176,10 @@ int main(int argc, char *argv[])
 				phandle_format = PHANDLE_EPAPR;
 			else if (streq(optarg, "both"))
 				phandle_format = PHANDLE_BOTH;
+			else if (streq(optarg, "specific"))
+				phandle_format = PHANDLE_SPECIFIC;
+			else if (streq(optarg, "specific2"))
+				phandle_format = PHANDLE_SPECIFIC2;
 			else
 				die("Invalid argument \"%s\" to -H option\n",
 				    optarg);
@@ -183,6 +195,10 @@ int main(int argc, char *argv[])
 
 		case 'E':
 			parse_checks_option(false, true, optarg);
+			break;
+
+		case 'D':
+			show_deleted_list = 1;
 			break;
 
 		case 'h':

@@ -1,0 +1,167 @@
+/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/ {
+    aliases {
+        i2c11 = &i2c_11;
+    };
+    soc {
+        i2c_11:i2c@75B9000 { // BLSP11, BLSP-2 QUP-4
+            compatible = "qcom,i2c-msm-v2";
+            #address-cells = <1>;
+            #size-cells = <0>;
+	    
+            reg-names = "qup_phys_addr";
+            reg = <0x75B9000 0x1000>;
+            
+	    interrupt-names = "qup_irq";
+            interrupts = <0 105 0>;
+            
+	    qcom,clk-freq-out = <100000>; // Output clock frequency (can be up to 3400000)
+            qcom,clk-freq-in = <50000000>;
+            clock-names = "iface_clk", "core_clk"; // Setup Fabric and core clocks
+            clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>, <&clock_gcc clk_gcc_blsp2_qup5_i2c_apps_clk>;
+            
+	    pinctrl-names = "i2c_active", "i2c_sleep"; // pin functions
+            pinctrl-0 = <&i2c_11_active>; // defined in msm8996-h1_kddi_jp-pinctrl.dtsi
+            pinctrl-1 = <&i2c_11_sleep>; // defined in msm8996-h1_kddi_jp-pinctrl.dtsi
+            qcom,noise-rjct-scl = <0>; // For noise dectection over SCL
+            qcom,noise-rjct-sda = <0>; // For noise dectection over SDC
+            //dmas = <&dma_blsp1 16 64 0x20000020 0x20>, <&dma_blsp1 17 32 0x20000020 0x20>;
+            qcom,master-id = <84>;
+            //dma-names = "tx", "rx";
+	    qcom,disable-dma; // Disabled DMA
+        };
+
+        tspp: msm_tspp@075e7000 {
+            compatible = "qcom,msm_tspp";
+            reg = <0x075e7000 0x1000>, // MSM_TSIF0_PHYS
+                <0x075e8000 0x1000>, // MSM_TSIF1_PHYS
+                <0x075e9000 0x1000>, // MSM_TSPP_PHYS
+                <0x075c4000 0x23000>; // MSM_TSPP_BAM_PHYS
+            reg-names = "MSM_TSIF0_PHYS",
+                "MSM_TSIF1_PHYS",
+                "MSM_TSPP_PHYS",
+                "MSM_TSPP_BAM_PHYS";
+            interrupts = <0 121 0>, // TSIF_TSPP_IRQ
+                <0 119 0>, // TSIF0_IRQ
+                <0 120 0>, // TSIF1_IRQ
+                <0 122 0>; // TSIF_BAM_IRQ
+            interrupt-names = "TSIF_TSPP_IRQ",
+                "TSIF0_IRQ",
+                "TSIF1_IRQ",
+                "TSIF_BAM_IRQ";
+            clock-names = "iface_clk", "ref_clk";
+            clocks = <&clock_gcc clk_gcc_tsif_ahb_clk>,
+                <&clock_gcc clk_gcc_tsif_ref_clk>;
+
+            qcom,msm-bus,name = "tsif";
+            qcom,msm-bus,num-cases = <2>;
+            qcom,msm-bus,num-paths = <1>;
+            qcom,msm-bus,vectors-KBps = <82 512 0 0>, // No vote
+                <82 512 12288 24576>; // Max. bandwidth, 2xTSIF, each max of 96Mbps
+
+            pinctrl-names = "disabled",
+                "tsif0-mode1", "tsif0-mode2",
+                "tsif1-mode1", "tsif1-mode2",
+                "dual-tsif-mode1", "dual-tsif-mode2";
+
+            pinctrl-0 = <>;				// disabled
+            pinctrl-1 = <&tsif0_signals_active>;	// tsif0-mode1
+            pinctrl-2 = <&tsif0_signals_active
+                &tsif0_sync_active>;		// tsif0-mode2
+            pinctrl-3 = <&tsif1_signals_active>;	// tsif1-mode1
+            pinctrl-4 = <&tsif1_signals_active
+                &tsif1_sync_active>;		// tsif1-mode2
+            pinctrl-5 = <&tsif0_signals_active
+                &tsif1_signals_active>;		// dual-tsif-mode1
+            pinctrl-6 = <&tsif0_signals_active
+                &tsif0_sync_active
+                &tsif1_signals_active
+                &tsif1_sync_active>;		// dual-tsif-mode2
+        };
+        
+        tlmm: pinctrl@01010000 {
+            pmx_i2c_11 {
+                i2c_11_default: i2c_11_default {
+                    mux {
+                        pins = "gpio60", "gpio61"; // SDA, SCL
+                        function = "blsp_i2c11";
+                    };
+        
+                    config {
+                        pins = "gpio60", "gpio61";
+                        drive-strength = <2>;   // 2MA
+                        bias-disable;
+                    };
+                };
+                
+                i2c_11_active: i2c_11_active {
+                    mux {
+                        pins = "gpio60", "gpio61"; // SDA, SCL
+                        function = "blsp_i2c11";
+                    };
+
+                    config {
+                        pins = "gpio60", "gpio61";
+                        drive-strength = <2>;   // 2MA
+                        bias-disable;
+                    };
+                };
+        
+                i2c_11_sleep: i2c_11_sleep {
+                    mux {
+                        pins = "gpio60", "gpio61";
+                        function = "blsp_i2c11";
+                    };
+
+                    config {
+                        pins = "gpio60", "gpio61";
+                        drive-strength = <2>;   // 2MA
+                        bias-pull-up;
+                    };
+                };
+            };
+                
+            pmx_isdbt_ctrl_pin {
+                isdbt_ctrl_pin: isdbt_ctrl_pin {
+                    mux {
+                        pins = "gpio21", "gpio39";
+                        function = "gpio";
+                    };
+
+                    config {
+                        pins = "gpio21", "gpio39";
+                        drive-strength = <8>;   // 8MA
+                        bias-disable;
+                    };
+                };
+            };
+        };
+    };
+};
+
+&i2c_11 {
+    tcc3535_i2c@58 {
+        compatible = "telechips,tcc3535-i2c";
+        reg = <0x58>;
+
+        //clock-names = "isdbt_xo";
+        //clocks = <&clock_rpm clk_div_clk3>;
+        //isdbt_vdd_io-supply = <&pm8996_l13>;
+
+        pinctrl-names = "isdbt_gpio";	// defined in msm8996-h1_kddi_jp-pinctrl.dtsi
+        pinctrl-0 = <&isdbt_ctrl_pin>;	// defined in msm8996-h1_kddi_jp-pinctrl.dtsi
+        isdbt-fc8300,reset-gpio = <&tlmm 21 0x00>;
+        isdbt-fc8300,en-gpio = <&tlmm 39 0x00>;
+    };
+};

@@ -177,6 +177,71 @@ int msm_camera_fill_vreg_params(struct camera_vreg_t *cam_vreg,
 				power_setting[i].seq_val = INVALID_VREG;
 			break;
 
+#ifdef CONFIG_LGE_CAMERA_DRIVER
+		case CAM_OISVDD:
+			for (j = 0; j < num_vreg; j++) {
+				if (!strcmp(cam_vreg[j].reg_name, "cam_oisvdd")) {
+					pr_err("%s:%d i %d j %d cam_oisvdd\n",
+						__func__, __LINE__, i, j);
+					power_setting[i].seq_val = j;
+					break;
+				}
+			}
+			break;
+
+		case CAM_OISDVDD:
+			for (j = 0; j < num_vreg; j++) {
+				if (!strcmp(cam_vreg[j].reg_name, "cam_oisdvdd")) {
+					pr_err("%s:%d i %d j %d cam_oisdvdd\n",
+						__func__, __LINE__, i, j);
+					power_setting[i].seq_val = j;
+					break;
+				}
+			}
+			break;
+
+		case CAM_I2C_PULL_UP:
+			for (j = 0; j < num_vreg; j++) {
+				if (!strcmp(cam_vreg[j].reg_name, "cam_vi2c")) {
+					pr_err("%s:%d i %d j %d cam_vi2c\n",
+						__func__, __LINE__, i, j);
+					power_setting[i].seq_val = j;
+					break;
+				}
+			}
+			break;
+
+		case CAM_TCS_VIO:
+			for (j = 0; j < num_vreg; j++) {
+				if (!strcmp(cam_vreg[j].reg_name, "tcs_vio")) {
+					pr_err("%s:%d i %d j %d tcs_vio\n",
+						__func__, __LINE__, i, j);
+					power_setting[i].seq_val = j;
+					break;
+				}
+			}
+			break;
+
+		case CAM_IRIS_VDD:
+			for (j = 0; j < num_vreg; j++) {
+				if (!strcmp(cam_vreg[j].reg_name, "cam_iris_vdd")) {
+					CDBG("%s:%d i %d j %d cam_iris_vdd\n",
+						__func__, __LINE__, i, j);
+					power_setting[i].seq_val = j;
+					if (VALIDATE_VOLTAGE(
+						cam_vreg[j].min_voltage,
+						cam_vreg[j].max_voltage,
+						power_setting[i].config_val)) {
+						cam_vreg[j].min_voltage =
+						cam_vreg[j].max_voltage =
+						power_setting[i].config_val;
+					}
+					break;
+				}
+			}
+			break;
+#endif
+
 		default:
 			pr_err("%s:%d invalid seq_val %d\n", __func__,
 				__LINE__, power_setting[i].seq_val);
@@ -237,6 +302,40 @@ int msm_sensor_get_sub_module_index(struct device_node *of_node,
 		of_node_put(src_node);
 		src_node = NULL;
 	}
+
+#ifdef CONFIG_MACH_LGE
+	src_node = of_parse_phandle(of_node, "qcom,tcs-src", 0);
+	if (!src_node) {
+		pr_err("%s:%d src_node NULL\n", __func__, __LINE__);
+	} else {
+		rc = of_property_read_u32(src_node, "cell-index", &val);
+		pr_err("%s qcom,tcs cell index %d, rc %d\n", __func__,
+			val, rc);
+		if (rc < 0) {
+			pr_err("%s failed %d\n", __func__, __LINE__);
+			goto ERROR;
+		}
+		sensor_info->subdev_id[SUB_MODULE_TCS] = val;
+		of_node_put(src_node);
+		src_node = NULL;
+	}
+
+	src_node = of_parse_phandle(of_node, "qcom,proxy-src", 0);
+	if (!src_node) {
+		CDBG("%s:%d src_node NULL\n", __func__, __LINE__);
+	} else {
+		rc = of_property_read_u32(src_node, "cell-index", &val);
+		CDBG("%s qcom,proxy cell index %d, rc %d\n", __func__,
+			val, rc);
+		if (rc < 0) {
+			pr_err("%s failed %d\n", __func__, __LINE__);
+			goto ERROR;
+		}
+		sensor_info->subdev_id[SUB_MODULE_PROXY] = val;
+		of_node_put(src_node);
+		src_node = NULL;
+	}
+#endif
 
 	src_node = of_parse_phandle(of_node, "qcom,eeprom-src", 0);
 	if (!src_node) {
@@ -472,8 +571,15 @@ int msm_camera_get_dt_power_setting_data(struct device_node *of_node,
 
 	CDBG("%s qcom,cam-power-seq-type count %d\n", __func__, count);
 
+#ifndef CONFIG_MACH_LGE
 	if (count <= 0)
 		return 0;
+#else
+	if (count <= 0) {
+		*power_setting_size = 0;
+		return 0;
+	}
+#endif
 
 	ps = kzalloc(sizeof(*ps) * count, GFP_KERNEL);
 	if (!ps) {
@@ -551,6 +657,16 @@ int msm_camera_get_dt_power_setting_data(struct device_node *of_node,
 				ps[i].seq_val = SENSOR_GPIO_VAF;
 			else if (!strcmp(seq_name, "sensor_gpio_vio"))
 				ps[i].seq_val = SENSOR_GPIO_VIO;
+
+#ifdef CONFIG_LGE_CAMERA_DRIVER
+			else if (!strcmp(seq_name, "sensor_gpio_ldaf"))
+				ps[i].seq_val = SENSOR_GPIO_LDAF_EN;
+			else if (!strcmp(seq_name, "sensor_gpio_ois_reset"))
+				ps[i].seq_val = SENSOR_GPIO_OIS_RESET;
+			else if (!strcmp(seq_name, "sensor_gpio_tcs_vana"))
+				ps[i].seq_val = SENSOR_GPIO_TCS_VANA;
+#endif
+
 			else if (!strcmp(seq_name, "sensor_gpio_custom1"))
 				ps[i].seq_val = SENSOR_GPIO_CUSTOM1;
 			else if (!strcmp(seq_name, "sensor_gpio_custom2"))
@@ -968,6 +1084,71 @@ int msm_camera_init_gpio_pin_tbl(struct device_node *of_node,
 	} else
 		rc = 0;
 
+#ifdef CONFIG_LGE_CAMERA_DRIVER
+	rc = of_property_read_u32(of_node, "qcom,gpio-ois-reset", &val);
+	if (rc != -EINVAL) {
+		if (rc < 0) {
+			pr_err("%s:%d read qcom,gpio-ois-reset failed rc %d\n",
+				__func__, __LINE__, rc);
+			goto ERROR;
+		} else if (val >= gpio_array_size) {
+			pr_err("%s:%d qcom,gpio-ois-reset invalid %d\n",
+				__func__, __LINE__, val);
+			rc = -EINVAL;
+			goto ERROR;
+		}
+		gconf->gpio_num_info->gpio_num[SENSOR_GPIO_OIS_RESET] =
+			gpio_array[val];
+		gconf->gpio_num_info->valid[SENSOR_GPIO_OIS_RESET] = 1;
+		CDBG("%s qcom,gpio-ois-reset %d\n", __func__,
+			gconf->gpio_num_info->gpio_num[SENSOR_GPIO_OIS_RESET]);
+	} else {
+		rc = 0;
+	}
+
+	rc = of_property_read_u32(of_node, "qcom,gpio-ldaf-en", &val);
+	if (rc != -EINVAL) {
+		if (rc < 0) {
+			pr_err("%s:%d read qcom,gpio-ldaf-en failed rc %d\n",
+				__func__, __LINE__, rc);
+			goto ERROR;
+		} else if (val >= gpio_array_size) {
+			pr_err("%s:%d qcom,gpio-ldaf-en invalid %d\n",
+				__func__, __LINE__, val);
+			rc = -EINVAL;
+			goto ERROR;
+		}
+		gconf->gpio_num_info->gpio_num[SENSOR_GPIO_LDAF_EN] =
+			gpio_array[val];
+		gconf->gpio_num_info->valid[SENSOR_GPIO_LDAF_EN] = 1;
+		CDBG("%s qcom,gpio-ldaf-en %d\n", __func__,
+			gconf->gpio_num_info->gpio_num[SENSOR_GPIO_LDAF_EN]);
+	} else {
+		rc = 0;
+	}
+
+	rc = of_property_read_u32(of_node, "qcom,gpio-tcs-vana", &val);
+	if (rc != -EINVAL) {
+		if (rc < 0) {
+			pr_err("%s:%d read qcom,gpio-tcs-vana failed rc %d\n",
+				__func__, __LINE__, rc);
+			goto ERROR;
+		} else if (val >= gpio_array_size) {
+			pr_err("%s:%d qcom,gpio-tcs-vana invalid %d\n",
+				__func__, __LINE__, val);
+			rc = -EINVAL;
+			goto ERROR;
+		}
+		gconf->gpio_num_info->gpio_num[SENSOR_GPIO_TCS_VANA] =
+			gpio_array[val];
+		gconf->gpio_num_info->valid[SENSOR_GPIO_TCS_VANA] = 1;
+		CDBG("%s qcom,gpio-tcs-vana %d\n", __func__,
+			gconf->gpio_num_info->gpio_num[SENSOR_GPIO_TCS_VANA]);
+	} else {
+		rc = 0;
+	}
+#endif
+
 	rc = of_property_read_u32(of_node, "qcom,gpio-custom1", &val);
 	if (rc != -EINVAL) {
 		if (rc < 0) {
@@ -1253,6 +1434,24 @@ int msm_cam_sensor_handle_reg_gpio(int seq_val,
 		gpio_offset = SENSOR_GPIO_CUSTOM2;
 		break;
 
+#ifdef CONFIG_MACH_LGE
+	case CAM_IRIS_VDD:
+		gpio_offset = SENSOR_GPIO_IRIS_VDD;
+		break;
+
+	case CAM_OISVDD:
+		gpio_offset = SENSOR_GPIO_OIS_VDD;
+		break;
+
+	case CAM_OISDVDD:
+		gpio_offset = SENSOR_GPIO_OIS_DVDD;
+		break;
+
+	case CAM_TCS_VIO:
+		gpio_offset = SENSOR_GPIO_TCS_VIO;
+		break;
+#endif
+
 	default:
 		pr_err("%s:%d Invalid VREG seq val %d\n", __func__,
 			__LINE__, seq_val);
@@ -1262,7 +1461,8 @@ int msm_cam_sensor_handle_reg_gpio(int seq_val,
 	CDBG("%s: %d GPIO offset: %d, seq_val: %d\n", __func__, __LINE__,
 		gpio_offset, seq_val);
 
-	if ((gconf->gpio_num_info->valid[gpio_offset] == 1)) {
+	if (gconf->gpio_num_info &&
+		(gconf->gpio_num_info->valid[gpio_offset] == 1)) {
 		gpio_set_value_cansleep(
 			gconf->gpio_num_info->gpio_num
 			[gpio_offset], val);
@@ -1356,7 +1556,7 @@ int msm_camera_power_up(struct msm_camera_power_ctrl_t *ctrl,
 	}
 	rc = msm_camera_request_gpio_table(
 		ctrl->gpio_conf->cam_gpio_req_tbl,
-		ctrl->gpio_conf->cam_gpio_req_tbl_size, 1);
+		ctrl->gpio_conf->cam_gpio_req_tbl_size, 1, ctrl->isDualMode); //LG Change
 	if (rc < 0)
 		no_gpio = rc;
 	if (ctrl->cam_pinctrl_status) {
@@ -1407,6 +1607,14 @@ int msm_camera_power_up(struct msm_camera_power_ctrl_t *ctrl,
 			CDBG("%s:%d gpio set val %d\n", __func__, __LINE__,
 				ctrl->gpio_conf->gpio_num_info->gpio_num
 				[power_setting->seq_val]);
+#if 1
+						if (ctrl->isDualMode == TRUE &&
+								power_setting->seq_val == SENSOR_GPIO_TCS_VANA)
+						{
+							CDBG("%s:%d Skip gpio: SENSOR_GPIO_TCS_VANA (Dual Mode)", __func__, __LINE__);
+							continue;
+						}
+#endif
 			gpio_set_value_cansleep(
 				ctrl->gpio_conf->gpio_num_info->gpio_num
 				[power_setting->seq_val],
@@ -1422,6 +1630,14 @@ int msm_camera_power_up(struct msm_camera_power_ctrl_t *ctrl,
 					SENSOR_GPIO_MAX);
 				goto power_up_failed;
 			}
+#if 1
+						if (ctrl->isDualMode == TRUE &&
+								power_setting->seq_val == CAM_TCS_VIO)
+						{
+							CDBG("%s:%d Skip vreg: CAM_TCS_VIO (Dual Mode)", __func__, __LINE__);
+							continue;
+						}
+#endif
 			if (power_setting->seq_val < ctrl->num_vreg)
 				msm_camera_config_single_vreg(ctrl->dev,
 					&ctrl->cam_vreg
@@ -1530,7 +1746,7 @@ power_up_failed:
 	ctrl->cam_pinctrl_status = 0;
 	msm_camera_request_gpio_table(
 		ctrl->gpio_conf->cam_gpio_req_tbl,
-		ctrl->gpio_conf->cam_gpio_req_tbl_size, 0);
+		ctrl->gpio_conf->cam_gpio_req_tbl_size, 0, 0); //LG Change
 	return rc;
 }
 
@@ -1594,6 +1810,19 @@ int msm_camera_power_down(struct msm_camera_power_ctrl_t *ctrl,
 			if (!ctrl->gpio_conf->gpio_num_info->valid
 				[pd->seq_val])
 				continue;
+#if 1
+			if (ctrl->isDualMode == TRUE &&
+				pd->seq_val == SENSOR_GPIO_TCS_VANA   && ctrl->cameraID== 2 ) {
+				CDBG("%s:%d Skip ID 2 gpio: SENSOR_GPIO_TCS_VANA (Dual Mode)", __func__, __LINE__);
+				continue;
+			}
+
+			if (ctrl->isDualMode == TRUE &&
+				pd->seq_val == SENSOR_GPIO_VANA   && ctrl->cameraID== 0 ) {
+				CDBG("%s:%d Skip ID 0 gpio: SENSOR_GPIO_VANA (Dual Mode)", __func__, __LINE__);
+				continue;
+			}
+#endif
 			gpio_set_value_cansleep(
 				ctrl->gpio_conf->gpio_num_info->gpio_num
 				[pd->seq_val],
@@ -1608,7 +1837,20 @@ int msm_camera_power_down(struct msm_camera_power_ctrl_t *ctrl,
 					SENSOR_GPIO_MAX);
 				continue;
 			}
+#if 1
+			if (ctrl->isDualMode == TRUE&&
+				pd->seq_val == CAM_TCS_VIO   && ctrl->cameraID== 2 ) {
+				CDBG("%s:%d Skip ID 2 vreg: CAM_TCS_VIO (Dual Mode)", __func__, __LINE__);
+				continue;
+			}
 
+			if (ctrl->isDualMode == TRUE &&
+				pd->seq_val == CAM_VIO   && ctrl->cameraID ==0 ) {
+				CDBG("%s:%d Skip ID 0 vreg: CAM_VIO (Dual Mode)", __func__, __LINE__);
+				continue;
+			}
+
+#endif
 			ps = msm_camera_get_power_settings(ctrl,
 						pd->seq_type,
 						pd->seq_val);
@@ -1660,8 +1902,7 @@ int msm_camera_power_down(struct msm_camera_power_ctrl_t *ctrl,
 	ctrl->cam_pinctrl_status = 0;
 	msm_camera_request_gpio_table(
 		ctrl->gpio_conf->cam_gpio_req_tbl,
-		ctrl->gpio_conf->cam_gpio_req_tbl_size, 0);
+		ctrl->gpio_conf->cam_gpio_req_tbl_size, 0, ctrl->isDualMode); //LG Change
 	CDBG("%s exit\n", __func__);
 	return 0;
 }
-

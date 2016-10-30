@@ -17,7 +17,6 @@ config ARM64
 	select AUDIT_ARCH_COMPAT_GENERIC
 	select ARM_GIC_V2M if PCI_MSI
 	select ARM_GIC_V3
-	select ARM_GIC_V3_ITS if PCI_MSI
 	select BUILDTIME_EXTABLE_SORT
 	select CLONE_BACKWARDS
 	select COMMON_CLK if !ARCH_MSM
@@ -127,6 +126,23 @@ config ARCH_MMAP_RND_COMPAT_BITS_MAX
 config NO_IOPORT_MAP
 	def_bool y if !PCI
 
+config ARCH_MMAP_RND_BITS_MIN
+       default 14 if ARM64_64K_PAGES
+       default 18
+
+# max bits determined by the following formula:
+#  VA_BITS - PAGE_SHIFT - 3
+#  VA_BITS is always 39
+config ARCH_MMAP_RND_BITS_MAX
+       default 20 if ARM64_64K_PAGES
+       default 24
+
+config ARCH_MMAP_RND_COMPAT_BITS_MIN
+       default 11
+
+config ARCH_MMAP_RND_COMPAT_BITS_MAX
+       default 16
+
 config ILLEGAL_POINTER_VALUE
 	hex
 	default 0xdead000000000000
@@ -212,13 +228,6 @@ config KERNEL_MODE_NEON
 
 config FIX_EARLYCON_MEM
 	def_bool y
-
-config PGTABLE_LEVELS
-	int
-	default 2 if ARM64_64K_PAGES && ARM64_VA_BITS_42
-	default 3 if ARM64_64K_PAGES && ARM64_VA_BITS_48
-	default 3 if ARM64_4K_PAGES && ARM64_VA_BITS_39
-	default 4 if ARM64_4K_PAGES && ARM64_VA_BITS_48
 
 source "init/Kconfig"
 
@@ -309,11 +318,11 @@ config ARCH_MSM8953
 	  This enables support for the MSM8953 chipset. If you don't
 	  know what to do here, say N
 
-config ARCH_MSM8937
-	bool "Enable Support for Qualcomm Technologies Inc MSM8937"
+config ARCH_MSMTHORIUM
+	bool "Enable Support for Qualcomm Technologies Inc MSMTHORIUM"
 	depends on ARCH_MSM
 	help
-	  This enables support for the MSM8937 chipset. If you don't
+	  This enables support for the MSMTHORIUM chipset. If you don't
 	  know what to do here, say N
 
 config ARCH_MSM8996
@@ -539,6 +548,16 @@ config ARM64_ICACHE_DISABLE
 
 	  If you are not sure what to do, select 'N' here.
 
+config L1_CACHE_SHIFT
+	int "L1_CACHE_SHIFT"
+	depends on ARCH_MSM8996
+	default 7 if ARCH_MSM8996
+	default 6
+	help
+	  define L1 cache shift here.
+
+	  If unsure, leave the default value.
+
 config MSM_APP_API
 	bool "API support to enable / disable app settings for MSM8996"
 	depends on ARCH_MSM8996 && (ENABLE_FP_SIMD_SETTINGS || MSM_APP_SETTINGS)
@@ -609,6 +628,13 @@ config ARM64_VA_BITS
 	default 48 if ARM64_VA_BITS_48
 
 config ARM64_PGTABLE_LEVELS
+	int
+	default 2 if ARM64_64K_PAGES && ARM64_VA_BITS_42
+	default 3 if ARM64_64K_PAGES && ARM64_VA_BITS_48
+	default 3 if ARM64_4K_PAGES && ARM64_VA_BITS_39
+	default 4 if ARM64_4K_PAGES && ARM64_VA_BITS_48
+
+config PGTABLE_LEVELS
 	int
 	default 2 if ARM64_64K_PAGES && ARM64_VA_BITS_42
 	default 3 if ARM64_64K_PAGES && ARM64_VA_BITS_48

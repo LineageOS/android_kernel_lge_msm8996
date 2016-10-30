@@ -207,6 +207,9 @@ static int debug_shrinker_show(struct seq_file *s, void *unused)
 	struct shrinker *shrinker;
 	struct shrink_control sc;
 
+	if (nr_node_ids == 1)
+		sc.nid = 0;
+
 	sc.gfp_mask = -1;
 	sc.nr_to_scan = 0;
 

@@ -49,6 +49,7 @@
 #include <linux/module.h>
 #include <linux/kthread.h>
 #include <linux/tick.h>
+#include <asm/cacheflush.h>
 
 #define CREATE_TRACE_POINTS
 
@@ -86,9 +87,17 @@ EXPORT_SYMBOL_GPL(__rcu_read_lock);
 void __rcu_read_unlock(void)
 {
 	struct task_struct *t = current;
+	register int rcu_read_lock_nesting = t->rcu_read_lock_nesting;
 
-	if (t->rcu_read_lock_nesting != 1) {
-		--t->rcu_read_lock_nesting;
+	if (unlikely(rcu_read_lock_nesting == 0)) {
+               __dma_flush_range((void *)&t->rcu_read_lock_nesting, (void *)&t->rcu_read_lock_nesting + (sizeof(int)));
+               rcu_read_lock_nesting = t->rcu_read_lock_nesting; /* retry to read rcu_read_lock_nesting */
+               printk_ratelimited(KERN_ERR "%s rcu_read_lock_nesting was zero, now is %d\n", __func__, rcu_read_lock_nesting);
+       }
+
+
+	if (rcu_read_lock_nesting != 1) {
+               t->rcu_read_lock_nesting = --rcu_read_lock_nesting;
 	} else {
 		barrier();  /* critical section before exit code. */
 		t->rcu_read_lock_nesting = INT_MIN;

@@ -672,7 +672,7 @@ static int wwan_add_ul_flt_rule_to_ipa(void)
 	req->install_status = QMI_RESULT_SUCCESS_V01;
 	req->filter_index_list_len = num_q6_rule;
 	mutex_lock(&ipa_qmi_lock);
-	for (i = 0; i < num_q6_rule; i++) {
+	for (i = 0; i < num_q6_rule && (ipa_qmi_ctx != NULL); i++) {
 		if (ipa_qmi_ctx->q6_ul_filter_rule[i].ip == IPA_IP_v4) {
 			req->filter_index_list[i].filter_index = num_v4_rule;
 			num_v4_rule++;

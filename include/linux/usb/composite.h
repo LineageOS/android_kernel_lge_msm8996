@@ -235,6 +235,9 @@ struct usb_function {
 	int			(*get_status)(struct usb_function *);
 	int			(*func_suspend)(struct usb_function *,
 						u8 suspend_opt);
+#ifdef CONFIG_LGE_USB_G_MULTIPLE_CONFIGURATION
+	int (*desc_change)(struct usb_function *, bool is_mac);
+#endif
 	unsigned		func_is_suspended:1;
 	unsigned		func_wakeup_allowed:1;
 	unsigned		func_wakeup_pending:1;

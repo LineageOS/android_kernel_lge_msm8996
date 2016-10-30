@@ -1007,6 +1007,13 @@ config DEBUG_MUTEXES
 	 This feature allows mutex semantics violations to be detected and
 	 reported.
 
+config DEBUG_LOCKS_ON_BUG
+	bool "Cause a Kernel Bug on lock warn"
+	depends on DEBUG_KERNEL
+	help
+	 On a lock debugging, cause a kernel bug so that we can get the precise
+	 state of the system captured at the time of lock dump.
+
 config DEBUG_WW_MUTEX_SLOWPATH
 	bool "Wait/wound mutex debugging: Slowpath testing"
 	depends on DEBUG_KERNEL && TRACE_IRQFLAGS_SUPPORT && STACKTRACE_SUPPORT && LOCKDEP_SUPPORT

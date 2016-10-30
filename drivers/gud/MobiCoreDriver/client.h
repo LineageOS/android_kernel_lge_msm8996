@@ -18,11 +18,9 @@
 #include <linux/list.h>
 #include <linux/sched.h>	/* TASK_COMM_LEN */
 
-struct task_struct;
-struct tbase_object;
-struct tbase_session;
+struct tee_object;
 
-struct tbase_client {
+struct tee_client {
 	/* PID of task that opened the device, 0 if kernel */
 	pid_t			pid;
 	/* Command for task*/
@@ -32,68 +30,68 @@ struct tbase_client {
 	/* List of contiguous buffers allocated by mcMallocWsm for the client */
 	struct list_head	cbufs;
 	struct mutex		cbufs_lock;	/* lock for the cbufs list */
-	/* List of tbase TA sessions opened by this client */
+	/* List of TA sessions opened by this client */
 	struct list_head	sessions;
+	struct list_head	closing_sessions;
 	struct mutex		sessions_lock;	/* sessions list + closing */
-	/* Client state */
-	bool			closing;
 	/* The list entry to attach to "ctx.clients" list */
 	struct list_head	list;
 };
 
-struct tbase_client *client_create(bool is_from_kernel);
-
-void client_close_sessions(struct tbase_client *client);
-
-static inline void client_get(struct tbase_client *client)
+/* Client */
+struct tee_client *client_create(bool is_from_kernel);
+static inline void client_get(struct tee_client *client)
 {
 	kref_get(&client->kref);
 }
 
-void client_put(struct tbase_client *client);
+void client_put(struct tee_client *client);
+bool client_has_sessions(struct tee_client *client);
+void client_close(struct tee_client *client);
 
-bool client_is_kernel(struct tbase_client *client);
+/* All clients */
+void clients_kill_sessions(void);
 
-bool client_set_closing(struct tbase_client *client);
-
-int client_add_session(struct tbase_client *client,
-		       const struct tbase_object *obj, uintptr_t tci,
-		       size_t len, uint32_t *p_sid, bool is_gp_uuid,
+/* Session */
+int client_open_session(struct tee_client *client, u32 *session_id,
+			const struct mc_uuid_t *uuid, uintptr_t tci,
+			size_t tci_len, bool is_gp_uuid,
+			struct mc_identity *identity);
+int client_open_trustlet(struct tee_client *client, u32 *session_id, u32 spid,
+			 uintptr_t trustlet, size_t trustlet_len,
+			 uintptr_t tci, size_t tci_len);
+int client_add_session(struct tee_client *client,
+		       const struct tee_object *obj, uintptr_t tci, size_t len,
+		       u32 *p_sid, bool is_gp_uuid,
 		       struct mc_identity *identity);
+int client_remove_session(struct tee_client *client, u32 session_id);
+int client_notify_session(struct tee_client *client, u32 session_id);
+int client_waitnotif_session(struct tee_client *client, u32 session_id,
+			     s32 timeout, bool silent_expiry);
+int client_get_session_exitcode(struct tee_client *client, u32 session_id,
+				s32 *exit_code);
+int client_map_session_wsms(struct tee_client *client, u32 session_id,
+			    struct mc_ioctl_buffer *bufs);
+int client_unmap_session_wsms(struct tee_client *client, u32 session_id,
+			      const struct mc_ioctl_buffer *bufs);
 
-int client_remove_session(struct tbase_client *client, uint32_t session_id);
+/* Contiguous buffer */
+int client_cbuf_create(struct tee_client *client, u32 len, uintptr_t *addr,
+		       struct vm_area_struct *vmarea);
+int client_cbuf_free(struct tee_client *client, uintptr_t addr);
 
-struct tbase_session *client_ref_session(struct tbase_client *client,
-					 uint32_t session_id);
+/* MMU */
+struct cbuf;
 
-void client_unref_session(struct tbase_session *session);
+struct tee_mmu *client_mmu_create(struct tee_client *client, uintptr_t buf,
+				  u32 len, struct cbuf **cbuf);
+void client_mmu_free(struct tee_client *client, uintptr_t buf,
+		     struct tee_mmu *mmu, struct cbuf *cbuf);
 
-int client_info(struct tbase_client *client, struct kasnprintf_buf *buf);
+/* Global */
+void client_init(void);
 
-/*
- * Contiguous buffer allocated to TLCs.
- * These buffers are uses as world shared memory (wsm) and shared with
- * secure world.
- * The virtual kernel address is added for a simpler search algorithm.
- */
-struct tbase_cbuf;
-
-int tbase_cbuf_alloc(struct tbase_client *client, uint32_t len,
-		     uintptr_t *addr, struct vm_area_struct *vmarea);
-
-int tbase_cbuf_free(struct tbase_client *client, uintptr_t addr);
-
-struct tbase_cbuf *tbase_cbuf_get_by_addr(struct tbase_client *client,
-					  uintptr_t addr);
-
-void tbase_cbuf_get(struct tbase_cbuf *cbuf);
-
-void tbase_cbuf_put(struct tbase_cbuf *cbuf);
-
-uintptr_t tbase_cbuf_addr(struct tbase_cbuf *cbuf);
-
-uintptr_t tbase_cbuf_uaddr(struct tbase_cbuf *cbuf);
-
-uint32_t tbase_cbuf_len(struct tbase_cbuf *cbuf);
+/* Debug */
+int clients_debug_structs(struct kasnprintf_buf *buf);
 
 #endif /* _CLIENT_H_ */

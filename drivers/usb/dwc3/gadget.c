@@ -31,6 +31,9 @@
 #include <linux/usb/ch9.h>
 #include <linux/usb/composite.h>
 #include <linux/usb/gadget.h>
+#ifdef CONFIG_LGE_USB_FACTORY
+#include <soc/qcom/lge/board_lge.h>
+#endif
 
 #include "debug.h"
 #include "core.h"
@@ -1887,6 +1890,9 @@ static int dwc3_gadget_run_stop(struct dwc3 *dwc, int is_on, int suspend)
 	u32			reg;
 	u32			timeout = 500;
 	ktime_t start, diff;
+#ifdef CONFIG_LGE_USB_FACTORY
+	enum lge_boot_mode_type boot_mode;
+#endif
 
 	reg = dwc3_readl(dwc->regs, DWC3_DCTL);
 	if (is_on) {
@@ -1926,6 +1932,12 @@ static int dwc3_gadget_run_stop(struct dwc3 *dwc, int is_on, int suspend)
 			reg |= DWC3_DCTL_KEEP_CONNECT;
 
 		dwc->pullups_connected = true;
+#ifdef CONFIG_LGE_USB_MAXIM_EVP
+		pr_info("%s Queue DCP check work! %u\n", __func__, dwc->gadget.evp_sts);
+		if (dwc->gadget.evp_sts & EVP_STS_DCP)
+			schedule_delayed_work(&dwc->dcp_check_work,
+					(msecs_to_jiffies(1500)));
+#endif
 	} else {
 		dwc3_gadget_disable_irq(dwc);
 		__dwc3_gadget_ep_disable(dwc->eps[0]);
@@ -1938,6 +1950,9 @@ static int dwc3_gadget_run_stop(struct dwc3 *dwc, int is_on, int suspend)
 
 		dwc->pullups_connected = false;
 		usb_gadget_set_state(&dwc->gadget, USB_STATE_NOTATTACHED);
+#ifdef CONFIG_LGE_USB_MAXIM_EVP
+		cancel_delayed_work(&dwc->dcp_check_work);
+#endif
 	}
 
 	dwc3_writel(dwc->regs, DWC3_DCTL, reg);
@@ -1963,6 +1978,17 @@ static int dwc3_gadget_run_stop(struct dwc3 *dwc, int is_on, int suspend)
 		}
 		udelay(1);
 	} while (1);
+
+#ifdef CONFIG_LGE_USB_FACTORY
+	boot_mode = lge_get_boot_mode();
+	if ((boot_mode == LGE_BOOT_MODE_QEM_130K ||
+		boot_mode == LGE_BOOT_MODE_PIF_130K) && is_on) {
+		reg = dwc3_readl(dwc->regs, DWC3_DCFG);
+		reg &= ~(DWC3_DCFG_SPEED_MASK);
+		reg |= DWC3_DCFG_FULLSPEED2;
+		dwc3_writel(dwc->regs, DWC3_DCFG, reg);
+	}
+#endif
 
 	dev_vdbg(dwc->dev, "gadget %s data soft-%s\n",
 			dwc->gadget_driver
@@ -2019,9 +2045,13 @@ static int dwc3_gadget_pullup(struct usb_gadget *g, int is_on)
 	ret = dwc3_gadget_run_stop(dwc, is_on, false);
 
 	spin_unlock_irqrestore(&dwc->lock, flags);
-
+#ifndef CONFIG_LGE_USB_G_ANDROID
 	pm_runtime_mark_last_busy(dwc->dev);
 	pm_runtime_put_autosuspend(dwc->dev);
+#else
+	pm_runtime_put(dwc->dev);
+#endif
+
 	dbg_event(0xFF, "Pullup put",
 		atomic_read(&dwc->dev->power.usage_count));
 
@@ -2262,6 +2292,28 @@ static int dwc3_gadget_stop(struct usb_gadget *g,
 
 	return 0;
 }
+#ifdef CONFIG_LGE_USB_MAXIM_EVP
+static int dwc3_gadget_func_io(struct usb_gadget *g, char *name,
+		int *value, bool io)
+{
+	struct dwc3		*dwc = gadget_to_dwc(g);
+	struct usb_gadget_driver *driver = dwc->gadget_driver;
+
+	if (driver->func_io)
+		return driver->func_io(g, name, value, io);
+
+	return 0;
+}
+static int dwc3_gadget_evp_connect(struct usb_gadget *g, bool connect)
+{
+	struct dwc3		*dwc = gadget_to_dwc(g);
+
+	dwc->evp_connect = connect;
+	if (dwc3_notify_event(dwc, DWC3_EVP_CONNECT_EVENT, 0) < 0)
+		return -ENOTSUPP;
+	return 0;
+}
+#endif
 
 static int dwc3_gadget_restart_usb_session(struct usb_gadget *g)
 {
@@ -2280,6 +2332,10 @@ static const struct usb_gadget_ops dwc3_gadget_ops = {
 	.pullup			= dwc3_gadget_pullup,
 	.udc_start		= dwc3_gadget_start,
 	.udc_stop		= dwc3_gadget_stop,
+#ifdef CONFIG_LGE_USB_MAXIM_EVP
+	.gadget_func_io		= dwc3_gadget_func_io,
+	.evp_connect		= dwc3_gadget_evp_connect,
+#endif
 	.restart		= dwc3_gadget_restart_usb_session,
 };
 
@@ -2959,9 +3015,9 @@ static void dwc3_gadget_reset_interrupt(struct dwc3 *dwc)
 	usb_gadget_set_state(&dwc->gadget, USB_STATE_DEFAULT);
 
 	dwc3_gadget_usb3_phy_suspend(dwc, false);
-
+#ifndef CONFIG_LGE_PM
 	usb_gadget_vbus_draw(&dwc->gadget, 0);
-
+#endif
 	if (dwc->gadget.speed != USB_SPEED_UNKNOWN)
 		dwc3_disconnect_gadget(dwc);
 
@@ -3413,6 +3469,9 @@ static void dwc3_gadget_interrupt(struct dwc3 *dwc,
 		if (!dwc->err_evt_seen) {
 			dbg_event(0xFF, "ERROR", 0);
 			dev_vdbg(dwc->dev, "Erratic Error\n");
+#ifdef CONFIG_LGE_USB_MAXIM_EVP
+			dwc->evp_usbctrl_err_cnt++;
+#endif
 			dwc3_dump_reg_info(dwc);
 		}
 		dwc->dbg_gadget_events.erratic_error++;

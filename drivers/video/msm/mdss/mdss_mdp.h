@@ -90,6 +90,7 @@
 #define HW_CURSOR_STAGE(mdata) \
 	(((mdata)->max_target_zorder + MDSS_MDP_STAGE_0) - 1)
 
+#define QCT_MM_NOC_PATCH /*temp patch for MM NOC error SR#02184707*/
 #define BITS_TO_BYTES(x) DIV_ROUND_UP(x, BITS_PER_BYTE)
 
 enum mdss_mdp_perf_state_type {

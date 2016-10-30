@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013-2014 TRUSTONIC LIMITED
+ * Copyright (c) 2013-2015 TRUSTONIC LIMITED
  * All Rights Reserved.
  *
  * This program is free software; you can redistribute it and/or
@@ -14,15 +14,17 @@
 #ifndef _MC_LINUX_API_H_
 #define _MC_LINUX_API_H_
 
-/*
- * Switch tbase active core to core_num, defined as linux
- * core id
- */
-int mc_switch_core(uint32_t core_num);
+#include <linux/types.h>
 
 /*
- * Return tbase active core as Linux core id
+ * Switch TEE active core to core_num, defined as linux
+ * core id
  */
-uint32_t mc_active_core(void);
+int mc_switch_core(int core_num);
+
+/*
+ * Return TEE active core as Linux core id
+ */
+int mc_active_core(void);
 
 #endif /* _MC_LINUX_API_H_ */

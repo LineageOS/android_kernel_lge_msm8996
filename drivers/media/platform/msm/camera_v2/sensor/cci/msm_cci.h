@@ -60,6 +60,10 @@ struct msm_camera_cci_client {
 	uint32_t timeout;
 	uint16_t retries;
 	uint16_t id_map;
+
+#ifdef CONFIG_MACH_LGE
+	bool  cci_acquired;	/*LGE_CHANGE, CST, check if cci is acquired */
+#endif
 };
 
 enum msm_cci_cmd_type {
@@ -125,6 +129,7 @@ struct msm_camera_cci_master_info {
 	struct mutex mutex_q[NUM_QUEUES];
 	struct completion report_q[NUM_QUEUES];
 	atomic_t done_pending[NUM_QUEUES];
+	spinlock_t  report_lock[NUM_QUEUES]; /*LGE_CHANGE, fix I2C write timeout, 2016-04-08, Camera-Stability@lge.com*/
 };
 
 struct msm_cci_clk_params_t {

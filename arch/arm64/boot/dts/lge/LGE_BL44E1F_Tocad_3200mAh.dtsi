@@ -1,0 +1,49 @@
+
+qcom,LGE_BL44E1F_Tocad_3200mAh {
+	/* #2508238_LGE_44E1Ftocad_3200mAh_averaged_MasterSlave_Jul5th2016*/
+	qcom,max-voltage-uv = <4400000>;
+	qcom,nom-batt-capacity-mah = <3200>;
+	qcom,batt-id-kohm = <0>;
+	qcom,battery-beta = <4250>;
+	qcom,battery-type = "LGE_BL44E1F_Tocad_3200mAh";
+	qcom,chg-rslow-comp-c1 = <4429462>;
+	qcom,chg-rslow-comp-c2 = <9134662>;
+	qcom,chg-rs-to-rslow = <1255704>;
+	qcom,chg-rslow-comp-thr = <0xC1>;
+	qcom,checksum = <0xBF7F>;
+	qcom,gui-version = "PMI8996GUI - 1.1.0.0";
+	qcom,fg-profile-data = [
+		 D6 83 61 7C
+		 AA 80 49 76
+		 5E 83 4A 74
+		 EF 89 2B 95
+		 C2 81 18 A0
+		 2D BF 47 D0
+		 54 0F DE 83
+		 E0 77 25 80
+		 19 75 62 83
+		 89 6C 17 89
+		 C5 94 5F 82
+		 F2 98 00 BC
+		 58 C8 54 0F
+		 79 0C B5 59
+		 14 70 71 FD
+		 EF 39 A6 46
+		 FD 2E 00 00
+		 E7 45 CC 27
+		 3F 29 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 14 71 35 70
+		 81 74 46 80
+		 1D 77 17 6B
+		 08 6C B1 78
+		 3B 75 F9 62
+		 04 63 3D B8
+		 1E 4C 70 46
+		 6E A0 71 0C
+		 28 00 FF 36
+		 F0 11 30 03
+		 00 00 00 0C
+	];
+};

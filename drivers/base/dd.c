@@ -28,6 +28,11 @@
 
 #include "base.h"
 #include "power/power.h"
+#include <soc/qcom/lge/board_lge.h>
+#if defined(CONFIG_MACH_LGE)
+#include <linux/timer.h>
+#include <linux/debugfs.h>
+#endif
 
 /*
  * Deferred Probe infrastructure.
@@ -298,10 +303,48 @@ EXPORT_SYMBOL_GPL(device_bind_driver);
 static atomic_t probe_count = ATOMIC_INIT(0);
 static DECLARE_WAIT_QUEUE_HEAD(probe_waitqueue);
 
+#if defined(CONFIG_MACH_LGE)
+static int nsec64_probe_spend = 30000; /* over 30ms */
+static int pos = 0;
+static int create_debugfs = 0;
+char probe_time[1024] = "";
+
+static struct dentry *debugfs_probe_time;
+
+static int probe_time_show(struct seq_file *m, void *unused)
+{
+	return seq_printf(m, "%s\n", probe_time);
+}
+
+static int probe_time_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, probe_time_show, NULL);
+}
+
+static const struct file_operations probe_time_fops = {
+	.open		= probe_time_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+};
+#endif
+
 static int really_probe(struct device *dev, struct device_driver *drv)
 {
 	int ret = 0;
 	int local_trigger_count = atomic_read(&deferred_trigger_count);
+
+#if defined(CONFIG_MACH_LGE)
+	ktime_t bus_stime, bus_etime, drv_stime, drv_etime;
+
+	if (!create_debugfs) {
+		debugfs_probe_time = debugfs_create_file("probe_time",
+							S_IRUGO, NULL, NULL,
+							&probe_time_fops);
+		create_debugfs = 1;
+	}
+	if (pos > sizeof(probe_time) - 100)
+		pos = 0;
+#endif
 
 	atomic_inc(&probe_count);
 	pr_debug("bus: '%s': %s: probing driver %s with device %s\n",
@@ -322,11 +365,79 @@ static int really_probe(struct device *dev, struct device_driver *drv)
 	}
 
 	if (dev->bus->probe) {
+#if defined(CONFIG_MACH_LGE)
+		if (nsec64_probe_spend)
+			bus_stime = ktime_get();
+#endif
+#if defined(CONFIG_LGE_PROBE_TIME_PROFILING) || defined(CONFIG_PROC_EVENTS)
+		dev_err(dev, "bus probe_log s\n");
+#endif
 		ret = dev->bus->probe(dev);
+#if defined(CONFIG_LGE_PROBE_TIME_PROFILING) || defined(CONFIG_PROC_EVENTS)
+		dev_err(dev, "bus probe_log e\n");
+#endif
+#if defined(CONFIG_MACH_LGE)
+		if (nsec64_probe_spend) {
+			int usecs, bus_us;
+			u64 usecs64, bus_us64;
+			bus_etime = ktime_get();
+			bus_us64 = ktime_to_ns(bus_stime);
+			do_div(bus_us64, NSEC_PER_USEC);
+			bus_us = bus_us64;
+			usecs64 = ktime_to_ns(ktime_sub(bus_etime, bus_stime));
+			do_div(usecs64, NSEC_PER_USEC);
+			usecs = usecs64;
+			if (usecs64 > (u64)nsec64_probe_spend-1) {
+				pos += sprintf(&probe_time[pos], "%d %s %d\n",
+					bus_us/1000,
+					dev_driver_string(dev),
+					usecs/1000);
+				printk(KERN_EMERG
+					"bus probe : %d %s %d\n",
+					bus_us/1000,
+					dev_driver_string(dev),
+					usecs/1000);
+			}
+		}
+#endif
 		if (ret)
 			goto probe_failed;
 	} else if (drv->probe) {
+#if defined(CONFIG_MACH_LGE)
+		if (nsec64_probe_spend)
+			drv_stime = ktime_get();
+#endif
+#if defined(CONFIG_LGE_PROBE_TIME_PROFILING) || defined(CONFIG_PROC_EVENTS)
+		dev_err(dev, "drv probe_log s\n");
+#endif
 		ret = drv->probe(dev);
+#if defined(CONFIG_LGE_PROBE_TIME_PROFILING) || defined(CONFIG_PROC_EVENTS)
+		dev_err(dev, "drv probe_log e\n");
+#endif
+#if defined(CONFIG_MACH_LGE)
+		if (nsec64_probe_spend) {
+			int usecs, drv_us;
+			u64 usecs64, drv_us64;
+			drv_etime = ktime_get();
+			drv_us64 = ktime_to_ns(drv_stime);
+			do_div(drv_us64, NSEC_PER_USEC);
+			drv_us = drv_us64;
+			usecs64 = ktime_to_ns(ktime_sub(drv_etime, drv_stime));
+			do_div(usecs64, NSEC_PER_USEC);
+			usecs = usecs64;
+			if (usecs64 > (u64)nsec64_probe_spend-1) {
+				pos += sprintf(&probe_time[pos], "%d %s %d\n",
+					drv_us/1000,
+					dev_driver_string(dev),
+					usecs/1000);
+				printk(KERN_EMERG
+					"drv probe : %d %s %d\n",
+					drv_us/1000,
+					dev_driver_string(dev),
+					usecs/1000);
+			}
+		}
+#endif
 		if (ret)
 			goto probe_failed;
 	}
@@ -352,10 +463,17 @@ probe_failed:
 			driver_deferred_probe_trigger();
 	} else if (ret != -ENODEV && ret != -ENXIO) {
 		/* driver matched but the probe failed */
+#if defined(CONFIG_PRE_SELF_DIAGNOSIS)
+        if(!strstr((char*)drv->name,"jtag") && !strstr((char*)drv->name,"coresight"))
+            lge_pre_self_diagnosis((char *) drv->bus->name,4,(char *) dev_name(dev),(char *) drv->name, ret);
+#endif
 		printk(KERN_WARNING
 		       "%s: probe of %s failed with error %d\n",
 		       drv->name, dev_name(dev), ret);
 	} else {
+#if defined(CONFIG_PRE_SELF_DIAGNOSIS)
+		lge_pre_self_diagnosis((char *) drv->bus->name,0,(char *) dev_name(dev),(char *) drv->name, ret);
+#endif
 		pr_debug("%s: probe of %s rejects match %d\n",
 		       drv->name, dev_name(dev), ret);
 	}

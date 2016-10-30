@@ -1908,6 +1908,16 @@ extern void usb_led_activity(enum usb_led_event ev);
 static inline void usb_led_activity(enum usb_led_event ev) {}
 #endif
 
+#ifdef CONFIG_LGE_ALICE_FRIENDS
+extern bool alice_friends_hm;
+extern bool alice_friends_hm_earjack;
+extern atomic_t in_call_status;
+#define IS_ALICE_FRIENDS_HM_ON() \
+	(alice_friends_hm && alice_friends_hm_earjack)
+
+extern int alice_friends_hm_reset(void);
+#endif
+
 #endif  /* __KERNEL__ */
 
 #endif

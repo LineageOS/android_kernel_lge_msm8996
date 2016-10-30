@@ -1112,6 +1112,8 @@ static void ngd_slim_setup(struct msm_slim_ctrl *dev)
 			NGD_BASE(dev->ctrl.nr,
 			dev->ver) + NGD_STATUS, true);
 	} else {
+		SLIM_WARN(dev, "RX msgq status HW:0x%x, SW:%d:", cfg,
+				  dev->use_rx_msgqs);
 		if (dev->use_rx_msgqs == MSM_MSGQ_DISABLED)
 			goto setup_tx_msg_path;
 		if (cfg & NGD_CFG_RX_MSGQ_EN) {
@@ -1256,6 +1258,9 @@ hw_init_retry:
 				retries++;
 				goto hw_init_retry;
 			}
+
+			panic("[LGE_BSP_AUDIO]SLIM power req failed all 3 times... reboot");
+			
 			return ret;
 		}
 	}
@@ -1604,6 +1609,7 @@ static int ngd_slim_probe(struct platform_device *pdev)
 	slim_set_ctrldata(&dev->ctrl, dev);
 
 	/* Create IPC log context */
+#ifdef CONFIG_IPC_LOGGING
 	dev->ipc_slimbus_log = ipc_log_context_create(IPC_SLIMBUS_LOG_PAGES,
 						dev_name(dev->dev), 0);
 	if (!dev->ipc_slimbus_log)
@@ -1615,6 +1621,9 @@ static int ngd_slim_probe(struct platform_device *pdev)
 		SLIM_INFO(dev, "start logging for slim dev %s\n",
 				dev_name(dev->dev));
 	}
+#else
+	dev->ipc_slimbus_log = NULL;
+#endif
 	ret = sysfs_create_file(&dev->dev->kobj, &dev_attr_debug_mask.attr);
 	if (ret) {
 		dev_err(&pdev->dev, "Failed to create dev. attr\n");

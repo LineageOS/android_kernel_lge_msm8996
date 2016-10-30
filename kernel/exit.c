@@ -59,6 +59,10 @@
 #include <asm/pgtable.h>
 #include <asm/mmu_context.h>
 
+#ifdef CONFIG_MSM_APP_SETTINGS
+#include <asm/app_api.h>
+#endif
+
 static void exit_mm(struct task_struct *tsk);
 
 static void __unhash_process(struct task_struct *p, bool group_dead)
@@ -203,6 +207,9 @@ repeat:
 		zap_leader = do_notify_parent(leader, leader->exit_signal);
 		if (zap_leader)
 			leader->exit_state = EXIT_DEAD;
+	} else if (leader == p && !thread_group_empty(leader)) {
+		pr_err("[%s] p : %p, leader : %p can't be freed when thread_group is not empty)\n", __func__, p, leader);
+		BUG();
 	}
 
 	write_unlock_irq(&tasklist_lock);
@@ -413,6 +420,9 @@ static void exit_mm(struct task_struct *tsk)
 	struct mm_struct *mm = tsk->mm;
 	struct core_state *core_state;
 	int mm_released;
+#ifdef CONFIG_MSM_APP_SETTINGS
+	int app_setting;
+#endif
 
 	mm_release(tsk, mm);
 	if (!mm)
@@ -455,6 +465,9 @@ static void exit_mm(struct task_struct *tsk)
 	/* more a memory barrier than a real lock */
 	task_lock(tsk);
 	tsk->mm = NULL;
+#ifdef CONFIG_MSM_APP_SETTINGS
+	app_setting = mm->app_setting;
+#endif
 	up_read(&mm->mmap_sem);
 	enter_lazy_tlb(mm, current);
 	task_unlock(tsk);
@@ -464,6 +477,10 @@ static void exit_mm(struct task_struct *tsk)
 	clear_thread_flag(TIF_MEMDIE);
 	if (mm_released)
 		set_tsk_thread_flag(tsk, TIF_MM_RELEASED);
+#ifdef CONFIG_MSM_APP_SETTINGS
+	if (unlikely(mm_released && app_setting))
+		clear_app_setting_bit(APP_SETTING_BIT);
+#endif
 }
 
 /*

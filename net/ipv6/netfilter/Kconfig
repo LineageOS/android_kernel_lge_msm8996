@@ -60,6 +60,7 @@ config NF_NAT_IPV6
 	depends on NF_CONNTRACK_IPV6
 	depends on NETFILTER_ADVANCED
 	select NF_NAT
+        default y
 	help
 	  The IPv6 NAT option allows masquerading, port forwarding and other
 	  forms of full Network Address Port Translation. This can be

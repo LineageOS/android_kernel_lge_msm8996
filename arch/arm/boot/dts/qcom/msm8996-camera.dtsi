@@ -28,6 +28,7 @@
 		reg-names = "csiphy", "csiphy_clk_mux";
 		interrupts = <0 78 0>;
 		interrupt-names = "csiphy";
+		gdscr-supply = <&gdsc_camss_top>; //LGE_CHANGE, CST, gdsc added
 		clocks = <&clock_mmss clk_camss_top_ahb_clk>,
 			<&clock_mmss clk_camss_ispif_ahb_clk>,
 			<&clock_mmss clk_csi0phytimer_clk_src>,
@@ -49,6 +50,7 @@
 		reg-names = "csiphy", "csiphy_clk_mux";
 		interrupts = <0 79 0>;
 		interrupt-names = "csiphy";
+		gdscr-supply = <&gdsc_camss_top>; //LGE_CHANGE, CST, gdsc added
 		clocks = <&clock_mmss clk_camss_top_ahb_clk>,
 			<&clock_mmss clk_camss_ispif_ahb_clk>,
 			<&clock_mmss clk_csi1phytimer_clk_src>,
@@ -70,6 +72,7 @@
 		reg-names = "csiphy", "csiphy_clk_mux";
 		interrupts = <0 80 0>;
 		interrupt-names = "csiphy";
+		gdscr-supply = <&gdsc_camss_top>; //LGE_CHANGE, CST, gdsc added
 		clocks = <&clock_mmss clk_camss_top_ahb_clk>,
 			<&clock_mmss clk_camss_ispif_ahb_clk>,
 			<&clock_mmss clk_csi2phytimer_clk_src>,

@@ -16,6 +16,9 @@
 
 #define LMH_NAME_MAX			20
 #define LMH_READ_LINE_LENGTH		10
+#ifdef CONFIG_LGE_PM
+#define LMH_ZERO_INTENSITY_DELAY_MSEC	10
+#endif
 
 enum lmh_trip_type {
 	LMH_LOW_TRIP,

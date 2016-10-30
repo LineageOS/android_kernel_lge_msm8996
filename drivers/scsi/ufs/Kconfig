@@ -106,3 +106,24 @@ config SCSI_UFS_TEST
 	The UFS unit-tests register as a block device test utility to
 	the test-iosched and will be initiated when the test-iosched will
 	be chosen to be the active I/O scheduler.
+
+config UFS_LGE_FEATURE
+    tristate "Add LGE Feature for UFS device"
+    depends on SCSI_UFSHCD
+    ---help---
+    This Feature adds for LGE modification
+
+config UFS_LGE_CARD_RESET
+	bool "Enable ufs hw device reset with gpio control"
+	depends on SCSI_UFSHCD && GPIOLIB
+	default n
+	help
+	  If you want to use this feature, dedicated gpio pin for ufs reset
+	  that is default pull-up(high) to UFS_RES_n should be implemented.
+
+config UFS_LGE_CARD_RESET_DEBUGFS
+	bool "Enable ufs hw device reset with gpio control(DEBUGFS)"
+	depends on UFS_LGE_CARD_RESET && DEBUG_FS
+	default n
+	help
+	  You can do ufs card reset with debugfs - gpio control

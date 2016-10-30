@@ -790,7 +790,11 @@ static int gs_start_io(struct gs_port *port)
 	if (!port->port_usb)
 		return -EIO;
 	/* unblock any pending writes into our circular buffer */
+#ifndef CONFIG_LGE_USB_G_ANDROID
 	if (started) {
+#else
+	if (started && port->port.tty) {
+#endif
 		tty_wakeup(port->port.tty);
 	} else {
 		gs_free_requests(ep, head, &port->read_allocated);

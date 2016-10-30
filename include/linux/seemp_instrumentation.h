@@ -103,9 +103,15 @@ static inline void seemp_logk_oom_adjust_write(pid_t pid,
 		return;
 
 	/*fill the buf*/
+#ifdef CONFIG_UIDGID_STRICT_TYPE_CHECKS
 	SEEMP_LOGK_RECORD(SEEMP_API_kernel__oom_adjust_write,
 			 "app_uid=%d,app_pid=%d,oom_adj=%d",
 			uid.val, pid, oom_adj);
+#else
+	SEEMP_LOGK_RECORD(SEEMP_API_kernel__oom_adjust_write,
+			 "app_uid=%d,app_pid=%d,oom_adj=%d",
+			uid, pid, oom_adj);
+#endif
 
 	seemp_logk_kernel_end(blck);
 }
@@ -122,9 +128,15 @@ static inline void seemp_logk_oom_score_adj_write(pid_t pid, kuid_t uid,
 		return;
 
 	/*fill the buf*/
+#ifdef CONFIG_UIDGID_STRICT_TYPE_CHECKS
 	snprintf(buf, MAX_BUF_SIZE,
 		"-1|kernel|oom_score_adj_write|app_uid=%d,app_pid=%d,oom_adj=%d|--end",
 		uid.val, pid, oom_adj_score);
+#else
+	snprintf(buf, MAX_BUF_SIZE,
+		"-1|kernel|oom_score_adj_write|app_uid=%d,app_pid=%d,oom_adj=%d|--end",
+		uid, pid, oom_adj_score);
+#endif
 
 	seemp_logk_kernel_end(blck);
 }

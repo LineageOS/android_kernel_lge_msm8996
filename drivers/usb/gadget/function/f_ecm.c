@@ -745,6 +745,30 @@ ecm_bind(struct usb_configuration *c, struct usb_function *f)
 
 	status = -ENODEV;
 
+#ifdef CONFIG_LGE_USB_G_MULTIPLE_CONFIGURATION
+	/* NOTE:  a status/notification endpoint is *OPTIONAL* but we
+	 * don't treat it that way.  It's simpler, and some newer CDC
+	 * profiles (wireless handsets) no longer treat it as optional.
+	 */
+	ep = usb_ep_autoconfig(cdev->gadget, &fs_ecm_notify_desc);
+	if (!ep)
+		goto fail;
+	ecm->notify = ep;
+	ep->driver_data = cdev;	/* claim */
+
+	status = -ENOMEM;
+
+	/* allocate notification request and buffer */
+	ecm->notify_req = usb_ep_alloc_request(ep, GFP_KERNEL);
+	if (!ecm->notify_req)
+		goto fail;
+	ecm->notify_req->buf = kmalloc(ECM_STATUS_BYTECOUNT, GFP_KERNEL);
+	if (!ecm->notify_req->buf)
+		goto fail;
+	ecm->notify_req->context = ecm;
+	ecm->notify_req->complete = ecm_notify_complete;
+#endif
+
 	/* allocate instance-specific endpoints */
 	ep = usb_ep_autoconfig(cdev->gadget, &fs_ecm_in_desc);
 	if (!ep)
@@ -758,6 +782,7 @@ ecm_bind(struct usb_configuration *c, struct usb_function *f)
 	ecm->port.out_ep = ep;
 	ep->driver_data = cdev;	/* claim */
 
+#ifndef CONFIG_LGE_USB_G_MULTIPLE_CONFIGURATION
 	/* NOTE:  a status/notification endpoint is *OPTIONAL* but we
 	 * don't treat it that way.  It's simpler, and some newer CDC
 	 * profiles (wireless handsets) no longer treat it as optional.
@@ -780,6 +805,7 @@ ecm_bind(struct usb_configuration *c, struct usb_function *f)
 		goto fail;
 	ecm->notify_req->context = ecm;
 	ecm->notify_req->complete = ecm_notify_complete;
+#endif
 
 	/* support all relevant hardware speeds... we expect that when
 	 * hardware is dual speed, all bulk-capable endpoints work at

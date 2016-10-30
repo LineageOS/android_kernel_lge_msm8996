@@ -329,6 +329,19 @@ static const struct qmp_reg_val qmp_settings_rev1_misc[] = {
 	{-1, 0x00} /* terminating entry */
 };
 
+#ifdef CONFIG_LGE_USB_G_ANDROID
+#define QSERDES_TX_TX_EMP_POST1_LVL 0x218
+#define QSERDES_TX_TX_DRV_LVL       0x22C
+
+static uint32_t override_tx_pre_emphasis = 0;
+module_param(override_tx_pre_emphasis, uint, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(override_tx_pre_emphasis, "Overide TX_PRE_EMPHASIS tuning register");
+
+static uint32_t override_tx_swing = 0;
+module_param(override_tx_swing, uint, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(override_tx_swing, "Override TX_SWING tuning register");
+#endif
+
 struct msm_ssphy_qmp {
 	struct usb_phy		phy;
 	void __iomem		*base;
@@ -356,6 +369,11 @@ struct msm_ssphy_qmp {
 	int			init_seq_len;
 	unsigned int		*qmp_phy_reg_offset;
 	int			reg_offset_cnt;
+
+#ifdef CONFIG_LGE_USB_G_ANDROID
+	uint32_t		tx_pre_emphasis;
+	uint32_t		tx_swing;
+#endif
 };
 
 static const struct of_device_id msm_usb_id_table[] = {
@@ -516,6 +534,35 @@ static int configure_phy_regs(struct usb_phy *uphy,
 			usleep_range(reg->delay, reg->delay + 10);
 		reg++;
 	}
+
+#ifdef CONFIG_LGE_USB_G_ANDROID
+	if (override_tx_pre_emphasis) {
+		dev_dbg(uphy->dev, "%s(), Programming TX_PRE_EMPHASIS"
+					" tuning register as: %d",
+					__func__,
+					override_tx_pre_emphasis);
+		writel_relaxed(override_tx_pre_emphasis | 0x20,
+				phy->base + QSERDES_TX_TX_EMP_POST1_LVL);
+	} else {
+		if (phy->tx_pre_emphasis)
+			writel_relaxed(phy->tx_pre_emphasis | 0x20,
+					phy->base + QSERDES_TX_TX_EMP_POST1_LVL);
+	}
+
+	if (override_tx_swing) {
+		dev_dbg(uphy->dev, "%s(), Programming TX_SWING tuning"
+					" register as: %d",
+					__func__,
+					override_tx_swing);
+		writel_relaxed(override_tx_swing | 0x20,
+				phy->base + QSERDES_TX_TX_DRV_LVL);
+	} else {
+		if (phy->tx_swing)
+			writel_relaxed(phy->tx_swing | 0x20,
+					phy->base + QSERDES_TX_TX_DRV_LVL);
+	}
+#endif
+
 	return 0;
 }
 
@@ -557,6 +604,10 @@ static int msm_ssphy_qmp_init(struct usb_phy *uphy)
 			phy->phy_reg[USB3_REVISION_ID0]) & 0xFF;
 
 	pll = qmp_override_pll;
+
+#ifdef CONFIG_LGE_USB_G_ANDROID
+	dev_dbg(uphy->dev, "revid: 0x%X", revid);
+#endif
 
 	switch (revid) {
 	case 0x10000000:
@@ -634,6 +685,16 @@ static int msm_ssphy_qmp_init(struct usb_phy *uphy)
 					phy->phy_reg[USB3_PHY_PCS_STATUS]));
 		return -EBUSY;
 	};
+
+#ifdef CONFIG_LGE_USB_G_ANDROID
+	dev_dbg(uphy->dev, "%s, TX_PRE_EMPHASIS tuning register: 0x%X,"
+				" TX_SWING tuning register : 0x%X\n",
+			__func__,
+			(readl_relaxed(phy->base +\
+			QSERDES_TX_TX_EMP_POST1_LVL) & 0x1F),
+			(readl_relaxed(phy->base +\
+			QSERDES_TX_TX_DRV_LVL)) & 0x1F);
+#endif
 
 	return 0;
 }
@@ -996,6 +1057,18 @@ static int msm_ssphy_qmp_probe(struct platform_device *pdev)
 			dev_err(dev, "error allocating memory for phy_init_seq\n");
 		}
 	}
+
+#ifdef CONFIG_LGE_USB_G_ANDROID
+	ret = of_property_read_u32(dev->of_node, "qcom,tx-pre-emphasis",
+						&phy->tx_pre_emphasis);
+	if (ret)
+		phy->tx_pre_emphasis = 0;
+
+	ret = of_property_read_u32(dev->of_node, "qcom,tx_swing",
+						&phy->tx_swing);
+	if (ret)
+		phy->tx_swing = 0;
+#endif
 
 	phy->emulation = of_property_read_bool(dev->of_node,
 						"qcom,emulation");

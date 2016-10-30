@@ -109,6 +109,7 @@ struct notif_data {
 extern int subsys_get_restart_level(struct subsys_device *dev);
 extern int subsystem_restart_dev(struct subsys_device *dev);
 extern int subsystem_restart(const char *name);
+extern int subsys_modem_restart(void);
 extern int subsystem_crashed(const char *name);
 
 extern void *subsystem_get(const char *name);
@@ -125,6 +126,14 @@ void notify_proxy_vote(struct device *device);
 void notify_proxy_unvote(struct device *device);
 void complete_err_ready(struct subsys_device *subsys);
 extern int wait_for_shutdown_ack(struct subsys_desc *desc);
+//#if defined(FEATURE_LGE_MBSP_SYSMON_IF_ENABLE)
+extern int lge_send_modem_mode_lpm(void);
+extern int lge_send_modem_mode_online(void);
+extern int lge_send_modem_debugger_time_tag(void);
+extern int lge_send_modem_debugger_enable(void);
+extern int lge_send_modem_debugger_disable(void);
+//#endif /* FEATURE_LGE_MBSP_SYSMON_IF_ENABLE */
+
 #else
 
 static inline int subsys_get_restart_level(struct subsys_device *dev)

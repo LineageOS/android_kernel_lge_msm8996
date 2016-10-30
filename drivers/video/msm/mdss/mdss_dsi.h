@@ -98,6 +98,9 @@ enum dsi_panel_bl_ctrl {
 	BL_PWM,
 	BL_WLED,
 	BL_DCS_CMD,
+#ifdef CONFIG_LGE_DISPLAY_COMMON
+	BL_OTHERS,
+#endif
 	UNKNOWN_CTRL,
 };
 
@@ -129,6 +132,9 @@ enum dsi_lane_map_type {
 enum dsi_pm_type {
 	/* PANEL_PM not used as part of power_data in dsi_shared_data */
 	DSI_PANEL_PM,
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+	DSI_EXTRA_PM,
+#endif
 	DSI_CORE_PM,
 	DSI_CTRL_PM,
 	DSI_PHY_PM,
@@ -340,6 +346,22 @@ struct dsi_panel_timing {
 	char t_clk_post;
 	char t_clk_pre;
 	struct dsi_panel_cmds on_cmds;
+#if defined(CONFIG_LGE_DISPLAY_BL_EXTENDED)
+	struct dsi_panel_cmds display_on_cmds;
+#endif
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+	struct dsi_panel_cmds vcom_cmds;
+#endif
+#if defined(CONFIG_LGE_ENHANCE_GALLERY_SHARPNESS)
+	struct dsi_panel_cmds sharpness_on_cmds;
+	struct dsi_panel_cmds ce_on_cmds;
+#endif
+#if defined(CONFIG_LGE_LCD_DYNAMIC_CABC_MIE_CTRL)
+	struct dsi_panel_cmds ie_on_cmds;
+	struct dsi_panel_cmds ie_off_cmds;
+	struct dsi_panel_cmds cabc_20_cmds;
+	struct dsi_panel_cmds cabc_30_cmds;
+#endif
 	struct dsi_panel_cmds post_panel_on_cmds;
 	struct dsi_panel_cmds switch_cmds;
 };
@@ -393,6 +415,10 @@ struct dsi_err_container {
 #define MDSS_DSI_COMMAND_COMPRESSION_MODE_CTRL3	0x02b0
 #define MSM_DBA_CHIP_NAME_MAX_LEN				20
 
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+#include "lge/lge_mdss_dsi.h"
+#endif
+
 struct mdss_dsi_ctrl_pdata {
 	int ndx;	/* panel_num */
 	int (*on) (struct mdss_panel_data *pdata);
@@ -433,6 +459,9 @@ struct mdss_dsi_ctrl_pdata {
 	int bklt_en_gpio;
 	int mode_gpio;
 	int bklt_ctrl;	/* backlight ctrl */
+#ifdef CONFIG_LGE_DISPLAY_BL_EXTENDED
+	int bkltex_ctrl;/* backlightex ctrl */
+#endif
 	bool pwm_pmi;
 	int pwm_period;
 	int pwm_pmic_gpio;
@@ -443,6 +472,9 @@ struct mdss_dsi_ctrl_pdata {
 	int clk_lane_cnt;
 	bool dmap_iommu_map;
 	bool dsi_irq_line;
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+	int dsv_ena_gpio;
+#endif
 	bool dcs_cmd_insert;
 	atomic_t te_irq_ready;
 
@@ -464,6 +496,23 @@ struct mdss_dsi_ctrl_pdata {
 	struct mdss_intf_recovery *mdp_callback;
 
 	struct dsi_panel_cmds on_cmds;
+#if defined(CONFIG_LGE_DISPLAY_BL_EXTENDED)
+	struct dsi_panel_cmds display_on_cmds;
+#endif
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+	struct dsi_panel_cmds vcom_cmds;
+#endif
+#if defined(CONFIG_LGE_ENHANCE_GALLERY_SHARPNESS)
+	struct dsi_panel_cmds sharpness_on_cmds;
+	struct dsi_panel_cmds ce_on_cmds;
+#endif
+#if defined(CONFIG_LGE_LCD_DYNAMIC_CABC_MIE_CTRL)
+	struct dsi_panel_cmds ie_on_cmds;
+	struct dsi_panel_cmds ie_off_cmds;
+	struct dsi_panel_cmds cabc_20_cmds;
+	struct dsi_panel_cmds cabc_30_cmds;
+	int ie_on;
+#endif
 	struct dsi_panel_cmds post_dms_on_cmds;
 	struct dsi_panel_cmds post_panel_on_cmds;
 	struct dsi_panel_cmds off_cmds;
@@ -475,6 +524,16 @@ struct mdss_dsi_ctrl_pdata {
 	u32 groups; /* several alternative values to compare */
 	u32 status_error_count;
 	u32 max_status_error_count;
+
+#if defined(CONFIG_LGE_DISPLAY_AOD_SUPPORTED)
+	struct dsi_panel_cmds *aod_cmds;
+#endif
+
+#if defined(CONFIG_LGE_DISPLAY_MARQUEE_SUPPORTED)
+	struct dsi_panel_cmds mq_column_row_cmds;
+	struct dsi_panel_cmds mq_control_cmds;
+	struct dsi_panel_cmds mq_access_cmds;//In order to control mq register by touch f/w, it's to be enabled.
+#endif
 
 	struct dsi_panel_cmds video2cmd;
 	struct dsi_panel_cmds cmd2video;
@@ -534,6 +593,10 @@ struct mdss_dsi_ctrl_pdata {
 	struct mdss_dsi_debugfs_info *debugfs_info;
 
 	struct dsi_err_container err_cont;
+
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+	struct lge_mdss_dsi_ctrl_pdata lge_extra;
+#endif
 
 	struct kobject *kobj;
 	int fb_node;
@@ -673,6 +736,9 @@ static inline const char *__mdss_dsi_pm_name(enum dsi_pm_type module)
 	case DSI_CTRL_PM:	return "DSI_CTRL_PM";
 	case DSI_PHY_PM:	return "DSI_PHY_PM";
 	case DSI_PANEL_PM:	return "PANEL_PM";
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+	case DSI_EXTRA_PM:	return "EXTRA_PM";
+#endif
 	default:		return "???";
 	}
 }
@@ -685,6 +751,9 @@ static inline const char *__mdss_dsi_pm_supply_node_name(
 	case DSI_CTRL_PM:	return "qcom,ctrl-supply-entries";
 	case DSI_PHY_PM:	return "qcom,phy-supply-entries";
 	case DSI_PANEL_PM:	return "qcom,panel-supply-entries";
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+	case DSI_EXTRA_PM:	return "lge,extra-supply-entries";
+#endif
 	default:		return "???";
 	}
 }

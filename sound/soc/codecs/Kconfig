@@ -101,6 +101,7 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_STAC9766 if SND_SOC_AC97_BUS
 	select SND_SOC_TAS2552 if I2C
 	select SND_SOC_TAS5086 if I2C
+	select SND_SOC_ES9018 if I2C
 	select SND_SOC_TLV320AIC23_I2C if I2C
 	select SND_SOC_TLV320AIC23_SPI if SPI_MASTER
 	select SND_SOC_TLV320AIC26 if SPI_MASTER
@@ -568,6 +569,11 @@ config SND_SOC_STA529
 
 config SND_SOC_STAC9766
 	tristate
+
+config SND_SOC_ES9018
+	tristate "es9018 Hi-Fi headphones amp"
+	depends on MACH_LGE
+	default n
 
 config SND_SOC_TAS2552
 	tristate "Texas Instruments TAS2552 Mono Audio amplifier"

@@ -23,6 +23,10 @@
 #include <linux/usb/msm_hsusb.h>
 #include <asm/unaligned.h>
 
+#ifdef CONFIG_LGE_USB_G_MULTIPLE_CONFIGURATION
+#include "u_lgeusb.h"
+#endif
+
 #include "u_os_desc.h"
 #define SSUSB_GADGET_VBUS_DRAW 900 /* in mA */
 #define SSUSB_GADGET_VBUS_DRAW_UNITS 8
@@ -510,6 +514,10 @@ static int config_buf(struct usb_configuration *config,
 	/* add each function's descriptors */
 	list_for_each_entry(f, &config->functions, list) {
 		struct usb_descriptor_header **descriptors;
+#ifdef CONFIG_LGE_USB_G_MULTIPLE_CONFIGURATION
+		if (f->desc_change)
+			f->desc_change(f, lgeusb_get_host_os());
+#endif
 
 		switch (speed) {
 		case USB_SPEED_SUPER:
@@ -1692,6 +1700,9 @@ composite_setup(struct usb_gadget *gadget, const struct usb_ctrlrequest *ctrl)
 				value = min(w_length, (u16) value);
 			break;
 		case USB_DT_STRING:
+#ifdef CONFIG_LGE_USB_G_MULTIPLE_CONFIGURATION
+			lgeusb_set_host_os(w_length);
+#endif
 			spin_lock(&cdev->lock);
 			value = get_string(cdev, req->buf,
 					w_index, w_value & 0xff);
@@ -2022,6 +2033,10 @@ void composite_disconnect(struct usb_gadget *gadget)
 	struct usb_composite_dev	*cdev = get_gadget_data(gadget);
 	unsigned long			flags;
 
+#ifdef CONFIG_LGE_USB_G_MULTIPLE_CONFIGURATION
+	lgeusb_set_host_os(WIN_LINUX_TYPE);
+#endif
+
 	if (cdev == NULL) {
 		WARN(1, "%s: Calling disconnect on a Gadget that is \
 			 not connected\n", __func__);
@@ -2296,8 +2311,11 @@ composite_suspend(struct usb_gadget *gadget)
 
 	cdev->suspended = 1;
 	spin_unlock_irqrestore(&cdev->lock, flags);
-
+#ifdef CONFIG_LGE_USB_G_ANDROID
+	usb_gadget_vbus_draw(gadget, 100);
+#else
 	usb_gadget_vbus_draw(gadget, 2);
+#endif
 }
 
 static void

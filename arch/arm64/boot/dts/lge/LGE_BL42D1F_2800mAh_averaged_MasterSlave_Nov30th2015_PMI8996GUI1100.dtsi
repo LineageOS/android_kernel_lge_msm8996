@@ -1,0 +1,49 @@
+
+qcom,lge_bl42d1f_2800mah_averaged_masterslave_nov30th2015 {
+	/* #2235835_LGE_BL42D1F_2800mAh_averaged_MasterSlave_Nov30th2015*/
+	qcom,max-voltage-uv = <4400000>;
+	qcom,nom-batt-capacity-mah = <2800>;
+	qcom,batt-id-kohm = <0>;
+	qcom,battery-beta = <4150>;
+	qcom,battery-type = "lge_bl42d1f_2800mah_averaged_masterslave_nov30th2015";
+	qcom,chg-rslow-comp-c1 = <3548082>;
+	qcom,chg-rslow-comp-c2 = <5408826>;
+	qcom,chg-rs-to-rslow = <1211961>;
+	qcom,chg-rslow-comp-thr = <0xAC>;
+	qcom,checksum = <0xAB38>;
+	qcom,gui-version = "PMI8996GUI - 1.1.0.0";
+	qcom,fg-profile-data = [
+		 E5 83 F2 7C
+		 2F 81 7B 77
+		 5A 83 3B 65
+		 90 82 52 8D
+		 F7 81 BC 99
+		 DE B7 43 C3
+		 59 11 FC 83
+		 51 7D 50 81
+		 84 77 56 83
+		 23 68 8E 7B
+		 24 8C 13 82
+		 CB 9A 2C BE
+		 EA CB 58 0E
+		 C5 0A 04 5B
+		 14 70 71 FD
+		 7A 3F 56 45
+		 56 42 00 00
+		 1C 47 0D 38
+		 3F 21 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 B5 6A 0F 6A
+		 16 69 48 88
+		 B0 75 D9 63
+		 22 61 B7 7B
+		 8E 74 5F 60
+		 D9 76 08 A1
+		 24 49 68 F2
+		 65 A0 71 0C
+		 28 00 FF 36
+		 F0 11 30 03
+		 00 00 00 0C
+	];
+};

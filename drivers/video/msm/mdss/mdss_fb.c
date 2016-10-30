@@ -55,6 +55,25 @@
 #include "mdss_smmu.h"
 #include "mdss_mdp.h"
 
+#ifdef CONFIG_MACH_LGE
+#include <soc/qcom/lge/board_lge.h>
+#include <soc/qcom/lge/lge_cable_detection.h>
+#endif
+#ifdef CONFIG_LGE_PM_THERMAL_VTS
+#include <linux/virtual_temp_sensor.h>
+#endif
+
+#ifdef CONFIG_LGE_DISPLAY_COMMON
+#include "lge/lge_mdss_display.h"
+#endif
+
+#include <linux/lge_display_debug.h>
+
+#if defined(CONFIG_MACH_LGE)
+#include <linux/timer.h>
+#include <linux/debugfs.h>
+#endif
+
 #ifdef CONFIG_FB_MSM_TRIPLE_BUFFER
 #define MDSS_FB_NUM 3
 #else
@@ -85,6 +104,14 @@ static u32 mdss_fb_pseudo_palette[16] = {
 	0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff
 };
 
+#if defined(CONFIG_LGE_BROADCAST_TDMB) || defined(CONFIG_LGE_BROADCAST_ISDBT_JAPAN)
+extern struct mdp_csc_cfg dmb_csc_convert;
+extern int pp_set_dmb_status(int flag);
+#endif /* LGE_BROADCAST */
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_READER_MODE)
+extern ssize_t set_reader_mode(struct device *dev, struct device_attribute *attr, const char *buf, size_t count);
+extern ssize_t get_reader_mode(struct device *dev, struct device_attribute *attr, char *buf);
+#endif
 static struct msm_mdp_interface *mdp_instance;
 
 static int mdss_fb_register(struct msm_fb_data_type *mfd);
@@ -255,8 +282,64 @@ static int mdss_fb_notify_update(struct msm_fb_data_type *mfd,
 	return ret;
 }
 
-static int lcd_backlight_registered;
+#if defined(CONFIG_LGE_PM_THERMAL_VTS)
+static int bl_get_led_temp(void *data) {
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)data;
+	return mfd->bl_level;
+}
+#endif
 
+#if 0
+#if defined(CONFIG_MACH_LGE)
+#define BL_ENABLE_TIME_SIZE 19
+char bl_enable_time[] = "01-01 00:00:00.000";
+int prev_value = 0;
+
+static struct dentry *debugfs_bl_enable_time;
+
+static int bl_enable_time_show(struct seq_file *m, void *unused)
+{
+	return seq_printf(m, "%s\n", bl_enable_time);
+}
+
+static int bl_enable_time_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, bl_enable_time_show, NULL);
+}
+
+static const struct file_operations bl_enable_time_fops = {
+	.open		= bl_enable_time_open,
+	.read		= seq_read,
+	.llseek		= seq_lseek,
+};
+
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_BL_EXTENDED)
+char bl_ex_enable_time[] = "01-01 00:00:00.000";
+int prev_value_ex = 0;
+
+static struct dentry *debugfs_bl_ex_enable_time;
+
+static int bl_ex_enable_time_show(struct seq_file *m, void *unused)
+{
+	     return seq_printf(m, "%s\n", bl_ex_enable_time);
+}
+
+static int bl_ex_enable_time_open(struct inode *inode, struct file *file)
+{
+	     return single_open(file, bl_ex_enable_time_show, NULL);
+}
+
+static const struct file_operations bl_ex_enable_time_fops = {
+	     .open          = bl_ex_enable_time_open,
+		.read          = seq_read,
+		.llseek        = seq_lseek,
+};
+#endif
+#endif
+#endif // #if 0
+
+
+static int lcd_backlight_registered;
 static void mdss_fb_set_bl_brightness(struct led_classdev *led_cdev,
 				      enum led_brightness value)
 {
@@ -283,6 +366,10 @@ static void mdss_fb_set_bl_brightness(struct led_classdev *led_cdev,
 							!mfd->bl_level)) {
 		mutex_lock(&mfd->bl_lock);
 		mdss_fb_set_backlight(mfd, bl_lvl);
+#if defined(CONFIG_LGE_DISPLAY_AOD_SUPPORTED)
+		if( mfd->panel_info->aod_cur_mode == AOD_PANEL_MODE_U3_UNBLANK )
+			mfd->bl_isU3_mode = 1;
+#endif
 		mutex_unlock(&mfd->bl_lock);
 	}
 }
@@ -606,6 +693,39 @@ static ssize_t mdss_fb_force_panel_dead(struct device *dev,
 	return len;
 }
 
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+static ssize_t mdss_fb_get_panel_type(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	int ret = 0;
+	int panel_type = lge_get_panel();
+
+	if (panel_type == LGE_SIC_LG4946_INCELL_CND_PANEL)
+		ret = snprintf(buf, PAGE_SIZE, "LGD - LG4946\n");
+	else if (panel_type == LGD_SIC_LG49407_INCELL_CMD_PANEL)
+		ret = snprintf(buf, PAGE_SIZE, "LGD - SW49407\n");
+	else
+		ret = snprintf(buf, PAGE_SIZE, "Unknown LCD TYPE\n");
+
+	return ret;
+}
+#endif
+#if defined(CONFIG_LGE_MIPI_H1_INCELL_QHD_CMD_PANEL)
+extern int lge_is_valid_U2_FTRIM_reg(void);
+static ssize_t mdss_fb_is_valid(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	int ret = 0;
+	int is_valid = lge_is_valid_U2_FTRIM_reg();
+	if (is_valid < 0)
+		ret = is_valid; //read error
+	else
+		ret = scnprintf(buf, PAGE_SIZE, "DDIC validation is %d\n",
+				is_valid);
+
+	return ret;
+}
+#endif
 /*
  * mdss_fb_blanking_mode_switch() - Function triggers dynamic mode switch
  * @mfd:	Framebuffer data structure for display
@@ -620,6 +740,9 @@ static int mdss_fb_blanking_mode_switch(struct msm_fb_data_type *mfd, int mode)
 {
 	int ret = 0;
 	u32 bl_lvl = 0;
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_BL_EXTENDED)
+	u32 bl_lvl_ex = 0;
+#endif
 	struct mdss_panel_info *pinfo = NULL;
 	struct mdss_panel_data *pdata;
 
@@ -655,6 +778,13 @@ static int mdss_fb_blanking_mode_switch(struct msm_fb_data_type *mfd, int mode)
 	mdss_fb_set_backlight(mfd, 0);
 	mutex_unlock(&mfd->bl_lock);
 
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_BL_EXTENDED)
+	mutex_lock(&mfd->bl_lock);
+	bl_lvl_ex = mfd->bl_level_ex;
+	mdss_fb_set_backlight_ex(mfd, 0);
+	mutex_unlock(&mfd->bl_lock);
+#endif
+
 	lock_fb_info(mfd->fbi);
 	ret = mdss_fb_blank_sub(FB_BLANK_POWERDOWN, mfd->fbi,
 						mfd->op_enable);
@@ -684,6 +814,13 @@ static int mdss_fb_blanking_mode_switch(struct msm_fb_data_type *mfd, int mode)
 	mfd->allow_bl_update = true;
 	mdss_fb_set_backlight(mfd, bl_lvl);
 	mutex_unlock(&mfd->bl_lock);
+
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_BL_EXTENDED)
+	mutex_lock(&mfd->bl_lock);
+	mfd->allow_bl_update_ex = true;
+	mdss_fb_set_backlight_ex(mfd, bl_lvl_ex);
+	mutex_unlock(&mfd->bl_lock);
+#endif
 
 	pdata->panel_info.dynamic_switch_pending = false;
 	pdata->panel_info.is_lpm_mode = mode ? 1 : 0;
@@ -743,6 +880,117 @@ static ssize_t mdss_fb_change_dfps_mode(struct device *dev,
 	return len;
 }
 
+#if defined(CONFIG_LGE_DISPLAY_MARQUEE_SUPPORTED)
+static ssize_t mdss_fb_get_mq_mode(struct device *dev,
+		struct device_attribute *arrt, char *buf)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+	struct mdss_panel_data *pdata;
+	struct mdss_panel_info *pinfo;
+	int ret;
+
+	pdata = dev_get_platdata(&mfd->pdev->dev);
+	if(!pdata) {
+		pr_err("[MARQUEE] no panel connected!\n");
+		return -EINVAL;
+	}
+	pinfo = &pdata->panel_info;
+
+	ret = scnprintf(buf, PAGE_SIZE, "mode : %d, direction : %d, speed : %d, S_x : %u, E_x : %u, S_y : %u, E_y : %u\n",
+			pinfo->mq_mode, pinfo->mq_direction, pinfo->mq_speed,
+			(pinfo->xres-(pinfo->mq_pos.start_x*4)),(pinfo->xres-(pinfo->mq_pos.end_x*4)),
+			pinfo->mq_pos.start_y, pinfo->mq_pos.end_y);
+
+	return ret;
+}
+static ssize_t mdss_fb_set_mq_mode(struct device *dev,
+			   struct device_attribute *attr, const char *buf, size_t len)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+	struct mdss_panel_data *pdata;
+	struct mdss_panel_info *pinfo;
+	struct mdss_dsi_ctrl_pdata *ctrl;
+	unsigned int mode_temp, direction_temp, speed_temp, start_x_temp, end_x_temp, start_y_temp, end_y_temp;
+
+	pdata = dev_get_platdata(&mfd->pdev->dev);
+	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata, panel_data);
+
+	pdata = dev_get_platdata(&mfd->pdev->dev);
+	if (!pdata) {
+		pr_err("[MARQUEE] no panel connected!\n");
+		return len;
+	}
+
+	pinfo = &pdata->panel_info;
+
+	if (sscanf(buf,"%d %d %d %d %d %d %d",&mode_temp, &direction_temp, &speed_temp,
+			&start_x_temp, &end_x_temp,
+			&start_y_temp, &end_y_temp) != 7) {
+		pr_err("sccanf buf error!\n");
+		return len;
+	}
+
+	if (start_x_temp > pinfo->xres || end_x_temp > pinfo->xres){
+		pr_err("xpos should be shorter than xres! start x = %u,end x = %u\n",start_x_temp,end_x_temp);
+		return len;
+	}
+
+	if (start_x_temp > end_x_temp) {
+		pr_err("start x pos should be shorter than end x pos! start x = %u,end x = %u\n",start_x_temp,end_x_temp);
+		return len;
+	}
+
+	start_x_temp = (pinfo->xres - start_x_temp)/4; // x-pos is moved by 4 pixel & position is counted from right end.
+	end_x_temp	= (pinfo->xres - end_x_temp)/4;
+
+	if (mode_temp > 0x01) {
+		pr_err("mq_mode max setting is 1!\n");
+		mode_temp = 0x01;
+	}
+	if (direction_temp > 0x01) {
+		pr_err("mq_direction max setting is 1!\n");
+		direction_temp = 0x01;
+	}
+	if (speed_temp > 0x1F) {
+		pr_err("mq_speed max setting is 1F!\n");
+		speed_temp = 0x1F;
+	}
+	if (start_x_temp > 0x1FF) {
+		pr_err("start x max setting is 0x1FF!\n");
+		start_x_temp = 0x1FF;
+	}
+	if (end_x_temp > 0x1FF) {
+		pr_err("end x max setting is 0x1FF!\n");
+		end_x_temp = 0x1FF;
+	}
+	if (start_y_temp > 0xFF) {
+		pr_err("start y max setting is 0xFF!\n");
+		start_y_temp = 0xFF;
+	}
+	if (end_y_temp > 0xFF) {
+		pr_err("end y max setting is 0xFF!\n");
+		end_y_temp = 0xFF;
+	}
+	pinfo->mq_mode = mode_temp;
+	pinfo->mq_direction = direction_temp;
+	pinfo->mq_speed = speed_temp;
+	pinfo->mq_pos.start_x = start_x_temp;
+	pinfo->mq_pos.end_x = end_x_temp;
+	pinfo->mq_pos.start_y = start_y_temp;
+	pinfo->mq_pos.end_y = end_y_temp-1;//SignBoard App inputs the height of ex-panel(0~160) but postion is (0~159).
+
+	pr_info("[MARQUEE] %d %d %d %u %u %u %u\n",
+			pinfo->mq_mode, pinfo->mq_direction, pinfo->mq_speed,
+			pinfo->mq_pos.start_x, pinfo->mq_pos.end_x,
+			pinfo->mq_pos.start_y, pinfo->mq_pos.end_y);
+	oem_mdss_mq_cmd_set(ctrl);
+
+	return len;
+}
+#endif
+
 static ssize_t mdss_fb_get_dfps_mode(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -765,6 +1013,149 @@ static ssize_t mdss_fb_get_dfps_mode(struct device *dev,
 	return ret;
 }
 
+
+
+#if defined(CONFIG_LGE_THERMAL_BL_MAX)
+static ssize_t thermal_blmax_show(struct device *dev,
+		struct device_attribute *attr,
+		char *buf)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+	struct mdss_panel_data *pdata;
+	struct mdss_panel_info *pinfo;
+	int ret;
+
+	pdata = dev_get_platdata(&mfd->pdev->dev);
+
+	if (!pdata) {
+		pr_err("[thermal_blmax] no panel connected!\n");
+		return -EINVAL;
+	}
+	pinfo = &pdata->panel_info;
+    ret = scnprintf(buf, PAGE_SIZE, "%d\n", pinfo->thermal_maxblvalue);
+	return ret;
+}
+
+static ssize_t thermal_blmax_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t len)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+	struct mdss_panel_data *pdata;
+	struct mdss_panel_info *pinfo;
+	int value = 0;
+
+	pdata = dev_get_platdata(&mfd->pdev->dev);
+	if (!pdata) {
+		pr_err("[thermal_blmax] no panel connected!\n");
+		return len;
+	}
+	pinfo = &pdata->panel_info;
+
+	if (sscanf(buf, "%d", &value) != 1) {
+		pr_err("[thermal_blmax] sccanf buf error!\n");
+		return len;
+	}
+	pinfo->thermal_maxblvalue = value;
+	if( pinfo->thermal_maxblvalue != 0 ){
+		pinfo->brightness_max = pinfo->thermal_maxblvalue;
+		pr_info("[thermal_blmax] set brightness_max=%d\n",
+				pinfo->brightness_max);
+	}  else {
+		pinfo->brightness_max = 255;
+		pr_info("[thermal_blmax] unset brightness_max=%d\n",
+				pinfo->brightness_max);
+	}
+	return len;
+}
+#endif
+
+#ifdef CONFIG_LGE_LCD_MFTS_MODE
+static ssize_t mdss_get_mfts_auto_touch(struct device *dev,
+		struct device_attribute *attr,
+		char *buf)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+	struct mdss_panel_data *pdata;
+	int ret;
+
+	pdata = dev_get_platdata(&mfd->pdev->dev);
+	if (!pdata) {
+		pr_err("[MFTS] no panel connected!\n");
+		return -EINVAL;
+	}
+
+	ret = scnprintf(buf, PAGE_SIZE, "%d\n", !pdata->panel_info.power_ctrl);
+
+	return ret;
+
+
+}
+
+static ssize_t mdss_set_mfts_auto_touch(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t len)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+	struct mdss_panel_data *pdata;
+	int value;
+
+	pdata = dev_get_platdata(&mfd->pdev->dev);
+	if (!pdata) {
+		pr_err("[MFTS] no panel connected!\n");
+		return len;
+	}
+
+	if (sscanf(buf, "%d", &value) != 1) {
+		pr_err("[MFTS] sccanf buf error!\n");
+		return len;
+	}
+
+	pdata->panel_info.power_ctrl = !value;
+	if (pdata->next)
+		pdata->next->panel_info.power_ctrl = !value;
+
+	pr_info("[MFTS]  power_ctrl = %d\n", pdata->panel_info.power_ctrl);
+	return len;
+}
+#endif
+
+#if defined(CONFIG_LGE_DISPLAY_DYNAMIC_LOG)
+uint32_t display_debug_level = LEVEL_INFOR;
+static ssize_t display_debug_level_show(struct device *dev,
+		struct device_attribute *attr,
+		char *buf)
+{
+	int ret;
+
+    ret = scnprintf(buf, PAGE_SIZE, "%d\n", display_debug_level);
+	return ret;
+}
+
+static ssize_t display_debug_level_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t len)
+{
+	int value = 0;
+
+	if (sscanf(buf, "%d", &value) != 1) {
+		DISP_ERR(NONE, "sccanf buf error!\n");
+		return len;
+	}
+	if (value < LEVEL_ERR || value >= LEVEL_MAX) {
+		DISP_ERR(NONE, "Fail to set debug level!\n");
+		return len;
+	} else {
+		DISP_INFO(NONE, "Change debug from %d to %d\n", display_debug_level, value);
+		display_debug_level = value;
+	}
+	return len;
+}
+#endif
+
 static DEVICE_ATTR(msm_fb_type, S_IRUGO, mdss_fb_get_type, NULL);
 static DEVICE_ATTR(msm_fb_split, S_IRUGO | S_IWUSR, mdss_fb_show_split,
 					mdss_fb_store_split);
@@ -781,6 +1172,35 @@ static DEVICE_ATTR(msm_fb_panel_status, S_IRUGO | S_IWUSR,
 	mdss_fb_get_panel_status, mdss_fb_force_panel_dead);
 static DEVICE_ATTR(msm_fb_dfps_mode, S_IRUGO | S_IWUSR,
 	mdss_fb_get_dfps_mode, mdss_fb_change_dfps_mode);
+
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+static DEVICE_ATTR(panel_type, S_IRUGO,
+		mdss_fb_get_panel_type, NULL);
+#endif
+#if defined(CONFIG_LGE_MIPI_H1_INCELL_QHD_CMD_PANEL)
+static DEVICE_ATTR(valid_check, S_IRUGO, mdss_fb_is_valid, NULL);
+#endif
+
+#if defined(CONFIG_LGE_DISPLAY_MARQUEE_SUPPORTED)
+static DEVICE_ATTR(mq_mode, S_IWUSR|S_IRUGO, mdss_fb_get_mq_mode, mdss_fb_set_mq_mode);
+#endif
+
+#ifdef CONFIG_LGE_LCD_MFTS_MODE
+static DEVICE_ATTR(mfts_auto_touch_test_mode, S_IWUSR|S_IRUGO, mdss_get_mfts_auto_touch , mdss_set_mfts_auto_touch);
+#endif
+
+#ifdef CONFIG_LGE_THERMAL_BL_MAX
+static DEVICE_ATTR(thermal_blmax, S_IWUSR|S_IRUGO, thermal_blmax_show , thermal_blmax_store);
+#endif
+
+#if defined(CONFIG_LGE_DISPLAY_DYNAMIC_LOG)
+static DEVICE_ATTR(debug_level, S_IWUSR|S_IRUGO, display_debug_level_show , display_debug_level_store);
+#endif
+
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_READER_MODE)
+static DEVICE_ATTR(reader_mode, S_IRUGO | S_IWUSR, get_reader_mode, set_reader_mode);
+#endif
+
 static struct attribute *mdss_fb_attrs[] = {
 	&dev_attr_msm_fb_type.attr,
 	&dev_attr_msm_fb_split.attr,
@@ -792,6 +1212,27 @@ static struct attribute *mdss_fb_attrs[] = {
 	&dev_attr_msm_fb_thermal_level.attr,
 	&dev_attr_msm_fb_panel_status.attr,
 	&dev_attr_msm_fb_dfps_mode.attr,
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+	&dev_attr_panel_type.attr,
+#endif
+#if defined(CONFIG_LGE_MIPI_H1_INCELL_QHD_CMD_PANEL)
+	&dev_attr_valid_check.attr,
+#endif
+#if defined(CONFIG_LGE_DISPLAY_MARQUEE_SUPPORTED)
+	&dev_attr_mq_mode.attr,
+#endif
+#ifdef CONFIG_LGE_LCD_MFTS_MODE
+	&dev_attr_mfts_auto_touch_test_mode.attr,
+#endif
+#ifdef CONFIG_LGE_THERMAL_BL_MAX
+  &dev_attr_thermal_blmax.attr,
+#endif
+#if defined(CONFIG_LGE_DISPLAY_DYNAMIC_LOG)
+	&dev_attr_debug_level.attr,
+#endif
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_READER_MODE)
+	&dev_attr_reader_mode.attr,
+#endif
 	NULL,
 };
 
@@ -1123,6 +1564,10 @@ static int mdss_fb_probe(struct platform_device *pdev)
 
 	mfd->pdev = pdev;
 
+#ifdef CONFIG_LGE_DISPLAY_COMMON
+	lge_mdss_fb_init(mfd);
+#endif
+
 	mfd->split_fb_left = mfd->split_fb_right = 0;
 
 	mdss_fb_set_split_mode(mfd, pdata);
@@ -1153,6 +1598,9 @@ static int mdss_fb_probe(struct platform_device *pdev)
 		return rc;
 
 	mdss_fb_create_sysfs(mfd);
+#ifdef CONFIG_LGE_DISPLAY_COMMON
+	lge_mdss_fb_create_sysfs(mfd);
+#endif
 	mdss_fb_send_panel_event(mfd, MDSS_EVENT_FB_REGISTERED, fbi);
 
 	if (mfd->mdp.init_fnc) {
@@ -1177,6 +1625,10 @@ static int mdss_fb_probe(struct platform_device *pdev)
 		else
 			lcd_backlight_registered = 1;
 	}
+
+#if defined(CONFIG_LGE_DISPLAY_AOD_SUPPORTED)
+	lge_backlight_register(mfd);
+#endif
 
 	mdss_fb_init_panel_modes(mfd, pdata);
 
@@ -1216,6 +1668,46 @@ static int mdss_fb_probe(struct platform_device *pdev)
 
 	INIT_DELAYED_WORK(&mfd->idle_notify_work, __mdss_fb_idle_notify_work);
 
+
+#if defined(CONFIG_LGE_PM_THERMAL_VTS)
+	if (!rc && mfd->index == 0) {
+		mfd->vs = kzalloc(sizeof(struct value_sensor), GFP_KERNEL);
+		if (IS_ERR(mfd->vs)) {
+			pr_err("Fail to alloc mfd->vs. err=%d\n", IS_ERR(mfd->vs));
+			return -ENOMEM;
+		}
+		mfd->vs->name = "led";
+		mfd->vs->vts_index = 101;
+		mfd->vs->devdata = mfd;
+		mfd->vs->weight = 0;
+		mfd->vs->get_temp = bl_get_led_temp;
+		rc = vts_register_value_sensor(mfd->vs);
+		if (rc) {
+			kfree(mfd->vs);
+			pr_err("Fail to register value sensor.\n");
+			return -EFAULT;
+		}
+		mfd->vs_clone = kzalloc(sizeof(struct value_sensor), GFP_KERNEL);
+		if (IS_ERR(mfd->vs_clone)) {
+			pr_err("Fail to alloc mfd->vs_clone. err=%d\n.", IS_ERR(mfd->vs_clone));
+			return -ENOMEM;
+		}
+		mfd->vs_clone->name = "led_sensor";
+		mfd->vs_clone->vts_index = 102;
+		mfd->vs_clone->devdata = mfd;
+		mfd->vs_clone->weight = 1000;
+		mfd->vs_clone->get_temp = bl_get_led_temp;
+		rc = vts_register_value_sensor(mfd->vs_clone);
+		if (rc) {
+			kfree(mfd->vs_clone);
+			pr_err("Fail to register value sensor.\n");
+			return -EFAULT;
+		}
+
+		pr_info("\"led\" virtual value sensor is registered.\n");
+	}
+#endif
+
 	return rc;
 }
 
@@ -1251,6 +1743,9 @@ static int mdss_fb_remove(struct platform_device *pdev)
 		return -ENODEV;
 
 	mdss_fb_remove_sysfs(mfd);
+#ifdef CONFIG_LGE_DISPLAY_COMMON
+	lge_mdss_fb_remove_sysfs(mfd);
+#endif
 
 	pm_runtime_disable(mfd->fbi->dev);
 
@@ -1271,6 +1766,15 @@ static int mdss_fb_remove(struct platform_device *pdev)
 		lcd_backlight_registered = 0;
 		led_classdev_unregister(&backlight_led);
 	}
+#if defined(CONFIG_LGE_DISPLAY_AOD_SUPPORTED)
+	lge_backlight_unregister();
+#endif
+#if defined(CONFIG_LGE_PM_THERMAL_VTS)
+	if (mfd->index == 0) {
+		vts_unregister_value_sensor(mfd->vs);
+		kfree(mfd->vs);
+	}
+#endif
 
 	return 0;
 }
@@ -1520,11 +2024,29 @@ void mdss_fb_set_backlight(struct msm_fb_data_type *mfd, u32 bkl_lvl)
 	bool ad_bl_notify_needed = false;
 	bool bl_notify_needed = false;
 
+#if defined(CONFIG_LGE_SP_MIRRORING_CTRL_BL)
+	if(lge_is_bl_update_blocked(bkl_lvl))
+		return;
+#endif
 	if ((((mdss_fb_is_power_off(mfd) && mfd->dcm_state != DCM_ENTER)
 		|| !mfd->allow_bl_update) && !IS_CALIB_MODE_BL(mfd)) ||
 		mfd->panel_info->cont_splash_enabled) {
+#if defined(CONFIG_LGE_DISPLAY_AOD_SUPPORTED)
+		if (mfd->panel_info->aod_cur_mode == AOD_PANEL_MODE_U0_BLANK || mfd->panel_info->aod_cur_mode == AOD_PANEL_MODE_U3_UNBLANK) {
+			mfd->unset_bl_level = bkl_lvl;
+			if (mfd->index == 0)
+				pr_info("[AOD] Save unset_bl_level(%d) in %s mode. Will be updated when kick off function\n", mfd->unset_bl_level, mfd->panel_info->aod_cur_mode ? "U3" : "U0");
+			return;
+		}
+		else
+		{
+			//Set BL level in U2 blank or U2 Unblank
+			mfd->unset_bl_level = U32_MAX;
+		}
+#else
 		mfd->unset_bl_level = bkl_lvl;
 		return;
+#endif
 	} else if (mdss_fb_is_power_on(mfd) && mfd->panel_info->panel_dead) {
 		mfd->unset_bl_level = mfd->bl_level;
 	} else {
@@ -1553,6 +2075,7 @@ void mdss_fb_set_backlight(struct msm_fb_data_type *mfd, u32 bkl_lvl)
 			if (mfd->bl_level != bkl_lvl)
 				bl_notify_needed = true;
 			pr_debug("backlight sent to panel :%d\n", temp);
+			DISP_DEBUG(BL, "backlight sent to panel :%d\n", temp);
 			pdata->set_backlight(pdata, temp);
 			mfd->bl_level = bkl_lvl;
 			mfd->bl_level_scaled = temp;
@@ -1587,6 +2110,7 @@ void mdss_fb_update_backlight(struct msm_fb_data_type *mfd)
 				mdss_fb_bl_update_notify(mfd,
 					NOTIFY_TYPE_BL_AD_ATTEN_UPDATE);
 			mdss_fb_bl_update_notify(mfd, NOTIFY_TYPE_BL_UPDATE);
+			pr_info("[Display] backlight sent to panel :%d in %s\n", temp, __func__);
 			pdata->set_backlight(pdata, temp);
 			mfd->bl_level_scaled = mfd->unset_bl_level;
 			mfd->allow_bl_update = true;
@@ -1670,6 +2194,9 @@ static int mdss_fb_blank_blank(struct msm_fb_data_type *mfd,
 
 	cur_power_state = mfd->panel_power_state;
 
+#ifdef CONFIG_LGE_LCD_OFF_DIMMING
+	lge_set_blank_called();
+#endif
 	pr_debug("Transitioning from %d --> %d\n", cur_power_state,
 		req_power_state);
 
@@ -1694,10 +2221,16 @@ static int mdss_fb_blank_blank(struct msm_fb_data_type *mfd,
 			mdss_fb_stop_disp_thread(mfd);
 		mutex_lock(&mfd->bl_lock);
 		current_bl = mfd->bl_level;
+
+#if defined(CONFIG_LGE_DISPLAY_AOD_SUPPORTED)
+		lge_aod_bl_ctrl_blank_blank(mfd);
+#else
 		mfd->allow_bl_update = true;
 		mdss_fb_set_backlight(mfd, 0);
 		mfd->allow_bl_update = false;
 		mfd->unset_bl_level = current_bl;
+#endif
+
 		mutex_unlock(&mfd->bl_lock);
 	}
 	mfd->panel_power_state = req_power_state;
@@ -1770,6 +2303,8 @@ static int mdss_fb_blank_unblank(struct msm_fb_data_type *mfd)
 				msecs_to_jiffies(mfd->idle_time));
 	}
 
+// disable below codes to prevent abnormal screen while screen on.
+#if !defined(CONFIG_LGE_DISPLAY_COMMON)
 	/* Reset the backlight only if the panel was off */
 	if (mdss_panel_is_power_off(cur_power_state)) {
 		mutex_lock(&mfd->bl_lock);
@@ -1795,8 +2330,32 @@ static int mdss_fb_blank_unblank(struct msm_fb_data_type *mfd)
 			mfd->allow_bl_update = false;
 		}
 		mutex_unlock(&mfd->bl_lock);
-	}
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_BL_EXTENDED)
+		mutex_lock(&mfd->bl_lock);
+		if (!mfd->allow_bl_update_ex) {
+			mfd->allow_bl_update_ex = true;
+			/*
+			 * If in AD calibration mode then frameworks would not
+			 * be allowed to update backlight hence post unblank
+			 * the backlight would remain 0 (0 is set in blank).
+			 * Hence resetting back to calibration mode value
+			 */
+			if (!IS_CALIB_MODE_BL(mfd))
+				mdss_fb_set_backlight_ex(mfd, mfd->unset_bl_level_ex);
+			else
+				mdss_fb_set_backlight_ex(mfd, mfd->calib_mode_bl);
 
+			/*
+			 * it blocks the backlight update between unblank and
+			 * first kickoff to avoid backlight turn on before black
+			 * frame is transferred to panel through unblank call.
+			 */
+			mfd->allow_bl_update_ex = false;
+		}
+		mutex_unlock(&mfd->bl_lock);
+	}
+#endif
+#endif
 error:
 	return ret;
 }
@@ -1815,7 +2374,7 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 	if (mfd->dcm_state == DCM_ENTER)
 		return -EPERM;
 
-	pr_debug("%pS mode:%d\n", __builtin_return_address(0),
+	pr_info("[Display] %pS mode:%d\n", __builtin_return_address(0),
 		blank_mode);
 
 	snprintf(trace_buffer, sizeof(trace_buffer), "fb%d blank %d",
@@ -1845,6 +2404,13 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 		}
 	}
 
+#if defined(CONFIG_LGE_DISPLAY_AOD_SUPPORTED)
+	if(!mfd->panel_info->cont_splash_enabled && mfd->index == 0) {
+		mutex_lock(&mfd->aod_lock);
+		oem_mdss_aod_decide_status(mfd, blank_mode);
+	}
+#endif
+
 	switch (blank_mode) {
 	case FB_BLANK_UNBLANK:
 		pr_debug("unblank called. cur pwr state=%d\n", cur_power_state);
@@ -1855,6 +2421,10 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 		pr_debug("ultra low power mode requested\n");
 		if (mdss_fb_is_power_off(mfd)) {
 			pr_debug("Unsupp transition: off --> ulp\n");
+#if defined(CONFIG_LGE_DISPLAY_AOD_SUPPORTED)
+			if(!mfd->panel_info->cont_splash_enabled && mfd->index == 0)
+				mutex_unlock(&mfd->aod_lock);
+#endif
 			return 0;
 		}
 
@@ -1885,12 +2455,20 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 		ret = mdss_fb_blank_blank(mfd, req_power_state);
 		break;
 	}
-
+#if defined(CONFIG_LGE_DISPLAY_AOD_SUPPORTED)
+	if (!mfd->panel_info->cont_splash_enabled && mfd->index == 0)
+		mutex_unlock(&mfd->aod_lock);
+#endif
 	/* Notify listeners */
 	sysfs_notify(&mfd->fbi->dev->kobj, NULL, "show_blank_event");
 
 	ATRACE_END(trace_buffer);
-
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+	if (mfd->recovery && blank_mode == FB_BLANK_UNBLANK) {
+		mfd->recovery= false;
+	}
+#endif
+	pr_err("%s: -\n",__func__);
 	return ret;
 }
 
@@ -2680,7 +3258,9 @@ static int mdss_fb_release_all(struct fb_info *info, bool release_all)
 		 * adb shell stop/start.
 		 */
 		mdss_fb_set_backlight(mfd, 0);
-
+#if defined(CONFIG_LGE_DISPLAY_AOD_SUPPORTED)
+		lge_mdss_fb_aod_release(mfd);
+#endif
 		ret = mdss_fb_blank_sub(FB_BLANK_POWERDOWN, info,
 			mfd->op_enable);
 		if (ret) {
@@ -3495,7 +4075,10 @@ static int __mdss_fb_perform_commit(struct msm_fb_data_type *mfd)
 skip_commit:
 	if (!ret)
 		mdss_fb_update_backlight(mfd);
-
+#ifdef CONFIG_LGE_DISPLAY_BL_EXTENDED
+	if (!ret)
+		mdss_fb_update_backlight_ex(mfd);
+#endif
 	if (IS_ERR_VALUE(ret) || !sync_pt_data->flushed) {
 		mdss_fb_release_kickoff(mfd);
 		mdss_fb_signal_timeline(sync_pt_data);
@@ -4570,6 +5153,11 @@ int mdss_fb_do_ioctl(struct fb_info *info, unsigned int cmd,
 	unsigned int dsi_mode = 0;
 	struct mdss_panel_data *pdata = NULL;
 
+#if defined(CONFIG_LGE_BROADCAST_TDMB) || defined(CONFIG_LGE_BROADCAST_ISDBT_JAPAN)
+    int dmb_flag = 0;
+    struct mdp_csc_cfg dmb_csc_cfg;
+#endif /* LGE_BROADCAST */	
+
 	if (!info || !info->par)
 		return -EINVAL;
 
@@ -4625,6 +5213,24 @@ int mdss_fb_do_ioctl(struct fb_info *info, unsigned int cmd,
 		ret = mdss_fb_display_commit(info, argp);
 		break;
 
+#if defined(CONFIG_LGE_BROADCAST_TDMB) || defined(CONFIG_LGE_BROADCAST_ISDBT_JAPAN)
+    case MSMFB_DMB_SET_FLAG:
+        ret = copy_from_user(&dmb_flag, argp, sizeof(int));
+        if (ret)
+            return ret;
+        ret = pp_set_dmb_status(dmb_flag);
+		/* pr_debug("[MDP] MSMFB_DMB_SET_FLAG : dmb_flag = %d\n", dmb_flag); */
+		break;
+
+    case MSMFB_DMB_SET_CSC_MATRIX:
+        ret = copy_from_user(&dmb_csc_cfg, argp, sizeof(dmb_csc_cfg));
+        if (ret)
+            return ret;
+        memcpy(dmb_csc_convert.csc_mv, dmb_csc_cfg.csc_mv, sizeof(dmb_csc_cfg.csc_mv));
+		/* pr_debug("[MDP] MSMFB_DMB_SET_CSC_MATRIX : dmc_csc_cfg.flag = %d\n", dmb_csc_cfg.flags); */
+        break;
+#endif /* LGE_BROADCAST */
+
 	case MSMFB_LPM_ENABLE:
 		ret = copy_from_user(&dsi_mode, argp, sizeof(dsi_mode));
 		if (ret) {
@@ -4666,6 +5272,22 @@ static int mdss_fb_ioctl(struct fb_info *info, unsigned int cmd,
 
 	return mdss_fb_do_ioctl(info, cmd, arg, file);
 }
+
+#ifdef CONFIG_LGE_VSYNC_SKIP
+struct fb_info *msm_fb_get_cmd_pan_fb(void)
+{
+	int c = 0;
+	for (c = 0; c < fbi_list_index; ++c) {
+		struct msm_fb_data_type *mfd;
+		mfd = (struct msm_fb_data_type *)fbi_list[c]->par;
+		if (mfd->panel.type == MIPI_CMD_PANEL){
+			return fbi_list[c];
+		}
+	}
+
+	return NULL;
+}
+#endif
 
 static int mdss_fb_register_extra_panel(struct platform_device *pdev,
 	struct mdss_panel_data *pdata)
@@ -4849,8 +5471,28 @@ void mdss_fb_report_panel_dead(struct msm_fb_data_type *mfd)
 		pr_err("Panel data not available\n");
 		return;
 	}
-
+#if !defined(CONFIG_LGE_PANEL_RECOVERY)
+	return;
+#endif
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+	if (mfd->recovery) {
+		pr_info("[Display] Already in recovery!!\n");
+		return;
+	} else {
+		mfd->recovery = true;
+		mfd->unset_bl_level= mfd->bl_level;
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_BL_EXTENDED)
+		mfd->unset_bl_level_ex = mfd->bl_level_ex;
+		pr_info("[Display] Recovery start. last bl level ex : %d\n", mfd->unset_bl_level_ex);
+#endif
+		pr_info("[Display] Recovery start. last bl level : %d\n", mfd->unset_bl_level);
+	}
+#endif
 	pdata->panel_info.panel_dead = true;
+
+#if defined(CONFIG_LGE_DISPLAY_AOD_SUPPORTED)
+	lge_mdss_fb_aod_recovery(mfd, envp);
+#endif
 	kobject_uevent_env(&mfd->fbi->dev->kobj,
 		KOBJ_CHANGE, envp);
 	pr_err("Panel has gone bad, sending uevent - %s\n", envp[0]);

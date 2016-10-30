@@ -127,7 +127,11 @@ void *seemp_logk_kernel_start_record(char **buf)
 	blk->version = OBSERVER_VERSION;
 	blk->pid = current->tgid;
 	blk->tid = current->pid;
+#ifdef CONFIG_UIDGID_STRICT_TYPE_CHECKS
 	blk->uid = (current_uid()).val;
+#else
+	blk->uid = (current_uid());
+#endif
 	blk->sec = now.tv_sec;
 	blk->nsec = now.tv_nsec;
 	strlcpy(blk->appname, current->comm, TASK_COMM_LEN);
@@ -146,13 +150,19 @@ void *seemp_logk_kernel_start_record(char **buf)
 
 void seemp_logk_kernel_end_record(void *blck)
 {
+	int current_uid_val = 0;
+
 	struct seemp_logk_blk *blk = (struct seemp_logk_blk *)blck;
 
 	if (blk) {
 		/*update status at the very end*/
 		blk->status |= 0x1;
-		blk->uid =  (current_uid()).val;
-
+#ifdef CONFIG_UIDGID_STRICT_TYPE_CHECKS
+               current_uid_val = (current_uid()).val;
+#else
+               current_uid_val = (current_uid());
+#endif
+		blk->uid = current_uid_val;
 		ringbuf_finish_writer(slogk_dev, blk);
 	}
 }

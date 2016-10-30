@@ -243,6 +243,13 @@ config CPU_BOOST
 	  - Migration of important threads from one CPU to another.
 
 	  If in doubt, say N.
+config LGE_PM_TRITON
+	tristate "Cpu Freq Helper Driver"
+	depends on CPU_FREQ_GOV_INTERACTIVE
+
+config LGE_PM_CANCUN
+	tristate "LGE CPU Cancun Project"
+	depends on CPU_FREQ_GOV_INTERACTIVE
 
 menu "x86 CPU frequency scaling drivers"
 depends on X86

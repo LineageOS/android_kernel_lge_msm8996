@@ -47,7 +47,7 @@ static int mmap_is_legacy(void)
 	return sysctl_legacy_va_layout;
 }
 
-unsigned long arch_mmap_rnd(void)
+static unsigned long mmap_rnd(void)
 {
 	unsigned long rnd;
 
@@ -60,6 +60,10 @@ unsigned long arch_mmap_rnd(void)
 			rnd = get_random_long() & ((1UL << mmap_rnd_bits) - 1);
 	}
 	return rnd << PAGE_SHIFT;
+}
+
+unsigned long arch_mmap_rnd(void) {
+    return mmap_rnd();
 }
 
 static unsigned long mmap_base(unsigned long rnd)

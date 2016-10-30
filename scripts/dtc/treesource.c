@@ -164,6 +164,50 @@ static void write_propval_cells(FILE *f, struct data val)
 	fprintf(f, ">");
 }
 
+static void write_propval_cells_specific(FILE *f, struct data val)
+{
+	void *propend = val.val + val.len;
+	cell_t *cp = (cell_t *)val.val;
+	struct marker *m = val.markers;
+	struct marker *n = val.markers;
+
+	fprintf(f, "<");
+	for (;;) {
+		while (m && (m->offset <= ((char *)cp - val.val))) {
+			if (m->type == LABEL) {
+				assert(m->offset == ((char *)cp - val.val));
+				fprintf(f, "%s: ", m->ref);
+			}
+			m = m->next;
+		}
+
+		if (n && (n->offset == ((char *)cp - val.val))) {
+			if (n->type == REF_PHANDLE && n->ref) {
+				if (phandle_format == PHANDLE_SPECIFIC) {
+					fprintf(f, "&%s", n->ref);
+					/* skip the phandle id */
+					cp++;
+				} else {
+					fprintf(f, "&%s(0x%x)", n->ref, fdt32_to_cpu(*cp++));
+				}
+			}
+			n = n->next;
+		} else {
+			fprintf(f, "0x%x", fdt32_to_cpu(*cp++));
+		}
+		if ((void *)cp >= propend)
+			break;
+		fprintf(f, " ");
+	}
+
+	/* Wrap up any labels at the end of the value */
+	for_each_marker_of_type(m, LABEL) {
+		assert (m->offset == val.len);
+		fprintf(f, " %s:", m->ref);
+	}
+	fprintf(f, ">");
+}
+
 static void write_propval_bytes(FILE *f, struct data val)
 {
 	void *propend = val.val + val.len;
@@ -225,7 +269,11 @@ static void write_propval(FILE *f, struct property *prop)
 	    && (nnotstringlbl == 0)) {
 		write_propval_string(f, prop->val);
 	} else if (((len % sizeof(cell_t)) == 0) && (nnotcelllbl == 0)) {
-		write_propval_cells(f, prop->val);
+		if ((phandle_format == PHANDLE_SPECIFIC) ||
+				(phandle_format == PHANDLE_SPECIFIC2))
+			write_propval_cells_specific(f, prop->val);
+		else
+			write_propval_cells(f, prop->val);
 	} else {
 		write_propval_bytes(f, prop->val);
 	}
@@ -262,6 +310,22 @@ static void write_tree_source_node(FILE *f, struct node *tree, int level)
 	fprintf(f, "};\n");
 }
 
+static void write_deleted_list(FILE *f, struct del_list *list)
+{
+	struct del_list *item;
+
+	fprintf(f, "Deleted nodes:\n");
+	for_each_del_list(list, item)
+		if (item->type == DEL_TYPE_NODE)
+			fprintf(f, "\t%s\n", item->name);
+
+	fprintf(f, "\n");
+
+	fprintf(f, "Deleted properties:\n");
+	for_each_del_list(list, item)
+		if (item->type == DEL_TYPE_PROP)
+			fprintf(f, "\t%s\n", item->name);
+}
 
 void dt_to_source(FILE *f, struct boot_info *bi)
 {
@@ -280,4 +344,9 @@ void dt_to_source(FILE *f, struct boot_info *bi)
 	}
 
 	write_tree_source_node(f, bi->dt, 0);
+
+	if (show_deleted_list) {
+		fprintf(f, "\n\n\nA list of deleted nodes and properties:\n\n");
+		write_deleted_list(f, bi->deleted_list);
+	}
 }

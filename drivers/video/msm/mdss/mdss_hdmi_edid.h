@@ -29,6 +29,9 @@ struct hdmi_edid_init_data {
 };
 
 int hdmi_edid_parser(void *edid_ctrl);
+#ifdef CONFIG_SLIMPORT_CTYPE
+int hdmi_edid_reset_parser(void *edid_ctrl);
+#endif
 u32 hdmi_edid_get_raw_data(void *edid_ctrl, u8 *buf, u32 size);
 u8 hdmi_edid_get_sink_scaninfo(void *edid_ctrl, u32 resolution);
 u32 hdmi_edid_get_sink_mode(void *edid_ctrl);

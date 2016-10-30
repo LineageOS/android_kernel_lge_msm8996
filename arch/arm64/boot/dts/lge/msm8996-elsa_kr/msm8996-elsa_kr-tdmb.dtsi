@@ -1,0 +1,74 @@
+/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/ {
+	aliases {
+		spi11 = &spi_11;
+	};
+
+	soc {
+		spi_11: spi@75b9000{    /* BLSP-2 QUP4 */
+			status = "ok";
+			compatible = "qcom,spi-qup-v2";
+
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			reg-names = "spi_physical", "spi_bam_physical";
+			reg = <0x75b9000 0x600>, <0x7584000 0x2b000>;
+
+			interrupt-names = "spi_irq", "spi_bam_irq";
+			interrupts = <0 105 0>, <0 239 0>;
+
+			spi-max-frequency = <15000000>;
+			qcom,master-id = <84>;
+
+			clock-names = "iface_clk", "core_clk";
+			clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
+				<&clock_gcc clk_gcc_blsp2_qup5_spi_apps_clk>;
+
+			/* Assign runtime functions to pins */
+			qcom,use-pinctrl;
+			pinctrl-names = "spi_default","spi_sleep";
+			pinctrl-0 = <&spi_tdmb_active>;
+			pinctrl-1 = <&spi_tdmb_suspend>;
+
+			qcom,gpio-mosi = <&tlmm 58 0x00>;
+			qcom,gpio-miso = <&tlmm 59 0x00>;
+			qcom,gpio-cs0 = <&tlmm 60 0x00>;
+			qcom,gpio-clk = <&tlmm 61 0x00>;
+			
+			qcom,infinite-mode = <0>;
+			qcom,use-bam;
+			qcom,ver-reg-exists;
+			qcom,bam-consumer-pipe-index = <20>;
+			qcom,bam-producer-pipe-index = <21>;
+		};
+	};
+};
+
+&spi_11 {
+	tdmb@0 {
+		compatible = "lge,tdmb";
+		reg = <0>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <21 0x0>;
+		spi-max-frequency = <15000000>;
+
+		pinctrl-names = "gpio_tdmb_suspend";
+		pinctrl-0 = <&tdmb_int &tdmb_ctrl>;
+		tdmb-fc8080,irq-gpio = <&tlmm 21 0x00>;
+		tdmb-fc8080,en-gpio = <&tlmm 39 0x00>;
+		/* USE ELSA VREG_L10 for LDO_IN (after HW:REV_O / SW:REV_A) */
+		ldo-supply = <&pm8994_l10>;
+	};
+};

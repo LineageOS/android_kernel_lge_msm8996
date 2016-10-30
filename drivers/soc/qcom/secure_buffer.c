@@ -404,7 +404,7 @@ static int __init alloc_secure_shared_memory(void)
 	int ret = 0;
 	dma_addr_t dma_handle;
 
-	qcom_secure_mem = kzalloc(QCOM_SECURE_MEM_SIZE, GFP_KERNEL);
+	qcom_secure_mem = kmalloc(QCOM_SECURE_MEM_SIZE, GFP_KERNEL | __GFP_ZERO);
 	if (!qcom_secure_mem) {
 		/* Fallback to CMA-DMA memory */
 		qcom_secure_mem = dma_alloc_coherent(NULL, QCOM_SECURE_MEM_SIZE,

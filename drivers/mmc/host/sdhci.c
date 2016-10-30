@@ -41,8 +41,8 @@
 #define DBG(f, x...) \
 	pr_debug(DRIVER_NAME " [%s()]: " f, __func__,## x)
 
-#if defined(CONFIG_LEDS_CLASS) || (defined(CONFIG_LEDS_CLASS_MODULE) && \
-	defined(CONFIG_MMC_SDHCI_MODULE))
+#if (defined(CONFIG_LEDS_CLASS) || (defined(CONFIG_LEDS_CLASS_MODULE) && \
+	defined(CONFIG_MMC_SDHCI_MODULE))) && !defined(CONFIG_MACH_LGE)
 #define SDHCI_USE_LEDS_CLASS
 #endif
 
@@ -87,6 +87,54 @@ static void sdhci_runtime_pm_bus_on(struct sdhci_host *host)
 static void sdhci_runtime_pm_bus_off(struct sdhci_host *host)
 {
 }
+#endif
+
+#ifdef CONFIG_LGE_PM
+int read_shutdown_soc(char *filename, int pos)
+{
+	struct file *filp;
+	char read_val;
+
+	mm_segment_t old_fs = get_fs();
+	set_fs(KERNEL_DS);
+
+	filp = filp_open(filename, O_RDWR, S_IRUSR|S_IWUSR);
+	if(IS_ERR(filp)){
+		//pr_err("open error hanshin open : %ld\n", IS_ERR(filp));
+		pr_err("open error hanshin open : %d\n", IS_ERR(filp));
+		return -1;
+	}
+	filp->f_pos = pos;
+
+	vfs_read(filp, &read_val, 5, &filp->f_pos);
+	filp_close(filp, NULL);
+	set_fs(old_fs);
+
+	return read_val;
+}
+EXPORT_SYMBOL_GPL(read_shutdown_soc);
+
+void write_shutdown_soc(char *filename, char write_val, int pos)
+{
+	struct file *filp;
+
+	mm_segment_t old_fs = get_fs();
+	set_fs(KERNEL_DS);
+
+	filp = filp_open(filename, O_CREAT | O_RDWR, S_IRUSR|S_IWUSR);
+	if(IS_ERR(filp)){
+		//pr_err("open error hanshin write: %ld\n", IS_ERR(filp));
+		pr_err("open error hanshin write: %d\n", IS_ERR(filp));
+		return;
+	}
+	filp->f_pos = pos;
+
+	vfs_write(filp, &write_val, 5, &filp->f_pos);
+	filp_close(filp, NULL);
+	set_fs(old_fs);
+	return;
+}
+EXPORT_SYMBOL_GPL(write_shutdown_soc);
 #endif
 
 static void sdhci_dump_state(struct sdhci_host *host)
@@ -342,7 +390,7 @@ static void sdhci_reinit(struct sdhci_host *host)
 	}
 	sdhci_enable_card_detection(host);
 }
-
+#if !defined(SDHCI_USE_LEDS_CLASS) && !defined(CONFIG_MACH_LGE)
 static void sdhci_activate_led(struct sdhci_host *host)
 {
 	u8 ctrl;
@@ -360,7 +408,7 @@ static void sdhci_deactivate_led(struct sdhci_host *host)
 	ctrl &= ~SDHCI_CTRL_LED;
 	sdhci_writeb(host, ctrl, SDHCI_HOST_CONTROL);
 }
-
+#endif
 #ifdef SDHCI_USE_LEDS_CLASS
 static void sdhci_led_control(struct led_classdev *led,
 	enum led_brightness brightness)
@@ -1713,7 +1761,7 @@ static void sdhci_request(struct mmc_host *mmc, struct mmc_request *mrq)
 
 	WARN_ON(host->mrq != NULL);
 
-#ifndef SDHCI_USE_LEDS_CLASS
+#if !defined(SDHCI_USE_LEDS_CLASS) && !defined(CONFIG_MACH_LGE)
 	if (!(host->quirks2 & SDHCI_QUIRK2_BROKEN_LED_CONTROL))
 		sdhci_activate_led(host);
 #endif
@@ -2731,7 +2779,7 @@ static void sdhci_tasklet_finish(unsigned long param)
 	host->data = NULL;
 	host->auto_cmd_err_sts = 0;
 
-#ifndef SDHCI_USE_LEDS_CLASS
+#if !defined(SDHCI_USE_LEDS_CLASS) && !defined(CONFIG_MACH_LGE)
 	if (!(host->quirks2 & SDHCI_QUIRK2_BROKEN_LED_CONTROL))
 		sdhci_deactivate_led(host);
 #endif

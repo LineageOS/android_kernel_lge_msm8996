@@ -58,6 +58,9 @@ struct hdmi_hdcp_ctrl {
 	struct hdmi_hdcp_init_data init_data;
 	struct hdmi_hdcp_ops *ops;
 	bool hdmi_tx_ver_4;
+#ifdef CONFIG_LGE_DP_ANX7688
+	bool hdcp_off;
+#endif
 };
 
 const char *hdcp_state_name(enum hdmi_hdcp_state hdcp_state)
@@ -1203,7 +1206,12 @@ static void hdmi_hdcp_int_work(struct work_struct *work)
 		DEV_ERR("%s: invalid input\n", __func__);
 		return;
 	}
-
+#ifdef CONFIG_LGE_DP_ANX7688
+	if(hdcp_ctrl->hdcp_off){
+		DEV_ERR("%s: HDCP OFF\n", __func__);
+		return;
+	}
+#endif
 	mutex_lock(hdcp_ctrl->init_data.mutex);
 	hdcp_ctrl->hdcp_state = HDCP_STATE_AUTH_FAIL;
 	mutex_unlock(hdcp_ctrl->init_data.mutex);
@@ -1227,7 +1235,12 @@ static void hdmi_hdcp_auth_work(struct work_struct *work)
 		DEV_ERR("%s: invalid input\n", __func__);
 		return;
 	}
-
+#ifdef CONFIG_LGE_DP_ANX7688
+	if(hdcp_ctrl->hdcp_off){
+		DEV_ERR("%s: HDCP OFF\n", __func__);
+		return;
+	}
+#endif
 	if (HDCP_STATE_AUTHENTICATING != hdcp_ctrl->hdcp_state) {
 		DEV_DBG("%s: %s: invalid state. returning\n", __func__,
 			HDCP_STATE_NAME);
@@ -1295,7 +1308,9 @@ error:
 	}
 	return;
 } /* hdmi_hdcp_auth_work */
-
+#ifdef CONFIG_LGE_DP_ANX7688
+extern bool get_device_apple_pid(void);
+#endif
 int hdmi_hdcp_authenticate(void *input)
 {
 	struct hdmi_hdcp_ctrl *hdcp_ctrl = (struct hdmi_hdcp_ctrl *)input;
@@ -1304,7 +1319,9 @@ int hdmi_hdcp_authenticate(void *input)
 		DEV_ERR("%s: invalid input\n", __func__);
 		return -EINVAL;
 	}
-
+#ifdef CONFIG_LGE_DP_ANX7688
+	hdcp_ctrl->hdcp_off = false;
+#endif
 	if (HDCP_STATE_INACTIVE != hdcp_ctrl->hdcp_state) {
 		DEV_DBG("%s: %s: already active or activating. returning\n",
 			__func__, HDCP_STATE_NAME);
@@ -1315,8 +1332,18 @@ int hdmi_hdcp_authenticate(void *input)
 		HDCP_STATE_NAME);
 
 	if (!hdmi_hdcp_load_keys(input))
+#ifdef CONFIG_LGE_DP_ANX7688
+		if (get_device_apple_pid() == true)
+			queue_delayed_work(hdcp_ctrl->init_data.workq,
+				&hdcp_ctrl->hdcp_auth_work, HZ);
+		else
+			queue_delayed_work(hdcp_ctrl->init_data.workq,
+				&hdcp_ctrl->hdcp_auth_work, 4*HZ);
+
+#else
 		queue_delayed_work(hdcp_ctrl->init_data.workq,
 			&hdcp_ctrl->hdcp_auth_work, HZ/2);
+#endif
 	else
 		queue_work(hdcp_ctrl->init_data.workq,
 			&hdcp_ctrl->hdcp_int_work);
@@ -1381,7 +1408,9 @@ void hdmi_hdcp_off(void *input)
 		DEV_ERR("%s: invalid input\n", __func__);
 		return;
 	}
-
+#ifdef CONFIG_LGE_DP_ANX7688
+	hdcp_ctrl->hdcp_off = true;
+#endif
 	io = hdcp_ctrl->init_data.core_io;
 
 	if (HDCP_STATE_INACTIVE == hdcp_ctrl->hdcp_state) {

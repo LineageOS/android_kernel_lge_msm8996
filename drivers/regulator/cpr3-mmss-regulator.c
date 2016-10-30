@@ -972,6 +972,43 @@ static int cpr3_mmss_init_thread(struct cpr3_thread *thread)
 	return 0;
 }
 
+#if 0
+/**
+ * cpr3_mmss_init_mem_acc() - perform MMSS CPR3 controller specific
+ *		mem-acc regulator initializations
+ * @ctrl:		Pointer to the CPR3 controller
+ *
+ * Return: 0 on success, errno on failure
+ */
+static int cpr3_mmss_init_mem_acc(struct cpr3_controller *ctrl)
+{
+	struct cpr3_regulator *vreg = &ctrl->thread[0].vreg[0];
+	u32 *temp;
+	int i, rc;
+
+	if (!ctrl->mem_acc_regulator) {
+		cpr3_info(ctrl, "not using memory accelerator regulator\n");
+		return 0;
+	}
+
+	temp = kcalloc(vreg->corner_count, sizeof(*temp), GFP_KERNEL);
+	if (!temp)
+		return -ENOMEM;
+
+	rc = cpr3_parse_corner_array_property(vreg, "qcom,mem-acc-voltage",
+					      1, temp);
+	if (rc) {
+		cpr3_err(ctrl, "could not load mem-acc corners, rc=%d\n", rc);
+	} else {
+		for (i = 0; i < vreg->corner_count; i++)
+			vreg->corner[i].mem_acc_volt = temp[i];
+	}
+
+	kfree(temp);
+	return rc;
+}
+#endif
+
 /**
  * cpr4_mmss_parse_temp_adj_properties() - parse temperature based
  *		adjustment properties from device tree

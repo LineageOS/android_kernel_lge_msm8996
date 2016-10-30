@@ -74,12 +74,18 @@ static int sdcardfs_d_revalidate(struct dentry *dentry, unsigned int flags)
 		goto out;
 	}
 
+	if (dentry == lower_dentry) {
+		err = 0;
+		panic("sdcardfs: dentry is equal to lower_dentry\n");
+		goto out;
+	}
+
 	if (dentry < lower_dentry) {
 		spin_lock(&dentry->d_lock);
-		spin_lock(&lower_dentry->d_lock);
+		spin_lock_nested(&lower_dentry->d_lock, DENTRY_D_LOCK_NESTED);
 	} else {
 		spin_lock(&lower_dentry->d_lock);
-		spin_lock(&dentry->d_lock);
+		spin_lock_nested(&dentry->d_lock, DENTRY_D_LOCK_NESTED);
 	}
 
 	if (dentry->d_name.len != lower_dentry->d_name.len) {
@@ -175,8 +181,6 @@ static int sdcardfs_cmp_ci(const struct dentry *parent,
 const struct dentry_operations sdcardfs_ci_dops = {
 	.d_revalidate	= sdcardfs_d_revalidate,
 	.d_release	= sdcardfs_d_release,
-	.d_hash 	= sdcardfs_hash_ci,
+	.d_hash		= sdcardfs_hash_ci,
 	.d_compare	= sdcardfs_cmp_ci,
-	.d_canonical_path = sdcardfs_get_real_lower,
 };
-

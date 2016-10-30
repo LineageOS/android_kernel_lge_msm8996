@@ -159,8 +159,8 @@ static bool uac_clock_source_is_valid(struct snd_usb_audio *chip, int source_id)
 
 	if (err < 0) {
 		dev_warn(&dev->dev,
-			 "%s(): cannot get clock validity for id %d\n",
-			   __func__, source_id);
+			 "%s(): cannot get clock validity for id %d: %d\n",
+			   __func__, source_id, err);
 		return 0;
 	}
 

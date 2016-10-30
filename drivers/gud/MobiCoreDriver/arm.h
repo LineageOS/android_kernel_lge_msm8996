@@ -14,7 +14,7 @@
 #ifndef _MC_ARM_H_
 #define _MC_ARM_H_
 
-#include "debug.h"
+#include "main.h"
 
 #ifdef CONFIG_ARM64
 inline bool has_security_extensions(void)
@@ -46,7 +46,7 @@ inline bool has_security_extensions(void)
 		"mrc p15, 0, %[fea], cr0, cr1, 0" :
 		[fea]"=r" (fea));
 
-	MCDRV_DBG_VERBOSE("CPU Features: 0x%X", fea);
+	mc_dev_devel("CPU Features: 0x%X\n", fea);
 
 	/*
 	 * If the CPU features ID has 0 for security features then the CPU
@@ -70,8 +70,8 @@ inline bool is_secure_mode(void)
 		[nsacr]"=r" (nsacr),
 		[cpsr]"=r"(cpsr));
 
-	MCDRV_DBG_VERBOSE("CPRS.M = set to 0x%X\n", cpsr & MODE_MASK);
-	MCDRV_DBG_VERBOSE("SCR.NS = set to 0x%X\n", nsacr);
+	mc_dev_devel("CPRS.M = set to 0x%X\n", cpsr & MODE_MASK);
+	mc_dev_devel("SCR.NS = set to 0x%X\n", nsacr);
 
 	/*
 	 * If the NSACR contains the reset value(=0) then most likely we are

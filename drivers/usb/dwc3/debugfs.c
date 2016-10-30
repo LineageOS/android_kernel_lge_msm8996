@@ -1075,6 +1075,13 @@ int dwc3_debugfs_init(struct dwc3 *dwc)
 		return -EINVAL;
 	}
 
+	if (count >= DWC_CTRL_COUNT) {
+		dev_err(dwc->dev, "Err dwc instance %d >= %d available\n",
+				count, DWC_CTRL_COUNT);
+		ret = -EINVAL;
+		return ret;
+	}
+
 	root = debugfs_create_dir(dev_name(dwc->dev), NULL);
 	if (!root) {
 		dev_err(dwc->dev, "Can't create debugfs root\n");

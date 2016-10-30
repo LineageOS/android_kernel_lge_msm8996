@@ -22,9 +22,13 @@
 #include <linux/seq_file.h>
 #include <linux/sysctl.h>
 #include "internal.h"
+#ifdef CONFIG_CRYPTO_CCMODE
+#include <linux/cc_mode.h>
+#endif
 
-#ifdef CONFIG_CRYPTO_FIPS
+#if defined (CONFIG_CRYPTO_FIPS) || (CONFIG_CRYPTO_CCMODE)
 static struct ctl_table crypto_sysctl_table[] = {
+#ifdef CONFIG_CRYPTO_FIPS
 	{
 		.procname       = "fips_enabled",
 		.data           = &fips_enabled,
@@ -32,6 +36,23 @@ static struct ctl_table crypto_sysctl_table[] = {
 		.mode           = 0444,
 		.proc_handler   = proc_dointvec
 	},
+#endif
+#ifdef CONFIG_CRYPTO_CCMODE
+	{
+		.procname       = "cc_mode",
+		.data           = &cc_mode,
+		.maxlen         = sizeof(int),
+		.mode           = 0444,
+		.proc_handler   = proc_dointvec
+	},
+	{
+		.procname       = "cc_mode_flag",
+		.data           = &cc_mode_flag,
+		.maxlen         = sizeof(int),
+		.mode           = 0444,
+		.proc_handler   = proc_dointvec
+	},
+#endif
 	{}
 };
 

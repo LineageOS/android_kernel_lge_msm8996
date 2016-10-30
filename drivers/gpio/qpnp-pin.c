@@ -705,6 +705,19 @@ static int _qpnp_pin_config(struct qpnp_pin_chip *q_chip,
 		goto gpio_cfg;
 	}
 
+#ifdef CONFIG_LGE_ALICE_FRIENDS
+	if (q_spec->pmic_pin == 19 && param->mode == QPNP_PIN_MODE_DIG_IN) {
+		/* HM: latch clear */
+		u16 reg_addr = Q_REG_ADDR(q_spec, 0x14);
+		u8 clear = 1;
+
+		pr_info("[BSP-USB] %s: HM: GPIO19_INT_LATCHED_CLR\n", __func__);
+		spmi_ext_register_writel(q_chip->spmi->ctrl, q_spec->slave,
+				reg_addr, &clear, 1);
+	}
+#endif
+
+
 	return 0;
 
 gpio_cfg:

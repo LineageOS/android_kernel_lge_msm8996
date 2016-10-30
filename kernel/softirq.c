@@ -120,6 +120,14 @@ void __local_bh_disable_ip(unsigned long ip, unsigned int cnt)
 EXPORT_SYMBOL(__local_bh_disable_ip);
 #endif /* CONFIG_TRACE_IRQFLAGS */
 
+#ifdef CONFIG_LGCRYPTO_FIPS_ENABLE
+void _local_bh_disable(void)
+{
+    __local_bh_disable_ip(_THIS_IP_, SOFTIRQ_DISABLE_OFFSET);
+}
+EXPORT_SYMBOL(_local_bh_disable);
+#endif
+
 static void __local_bh_enable(unsigned int cnt)
 {
 	WARN_ON_ONCE(!irqs_disabled());

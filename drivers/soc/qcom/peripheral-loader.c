@@ -235,7 +235,7 @@ int pil_reclaim_mem(struct pil_desc *desc, phys_addr_t addr, size_t size,
 	int ret;
 	int srcVM[2] = {VMID_HLOS, desc->subsys_vmid};
 	int destVM[1] = {VMid};
-	int destVMperm[1] = {PERM_READ | PERM_WRITE};
+	int destVMperm[1] = {PERM_READ | PERM_WRITE | PERM_EXEC};
 
 	if (VMid == VMID_HLOS)
 		destVMperm[0] = PERM_READ | PERM_WRITE | PERM_EXEC;
@@ -518,6 +518,7 @@ static int pil_setup_region(struct pil_priv *priv, const struct pil_mdt *mdt)
 
 	if (relocatable) {
 		ret = pil_alloc_region(priv, min_addr_r, max_addr_r, align);
+
 	} else {
 		priv->region_start = min_addr_n;
 		priv->region_end = max_addr_n;
@@ -851,7 +852,7 @@ int pil_boot(struct pil_desc *desc)
 		}
 		hyp_assign = false;
 	}
-
+	pil_info(desc, "%s starting auth and reset", fw_name);
 	ret = desc->ops->auth_and_reset(desc);
 	if (ret) {
 		pil_err(desc, "Failed to bring out of reset\n");

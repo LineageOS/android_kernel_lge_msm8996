@@ -1031,5 +1031,15 @@ int cfg80211_disconnect(struct cfg80211_registered_device *rdev,
 	else if (wdev->current_bss)
 		err = rdev_disconnect(rdev, dev, reason);
 
+	// LGE_PATCH
+	if (err == 0 && wdev->current_bss &&
+	    (wdev->iftype == NL80211_IFTYPE_STATION ||
+	     wdev->iftype == NL80211_IFTYPE_P2P_CLIENT)) {
+		cfg80211_unhold_bss(wdev->current_bss);
+		cfg80211_put_bss(wdev->wiphy, &wdev->current_bss->pub);
+		wdev->current_bss = NULL;
+		wdev->ssid_len = 0;
+		printk("cfg80211_disconnect and current_bss is initialized");
+	}
 	return err;
 }

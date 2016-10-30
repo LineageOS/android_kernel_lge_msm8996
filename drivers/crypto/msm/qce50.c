@@ -4549,9 +4549,14 @@ static int select_mode(struct qce_device *pce_dev,
 		struct ce_request_info *preq_info)
 {
 	struct ce_sps_data *pce_sps_data = &preq_info->ce_sps;
+#ifndef CONFIG_MACH_LGE
 	unsigned int no_of_queued_req;
 	unsigned int cadence;
+#endif
 
+#ifdef CONFIG_MACH_LGE
+	_qce_set_flag(&pce_sps_data->out_transfer, SPS_IOVEC_FLAG_INT);
+#else
 	if (!pce_dev->no_get_around) {
 		_qce_set_flag(&pce_sps_data->out_transfer, SPS_IOVEC_FLAG_INT);
 		return 0;
@@ -4600,6 +4605,7 @@ again:
 			pce_dev->cadence_flag = ~pce_dev->cadence_flag;
 		}
 	}
+#endif
 
 	return 0;
 }

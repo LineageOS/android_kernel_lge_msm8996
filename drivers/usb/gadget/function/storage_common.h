@@ -238,5 +238,7 @@ ssize_t fsg_show_perf(struct device *dev, struct device_attribute *attr,
 				char *buf);
 ssize_t fsg_store_perf(struct device *dev, struct device_attribute *attr,
 				const char *buf, size_t count);
-
+#ifdef CONFIG_LGE_USB_G_CDROM_MAC_SUPPORT
+int fsg_get_toc(struct fsg_lun *curlun, int msf, int format, u8 *buf);
+#endif
 #endif /* USB_STORAGE_COMMON_H */

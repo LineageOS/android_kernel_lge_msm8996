@@ -16,6 +16,11 @@
 #include <linux/init.h>
 #include <linux/module.h>
 
+#ifdef CONFIG_LGE_PM
+bool minfreq_enabled = false;
+EXPORT_SYMBOL(minfreq_enabled);
+#endif
+
 static int cpufreq_governor_performance(struct cpufreq_policy *policy,
 					unsigned int event)
 {
@@ -24,6 +29,13 @@ static int cpufreq_governor_performance(struct cpufreq_policy *policy,
 	case CPUFREQ_GOV_LIMITS:
 		pr_debug("setting to %u kHz because of event %u\n",
 						policy->max, event);
+#ifdef CONFIG_LGE_PM
+		if (minfreq_enabled) {
+			__cpufreq_driver_target(policy, policy->min,
+						CPUFREQ_RELATION_H);
+			break;
+		}
+#endif
 		__cpufreq_driver_target(policy, policy->max,
 						CPUFREQ_RELATION_H);
 		break;

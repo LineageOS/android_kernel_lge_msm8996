@@ -1421,6 +1421,13 @@ config RTC_DRV_XGENE
 	  This driver can also be built as a module, if so, the module
 	  will be called "rtc-xgene".
 
+config RTC_DRV_QPNP_YEAR
+	int "QPNP RTC START YEAR"
+	depends on RTC_DRV_QPNP
+	default 1970
+	help
+	  start year of qpnp-rtc set to specific year.
+
 comment "HID Sensor RTC drivers"
 
 config RTC_DRV_HID_SENSOR_TIME

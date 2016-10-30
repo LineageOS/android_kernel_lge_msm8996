@@ -21,7 +21,7 @@
 #include <linux/err.h>
 #include <linux/of.h>
 
-#include "debug.h"
+#include "main.h"
 #include "clock.h"
 
 static struct clk_context {
@@ -41,7 +41,7 @@ int mc_clock_init(void)
 	clk_ctx.mc_ce_core_src_clk = clk_get(g_ctx.mcd, "core_clk_src");
 	if (IS_ERR(clk_ctx.mc_ce_core_src_clk)) {
 		ret = PTR_ERR(clk_ctx.mc_ce_core_src_clk);
-		MCDRV_ERROR("cannot get core src clock: %d", ret);
+		mc_dev_err("cannot get core src clock: %d\n", ret);
 		goto error;
 	}
 
@@ -50,8 +50,8 @@ int mc_clock_init(void)
 				 MC_CRYPTO_CLOCK_CORESRC_PROPNAME,
 				 &core_src_rate)) {
 		core_src_rate = MC_CLOCK_CORESRC_DEFAULTRATE;
-		MCDRV_ERROR("cannot get ce clock frequency from DT, use %d",
-			    core_src_rate);
+		mc_dev_err("cannot get ce clock frequency from DT, use %d\n",
+			   core_src_rate);
 	}
 #endif /* MC_CRYPTO_CLOCK_CORESRC_PROPNAME */
 
@@ -59,7 +59,7 @@ int mc_clock_init(void)
 	if (ret) {
 		clk_put(clk_ctx.mc_ce_core_src_clk);
 		clk_ctx.mc_ce_core_src_clk = NULL;
-		MCDRV_ERROR("cannot set core clock src rate: %d", ret);
+		mc_dev_err("cannot set core clock src rate: %d\n", ret);
 		ret = -EIO;
 		goto error;
 	}
@@ -69,7 +69,7 @@ int mc_clock_init(void)
 	clk_ctx.mc_ce_core_clk = clk_get(g_ctx.mcd, "core_clk");
 	if (IS_ERR(clk_ctx.mc_ce_core_clk)) {
 		ret = PTR_ERR(clk_ctx.mc_ce_core_clk);
-		MCDRV_ERROR("cannot get core clock: %d", ret);
+		mc_dev_err("cannot get core clock: %d\n", ret);
 		goto error;
 	}
 	/* Get Interface clk */
@@ -77,7 +77,7 @@ int mc_clock_init(void)
 	if (IS_ERR(clk_ctx.mc_ce_iface_clk)) {
 		clk_put(clk_ctx.mc_ce_core_clk);
 		ret = PTR_ERR(clk_ctx.mc_ce_iface_clk);
-		MCDRV_ERROR("cannot get iface clock: %d", ret);
+		mc_dev_err("cannot get iface clock: %d\n", ret);
 		goto error;
 	}
 	/* Get AXI clk */
@@ -86,7 +86,7 @@ int mc_clock_init(void)
 		clk_put(clk_ctx.mc_ce_iface_clk);
 		clk_put(clk_ctx.mc_ce_core_clk);
 		ret = PTR_ERR(clk_ctx.mc_ce_bus_clk);
-		MCDRV_ERROR("cannot get AXI bus clock: %d", ret);
+		mc_dev_err("cannot get AXI bus clock: %d\n", ret);
 		goto error;
 	}
 	return ret;
@@ -120,19 +120,19 @@ int mc_clock_enable(void)
 
 	rc = clk_prepare_enable(clk_ctx.mc_ce_core_clk);
 	if (rc) {
-		MCDRV_ERROR("cannot enable core clock");
+		mc_dev_err("cannot enable core clock\n");
 		goto err_core;
 	}
 
 	rc = clk_prepare_enable(clk_ctx.mc_ce_iface_clk);
 	if (rc) {
-		MCDRV_ERROR("cannot enable interface clock");
+		mc_dev_err("cannot enable interface clock\n");
 		goto err_iface;
 	}
 
 	rc = clk_prepare_enable(clk_ctx.mc_ce_bus_clk);
 	if (rc) {
-		MCDRV_ERROR("cannot enable bus clock");
+		mc_dev_err("cannot enable bus clock\n");
 		goto err_bus;
 	}
 

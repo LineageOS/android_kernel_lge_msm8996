@@ -19,6 +19,12 @@
 #include <asm/cachetype.h>
 
 #define L1_CACHE_SHIFT		7
+
+#ifdef CONFIG_L1_CACHE_SHIFT
+#undef L1_CACHE_SHIFT
+#define L1_CACHE_SHIFT		CONFIG_L1_CACHE_SHIFT
+#endif
+
 #define L1_CACHE_BYTES		(1 << L1_CACHE_SHIFT)
 
 /*

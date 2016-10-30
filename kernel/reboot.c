@@ -284,6 +284,10 @@ SYSCALL_DEFINE4(reboot, int, magic1, int, magic2, unsigned int, cmd,
 	char buffer[256];
 	int ret = 0;
 
+#ifdef CONFIG_MACH_LGE
+	pr_err("%s : Try to reboot by %s\n", __FUNCTION__, current->comm);
+#endif
+
 	/* We only trust the superuser with rebooting the system. */
 	if (!ns_capable(pid_ns->user_ns, CAP_SYS_BOOT))
 		return -EPERM;
@@ -295,6 +299,11 @@ SYSCALL_DEFINE4(reboot, int, magic1, int, magic2, unsigned int, cmd,
 			magic2 != LINUX_REBOOT_MAGIC2B &&
 			magic2 != LINUX_REBOOT_MAGIC2C))
 		return -EINVAL;
+
+#ifdef CONFIG_MACH_LGE
+	pr_err("%s : Reboot by %s (magic1 :0x%x, magic2: 0x%x, cmd: 0x%x)\n", \
+			__FUNCTION__, current->comm, magic1, magic2, cmd);
+#endif
 
 	/*
 	 * If pid namespaces are enabled and the current task is in a child

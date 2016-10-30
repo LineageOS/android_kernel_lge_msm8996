@@ -90,6 +90,11 @@ if INET
 source "net/ipv4/Kconfig"
 source "net/ipv6/Kconfig"
 source "net/netlabel/Kconfig"
+source "net/mptcp/Kconfig"
+# 2015-08-25 jewon.lee@lge.com, LGP_DATA_TCPIP_MPTCP [START]
+config LGP_DATA_TCPIP_MPTCP
+    bool "LG MPTCP feature"
+# 2015-08-25 jewon.lee@lge.com, LGP_DATA_TCPIP_MPTCP [END]
 
 endif # if INET
 

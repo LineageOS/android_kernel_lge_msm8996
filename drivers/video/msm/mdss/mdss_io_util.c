@@ -134,7 +134,29 @@ void msm_dss_iounmap(struct dss_io_data *io_data)
 	io_data->len = 0;
 } /* msm_dss_iounmap */
 EXPORT_SYMBOL(msm_dss_iounmap);
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+int msm_dss_set_vreg(struct dss_vreg *in_vreg,
+	int num_vreg, int mode)
+{
 
+	int i = 0, rc = 0;
+	struct dss_vreg *curr_vreg = NULL;
+
+	for (i = 0; i < num_vreg; i++) {
+		curr_vreg = &in_vreg[i];
+		rc = regulator_set_mode(curr_vreg->vreg, mode);
+		if (rc) {
+			DEV_ERR("%pS->%s: %s failed to set mode %x. rc=%d\n",
+					__builtin_return_address(0), __func__,
+					curr_vreg->vreg_name,mode, rc);
+			return rc;
+		}
+	}
+
+	return rc;
+}
+EXPORT_SYMBOL(msm_dss_set_vreg);
+#endif
 int msm_dss_config_vreg(struct device *dev, struct dss_vreg *in_vreg,
 	int num_vreg, int config)
 {

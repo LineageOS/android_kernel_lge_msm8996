@@ -20,6 +20,8 @@
 
 #include "dtc.h"
 
+static struct del_list *head = NULL;
+
 /*
  * Tree building functions
  */
@@ -50,6 +52,30 @@ void delete_labels(struct label **labels)
 		label->deleted = 1;
 }
 
+/* write list of deleted properties and nodes */
+static void add_del_list(struct del_list **dlist, enum deltype type,
+		char *ditem)
+{
+	struct del_list *new;
+
+	new = xmalloc(sizeof(*new));
+	memset(new, 0, sizeof(*new));
+	new->name = ditem;
+	new->type = type;
+	new->next = *dlist;
+	*dlist = new;
+}
+
+void add_del_list_node(struct del_list **dlist, char *ditem)
+{
+	add_del_list(dlist, DEL_TYPE_NODE, ditem);
+}
+
+void add_del_list_property(struct del_list **dlist, char *ditem)
+{
+	add_del_list(dlist, DEL_TYPE_PROP, ditem);
+}
+
 struct property *build_property(char *name, struct data val)
 {
 	struct property *new = xmalloc(sizeof(*new));
@@ -71,6 +97,7 @@ struct property *build_property_delete(char *name)
 	new->name = name;
 	new->deleted = 1;
 
+	add_del_list_property(&head, name);
 	return new;
 }
 
@@ -294,6 +321,7 @@ void delete_node(struct node *node)
 	for_each_property(node, prop)
 		delete_property(prop);
 	delete_labels(&node->labels);
+	add_del_list_node(&head, node->name);
 }
 
 struct reserve_info *build_reserve_entry(uint64_t address, uint64_t size)
@@ -344,6 +372,7 @@ struct boot_info *build_boot_info(struct reserve_info *reservelist,
 	bi->reservelist = reservelist;
 	bi->dt = tree;
 	bi->boot_cpuid_phys = boot_cpuid_phys;
+	bi->deleted_list = head;
 
 	return bi;
 }

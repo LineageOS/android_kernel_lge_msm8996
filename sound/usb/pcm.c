@@ -492,6 +492,10 @@ static int set_format(struct snd_usb_substream *subs, struct audioformat *fmt)
 			dev_err(&dev->dev,
 				"%d:%d: usb_set_interface failed (%d)\n",
 				fmt->iface, fmt->altsetting, err);
+#ifdef CONFIG_LGE_ALICE_FRIENDS
+			if (IS_ALICE_FRIENDS_HM_ON())
+				alice_friends_hm_reset();
+#endif
 			return -EIO;
 		}
 		dev_dbg(&dev->dev, "setting usb interface %d:%d\n",

@@ -1,0 +1,430 @@
+config MACH_LGE
+	bool "Machine LGE"
+	help
+	  Support for machine LGE.
+
+
+menu "LGE Board Selection"
+
+config MACH_MSM8996_H1
+	bool "MSM8996 H1"
+	depends on ARCH_MSM8996
+	select MACH_LGE
+	select LGE_DDR_SECTION_SIZE_CHANGE
+	help
+	  Support for the Qualcomm MSM8996 H1 device.
+
+config MACH_MSM8996_H1_KR
+	bool "MSM8996 H1"
+	depends on ARCH_MSM8996
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8996 H1 device.
+
+config MACH_MSM8996_H1_LGU_KR
+	bool "MSM8996 H1_LGU_KR"
+	depends on MACH_MSM8996_H1_KR
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8996 H1_LGU_KR device.
+
+config MACH_MSM8996_H1_SKT_KR
+	bool "MSM8996 H1_SKT_KR"
+	depends on MACH_MSM8996_H1_KR
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8996 H1_SKT_KR device.
+
+config MACH_MSM8996_H1_KT_KR
+	bool "MSM8996 H1_KT_KR"
+	depends on MACH_MSM8996_H1_KR
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8996 H1_KT_KR device.
+
+config MACH_MSM8996_H1_VZW
+	bool "MSM8996 H1_VZW"
+	depends on MACH_MSM8996_H1
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8996 H1_VZW device.
+
+config MACH_MSM8996_H1_GLOBAL_COM
+	bool "MSM8996 H1_GLOBAL_COM"
+	depends on MACH_MSM8996_H1
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8996 H1_GLOBAL device.
+
+config MACH_MSM8996_H1_CNO_CN
+	bool "MSM8996 H1_CNO_CN"
+	depends on MACH_MSM8996_H1
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8996 H1_CNO_CN device.
+
+config MACH_MSM8996_H1_SPR_US
+    bool "MSM8996 H1_SPR_US"
+    depends on MACH_MSM8996_H1
+    select MACH_LGE
+    help
+      Support for the Qualcomm MSM8996 H1_SPR_US device.
+
+config MACH_MSM8996_H1_USC_US
+    bool "MSM8996 H1_USC_US"
+    depends on MACH_MSM8996_H1
+    select MACH_LGE
+    help
+      Support for the Qualcomm MSM8996 H1_USC_US device.
+
+config MACH_MSM8996_H1_LRA_US
+    bool "MSM8996 H1_LRA_US"
+    depends on MACH_MSM8996_H1
+    select MACH_LGE
+    help
+      Support for the Qualcomm MSM8996 H1_LRA_US device.
+
+config MACH_MSM8996_H1_ACG_US
+    bool "MSM8996 H1_ACG_US"
+    depends on MACH_MSM8996_H1
+    select MACH_LGE
+    help
+      Support for the Qualcomm MSM8996 H1_ACG_US device.
+
+config MACH_MSM8996_H1_ATT_US
+    bool "MSM8996 H1_ATT_US"
+    depends on MACH_MSM8996_H1
+    select MACH_LGE
+    help
+      Support for the Qualcomm MSM8996 H1_ATT_US device.
+
+config MACH_MSM8996_H1_TMO_US
+    bool "MSM8996 H1_TMO_US"
+    depends on MACH_MSM8996_H1
+    select MACH_LGE
+    help
+      Support for the Qualcomm MSM8996 H1_TMO_US device.
+
+config MACH_MSM8996_H1_CA
+    bool "MSM8996 H1_CA"
+    depends on MACH_MSM8996_H1
+    select MACH_LGE
+    help
+      Support for the Qualcomm MSM8996 H1_CA device.
+
+config MACH_MSM8996_H1_BELL_CA
+    bool "MSM8996 H1_BELL_CA"
+    depends on MACH_MSM8996_H1_CA
+    select MACH_LGE
+    help
+      Support for the Qualcomm MSM8996 H1_BELL_CA device.
+
+config MACH_MSM8996_H1_RGS_CA
+    bool "MSM8996 H1_RGS_CA"
+    depends on MACH_MSM8996_H1_CA
+    select MACH_LGE
+    help
+      Support for the Qualcomm MSM8996 H1_RGS_CA device.
+
+config MACH_MSM8996_H1_TLS_CA
+    bool "MSM8996 H1_TLS_CA"
+    depends on MACH_MSM8996_H1_CA
+    select MACH_LGE
+    help
+      Support for the Qualcomm MSM8996 H1_TLS_CA device.
+
+config MACH_MSM8996_H1_VTR_CA
+    bool "MSM8996 H1_VTR_CA"
+    depends on MACH_MSM8996_H1_CA
+    select MACH_LGE
+    help
+      Support for the Qualcomm MSM8996 H1_VTR_CA device.
+
+config MACH_MSM8996_H1_KDDI_JP
+    bool "MSM8996 H1_KDDI_JP"
+    depends on MACH_MSM8996_H1
+    select MACH_LGE
+    help
+      Support for the Qualcomm MSM8996 H1_KDDI_JP device.
+
+config MACH_MSM8996_H1_CLR_PR
+    bool "MSM8996 H1_CLR_PR"
+    depends on MACH_MSM8996_H1
+    select MACH_LGE
+    help
+      Support for the Qualcomm MSM8996 H1_CLR_PR device.
+
+config MACH_MSM8996_ELSA
+	bool "MSM8996 ELSA"
+	depends on ARCH_MSM8996
+	select MACH_LGE
+	select LGE_DDR_SECTION_SIZE_CHANGE
+	help
+	  Support for the Qualcomm MSM8996 ELSA device.
+
+config MACH_MSM8996_ELSA_KR
+	bool "MSM8996 ELSA"
+	depends on ARCH_MSM8996
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8996 ELSA device.
+
+config MACH_MSM8996_ELSA_LGU_KR
+	bool "MSM8996 ELSA_LGU_KR"
+	depends on MACH_MSM8996_ELSA_KR
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8996 ELSA_LGU_KR device.
+endmenu
+
+config MACH_MSM8996_ELSA_SKT_KR
+     bool "MSM8996 ELSA_SKT_KR"
+     depends on MACH_MSM8996_ELSA_KR
+     select MACH_LGE
+     help
+       Support for the Qualcomm MSM8996 ELSA_SKT_KR device.
+
+config MACH_MSM8996_ELSA_KT_KR
+     bool "MSM8996 ELSA_KT_KR"
+     depends on MACH_MSM8996_ELSA_KR
+     select MACH_LGE
+     help
+       Support for the Qualcomm MSM8996 ELSA_KT_KR device.
+
+config MACH_MSM8996_ELSA_VZW
+	bool "MSM8996 ELSA_VZW"
+	depends on ARCH_MSM8996
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8996 ELSA_VZW device.
+
+config MACH_MSM8996_ELSA_ATT_US
+	bool "MSM8996 ELSA_ATT US"
+	depends on ARCH_MSM8996
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8996 ELSA_ATT_US device.
+
+config MACH_MSM8996_ELSA_SPR_US
+	bool "MSM8996 ELSA_SPR US"
+	depends on ARCH_MSM8996
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8996 ELSA_SPR_US device.
+
+config MACH_MSM8996_ELSA_TMO_US
+	bool "MSM8996 ELSA_TMO US"
+	depends on ARCH_MSM8996
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8996 ELSA_TMO_US device.
+
+config MACH_MSM8996_ELSA_CLR_PR
+	bool "MSM8996 ELSA_CLR PR"
+	depends on ARCH_MSM8996
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8996 ELSA_CLR_PR device.
+
+config MACH_MSM8996_ELSA_USC_US
+	bool "MSM8996 ELSA_USC US"
+	depends on ARCH_MSM8996
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8996 ELSA_USC_US device.
+
+config MACH_MSM8996_ELSA_NAO_US
+	bool "MSM8996 ELSA_NAO US"
+	depends on ARCH_MSM8996
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8996 ELSA_NAO_US device.
+
+config MACH_MSM8996_ELSA_GLOBAL_COM
+	bool "MSM8996 ELSA_GLOBAL COM"
+	depends on ARCH_MSM8996
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8996 ELSA_GLOBAL_COM device.
+
+config MACH_MSM8996_ELSA_GLOBAL_LIVE_DUMMY
+	bool "MSM8996 ELSA_GLOBAL COM"
+	depends on ARCH_MSM8996
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8996 ELSA_GLOBAL_COM device.
+	  
+config MACH_MSM8996_ELSA_GLOBAL_CA
+	bool "MSM8996 ELSA_GLOBAL CA"
+	depends on ARCH_MSM8996
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8996 ELSA_GLOBAL_CA device.
+
+config MACH_MSM8996_ELSA_CNO_CN
+	bool "MSM8996 ELSA_CNO_CN"
+	depends on ARCH_MSM8996
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8996 ELSA_CNO_CN device.
+
+config MACH_MSM8996_ELSA_KDDI_JP
+	bool "MSM8996 ELSA_KDDI_JP"
+	depends on ARCH_MSM8996
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8996 ELSA_KDDI_JP device.
+	  	  
+config MACH_MSM8996_ELSA_DCM_JP
+	bool "MSM8996 ELSA_DCM_JP"
+	depends on ARCH_MSM8996
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8996 ELSA_DCM_JP device.
+
+menu "LGE Specific Patches"
+
+config LGE_HANDLE_PANIC
+	tristate "Support LGE Crash Handler"
+	default n
+	depends on MACH_LGE
+	help
+	  LGE Crash Handler
+
+config LGE_REBOOT_LOCKUP_DETECT
+	bool "Support to detect lockup during powering off"
+	default n
+	depends on LGE_HANDLE_PANIC
+	help
+	  For detecting lockup in reboot or shutdown, use simple
+	  detector which raise crash when expired some period after
+	  reboot like system call.
+
+config LGE_BOOTLOADER_LOG
+	tristate "Support LGE bootloader log"
+	default n
+	depends on MACH_LGE
+	help
+	  LGE bootloader log
+
+config LGE_EARJACK_DEBUGGER
+	bool "Earjack UART debugger support"
+	default n
+	depends on MACH_LGE
+	help
+	  Support earjack type UART debugger cable
+
+config LGE_BOOTLOADER_TIME_CHECKER
+    tristate "Supprt bootloader(LK, SBL) time"
+    default n
+    depends on MACH_LGE
+    help
+      Check LK, SBL booting time at
+      sys/module/lge_bootloader_time_checker/parameters/lk_time
+      sys/module/lge_bootloader_time_checker/parameters/sbl_time
+
+config LGE_PM_DEBUG
+        tristate "Support LGE PM Debug Feature"
+        default n
+        depends on MACH_LGE
+        help
+	  LGE PM Debug Feature
+
+config LGE_PM_CABLE_DETECTION
+	tristate "Support LGE PM Cable Detection"
+	default n
+	depends on MACH_LGE
+	help
+	  LGE PM Cable Detection
+
+config LGE_PM_SMPL_COUNTER
+	tristate "Support LGE SMPL COUNTER feature"
+	default n
+	depends on MACH_LGE
+	help
+	  Say y to enable smpl_cnt module, that count when
+	  booted by SMPL
+
+config LGE_PM_CHARGING_CONTROLLER
+	tristate "LGE Charging controller"
+	default n
+	depends on MACH_LGE
+	help
+	  enable the LGE Charging controller
+
+config LGE_PM_CHARGING_SCENARIO
+	tristate "Support LGE PM Charging Scenario"
+	default n
+	depends on MACH_LGE
+	help
+	  LGE PM Charging Scenario
+
+config LGE_PM_UNIFIED_NODE
+	bool "enable LGE PM Unified sysfs node"
+	default n
+	depends on MACH_LGE
+	help
+	  Support LGE PM Unified sysfs node
+
+config LGE_PM_PSEUDO_BATTERY
+	tristate "Support pseudo battery mode"
+	depends on MACH_LGE
+	default n
+	help
+	  Say Y here to enable pseudo mode setting
+
+config LGE_ACC_NT
+	tristate "Support NT accessory"
+	depends on MACH_LGE
+	default n
+	help
+	  Say Y here to enable pseudo mode setting
+
+config PRE_SELF_DIAGNOSIS
+	tristate "Support LGE self diagnosis for factory"
+	default n
+	depends on MACH_LGE
+	help
+	  LGE self diagnosis
+	  
+config LGE_PANEL_MAKER_ID_SUPPORT
+	tristate "Support pseudo battery mode"
+	depends on MACH_LGE
+	default n
+	help
+	  Say Y here to enable Panel Maker ID feature setting
+
+config LGE_QSDL_SUPPORT
+	tristate "Support for Quality Statistics Data Logging"
+	default n
+	depends on MACH_LGE
+	help
+	  QSDL is a feature which notify infomation for quality statistics
+	  data logging of device.
+
+endmenu
+
+menu "LGE QFPROM Values"
+
+config LGE_QFPROM_INTERFACE
+	bool "Support qfprom interface"
+	default n
+	depends on MACH_LGE
+	help
+	  LGE QFPROM DRIVER.
+
+config LGE_QFPROM_SECHASH
+	string "Support qfprom sec hash"
+	default 0x0
+	depends on LGE_QFPROM_INTERFACE
+	help
+	  LGE QFPROM DRIVER-SEC partition's hash value.
+
+config LGE_PM_UNIFIED_NODE
+	bool "enable LGE PM Unified sysfs node"
+	help
+	  Support LGE PM Unified sysfs node
+
+endmenu
+
+source "drivers/soc/qcom/lge/power/Kconfig"

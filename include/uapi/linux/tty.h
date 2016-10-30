@@ -34,5 +34,8 @@
 #define N_TI_WL		22	/* for TI's WL BT, FM, GPS combo chips */
 #define N_TRACESINK	23	/* Trace data routing for MIPI P1149.7 */
 #define N_TRACEROUTER	24	/* Trace data routing for MIPI P1149.7 */
+//BT_S : [CONBT-2025] LGC_BT_COMMON_IMP_MOS_V4L2
+#define N_BRCM_HCI      26      /* Broadcom shared transport for UART */
+//BT_E : [CONBT-2025] LGC_BT_COMMON_IMP_MOS_V4L2
 
 #endif /* _UAPI_LINUX_TTY_H */

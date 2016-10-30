@@ -393,7 +393,7 @@ static int msm_compr_playback_prepare(struct snd_pcm_substream *substream)
 	pr_debug("%s\n", __func__);
 
 	params = &soc_prtd->dpcm[substream->stream].hw_params;
-	if (runtime->format == SNDRV_PCM_FORMAT_S24_LE)
+	if (runtime->format == SNDRV_PCM_FORMAT_S24_LE || runtime->format == SNDRV_PCM_FORMAT_S24_3LE)
 		bits_per_sample = 24;
 
 	ret = q6asm_open_write_v2(prtd->audio_client,
@@ -506,7 +506,7 @@ static int msm_compr_capture_prepare(struct snd_pcm_substream *substream)
 	prtd->pcm_count = snd_pcm_lib_period_bytes(substream);
 	prtd->pcm_irq_pos = 0;
 
-	if (runtime->format == SNDRV_PCM_FORMAT_S24_LE)
+	if (runtime->format == SNDRV_PCM_FORMAT_S24_LE || runtime->format == SNDRV_PCM_FORMAT_S24_3LE)
 		bits_per_sample = 24;
 
 	if (!msm_compr_capture_codecs(

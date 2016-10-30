@@ -1088,8 +1088,7 @@ static int wcd9335_bring_up(struct wcd9xxx *wcd9xxx)
 				   WCD9335_CHIP_TIER_CTRL_CHIP_ID_BYTE0);
 
 	if ((val < 0) || (byte0 < 0)) {
-		dev_err(wcd9xxx->dev, "%s: tasha codec version detection fail!\n",
-			__func__);
+		pr_err("%s: wcd9335 version detection fail!\n", __func__);
 		return -EINVAL;
 	}
 
@@ -1130,8 +1129,6 @@ static int wcd9335_bring_up(struct wcd9xxx *wcd9xxx)
 				    WCD9335_CODEC_RPM_PWR_CDC_DIG_HM_CTL, 0x3);
 		__wcd9xxx_reg_write(wcd9xxx, WCD9335_CODEC_RPM_RST_CTL, 0x3);
 	} else {
-		dev_err(wcd9xxx->dev, "%s: tasha codec version unknown\n",
-			__func__);
 		ret = -EINVAL;
 	}
 

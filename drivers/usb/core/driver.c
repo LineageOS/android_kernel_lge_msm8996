@@ -1462,7 +1462,11 @@ int usb_resume(struct device *dev, pm_message_t msg)
 	 * a remote wakeup is detected or interface driver start
 	 * I/O.
 	 */
+#ifdef CONFIG_LGE_ALICE_FRIENDS
+	if (udev->bus->skip_resume && !IS_ALICE_FRIENDS_HM_ON())
+#else
 	if (udev->bus->skip_resume)
+#endif
 		return 0;
 
 	/* For all calls, take the device back to full power and

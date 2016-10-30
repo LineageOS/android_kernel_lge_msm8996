@@ -164,6 +164,8 @@ void set_rate_hid(struct rcg_clk *rcg, struct clk_freq_tbl *nf)
 	spin_lock_irqsave(&local_clock_reg_lock, flags);
 	__set_rate_hid(rcg, nf);
 	spin_unlock_irqrestore(&local_clock_reg_lock, flags);
+	/* Add a delay of 100usecs to let the RCG disable */
+	udelay(RCG_FORCE_DISABLE_DELAY_US);
 }
 
 /* RCG set rate function for clocks with MND & Half Integer Dividers. */

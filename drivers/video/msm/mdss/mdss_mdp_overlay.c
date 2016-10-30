@@ -38,6 +38,10 @@
 #include "mdss_mdp_wfd.h"
 #include "mdss_dsi_clk.h"
 
+#ifdef CONFIG_LGE_DISPLAY_COMMON
+#include "lge/lge_mdss_display.h"
+#endif
+
 #define VSYNC_PERIOD 16
 #define BORDERFILL_NDX	0x0BF000BF
 #define CHECK_BOUNDS(offset, size, max_size) \
@@ -47,6 +51,16 @@
 	((flags & MDSS_MDP_RIGHT_MIXER) || (dst_x >= left_lm_w))
 
 #define BUF_POOL_SIZE 32
+
+#ifdef CONFIG_LGE_PP_SUPPORT_WITH_PARTIAL_UPDATE
+static int color_convert_enabled = 0;
+#endif
+
+#if defined(CONFIG_LGE_DISPLAY_BL_EXTENDED)
+#define SKIP_ROI_SIZE 160
+#else
+#define SKIP_ROI_SIZE 680
+#endif
 
 static int mdss_mdp_overlay_free_fb_pipe(struct msm_fb_data_type *mfd);
 static int mdss_mdp_overlay_fb_parse_dt(struct msm_fb_data_type *mfd);
@@ -1331,6 +1345,7 @@ void mdss_mdp_handoff_cleanup_pipes(struct msm_fb_data_type *mfd,
 	}
 }
 
+#define DISABLE_IDLE_PC_FIRST_UPDATE /*patch for wait4pingpong(CASE#2180768)*/
 /**
  * mdss_mdp_overlay_start() - Programs the MDP control data path to hardware
  * @mfd: Msm frame buffer structure associated with fb device.
@@ -1346,6 +1361,19 @@ int mdss_mdp_overlay_start(struct msm_fb_data_type *mfd)
 	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
 	struct mdss_mdp_ctl *ctl = mdp5_data->ctl;
 	struct mdss_data_type *mdata = mfd_to_mdata(mfd);
+
+#ifdef DISABLE_IDLE_PC_FIRST_UPDATE
+	static int count = 0;
+
+if( mfd->panel_info->type == MIPI_CMD_PANEL )
+{
+	if(((ctl->play_cnt)== 2) && (count==1))
+	{
+		rc = pm_runtime_put_sync(&mfd->pdev->dev);
+		count++;
+	}
+}
+#endif
 
 	if (mdss_mdp_ctl_is_power_on(ctl)) {
 		if (!mdp5_data->mdata->batfet)
@@ -1379,6 +1407,20 @@ int mdss_mdp_overlay_start(struct msm_fb_data_type *mfd)
 	 * If idle pc feature is not enabled, then get a reference to the
 	 * runtime device which will be released when overlay is turned off
 	 */
+#ifdef DISABLE_IDLE_PC_FIRST_UPDATE
+if( mfd->panel_info->type == MIPI_CMD_PANEL )
+{ 	if(count == 0) {
+		rc = pm_runtime_get_sync(&mfd->pdev->dev);
+		count++;
+	   if (IS_ERR_VALUE(rc)) {
+			pr_err("unable to resume with pm_runtime_get_sync rc=%d\n",
+				rc);
+			goto end;
+	   }
+	 }
+}
+else
+{
 	if (!mdp5_data->mdata->idle_pc_enabled ||
 		(mfd->panel_info->type != MIPI_CMD_PANEL)) {
 		rc = pm_runtime_get_sync(&mfd->pdev->dev);
@@ -1386,9 +1428,21 @@ int mdss_mdp_overlay_start(struct msm_fb_data_type *mfd)
 			pr_err("unable to resume with pm_runtime_get_sync rc=%d\n",
 				rc);
 			goto end;
-		}
-	}
+	         }
+	 }
+}
 
+#else
+	if (!mdp5_data->mdata->idle_pc_enabled ||
+		(mfd->panel_info->type != MIPI_CMD_PANEL)) {
+		rc = pm_runtime_get_sync(&mfd->pdev->dev);
+		if (IS_ERR_VALUE(rc)) {
+			pr_err("unable to resume with pm_runtime_get_sync rc=%d\n",
+				rc);
+			goto end;
+	         }
+	 }
+#endif
 	/*
 	 * We need to do hw init before any hw programming.
 	 * Also, hw init involves programming the VBIF registers which
@@ -1873,12 +1927,26 @@ static void __validate_and_set_roi(struct msm_fb_data_type *mfd,
 	struct mdp_rect tmp_roi = {0};
 	bool skip_partial_update = true;
 
+#if defined(CONFIG_LGE_DISPLAY_AOD_SUPPORTED)
+	bool is_black_frame = false;
+
 	if (!commit)
 		goto set_roi;
 
 	if (!memcmp(&commit->l_roi, &tmp_roi, sizeof(tmp_roi)) &&
-	    !memcmp(&commit->r_roi, &tmp_roi, sizeof(tmp_roi)))
+	    !memcmp(&commit->r_roi, &tmp_roi, sizeof(tmp_roi))) {
+	    if (mfd->index == 0)
+			is_black_frame = true;
 		goto set_roi;
+	}
+#else
+	if (!commit)
+		goto set_roi;
+
+	if (!memcmp(&commit->l_roi, &tmp_roi, sizeof(tmp_roi)) &&
+			!memcmp(&commit->r_roi, &tmp_roi, sizeof(tmp_roi)))
+		goto set_roi;
+#endif
 
 	rect_copy_mdp_to_mdss(&commit->l_roi, &l_roi);
 	rect_copy_mdp_to_mdss(&commit->r_roi, &r_roi);
@@ -1886,6 +1954,20 @@ static void __validate_and_set_roi(struct msm_fb_data_type *mfd,
 	pr_debug("input: l_roi:-> %d %d %d %d r_roi:-> %d %d %d %d\n",
 		l_roi.x, l_roi.y, l_roi.w, l_roi.h,
 		r_roi.x, r_roi.y, r_roi.w, r_roi.h);
+
+#if defined(CONFIG_LGE_DISPLAY_AOD_SUPPORTED)
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_BL_EXTENDED)
+	if (mfd->keep_aod_pending) {
+		pr_info("skip partial update while changing U3P -> U3\n");
+		if (l_roi.x == 0 && l_roi.y == 0 &&
+			l_roi.w == ctl->width && l_roi.h == ctl->height) {
+				pr_info("keep_aod_pending reset to false\n");
+				mfd->keep_aod_pending = false;
+		}
+		goto set_roi;
+	}
+#endif
+#endif
 
 	/*
 	 * Configure full ROI
@@ -1939,6 +2021,51 @@ static void __validate_and_set_roi(struct msm_fb_data_type *mfd,
 	}
 
 set_roi:
+#if defined(CONFIG_LGE_DISPLAY_AOD_SUPPORTED)
+	if (skip_partial_update) {
+#if defined(CONFIG_LGE_DISPLAY_BL_EXTENDED)
+#if defined(CONFIG_LGE_DISPLAY_MARQUEE_SUPPORTED)
+		// border fill skip condition
+		// U3 -> U2
+		// U2 -> U3 partial
+		if ((mfd->index ==0 && mfd->panel_info->aod_node_from_user == 1 && mfd->panel_info->aod_keep_u2 == AOD_MOVE_TO_U2) ||
+			(mfd->index == 0 && mfd->panel_info->aod_cur_mode == AOD_PANEL_MODE_U2_BLANK && !mfd->panel_info->mq_mode) ||
+			(mfd->index == 0 && mfd->panel_info->aod_cur_mode == AOD_PANEL_MODE_U2_UNBLANK && !mfd->panel_info->mq_mode) ||
+			is_black_frame) {
+#else
+		if ((mfd->index ==0 && mfd->panel_info->aod_node_from_user == 1 && mfd->panel_info->aod_keep_u2 == AOD_MOVE_TO_U2) ||
+			(mfd->index == 0 && mfd->panel_info->aod_cur_mode == AOD_PANEL_MODE_U2_BLANK) ||
+			(mfd->index == 0 && mfd->panel_info->aod_cur_mode == AOD_PANEL_MODE_U2_UNBLANK) ||
+			is_black_frame) {
+#endif
+#else
+		if ((mfd->index == 0 && mfd->panel_info->aod_cur_mode == AOD_PANEL_MODE_U2_BLANK) ||
+			(mfd->index == 0 && mfd->panel_info->aod_cur_mode == AOD_PANEL_MODE_U2_UNBLANK) ||
+			(is_black_frame && mfd->panel_info->aod_node_from_user)) {
+#endif
+			pr_info("[AOD] Skip AOD area. is_black_frame : %d, mfd->panel_info->aod_cur_mode : %d\n",
+					is_black_frame, mfd->panel_info->aod_cur_mode);
+			l_roi = (struct mdss_rect){0, SKIP_ROI_SIZE,
+				ctl->mixer_left->width,
+				ctl->mixer_left->height-SKIP_ROI_SIZE};
+			if (ctl->mixer_right) {
+				r_roi = (struct mdss_rect) {0, SKIP_ROI_SIZE,
+					ctl->mixer_right->width,
+					ctl->mixer_right->height-SKIP_ROI_SIZE};
+			}
+		}
+		else {
+			l_roi = (struct mdss_rect){0, 0,
+					ctl->mixer_left->width,
+					ctl->mixer_left->height};
+			if (ctl->mixer_right) {
+				r_roi = (struct mdss_rect) {0, 0,
+						ctl->mixer_right->width,
+						ctl->mixer_right->height};
+			}
+		}
+	}
+#else
 	if (skip_partial_update) {
 		l_roi = (struct mdss_rect){0, 0,
 				ctl->mixer_left->width,
@@ -1949,6 +2076,7 @@ set_roi:
 					ctl->mixer_right->height};
 		}
 	}
+#endif
 
 	pr_debug("after processing: %s l_roi:-> %d %d %d %d r_roi:-> %d %d %d %d\n",
 		(l_roi.w && l_roi.h && r_roi.w && r_roi.h) ? "left+right" :
@@ -2670,6 +2798,9 @@ static void mdss_mdp_overlay_handle_vsync(struct mdss_mdp_ctl *ctl,
 {
 	struct msm_fb_data_type *mfd = NULL;
 	struct mdss_overlay_private *mdp5_data = NULL;
+#ifdef CONFIG_LGE_VSYNC_SKIP
+	struct mdss_data_type *mdata = NULL;
+#endif
 
 	if (!ctl) {
 		pr_err("ctl is NULL\n");
@@ -2688,10 +2819,44 @@ static void mdss_mdp_overlay_handle_vsync(struct mdss_mdp_ctl *ctl,
 		return;
 	}
 
+#ifdef CONFIG_LGE_VSYNC_SKIP
+	mdata = mfd_to_mdata(mfd);
+	if (!mdata) {
+		pr_err("mdata is NULL\n");
+		return;
+	}
+
+	if (mdata->enable_skip_vsync) {
+		mdata->bucket += mdata->weight;
+		if (mdata->skip_first == false) {
+			mdata->skip_first = true;
+
+			pr_debug("vsync on fb%d play_cnt=%d\n", mfd->index, ctl->play_cnt);
+
+			mdp5_data->vsync_time = t;
+			sysfs_notify_dirent(mdp5_data->vsync_event_sd);
+		} else {
+			if (mdata->skip_value <= mdata->bucket) {
+				pr_debug("vsync on fb%d play_cnt=%d\n", mfd->index, ctl->play_cnt);
+				mdp5_data->vsync_time = t;
+				sysfs_notify_dirent(mdp5_data->vsync_event_sd);
+				mdata->bucket -= mdata->skip_value;
+			} else {
+				mdata->skip_count++;
+			}
+		}
+	} else {
+		pr_debug("vsync on fb%d play_cnt=%d\n", mfd->index, ctl->play_cnt);
+
+		mdp5_data->vsync_time = t;
+		sysfs_notify_dirent(mdp5_data->vsync_event_sd);
+	}
+#else /* qct original */
 	pr_debug("vsync on fb%d play_cnt=%d\n", mfd->index, ctl->play_cnt);
 
 	mdp5_data->vsync_time = t;
 	sysfs_notify_dirent(mdp5_data->vsync_event_sd);
+#endif
 }
 
 /* function is called in irq context should have minimum processing */
@@ -3259,10 +3424,34 @@ static ssize_t mdss_mdp_ad_store(struct device *dev,
 static ssize_t mdss_mdp_dyn_pu_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
+#ifdef CONFIG_LGE_PP_SUPPORT_WITH_PARTIAL_UPDATE
+	struct fb_info *fbi;
+	struct msm_fb_data_type *mfd;
+	struct mdss_overlay_private *mdp5_data;
+	int ret, state;
+	struct mdss_mdp_ctl *ctl;
+
+	if (system_state == SYSTEM_POWER_OFF ||
+		system_state == SYSTEM_RESTART ||
+		system_state == SYSTEM_HALT) {
+		pr_err("Can't read dyn_pu while processing shutdown!\n");
+		return -EPERM;
+	}
+
+	fbi = dev_get_drvdata(dev);
+	mfd = fbi->par;
+	mdp5_data = mfd_to_mdp5_data(mfd);
+	ctl = mfd_to_ctl(mfd);
+
+	if (ctl->panel_data->panel_info.partial_update_enabled) {
+		mdp5_data->dyn_pu_state = !color_convert_enabled;
+	}
+#else
 	struct fb_info *fbi = dev_get_drvdata(dev);
 	struct msm_fb_data_type *mfd = fbi->par;
 	struct mdss_overlay_private *mdp5_data = mfd_to_mdp5_data(mfd);
 	int ret, state;
+#endif
 
 	state = (mdp5_data->dyn_pu_state >= 0) ? mdp5_data->dyn_pu_state : -1;
 
@@ -4082,6 +4271,36 @@ static int mdss_bl_scale_config(struct msm_fb_data_type *mfd,
 	return ret;
 }
 
+#ifdef CONFIG_LGE_PP_SUPPORT_WITH_PARTIAL_UPDATE
+static int mdss_mdp_pp_is_enable_color_convert(struct msmfb_mdp_pp *pp)
+{
+	int flags = 0, ret = 0;
+	u32 hue_adj;
+	u32 sat_adj;
+	u32 val_adj;
+	u32 cont_adj;
+
+	switch (pp->op) {
+		case mdp_op_pa_v2_cfg:
+			flags = pp->data.pa_v2_cfg_data.pa_v2_data.flags;
+			hue_adj = pp->data.pa_v2_cfg_data.pa_v2_data.global_hue_adj;
+			sat_adj = pp->data.pa_v2_cfg_data.pa_v2_data.global_sat_adj;
+			val_adj = pp->data.pa_v2_cfg_data.pa_v2_data.global_val_adj;
+			cont_adj = pp->data.pa_v2_cfg_data.pa_v2_data.global_cont_adj;
+			if(flags & (MDP_PP_OPS_WRITE | MDP_PP_OPS_ENABLE)) {
+				if(hue_adj | sat_adj | val_adj | cont_adj) {
+					ret = 1;
+				}
+			}
+			break;
+		default:
+			ret = 0;
+			break;
+	}
+	return ret;
+}
+#endif
+
 static int mdss_mdp_pp_ioctl(struct msm_fb_data_type *mfd,
 				void __user *argp)
 {
@@ -4108,6 +4327,9 @@ static int mdss_mdp_pp_ioctl(struct msm_fb_data_type *mfd,
 		break;
 
 	case mdp_op_pa_v2_cfg:
+#ifdef CONFIG_LGE_PP_SUPPORT_WITH_PARTIAL_UPDATE
+		color_convert_enabled = mdss_mdp_pp_is_enable_color_convert(&mdp_pp);
+#endif
 		ret = mdss_mdp_pa_v2_config(mfd, &mdp_pp.data.pa_v2_cfg_data,
 					&copyback);
 		break;
@@ -4966,6 +5188,26 @@ static void mdss_mdp_handle_invalid_switch_state(struct msm_fb_data_type *mfd)
 	}
 }
 
+#if defined(CONFIG_LGE_DISPLAY_BL_EXTENDED)
+static int activate_memory_detection = 0;
+void activate_frame_memory_dectection(struct msm_fb_data_type *mfd, int activation)
+{
+	int rc;
+	struct mdss_panel_data *pdata;
+	struct mdss_dsi_ctrl_pdata *ctrl;
+	pdata = dev_get_platdata(&mfd->pdev->dev);
+	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata, panel_data);
+	if(activation) {
+		rc = oem_mdss_aod_cmd_send(mfd, AOD_CMD_U3_READY);
+	} else {
+		rc = oem_mdss_aod_cmd_send(mfd, AOD_CMD_U2_READY);
+	}
+
+	if (rc)
+		pr_err("[AOD] can't send AOD enable command after null commit!!!\n");
+}
+#endif
+
 static int mdss_mdp_overlay_on(struct msm_fb_data_type *mfd)
 {
 	int rc;
@@ -5031,7 +5273,30 @@ static int mdss_mdp_overlay_on(struct msm_fb_data_type *mfd)
 			goto end;
 		if (mfd->panel_info->type != WRITEBACK_PANEL) {
 			atomic_inc(&mfd->mdp_sync_pt_data.commit_cnt);
+#if defined(CONFIG_LGE_DISPLAY_BL_EXTENDED)
+			if (mfd->index == 0 && mfd->panel_info->aod_cur_mode == AOD_PANEL_MODE_U2_UNBLANK &&
+				mfd->panel_info->aod_keep_u2 == AOD_KEEP_U2) {
+				activate_frame_memory_dectection(mfd, 1);
+				activate_memory_detection = 1;
+				pr_info("[AOD] activate frame memory write detection..\n");
+			}
+#endif
 			rc = mdss_mdp_overlay_kickoff(mfd, NULL);
+#if defined(CONFIG_LGE_DISPLAY_AOD_SUPPORTED) && !defined(CONFIG_LGE_DISPLAY_BL_EXTENDED)
+			if (!rc && mfd->index == 0 && mfd->panel_info->aod_cur_mode == AOD_PANEL_MODE_U2_UNBLANK &&
+				mfd->panel_info->aod_cmd_mode == ON_AND_AOD) {
+				struct mdss_panel_data *pdata;
+				struct mdss_dsi_ctrl_pdata *ctrl;
+				pdata = dev_get_platdata(&mfd->pdev->dev);
+				ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata, panel_data);
+				msleep(70);
+				rc = oem_mdss_aod_cmd_send(mfd, AOD_CMD_ENABLE);
+				if (rc)
+					pr_err("[AOD] can't send AOD enable command after null commit!!!\n");
+				else
+					pr_info("[AOD] Success send AOD enable command after null commit!!!\n");
+			}
+#endif
 		}
 	} else {
 		rc = mdss_mdp_ctl_setup(ctl);
@@ -5125,6 +5390,14 @@ static int mdss_mdp_overlay_off(struct msm_fb_data_type *mfd)
 		pr_debug("panel not turned off. keeping overlay on\n");
 		goto ctl_stop;
 	}
+
+#if defined(CONFIG_LGE_DISPLAY_BL_EXTENDED)
+	if (mfd->index == 0 && activate_memory_detection == 1) {
+		activate_frame_memory_dectection(mfd, 0);
+		activate_memory_detection = 0;
+		pr_info("[AOD] inactivate frame memory write detection.. \n");
+	}
+#endif
 
 	mutex_lock(&mdp5_data->ov_lock);
 
@@ -5814,6 +6087,11 @@ int mdss_mdp_overlay_init(struct msm_fb_data_type *mfd)
 
 	if (mdss_mdp_pp_overlay_init(mfd))
 		pr_warn("Failed to initialize pp overlay data.\n");
+
+#if defined(CONFIG_LGE_DISPLAY_BL_EXTENDED)
+	activate_memory_detection = 0;
+#endif
+
 	return rc;
 init_fail:
 	kfree(mdp5_data);

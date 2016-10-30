@@ -963,6 +963,10 @@ extern void unlock_device_hotplug(void);
 extern int lock_device_hotplug_sysfs(void);
 extern int device_offline(struct device *dev);
 extern int device_online(struct device *dev);
+#ifdef CONFIG_LGE_PM_LGE_POWER_CORE
+extern int lge_device_add_class_symlinks(struct device *dev);
+#endif
+
 /*
  * Root device objects for grouping under /sys/devices
  */

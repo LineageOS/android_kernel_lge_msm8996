@@ -1349,7 +1349,7 @@ static int __init zram_init(void)
 	}
 
 	show_mem_notifier_register(&zram_show_mem_notifier_block);
-	pr_info("Created %u device(s) ...\n", num_devices);
+	pr_info("Created %u device(s)\n", num_devices);
 
 	return 0;
 

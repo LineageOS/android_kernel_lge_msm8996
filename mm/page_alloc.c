@@ -854,6 +854,13 @@ bool is_cma_pageblock(struct page *page)
 	return get_pageblock_migratetype(page) == MIGRATE_CMA;
 }
 
+#ifdef CONFIG_MACH_LGE
+/* LGE_UPDATE, 2015/09/24, H1-BSP-FS@lge.com
+ * add the EXPORT_SYMBOL(is_cma_pageblock) because build is failed by tuxera exFAT
+ * this code is tuxera guide.
+ */
+EXPORT_SYMBOL(is_cma_pageblock);
+#endif
 /* Free whole pageblock and set its migration type to MIGRATE_CMA. */
 void __init init_cma_reserved_pageblock(struct page *page)
 {
@@ -1453,7 +1460,19 @@ static void drain_pages(unsigned int cpu)
 
 		pcp = &pset->pcp;
 		if (pcp->count) {
-			free_pcppages_bulk(zone, pcp->count, pcp);
+			int migratetype = 0;
+			struct list_head *list;
+
+			//check if all lists are free
+			list = &pcp->lists[migratetype];
+			while (list_empty(list)) {
+				if (++migratetype == MIGRATE_PCPTYPES)
+					break;
+				list = &pcp->lists[migratetype];
+			}
+
+			if (migratetype != MIGRATE_PCPTYPES)
+				free_pcppages_bulk(zone, pcp->count, pcp);
 			pcp->count = 0;
 		}
 		local_irq_restore(flags);

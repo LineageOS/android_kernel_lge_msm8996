@@ -11,52 +11,58 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
  * GNU General Public License for more details.
  */
-#include <linux/module.h>
-#include <linux/device.h>
-#include <linux/suspend.h>
-#include <linux/err.h>
 
-#include "public/mc_linux.h"
+#include "platform.h"	/* MC_BL_NOTIFIER */
 
-#include "platform.h"	/* MC_PM_RUNTIME */
-#include "debug.h"
-#include "scheduler.h"	/* SWd suspend/resume commands */
+#ifdef MC_BL_NOTIFIER
+#include "main.h"
+#include "scheduler.h" /* SWd suspend/resume commands */
 #include "pm.h"
+#include <asm/bL_switcher.h>
 
-#ifdef MC_PM_RUNTIME
 static struct pm_context {
-	struct notifier_block pm_notifier;
+	struct notifier_block bl_swicher_notifier;
 } pm_ctx;
 
-static int mc_suspend_notifier(struct notifier_block *nb, unsigned long event,
-			       void *dummy)
+static int bl_switcher_notifier_handler(struct notifier_block *this,
+					unsigned long event, void *ptr)
 {
+	unsigned int mpidr, cpu, cluster;
+	int ret = 0;
+
+	asm volatile ("mrc\tp15, 0, %0, c0, c0, 5" : "=r" (mpidr));
+	cpu = mpidr & 0x3;
+	cluster = (mpidr >> 8) & 0xf;
+	mc_dev_devel("%s switching!!, cpu: %u, Out=%u\n",
+		     event == SWITCH_ENTER ? "Before" : "After", cpu, cluster);
+
+	if (cpu != 0)
+		return 0;
+
 	switch (event) {
-	case PM_SUSPEND_PREPARE:
-		return mc_scheduler_suspend();
-	case PM_POST_SUSPEND:
-		return mc_scheduler_resume();
+	case SWITCH_ENTER:
+		ret = mc_scheduler_suspend();
+		break;
+	case SWITCH_EXIT:
+		ret = mc_scheduler_resume();
+		break;
+	default:
+		mc_dev_devel("MobiCore: Unknown switch event!\n");
 	}
 
 	return 0;
 }
 
-
-/* CPI todo: inconsistent handling of ret in below 2 functions */
 int mc_pm_start(void)
 {
-	int ret = 0;
-
-	pm_ctx.pm_notifier.notifier_call = mc_suspend_notifier;
-	ret = register_pm_notifier(&pm_ctx.pm_notifier);
-	MCDRV_DBG_VERBOSE("done, ret = %d", ret);
-
-	return ret;
+	pm_ctx.bl_swicher_notifier.notifier_call = bl_switcher_notifier_handler;
+	register_bL_swicher_notifier(&pm_ctx.bl_swicher_notifier);
+	return 0;
 }
 
 void mc_pm_stop(void)
 {
-	unregister_pm_notifier(&pm_ctx.pm_notifier);
+	unregister_bL_swicher_notifier(&pm_ctx.bl_swicher_notifier);
 }
 
-#endif /* MC_PM_RUNTIME */
+#endif /* MC_BL_NOTIFIER */

@@ -43,6 +43,10 @@ notrace static unsigned int check_preemption_disabled(const char *what1,
 		what1, what2, preempt_count() - 1, current->comm, current->pid);
 
 	print_symbol("caller is %s\n", (long)__builtin_return_address(0));
+
+#ifdef CONFIG_DEBUG_LOCKS_ON_BUG
+	BUG();
+#endif
 	dump_stack();
 
 out_enable:

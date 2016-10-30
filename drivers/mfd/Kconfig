@@ -1418,3 +1418,12 @@ config MFD_VEXPRESS_SYSREG
 
 endmenu
 endif
+
+config MFD_H1_DSV
+     bool "DSV Power Management chip"
+     depends on I2C
+     select MFD_CORE
+     select REGMAP_I2C
+     help
+       if you say yes here you get support for the DSV series of
+       Power Management chips.

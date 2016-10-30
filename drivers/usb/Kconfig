@@ -74,6 +74,14 @@ config USB
 	  To compile this driver as a module, choose M here: the
 	  module will be called usbcore.
 
+config USB_HOST_NOTIFY
+        boolean "USB notify layer"
+        depends on USB
+        ---help---
+          Added usb notify layer on gadget,host,otg drivers.
+          The usb notify layer controls otg mode and vbus draw
+          and vbus detect irq.
+
 if USB
 
 source "drivers/usb/core/Kconfig"
@@ -158,5 +166,7 @@ config USB_LED_TRIG
 	  Say Y here if you are working on a system with led-class supported
 	  LEDs and you want to use them as activity indicators for USB host or
 	  gadget.
+
+source "drivers/usb/lge/Kconfig"
 
 endif # USB_SUPPORT

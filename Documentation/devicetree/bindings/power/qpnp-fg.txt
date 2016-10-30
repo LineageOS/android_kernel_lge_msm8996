@@ -255,6 +255,9 @@ Parent node optional properties:
 					empty battery condition. If this is
 					not specified, empty battery condition
 					is detected by empty-soc interrupt.
+- qcom,fg-skip-first-estimate		A boolean property to specify if the
+					first estimate done by FG should be
+					skipped.
 - qcom,fg-batt-temp-low-limit:		Battery temperature (in decidegC) low
 					limit  which will be used to validate
 					the battery temperature reading from FG.

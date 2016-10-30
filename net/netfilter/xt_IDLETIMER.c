@@ -393,7 +393,9 @@ static unsigned int idletimer_tg_target(struct sk_buff *skb,
 
 	BUG_ON(!info->timer);
 
+	spin_lock_bh(&timestamp_lock);
 	info->timer->active = true;
+	spin_unlock_bh(&timestamp_lock);
 
 	if (time_before(info->timer->timer.expires, now)) {
 		schedule_work(&info->timer->work);
@@ -460,9 +462,9 @@ static void idletimer_tg_destroy(const struct xt_tgdtor_param *par)
 
 		list_del(&info->timer->entry);
 		del_timer_sync(&info->timer->timer);
-		cancel_work_sync(&info->timer->work);
 		sysfs_remove_file(idletimer_tg_kobj, &info->timer->attr.attr);
 		unregister_pm_notifier(&info->timer->pm_nb);
+		cancel_work_sync(&info->timer->work);
 		kfree(info->timer->attr.attr.name);
 		kfree(info->timer);
 	} else {

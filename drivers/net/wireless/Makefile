@@ -65,4 +65,5 @@ obj-$(CONFIG_WCNSS_CORE)	+= wcnss/
 
 obj-$(CONFIG_CNSS)	+= cnss/
 obj-$(CONFIG_WCNSS_MEM_PRE_ALLOC) += cnss_prealloc/
+obj-$(CONFIG_BCMDHD)	+= bcmdhd/
 obj-$(CONFIG_CNSS_CRYPTO)	+= cnss_crypto/

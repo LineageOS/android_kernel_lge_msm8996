@@ -46,6 +46,9 @@
 #define DIAG_CTRL_MSG_DCI_HANDSHAKE_PKT		29
 #define DIAG_CTRL_MSG_PD_STATUS			30
 #define DIAG_CTRL_MSG_TIME_SYNC_PKT		31
+#ifdef CONFIG_LGE_USB_DIAG_LOCK_SPR
+#define DIAG_CTRL_MSG_LGE_DIAG_ENABLE		100
+#endif
 
 /*
  * Feature Mask Definitions: Feature mask is used to sepcify Diag features
