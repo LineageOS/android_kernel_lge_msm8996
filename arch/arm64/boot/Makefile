@@ -14,13 +14,9 @@
 # Based on the ia64 boot/Makefile.
 #
 
-ifneq ($(CONFIG_MACH_LGE), y)
 include $(srctree)/arch/arm64/boot/dts/qcom/Makefile
-else
-include $(srctree)/arch/arm64/boot/dts/lge/Makefile
-endif
 
-targets := Image Image.$(KERNEL_COMPRESSION_SUFFIX)
+targets := Image Image.gz
 
 DTB_NAMES := $(subst $\",,$(CONFIG_BUILD_ARM64_APPENDED_DTB_IMAGE_NAMES))
 ifneq ($(DTB_NAMES),)
@@ -30,27 +26,19 @@ else
 DTB_OBJS := $(shell find $(obj)/dts/ -name \*.dtb)
 endif
 
-ifeq ($(KERNEL_COMPRESSION_SUFFIX),lz4)
-COMPRESSION_CMND := lz4
-endif
-
-ifeq ($(KERNEL_COMPRESSION_SUFFIX),gz)
-COMPRESSION_CMND := gzip
-endif
-
 $(obj)/Image: vmlinux FORCE
 	$(call if_changed,objcopy)
 
-$(obj)/Image.$(KERNEL_COMPRESSION_SUFFIX): $(obj)/Image FORCE
-	$(call if_changed,$(COMPRESSION_CMND))
+$(obj)/Image.gz: $(obj)/Image FORCE
+	$(call if_changed,gzip)
 
-$(obj)/Image.$(KERNEL_COMPRESSION_SUFFIX)-dtb: $(obj)/Image.$(KERNEL_COMPRESSION_SUFFIX) $(DTB_OBJS) FORCE
+$(obj)/Image.gz-dtb: $(obj)/Image.gz $(DTB_OBJS) FORCE
 	$(call if_changed,cat)
 
 install: $(obj)/Image
 	$(CONFIG_SHELL) $(srctree)/$(src)/install.sh $(KERNELRELEASE) \
 	$(obj)/Image System.map "$(INSTALL_PATH)"
 
-zinstall: $(obj)/Image.$(KERNEL_COMPRESSION_SUFFIX)
+zinstall: $(obj)/Image.gz
 	$(CONFIG_SHELL) $(srctree)/$(src)/install.sh $(KERNELRELEASE) \
-	$(obj)/Image.$(KERNEL_COMPRESSION_SUFFIX) System.map "$(INSTALL_PATH)"
+	$(obj)/Image.gz System.map "$(INSTALL_PATH)"
