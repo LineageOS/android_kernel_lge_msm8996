@@ -1335,6 +1335,7 @@ static void wcd_correct_swch_plug(struct work_struct *work)
 		plug_type = MBHC_PLUG_TYPE_GND_MIC_SWAP;
 		pr_debug("%s: Plug found, plug type is %d\n",
 			 __func__, plug_type);
+	}
 #ifdef CONFIG_MACH_LGE
 	if (mbhc->mbhc_cfg->detect_extn_cable == false &&
 		plug_type == MBHC_PLUG_TYPE_HIGH_HPH) {
