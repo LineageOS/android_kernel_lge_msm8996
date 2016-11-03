@@ -1758,61 +1758,61 @@ static int dwc3_msm_gsi_ep_op(struct usb_ep *ep,
 	switch (op) {
 	case GSI_EP_OP_PREPARE_TRBS:
 		request = (struct usb_gsi_request *)op_data;
-		dev_dbg(mdwc->dev, "EP_OP_PREPARE_TRBS for %s\n", ep->name);
+		dbg_print(0xFF, "PREPARE_TRB", 0, ep->name);
 		ret = gsi_prepare_trbs(ep, request);
 		break;
 	case GSI_EP_OP_FREE_TRBS:
-		dev_dbg(mdwc->dev, "EP_OP_FREE_TRBS for %s\n", ep->name);
+		dbg_print(0xFF, "FREE_TRB", 0, ep->name);
 		gsi_free_trbs(ep);
 		break;
 	case GSI_EP_OP_CONFIG:
 		request = (struct usb_gsi_request *)op_data;
-		dev_dbg(mdwc->dev, "EP_OP_CONFIG for %s\n", ep->name);
+		dbg_print(0xFF, "EP_CONFIG", 0, ep->name);
 		gsi_configure_ep(ep, request);
 		break;
 	case GSI_EP_OP_STARTXFER:
-		dev_dbg(mdwc->dev, "EP_OP_STARTXFER for %s\n", ep->name);
+		dbg_print(0xFF, "EP_STARTXFER", 0, ep->name);
 		ret = gsi_startxfer_for_ep(ep);
 		break;
 	case GSI_EP_OP_GET_XFER_IDX:
-		dev_dbg(mdwc->dev, "EP_OP_GET_XFER_IDX for %s\n", ep->name);
+		dbg_print(0xFF, "EP_GETXFERID", 0, ep->name);
 		ret = gsi_get_xfer_index(ep);
 		break;
 	case GSI_EP_OP_STORE_DBL_INFO:
-		dev_dbg(mdwc->dev, "EP_OP_STORE_DBL_INFO\n");
+		dbg_print(0xFF, "EP_STRDBL", 0, ep->name);
 		gsi_store_ringbase_dbl_info(ep, *((u32 *)op_data));
 		break;
 	case GSI_EP_OP_ENABLE_GSI:
-		dev_dbg(mdwc->dev, "EP_OP_ENABLE_GSI\n");
+		dbg_print(0xFF, "ENABLE_GSI", 0, ep->name);
 		gsi_enable(ep);
 		break;
 	case GSI_EP_OP_GET_CH_INFO:
 		ch_info = (struct gsi_channel_info *)op_data;
+		dbg_print(0xFF, "GET_CH_INFO", 0, ep->name);
 		gsi_get_channel_info(ep, ch_info);
 		break;
 	case GSI_EP_OP_RING_IN_DB:
 		request = (struct usb_gsi_request *)op_data;
-		dev_dbg(mdwc->dev, "RING IN EP DB\n");
+		dbg_print(0xFF, "RING_IN_DB", 0, ep->name);
 		gsi_ring_in_db(ep, request);
 		break;
 	case GSI_EP_OP_UPDATEXFER:
 		request = (struct usb_gsi_request *)op_data;
-		dev_dbg(mdwc->dev, "EP_OP_UPDATEXFER\n");
+		dbg_print(0xFF, "EP_UPDATEXFER", 0, ep->name);
 		ret = gsi_updatexfer_for_ep(ep, request);
 		break;
 	case GSI_EP_OP_ENDXFER:
 		request = (struct usb_gsi_request *)op_data;
-		dev_dbg(mdwc->dev, "EP_OP_ENDXFER for %s\n", ep->name);
+		dbg_print(0xFF, "EP_ENDXFER", 0, ep->name);
 		gsi_endxfer_for_ep(ep);
 		break;
 	case GSI_EP_OP_SET_CLR_BLOCK_DBL:
 		block_db = *((bool *)op_data);
-		dev_dbg(mdwc->dev, "EP_OP_SET_CLR_BLOCK_DBL %d\n",
-						block_db);
+		dbg_print(0xFF, "CLR_BLK_DBL", block_db, ep->name);
 		gsi_set_clear_dbell(ep, block_db);
 		break;
 	case GSI_EP_OP_CHECK_FOR_SUSPEND:
-		dev_dbg(mdwc->dev, "EP_OP_CHECK_FOR_SUSPEND\n");
+		dbg_print(0xFF, "CHK_SUSPEND", 0, ep->name);
 		f_suspend = *((bool *)op_data);
 		ret = gsi_check_ready_to_suspend(ep, f_suspend);
 		break;
@@ -2441,8 +2441,15 @@ static int dwc3_msm_prepare_suspend(struct dwc3_msm *mdwc)
 #ifdef CONFIG_LGE_USB_G_ANDROID
 	if (!(reg & PWR_EVNT_LPM_IN_L2_MASK)) {
 		dev_err(mdwc->dev, "could not transition HS PHY to L2\n");
-		if (mdwc->in_host_mode) {
-			queue_delayed_work(mdwc->dwc3_wq, &mdwc->resume_work, 0);
+		dbg_event(0xFF, "PWR_EVNT_LPM",
+			dwc3_msm_read_reg(mdwc->base, PWR_EVNT_IRQ_STAT_REG));
+		dbg_event(0xFF, "QUSB_STS",
+			dwc3_msm_read_reg(mdwc->base, QSCRATCH_USB30_STS_REG));
+		/* Mark fatal error for host mode or USB bus suspend case */
+		if (mdwc->in_host_mode || (mdwc->vbus_active
+			&& mdwc->otg_state == OTG_STATE_B_SUSPEND)) {
+			queue_delayed_work(mdwc->dwc3_wq,
+					&mdwc->resume_work, 0);
 			return -EBUSY;
 		}
 	}
@@ -3054,7 +3061,6 @@ static int dwc3_msm_gadget_func_io(struct power_supply *psy,
 #endif
 
 #ifdef CONFIG_LGE_USB_TYPE_C
-#ifdef CONFIG_LGE_PM_VZW_REQ
 #define USB_INPUT_5P0_VOLTAGE 5000
 #define FAST_CHARGING_INPUT_POWER  15000000
 static int dwc3_msm_input_power_calc(void)
@@ -3087,7 +3093,6 @@ static int dwc3_msm_input_power_calc(void)
 
 	return 0;
 }
-#endif
 #endif
 
 static int dwc3_msm_power_get_property_usb(struct power_supply *psy,
@@ -3165,10 +3170,8 @@ static int dwc3_msm_power_get_property_usb(struct power_supply *psy,
 			psy->type == POWER_SUPPLY_TYPE_USB_HVDCP_3)
 			val->intval = 1;
 #ifdef CONFIG_LGE_USB_TYPE_C
-#ifdef CONFIG_LGE_PM_VZW_REQ
 		else
 			val->intval = dwc3_msm_input_power_calc();
-#endif
 #endif
 		break;
 #endif
@@ -4384,8 +4387,8 @@ static int dwc3_otg_start_host(struct dwc3_msm *mdwc, int on)
 		mdwc->hs_phy->flags &= ~PHY_OTG_MODE;
 #endif
 
-		usb_unregister_atomic_notify(&mdwc->usbdev_nb);
 #ifndef CONFIG_LGE_USB_TYPE_C
+		usb_unregister_atomic_notify(&mdwc->usbdev_nb);
 		if (!IS_ERR(mdwc->vbus_reg))
 			ret = regulator_disable(mdwc->vbus_reg);
 		if (ret) {

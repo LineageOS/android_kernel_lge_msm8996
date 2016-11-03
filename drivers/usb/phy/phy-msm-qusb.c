@@ -284,6 +284,7 @@ static int qusb_phy_config_vdd(struct qusb_phy *qphy, int high)
 	return ret;
 }
 
+#if 0
 static int qusb_phy_vdd(struct qusb_phy *qphy, bool on)
 {
 	int ret = 0;
@@ -324,6 +325,7 @@ static int qusb_phy_vdd(struct qusb_phy *qphy, bool on)
 err:
 	return ret;
 }
+#endif
 
 static int qusb_phy_enable_power(struct qusb_phy *qphy, bool on)
 {
@@ -340,9 +342,18 @@ static int qusb_phy_enable_power(struct qusb_phy *qphy, bool on)
 	if (!on)
 		goto disable_vdda33;
 
-	ret = qusb_phy_vdd(qphy, true);
-	if (ret < 0)
+	ret = qusb_phy_config_vdd(qphy, true);
+	if (ret) {
+		dev_err(qphy->phy.dev, "Unable to config VDD:%d\n",
+							ret);
 		goto err_vdd;
+	}
+
+	ret = regulator_enable(qphy->vdd);
+	if (ret) {
+		dev_err(qphy->phy.dev, "Unable to enable VDD\n");
+		goto unconfig_vdd;
+	}
 
 	ret = regulator_set_optimum_mode(qphy->vdda18, QUSB2PHY_1P8_HPM_LOAD);
 	if (ret < 0) {
@@ -422,7 +433,16 @@ put_vdda18_lpm:
 		dev_err(qphy->phy.dev, "Unable to set LPM of vdda18\n");
 
 disable_vdd:
-	ret = qusb_phy_vdd(qphy, false);
+	ret = regulator_disable(qphy->vdd);
+	if (ret)
+		dev_err(qphy->phy.dev, "Unable to disable vdd:%d\n",
+								ret);
+
+unconfig_vdd:
+	ret = qusb_phy_config_vdd(qphy, false);
+	if (ret)
+		dev_err(qphy->phy.dev, "Unable unconfig VDD:%d\n",
+								ret);
 err_vdd:
 	qphy->power_enabled = false;
 	dev_dbg(qphy->phy.dev, "QUSB PHY's regulators are turned OFF.\n");
@@ -544,9 +564,6 @@ static int qusb_phy_update_dpdm(struct usb_phy *phy, int value)
 			}
 
 			if (!qphy->cable_connected) {
-				if (qphy->tcsr_phy_lvl_shift_keeper)
-					writel_relaxed(0x0,
-					       qphy->tcsr_phy_lvl_shift_keeper);
 				dev_dbg(phy->dev, "turn off for HVDCP case\n");
 				ret = qusb_phy_enable_power(qphy, false);
 			}
@@ -1111,18 +1128,7 @@ static int qusb_phy_set_suspend(struct usb_phy *phy, int suspend)
 			wmb();
 
 			qusb_phy_enable_clocks(qphy, false);
-			if (qphy->tcsr_phy_lvl_shift_keeper)
-				writel_relaxed(0x0,
-					qphy->tcsr_phy_lvl_shift_keeper);
 			qusb_phy_enable_power(qphy, false);
-			/*
-			 * Set put_into_high_z_state to true so next USB
-			 * cable connect, DPF_DMF request performs PHY
-			 * reset and put it into high-z state. For bootup
-			 * with or without USB cable, it doesn't require
-			 * to put QUSB PHY into high-z state.
-			 */
-			qphy->put_into_high_z_state = true;
 		}
 		qphy->suspended = true;
 	} else {
@@ -1135,9 +1141,6 @@ static int qusb_phy_set_suspend(struct usb_phy *phy, int suspend)
 				qphy->base + QUSB2PHY_PORT_INTR_CTRL);
 		} else {
 			qusb_phy_enable_power(qphy, true);
-			if (qphy->tcsr_phy_lvl_shift_keeper)
-				writel_relaxed(0x1,
-					qphy->tcsr_phy_lvl_shift_keeper);
 			qusb_phy_enable_clocks(qphy, true);
 		}
 
