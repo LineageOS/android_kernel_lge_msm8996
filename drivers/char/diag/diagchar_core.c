@@ -3302,13 +3302,8 @@ static int diagchar_setup_cdev(dev_t devno)
 		return -1;
 	}
 
-#ifdef CONFIG_LGE_USB_G_ANDROID
-	driver->diag_dev = device_create(driver->diagchar_class, NULL, devno,
-					 (void *)driver, "diag_lge");
-#else
 	driver->diag_dev = device_create(driver->diagchar_class, NULL, devno,
 					 (void *)driver, "diag");
-#endif
 
 	if (!driver->diag_dev)
 		return -EIO;
