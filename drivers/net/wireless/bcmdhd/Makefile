@@ -33,7 +33,7 @@ else ifeq ($(CONFIG_BCMDHD_PCIE),y)
   DHDCFLAGS += -DCUSTOM_DHD_WATCHDOG_MS=500
   DHDCFLAGS += -DNUM_SCB_MAX_PROBE=3
   # Enable wakelock for legacy scan
-  DHDCFLAGS += -DDHD_USE_SCAN_WAKELOCK
+  #DHDCFLAGS += -DDHD_USE_SCAN_WAKELOCK
   # Enable wakelock debug function
   DHDCFLAGS += -DDHD_TRACE_WAKE_LOCK
   # Extended HANG event with reason codes
