@@ -14545,7 +14545,9 @@ static s32 __wl_cfg80211_down(struct bcm_cfg80211 *cfg)
 	defined(WL_NEWCFG_PRIVCMD_SUPPORT))
 	struct net_device *p2p_net = cfg->p2p_net;
 #endif /* WL_CFG80211 && (WL_ENABLE_P2P_IF || WL_NEWCFG_PRIVCMD_SUPPORT) */
+#ifdef DHD_USE_SCAN_WAKELOCK
 	dhd_pub_t *dhd =  (dhd_pub_t *)(cfg->pub);
+#endif
 
 	WL_DBG(("In\n"));
 	/* Delete pm_enable_work */
