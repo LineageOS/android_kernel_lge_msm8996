@@ -12,6 +12,9 @@
 
 /*[H1_BT_BRINGUP_S]*/
 &blsp1_uart2 {
+                /delete-property/ interupt-names;
+                /delete-property/ interupts;
+                /delete-property/ interupt-map;
                 interrupt-names = "core_irq", "bam_irq";
                 interrupts = <0 1>;
                 interrupt-map = <0 &intc 0 0 108 0
@@ -45,17 +48,26 @@
 		wlan-hostwake-gpio = <&tlmm 78 0>;
 	};
 
-    bt_sleep{
-              compatible = "bcm,bluesleep";
-              bt_host_wake = <&tlmm 24 0>;
-              bt_ext_wake = <&tlmm 92 0>;
-              status = "ok";
-    };
+    bt_driver {
+		compatible = "bcm,btdriver";
+        bcm,bt-reset-gpio = <&tlmm 81 0>;
+		status = "ok";
+	};
 
-    bt_bcm4358{
-            compatible = "bcm,bcm4358";
-            bcm,bt-reset-gpio = <&tlmm 81 0>;
-            bcm,bt-vdd-io-supply = <&pm8994_s4>;
-            bcm,bt-vdd-io-voltage-level = <1800000 1800000>;
-    };
+	bt_bluesleep {
+		compatible = "bcm,bluesleep";
+		/*
+		pinctrl-names = "bt_wake_default","bt_wake_active","bt_wake_suspend",
+						"host_wake_default","host_wake_active","host_wake_suspend";
+		pinctrl-0 = <&bt_wake_default_s>;
+		pinctrl-1 = <&bt_wake_active_s>;
+		pinctrl-2 = <&bt_wake_suspend_s>;
+		pinctrl-3 = <&host_wake_default_s>;
+		pinctrl-4 = <&host_wake_active_s>;
+		pinctrl-5 = <&host_wake_suspend_s>;
+		*/
+		bcm,bt-wake-gpio = <&tlmm 92 0>;
+		bcm,bt-host-wake-gpio = <&tlmm 24 0>;
+		status = "ok";
+	};
 };
