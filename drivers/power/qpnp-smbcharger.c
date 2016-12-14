@@ -10781,7 +10781,11 @@ static int smbchg_probe(struct spmi_device *spmi)
 
 	chip->hvdcp_enable_votable = create_votable(&spmi->dev,
 			"SMBCHG: hvdcp_enable",
+#ifdef CONFIG_LGE_PM
+			VOTE_MIN, NUM_HVDCP_VOTERS, 1, 0,
+#else
 			VOTE_MIN, NUM_HVDCP_VOTERS, 1,
+#endif
 			smbchg_hvdcp_enable_cb);
 	if (IS_ERR(chip->hvdcp_enable_votable))
 		return PTR_ERR(chip->hvdcp_enable_votable);
