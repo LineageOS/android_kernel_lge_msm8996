@@ -4035,7 +4035,7 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 	struct snd_soc_dai_link *dailink;
 	int len_1, len_2, len_3, len_4;
 	const struct of_device_id *match;
-#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_BOARD_REVISION
+#if defined(CONFIG_LGE_PM_LGE_POWER_CLASS_BOARD_REVISION) && defined(CONFIG_MACH_MSM8996_H1)
 	union lge_power_propval lge_val = {0,};
 	struct lge_power *lge_hw_rev_lpc = NULL;
 	int rc;
