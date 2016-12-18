@@ -190,10 +190,10 @@ static void hsuart_power(int on)
  */
 int bluesleep_can_sleep(void)
 {
+	int can_sleep = gpio_get_value(bsi->ext_wake) && gpio_get_value(bsi->host_wake) && (bsi->uport != NULL);
+	pr_err("value: %i\n", can_sleep);
 	/* check if WAKE_BT_GPIO and BT_WAKE_GPIO are both deasserted */
-	return ((gpio_get_value(bsi->host_wake) != bsi->irq_polarity) &&
-		(test_bit(BT_EXT_WAKE, &flags)) && (!test_bit(BT_RXTIMER, &flags)) &&
-		(bsi->uport != NULL));
+	return can_sleep;
 }
 
 /**
@@ -206,15 +206,15 @@ static void bluesleep_sleep_work(struct work_struct *work)
 		/* already asleep, this is an error case */
 		if (test_bit(BT_ASLEEP, &flags)) {
 			if (debug_mask & DEBUG_SUSPEND)
-				pr_info("already asleep\n");
+				pr_err("already asleep\n");
 			return;
 		}
 
 		if (msm_hs_tx_empty(bsi->uport)) {
 			if (debug_mask & DEBUG_SUSPEND)
-				pr_info("going to sleep...\n");
+				pr_err("going to sleep...\n");
 			set_bit(BT_ASLEEP, &flags);
-			/*Deactivating UART */
+			/* Deactivating UART */
 			hsuart_power(HS_UART_OFF);
 			/* UART clk is not turned off immediately. Release
 			 * wakelock after 500 ms.
@@ -228,7 +228,8 @@ static void bluesleep_sleep_work(struct work_struct *work)
 		/* Can not sleep but UART has already sleep */
 		if (debug_mask & DEBUG_SUSPEND)
 			pr_err("waking up...\n");
-		wake_lock(&bsi->wake_lock);
+		/* TODO: Check this wakelock */
+		wake_lock_timeout(&bsi->wake_lock, HZ / 2);
 		clear_bit(BT_ASLEEP, &flags);
 
 		/* Add a timer to make sure that UART
@@ -252,7 +253,7 @@ static void bluesleep_sleep_work(struct work_struct *work)
 static void bluesleep_hostwake_task(unsigned long data)
 {
 	if (debug_mask & DEBUG_SUSPEND)
-		pr_info("hostwake line change\n");
+		pr_err("hostwake line change\n");
 
 	spin_lock(&rw_lock);
 	if ((gpio_get_value(bsi->host_wake) == bsi->irq_polarity))
@@ -277,7 +278,7 @@ static void bluesleep_outgoing_data(void)
 	/* if the tx side is sleeping... */
 	if (test_bit(BT_EXT_WAKE, &flags)) {
 		if (debug_mask & DEBUG_SUSPEND)
-			pr_info("tx was sleeping\n");
+			pr_err("tx was sleeping\n");
 		if (bsi->has_ext_wake == 1)
 			gpio_set_value(bsi->ext_wake, 0);
 		clear_bit(BT_EXT_WAKE, &flags);
@@ -286,7 +287,8 @@ static void bluesleep_outgoing_data(void)
 	if (test_bit(BT_ASLEEP, &flags)) {
 		if (debug_mask & DEBUG_SUSPEND)
 			pr_err("waking up...\n");
-		wake_lock(&bsi->wake_lock);
+		/* TODO: Check this wakelock */
+		wake_lock_timeout(&bsi->wake_lock, HZ / 2);
 		clear_bit(BT_ASLEEP, &flags);
 		power_on_uart = 1;
 	}
@@ -357,10 +359,12 @@ static int bluesleep_start(void)
 	spin_lock_irqsave(&rw_lock, irq_flags);
 
 	if (test_bit(BT_PROTO, &flags)) {
+		pr_err("unlocking irq 1.1");
 		spin_unlock_irqrestore(&rw_lock, irq_flags);
 		return 0;
 	}
 
+	pr_err("unlocking irq 1.2");
 	spin_unlock_irqrestore(&rw_lock, irq_flags);
 
 	if (!atomic_dec_and_test(&open_count)) {
@@ -387,9 +391,11 @@ static int bluesleep_start(void)
 	}
 #endif
 	set_bit(BT_PROTO, &flags);
-	wake_lock(&bsi->wake_lock);
+	pr_err("set wakelock");
+	wake_lock_timeout(&bsi->wake_lock, HZ / 2);
 	return 0;
 fail:
+	pr_err("failed");
 	del_timer(&rx_timer);
 	atomic_inc(&open_count);
 
@@ -403,6 +409,7 @@ static void bluesleep_stop(void)
 {
 	unsigned long irq_flags;
 
+	pr_err("stopping sleep mode");
 	spin_lock_irqsave(&rw_lock, irq_flags);
 
 	if (!test_bit(BT_PROTO, &flags)) {
@@ -433,6 +440,7 @@ static void bluesleep_stop(void)
 	if (disable_irq_wake(bsi->host_wake_irq))
 		pr_err("Couldn't disable hostwake IRQ wakeup mode");
 #endif
+	pr_err("setting wakelock");
 	wake_lock_timeout(&bsi->wake_lock, HZ / 2);
 }
 
@@ -585,11 +593,11 @@ static int bluesleep_resume(struct platform_device *pdev)
 {
 	if (test_bit(BT_SUSPEND, &flags)) {
 		if (debug_mask & DEBUG_SUSPEND)
-			pr_info("bluesleep resuming...\n");
+			pr_err("bluesleep resuming...\n");
 		if ((bsi->uport != NULL) &&
 			(gpio_get_value(bsi->host_wake) == bsi->irq_polarity)) {
 			if (debug_mask & DEBUG_SUSPEND)
-				pr_info("bluesleep resume from BT event...\n");
+				pr_err("bluesleep resume from BT event...\n");
 			msm_hs_request_clock_on(bsi->uport);
 			msm_hs_set_mctrl(bsi->uport, TIOCM_RTS);
 		}
@@ -601,7 +609,7 @@ static int bluesleep_resume(struct platform_device *pdev)
 static int bluesleep_suspend(struct platform_device *pdev, pm_message_t state)
 {
 	if (debug_mask & DEBUG_SUSPEND)
-		pr_info("bluesleep suspending...\n");
+		pr_err("bluesleep suspending...\n");
 	set_bit(BT_SUSPEND, &flags);
 	return 0;
 }
