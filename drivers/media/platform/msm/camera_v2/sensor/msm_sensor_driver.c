@@ -34,7 +34,7 @@ static struct msm_sensor_ctrl_t *g_sctrl[MAX_CAMERAS];
 // Should be moved into a driver file like imx234.c
 // imx234.c settings do not seem to be parsed
 // even when "obj-$(CONFIG_IMX234) += imx234.o" is enabled in the Makefile
-#ifdef CONFIG_LGE_CAMERA_DRIVER
+#if defined(CONFIG_LGE_CAMERA_DRIVER) && defined(CONFIG_MACH_MSM8996_H1)
 static struct msm_sensor_power_setting imx234_power_up[] = {
 	{.seq_type = 1, .seq_val = 0, .config_val = 0, .delay = 1,},
 	{.seq_type = 1, .seq_val = 8, .config_val = 0, .delay = 1,},
@@ -668,7 +668,7 @@ static int32_t msm_sensor_get_power_down_settings(void *setting,
 	size_down = slave_info->power_setting_array.size_down;
 	if (!size_down || size_down > MAX_POWER_CONFIG)
 		size_down = slave_info->power_setting_array.size;
-#ifdef CONFIG_LGE_CAMERA_DRIVER
+#if defined(CONFIG_LGE_CAMERA_DRIVER) && defined(CONFIG_MACH_MSM8996_H1)
     if(slave_info->camera_id == 0){
         size_down = ARRAY_SIZE(imx234_power_down);
     }
@@ -693,7 +693,7 @@ static int32_t msm_sensor_get_power_down_settings(void *setting,
 	if (slave_info->power_setting_array.power_down_setting) {
 #ifdef CONFIG_COMPAT
 		if (is_compat_task()) {
-#ifdef CONFIG_LGE_CAMERA_DRIVER
+#if defined(CONFIG_LGE_CAMERA_DRIVER) && defined(CONFIG_MACH_MSM8996_H1)
             if(slave_info->camera_id == 0){
             pr_err("msm_sensor_get_power_down_settings: forcing imx234_power_down\n");
             for (i = 0; i < size_down; i++) {
@@ -779,7 +779,7 @@ static int32_t msm_sensor_get_power_up_settings(void *setting,
 
 	size = slave_info->power_setting_array.size;
 
-#ifdef CONFIG_LGE_CAMERA_DRIVER
+#if defined(CONFIG_LGE_CAMERA_DRIVER) && defined(CONFIG_MACH_MSM8996_H1)
     if(slave_info->camera_id == 0){
         size = ARRAY_SIZE(imx234_power_up);
     }
@@ -804,7 +804,7 @@ static int32_t msm_sensor_get_power_up_settings(void *setting,
 
 #ifdef CONFIG_COMPAT
 	if (is_compat_task()) {
-#ifdef CONFIG_LGE_CAMERA_DRIVER
+#if defined(CONFIG_LGE_CAMERA_DRIVER) && defined(CONFIG_MACH_MSM8996_H1)
 		if(slave_info->camera_id == 0){
             pr_err("msm_sensor_get_power_up_settings: forcing imx234_power_up\n");
             for (i = 0; i < size; i++) {
