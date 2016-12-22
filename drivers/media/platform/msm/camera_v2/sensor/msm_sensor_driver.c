@@ -30,11 +30,8 @@ static int32_t msm_sensor_driver_platform_probe(struct platform_device *pdev);
 /* Static declaration */
 static struct msm_sensor_ctrl_t *g_sctrl[MAX_CAMERAS];
 
-// Power up/down settings obtained from LGH850v10E logs
-// Should be moved into a driver file like imx234.c
-// imx234.c settings do not seem to be parsed
-// even when "obj-$(CONFIG_IMX234) += imx234.o" is enabled in the Makefile
-#if defined(CONFIG_LGE_CAMERA_DRIVER) && defined(CONFIG_MACH_MSM8996_H1)
+#ifdef CONFIG_LGE_CAMERA_DRIVER
+#ifdef CONFIG_MACH_MSM8996_H1
 static struct msm_sensor_power_setting imx234_power_up[] = {
 	{.seq_type = 1, .seq_val = 0, .config_val = 0, .delay = 1,},
 	{.seq_type = 1, .seq_val = 8, .config_val = 0, .delay = 1,},
@@ -61,7 +58,6 @@ static struct msm_sensor_power_setting imx234_power_down[] = {
 	{.seq_type = 2, .seq_val = 4, .config_val = 0, .delay = 1,},
 	{.seq_type = 1, .seq_val = 7, .config_val = 0, .delay = 1,},
 };
-// Power up/down settings obtained from LGH850v10E logs
 static struct msm_sensor_power_setting t4ka3_power_up[] = {
 	{.seq_type = 1, .seq_val = 0, .config_val = 0, .delay = 1},
 	{.seq_type = 2, .seq_val = 0, .config_val = 0, .delay = 1},
@@ -79,8 +75,6 @@ static struct msm_sensor_power_setting t4ka3_power_down[] = {
 	{.seq_type = 2, .seq_val = 1, .config_val = 0, .delay = 0},
 	{.seq_type = 2, .seq_val = 0, .config_val = 0, .delay = 1},
 };
-// Power up/down settings obtained from LGH850v10E logs
-// Should be moved into a driver file like imx268.c
 static struct msm_sensor_power_setting imx268_power_up[] = {
 	{.seq_type = 1, .seq_val = 0, .config_val = 0, .delay = 1,},
 	{.seq_type = 1, .seq_val = 4, .config_val = 2, .delay = 1,},
@@ -102,6 +96,60 @@ static struct msm_sensor_power_setting imx268_power_down[] = {
 	{.seq_type = 2, .seq_val = 1, .config_val = 0, .delay = 0,},
 	{.seq_type = 2, .seq_val = 0, .config_val = 0, .delay = 1,},
 };
+#endif
+#ifdef CONFIG_MACH_MSM8996_ELSA
+static struct msm_sensor_power_setting imx298_lgit_power_up[] = {
+	{.seq_type = 1, .seq_val = 8, .config_val = 0, .delay = 1,},
+	{.seq_type = 1, .seq_val = 4, .config_val = 2, .delay = 0,},
+	{.seq_type = 2, .seq_val = 0, .config_val = 0, .delay = 0,},
+	{.seq_type = 2, .seq_val = 1, .config_val = 0, .delay = 0,},
+	{.seq_type = 2, .seq_val = 4, .config_val = 0, .delay = 0,},
+	{.seq_type = 2, .seq_val = 5, .config_val = 0, .delay = 0,},
+	{.seq_type = 0, .seq_val = 0, .config_val = 24000000, .delay = 1,},
+	{.seq_type = 1, .seq_val = 7, .config_val = 2, .delay = 1,},
+	{.seq_type = 1, .seq_val = 0, .config_val = 2, .delay = 1,},
+	{.seq_type = 1, .seq_val = 8, .config_val = 2, .delay = 21,},
+};
+static struct msm_sensor_power_setting imx298_lgit_power_down[] = {
+	{.seq_type = 0, .seq_val = 0, .config_val = 0, .delay = 1,},
+	{.seq_type = 1, .seq_val = 8, .config_val = 0, .delay = 1,},
+	{.seq_type = 1, .seq_val = 0, .config_val = 0, .delay = 1,},
+	{.seq_type = 2, .seq_val = 5, .config_val = 0, .delay = 0,},
+	{.seq_type = 2, .seq_val = 4, .config_val = 0, .delay = 0,},
+	{.seq_type = 2, .seq_val = 1, .config_val = 0, .delay = 0,},
+	{.seq_type = 2, .seq_val = 0, .config_val = 0, .delay = 0,},
+	{.seq_type = 1, .seq_val = 4, .config_val = 0, .delay = 0,},
+	{.seq_type = 1, .seq_val = 7, .config_val = 0, .delay = 1,},
+};
+static struct msm_sensor_power_setting hi553_power_up[] = {
+	{.seq_type = 2, .seq_val = 1, .config_val = 0, .delay = 0},
+	{.seq_type = 2, .seq_val = 2, .config_val = 0, .delay = 0},
+	{.seq_type = 2, .seq_val = 0, .config_val = 0, .delay = 0},
+	{.seq_type = 0, .seq_val = 0, .config_val = 24000000, .delay = 1},
+	{.seq_type = 1, .seq_val = 0, .config_val = 2, .delay = 1},
+};
+static struct msm_sensor_power_setting hi553_power_down[] = {
+	{.seq_type = 1, .seq_val = 0, .config_val = 0, .delay = 1},
+	{.seq_type = 0, .seq_val = 0, .config_val = 0, .delay = 1},
+	{.seq_type = 2, .seq_val = 0, .config_val = 0, .delay = 0},
+	{.seq_type = 2, .seq_val = 2, .config_val = 0, .delay = 0},
+	{.seq_type = 2, .seq_val = 1, .config_val = 0, .delay = 0},
+};
+static struct msm_sensor_power_setting imx219_power_up[] = {
+	{.seq_type = 2, .seq_val = 0, .config_val = 0, .delay = 0},
+	{.seq_type = 1, .seq_val = 4, .config_val = 2, .delay = 0},
+	{.seq_type = 2, .seq_val = 1, .config_val = 0, .delay = 0},
+	{.seq_type = 0, .seq_val = 0, .config_val = 24000000, .delay = 1},
+	{.seq_type = 1, .seq_val = 0, .config_val = 2, .delay = 1},
+};
+static struct msm_sensor_power_setting imx219_power_down[] = {
+	{.seq_type = 1, .seq_val = 0, .config_val = 0, .delay = 1},
+	{.seq_type = 2, .seq_val = 1, .config_val = 0, .delay = 0},
+	{.seq_type = 1, .seq_val = 4, .config_val = 0, .delay = 0},
+	{.seq_type = 2, .seq_val = 0, .config_val = 0, .delay = 0},
+	{.seq_type = 0, .seq_val = 0, .config_val = 0, .delay = 0},
+};
+#endif
 #endif
 
 static int msm_sensor_platform_remove(struct platform_device *pdev)
@@ -668,7 +716,8 @@ static int32_t msm_sensor_get_power_down_settings(void *setting,
 	size_down = slave_info->power_setting_array.size_down;
 	if (!size_down || size_down > MAX_POWER_CONFIG)
 		size_down = slave_info->power_setting_array.size;
-#if defined(CONFIG_LGE_CAMERA_DRIVER) && defined(CONFIG_MACH_MSM8996_H1)
+#ifdef CONFIG_LGE_CAMERA_DRIVER
+#ifdef CONFIG_MACH_MSM8996_H1
     if(slave_info->camera_id == 0){
         size_down = ARRAY_SIZE(imx234_power_down);
     }
@@ -678,6 +727,18 @@ static int32_t msm_sensor_get_power_down_settings(void *setting,
 	else if(slave_info->camera_id == 2){
         size_down = ARRAY_SIZE(imx268_power_down);
     }
+#endif
+#ifdef CONFIG_MACH_MSM8996_ELSA
+    if(slave_info->camera_id == 0){
+        size_down = ARRAY_SIZE(imx298_lgit_power_down);
+    }
+    else if(slave_info->camera_id == 1){
+        size_down = ARRAY_SIZE(hi553_power_down);
+    }
+	else if(slave_info->camera_id == 2){
+        size_down = ARRAY_SIZE(imx219_power_down);
+    }
+#endif
 #endif
 
 	/* Validate size_down */
@@ -693,7 +754,8 @@ static int32_t msm_sensor_get_power_down_settings(void *setting,
 	if (slave_info->power_setting_array.power_down_setting) {
 #ifdef CONFIG_COMPAT
 		if (is_compat_task()) {
-#if defined(CONFIG_LGE_CAMERA_DRIVER) && defined(CONFIG_MACH_MSM8996_H1)
+#ifdef CONFIG_LGE_CAMERA_DRIVER
+#ifdef CONFIG_MACH_MSM8996_H1
             if(slave_info->camera_id == 0){
             pr_err("msm_sensor_get_power_down_settings: forcing imx234_power_down\n");
             for (i = 0; i < size_down; i++) {
@@ -725,6 +787,40 @@ static int32_t msm_sensor_get_power_down_settings(void *setting,
             rc = 1;
         }
         else
+#endif
+#ifdef CONFIG_MACH_MSM8996_ELSA
+            if(slave_info->camera_id == 0){
+            pr_err("msm_sensor_get_power_down_settings: forcing imx298_lgit_power_down\n");
+            for (i = 0; i < size_down; i++) {
+		      pd[i].config_val = imx298_lgit_power_down[i].config_val;
+		      pd[i].delay = imx298_lgit_power_down[i].delay;
+		      pd[i].seq_type = imx298_lgit_power_down[i].seq_type;
+		      pd[i].seq_val = imx298_lgit_power_down[i].seq_val;
+	        }
+            rc = 1;
+        }
+		else if(slave_info->camera_id == 1){
+            pr_err("msm_sensor_get_power_down_settings: forcing hi553_power_down\n");
+            for (i = 0; i < size_down; i++) {
+		      pd[i].config_val = hi553_power_down[i].config_val;
+		      pd[i].delay = hi553_power_down[i].delay;
+		      pd[i].seq_type = hi553_power_down[i].seq_type;
+		      pd[i].seq_val = hi553_power_down[i].seq_val;
+	        }
+            rc = 1;
+        }
+		else if(slave_info->camera_id == 2){
+            pr_err("msm_sensor_get_power_down_settings: forcing imx219_power_down\n");
+            for (i = 0; i < size_down; i++) {
+		      pd[i].config_val = imx219_power_down[i].config_val;
+		      pd[i].delay = imx219_power_down[i].delay;
+		      pd[i].seq_type = imx219_power_down[i].seq_type;
+		      pd[i].seq_val = imx219_power_down[i].seq_val;
+	        }
+            rc = 1;
+        }
+        else
+#endif
 #endif
         {
 			rc = msm_sensor_get_pw_settings_compat(
@@ -779,7 +875,8 @@ static int32_t msm_sensor_get_power_up_settings(void *setting,
 
 	size = slave_info->power_setting_array.size;
 
-#if defined(CONFIG_LGE_CAMERA_DRIVER) && defined(CONFIG_MACH_MSM8996_H1)
+#ifdef CONFIG_LGE_CAMERA_DRIVER
+#ifdef CONFIG_MACH_MSM8996_H1
     if(slave_info->camera_id == 0){
         size = ARRAY_SIZE(imx234_power_up);
     }
@@ -789,6 +886,18 @@ static int32_t msm_sensor_get_power_up_settings(void *setting,
 	else if(slave_info->camera_id == 2){
         size = ARRAY_SIZE(imx268_power_up);
     }
+#endif
+#ifdef CONFIG_MACH_MSM8996_ELSA
+    if(slave_info->camera_id == 0){
+        size = ARRAY_SIZE(imx298_lgit_power_up);
+    }
+    else if(slave_info->camera_id == 1){
+        size = ARRAY_SIZE(hi553_power_up);
+    }
+	else if(slave_info->camera_id == 2){
+        size = ARRAY_SIZE(imx219_power_up);
+    }
+#endif
 #endif
 
 	/* Validate size */
@@ -804,7 +913,8 @@ static int32_t msm_sensor_get_power_up_settings(void *setting,
 
 #ifdef CONFIG_COMPAT
 	if (is_compat_task()) {
-#if defined(CONFIG_LGE_CAMERA_DRIVER) && defined(CONFIG_MACH_MSM8996_H1)
+#ifdef CONFIG_LGE_CAMERA_DRIVER
+#ifdef CONFIG_MACH_MSM8996_H1
 		if(slave_info->camera_id == 0){
             pr_err("msm_sensor_get_power_up_settings: forcing imx234_power_up\n");
             for (i = 0; i < size; i++) {
@@ -836,6 +946,40 @@ static int32_t msm_sensor_get_power_up_settings(void *setting,
             rc = 1;
         }
         else
+#endif
+#ifdef CONFIG_MACH_MSM8996_ELSA
+		if(slave_info->camera_id == 0){
+            pr_err("msm_sensor_get_power_up_settings: forcing imx298_lgit_power_up\n");
+            for (i = 0; i < size; i++) {
+		      pu[i].config_val = imx298_lgit_power_up[i].config_val;
+		      pu[i].delay = imx298_lgit_power_up[i].delay;
+		      pu[i].seq_type = imx298_lgit_power_up[i].seq_type;
+		      pu[i].seq_val = imx298_lgit_power_up[i].seq_val;
+	        }
+            rc = 1;
+        }
+		else if(slave_info->camera_id == 1){
+            pr_err("msm_sensor_get_power_up_settings: forcing hi553_power_up\n");
+            for (i = 0; i < size; i++) {
+		      pu[i].config_val = hi553_power_up[i].config_val;
+		      pu[i].delay = hi553_power_up[i].delay;
+		      pu[i].seq_type = hi553_power_up[i].seq_type;
+		      pu[i].seq_val = hi553_power_up[i].seq_val;
+	        }
+            rc = 1;
+        }
+		else if(slave_info->camera_id == 2){
+            pr_err("msm_sensor_get_power_up_settings: forcing imx219_power_up\n");
+            for (i = 0; i < size; i++) {
+		      pu[i].config_val = imx219_power_up[i].config_val;
+		      pu[i].delay = imx219_power_up[i].delay;
+		      pu[i].seq_type = imx219_power_up[i].seq_type;
+		      pu[i].seq_val = imx219_power_up[i].seq_val;
+	        }
+            rc = 1;
+        }
+        else
+#endif
 #endif
         {
         rc = msm_sensor_get_pw_settings_compat(pu,
