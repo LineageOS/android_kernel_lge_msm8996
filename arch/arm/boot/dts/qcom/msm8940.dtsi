@@ -38,8 +38,6 @@
 			 <&clock_gcc clk_xo_otg_clk>;
 
 	qcom,usbbam@78c4000 {
-		qcom,enable-hsusb-bam-on-boot;
-
 		/delete-property/ qcom,reset-bam-on-disconnect;
 		/delete-node/ qcom,pipe0;
 		qcom,pipe0 {
@@ -155,8 +153,8 @@
 		<90 512 100000 800000>, /* SVS (ab=100, ib=800 ~ 50MHz) */
 		<90 512 100000 1200000>; /* PERF (ab=100, ib=1200 ~ 75MHz) */
 		qcom,bus-vector-names = "MIN", "SVS", "PERF";
-		qcom,rx-polling-sleep-ms = <3>; /* Polling sleep interval */
-		qcom,ipa-polling-iteration = <15>;	/* Polling Iteration */
+		qcom,rx-polling-sleep-ms = <2>; /* Polling sleep interval */
+		qcom,ipa-polling-iteration = <5>;	/* Polling Iteration */
 	};
 
 	qcom,rmnet-ipa {
@@ -240,19 +238,25 @@
 		<1 (-1) 1 2 7>;
 
 	qcom,cpr-fuse-version-map =
-		<(-1)   0  (-1) (-1) (-1) (-1)>,
-		<(-1)   1  (-1) (-1) (-1) (-1)>,
-		<(-1)   5  (-1) (-1) (-1) (-1)>;
+		<  0    0  (-1) (-1) (-1) (-1)>,
+		<  0    1  (-1) (-1) (-1) (-1)>,
+		<  0    5  (-1) (-1) (-1) (-1)>,
+		<  1    0  (-1) (-1) (-1) (-1)>,
+		<  1    1  (-1) (-1) (-1) (-1)>;
 
 	qcom,cpr-init-voltage-adjustment =
 		<0    0     0>,
 		<0    0 20000>,
-		<0    0 15000>;
+		<0    0 15000>,
+		<0    0 20000>,
+		<0    0 20000>;
 
 	qcom,cpr-quotient-adjustment =
 		<0    0    0>,
 		<38   0   28>, /* SVSP(20mv); TURBO(15mv); KV(1.9) */
-		<0    0   19>; /* TURBO(10mv); KV(1.9) */
+		<0    0   19>, /* TURBO(10mv); KV(1.9) */
+		<0    0   28>, /* TURBO(15mv); KV(1.9) */
+		<38   0   28>; /* SVSP(20mv); TURBO(15mv); KV(1.9) */
 
 	qcom,cpr-enable;
 };

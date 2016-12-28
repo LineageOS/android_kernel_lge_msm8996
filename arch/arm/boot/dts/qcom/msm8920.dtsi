@@ -50,15 +50,6 @@
 		qcom,bus-dev = <&fab_snoc>;
 		qcom,mas-rpm-id = <ICBID_MASTER_IPA>;
 	};
-
-	qcom,bm-sensors {
-		compatible = "qcom,bm-sensors";
-
-		bw_mm {
-			qcom,bm-sensor = <&slv_snoc_bimc_2 &mas_vfe0 &mas_vfe1>;
-			qcom,bm-sensor-field = "ab";
-		};
-	};
 };
 
 &clock_gcc {
@@ -87,8 +78,6 @@
 			 <&clock_gcc clk_xo_otg_clk>;
 
 	qcom,usbbam@78c4000 {
-		qcom,enable-hsusb-bam-on-boot;
-
 		/delete-property/ qcom,reset-bam-on-disconnect;
 		/delete-node/ qcom,pipe0;
 		qcom,pipe0 {
@@ -178,6 +167,15 @@
 		qcom,ipa-advertise-sg-support;
 	};
 
+	qcom,bm-sensors {
+		compatible = "qcom,bm-sensors";
+
+		bw_mm {
+			qcom,bm-sensor = <&slv_snoc_bimc_2 &mas_vfe0 &mas_vfe1>;
+			qcom,bm-sensor-field = "ab";
+		};
+	};
+
 	qcom,sensor-information {
 		sensor_information16: qcom,sensor-information-16 {
 			qcom,sensor-type = "tsens";
@@ -192,6 +190,25 @@
 	/delete-property/ qcom,cpr-quotient-adjustment;
 	/delete-property/ qcom,cpr-init-voltage-adjustment;
 	/delete-property/ qcom,cpr-enable;
+
+	qcom,cpr-speed-bin-max-corners =
+		<0 (-1) 1 2 4>,
+		<1 (-1) 1 2 5>;
+
+	qcom,cpr-fuse-version-map =
+		/* Format: <speed_bin foundry cpr_rev ...> */
+		<  0      0    (-1)   (-1)    (-1)    (-1)>,
+		<(-1)   (-1)   (-1)   (-1)    (-1)    (-1)>;
+
+	qcom,cpr-init-voltage-adjustment =
+		<40000  15000   20000>,
+		<0       0          0>;
+
+	qcom,cpr-quotient-adjustment =
+		<66    57   66>, /* SVSP(35mv); NOM(30mv); TUR(35mv); KV(1.9) */
+		<0      0    0>;
+
+	qcom,cpr-enable;
 };
 
 &funnel_apss {

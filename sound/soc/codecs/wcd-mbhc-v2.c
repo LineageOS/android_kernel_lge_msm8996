@@ -1738,6 +1738,7 @@ static void wcd_mbhc_swch_irq_handler(struct wcd_mbhc *mbhc)
 		if (mbhc->mbhc_cb->enable_mb_source)
 			mbhc->mbhc_cb->enable_mb_source(codec, true);
 		mbhc->btn_press_intr = false;
+		mbhc->is_btn_press = false;
 		wcd_mbhc_detect_plug_type(mbhc);
 	} else if ((mbhc->current_plug != MBHC_PLUG_TYPE_NONE)
 			&& !detection_type) {
@@ -1757,6 +1758,7 @@ static void wcd_mbhc_swch_irq_handler(struct wcd_mbhc *mbhc)
 			mbhc->mbhc_cb->set_cap_mode(codec, micbias1, false);
 
 		mbhc->btn_press_intr = false;
+		mbhc->is_btn_press = false;
 		if (mbhc->current_plug == MBHC_PLUG_TYPE_HEADPHONE) {
 			wcd_mbhc_hs_elec_irq(mbhc, WCD_MBHC_ELEC_HS_REM,
 					     false);
@@ -1955,6 +1957,7 @@ determine_plug:
 	mic_trigerred = 0;
 	mbhc->is_extn_cable = true;
 	mbhc->btn_press_intr = false;
+	mbhc->is_btn_press = false;
 	wcd_mbhc_detect_plug_type(mbhc);
 	WCD_MBHC_RSC_UNLOCK(mbhc);
 	pr_debug("%s: leave\n", __func__);
@@ -2134,15 +2137,13 @@ static irqreturn_t wcd_mbhc_btn_press_handler(int irq, void *data)
 	pr_debug("%s: enter\n", __func__);
 	complete(&mbhc->btn_press_compl);
 	WCD_MBHC_RSC_LOCK(mbhc);
-	/* send event to sw intr handler*/
-	mbhc->is_btn_press = true;
 	wcd_cancel_btn_work(mbhc);
 	if (wcd_swch_level_remove(mbhc)) {
 		pr_info("[LGE MBHC] %s: Switch level is low\n", __func__);
 		goto done;
 	}
-	mbhc->btn_press_intr = true;
 
+	mbhc->is_btn_press = true;
 	msec_val = jiffies_to_msecs(jiffies - mbhc->jiffies_atreport);
 	pr_debug("%s: msec_val = %ld\n", __func__, msec_val);
 	if (msec_val < MBHC_BUTTON_PRESS_THRESHOLD_MIN) {
@@ -2156,20 +2157,15 @@ static irqreturn_t wcd_mbhc_btn_press_handler(int irq, void *data)
 			 __func__);
 		goto done;
 	}
+	mask = wcd_mbhc_get_button_mask(mbhc);
+	if (mask == SND_JACK_BTN_0)
+		mbhc->btn_press_intr = true;
+
 	if (mbhc->current_plug != MBHC_PLUG_TYPE_HEADSET) {
 		pr_debug("%s: Plug isn't headset, ignore button press\n",
 				__func__);
 		goto done;
 	}
-	pr_info("[LGE MBHC] %s: enter\n", __func__);
-	mask = wcd_mbhc_get_button_mask(mbhc);
-#ifdef CONFIG_MACH_LGE
-	if (!(mask & (SND_JACK_BTN_0 | SND_JACK_BTN_1 | SND_JACK_BTN_2| SND_JACK_BTN_3))) {
-		pr_info("[LGE MBHC] %s: Unsupported button(0x%x). Ignore button event.\n",
-			 __func__, mask);
-		goto done;
-	}
-#endif
 	mbhc->buttons_pressed |= mask;
 	mbhc->mbhc_cb->lock_sleep(mbhc, true);
 	if (schedule_delayed_work(&mbhc->mbhc_btn_dwork,
@@ -2195,8 +2191,8 @@ static irqreturn_t wcd_mbhc_release_handler(int irq, void *data)
 		goto exit;
 	}
 
-	if (mbhc->btn_press_intr) {
-		mbhc->btn_press_intr = false;
+	if (mbhc->is_btn_press) {
+		mbhc->is_btn_press = false;
 	} else {
 		pr_debug("%s: This release is for fake btn press\n", __func__);
 		goto exit;

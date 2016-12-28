@@ -2,6 +2,7 @@
 #define __LINUX_MSM_CAM_SENSOR_H
 
 #include <uapi/media/msm_cam_sensor.h>
+#include <uapi/media/msm_camsensor_sdk.h>
 
 #include <linux/compat.h>
 
@@ -77,6 +78,16 @@ struct csid_cfg_data32 {
 		compat_uptr_t csid_params;
 		compat_uptr_t csid_testmode_params;
 	} cfg;
+};
+
+struct msm_ir_led_cfg_data_t32 {
+	enum msm_ir_led_cfg_type_t cfg_type;
+	int32_t pwm_duty_on_ns;
+	int32_t pwm_period_ns;
+};
+
+struct msm_ir_cut_cfg_data_t32 {
+	enum msm_ir_cut_cfg_type_t cfg_type;
 };
 
 struct eeprom_read_t32 {
@@ -311,6 +322,11 @@ struct msm_flash_cfg_data_t32 {
 #define VIDIOC_MSM_FLASH_CFG32 \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 13, struct msm_flash_cfg_data_t32)
 
+#define VIDIOC_MSM_IR_LED_CFG32 \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 14, struct msm_ir_led_cfg_data_t32)
+
+#define VIDIOC_MSM_IR_CUT_CFG32 \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 15, struct msm_ir_cut_cfg_data_t32)
 #if 1 /* CONFIG_MACH_LGE */
 #define VIDIOC_MSM_PROXY_CFG32 \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 12, struct msm_proxy_cfg_data32)
@@ -324,4 +340,3 @@ struct msm_flash_cfg_data_t32 {
 #endif
 
 #endif
-
