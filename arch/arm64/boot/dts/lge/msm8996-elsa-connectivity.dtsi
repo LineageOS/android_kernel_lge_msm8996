@@ -33,10 +33,10 @@
 
 	bcm43xx {
 		compatible = "bcm,bcm43xx";
-		bcm,reg-on-gpio = <&tlmm 81 0x00>; /* BT_REG_ON */
+		bcm,reg-on-gpio = <&tlmm 19 0x00>; /* BT_REG_ON */
 		pinctrl-names = "default", "sleep";
-		pinctrl-0 = <&msm_gpio_81>;
-		pinctrl-1 = <&msm_gpio_81>;
+		pinctrl-0 = <&msm_gpio_19>;
+		pinctrl-1 = <&msm_gpio_19>;
 	};
 };
 
