@@ -141,21 +141,6 @@
 				};
 			};
 		};
-		/* gpio pin mux for bluetooth host wake pin */
-                pmx_bt_default {
-			bt_default: bt_default {
-				mux {
-					pins = "gpio24", "gpio92";
-					function = "gpio";
-				};
-
-	    			config {
-	    				pins = "gpio24", "gpio92";
-	    				drive-strength = <2>;
-	    				bias-disable = <0>;
-	    			};
-	                };
-		};
 //[H1_BT_BRINGUP_E]
 
 		pmx_mdss: pmx_mdss {
@@ -1544,7 +1529,7 @@
 				};
 			};
 		};
-        
+
 		sec_mi2s_sd0 {
 			sec_mi2s_sd0_sleep: sec_mi2s_sd0_sleep {
 				mux {
