@@ -15,7 +15,7 @@
 #include "msm8996-h1_global-panel.dtsi"
 #include "msm8996-h1_global-pm.dtsi"
 #include "msm8996-h1_global-sound.dtsi"
-#include "msm8996-h1_global-connectivity.dtsi"
+#include "../msm8996-h1-connectivity.dtsi"
 #include "msm8996-h1_global-nfc.dtsi"
 #include "msm8996-h1_global-hdmi.dtsi"
 #include "msm8996-h1_global-fingerprint.dtsi"

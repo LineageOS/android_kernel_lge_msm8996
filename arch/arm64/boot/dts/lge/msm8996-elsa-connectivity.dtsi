@@ -1,0 +1,99 @@
+/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017, The LineageOS Project. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/ {
+	/* BCMDHD for Wi-Fi */
+	bcmdhd_wifi {
+		compatible = "lge,bcmdhd_wlan";
+		wlan-en-gpio = <&pm8994_gpios 8 0>;
+		wlan-hostwake-gpio = <&tlmm 73 0>;
+	};
+
+	bluesleep {
+		compatible = "qcom,bluesleep";
+		bt_host_wake = <&tlmm 24 0x00>; /* BT_HOST_WAKE */
+		bt_ext_wake = <&tlmm 92 0x00>; /* BT_DEV_WAKE */
+		interrupt-parent = <&tlmm>;
+		interrupts = <24 0>;
+		interrupt-names = "host_wake";
+		pinctrl-names = "default", "sleep";
+		pinctrl-0 = <&msm_gpio_24_active &msm_gpio_92>;
+		pinctrl-1 = <&msm_gpio_24_suspend &msm_gpio_92>;
+	};
+
+	bcm43xx {
+		compatible = "bcm,bcm43xx";
+		bcm,reg-on-gpio = <&tlmm 19 0x00>; /* BT_REG_ON */
+		pinctrl-names = "default", "sleep";
+		pinctrl-0 = <&msm_gpio_19>;
+		pinctrl-1 = <&msm_gpio_19>;
+	};
+};
+
+&tlmm {
+    /* GPIO_92 : BT_DEV_WAKE */
+    msm_gpio_92: msm_gpio_92 {
+        mux {
+            pins = "gpio92";
+            function = "gpio";
+        };
+
+        config {
+            pins = "gpio92";
+            drive-strength = <2>;
+            bias-disable;
+            output-low;
+        };
+    };
+
+    /* GPIO_24 : BT_HOST_WAKE */
+    msm_gpio_24_active: msm_gpio_24_active {
+        mux {
+            pins = "gpio24";
+            function = "gpio";
+        };
+
+        config {
+            pins = "gpio24";
+            drive-strength = <2>;
+            bias-disable;
+        };
+    };
+    msm_gpio_24_suspend: msm_gpio_24_suspend {
+        mux {
+            pins = "gpio24";
+            function = "gpio";
+        };
+
+        config {
+            pins = "gpio24";
+            drive-strength = <2>;
+            bias-pull-down;
+        };
+    };
+
+    /* GPIO_19 : BT_REG_ON */
+    msm_gpio_19: msm_gpio_19 {
+        mux {
+            pins = "gpio19";
+            function = "gpio";
+        };
+
+        config {
+            pins = "gpio19";
+            drive-strength = <2>;
+            bias-disable;
+            output-low;
+        };
+    };
+};
