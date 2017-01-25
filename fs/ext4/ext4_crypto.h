@@ -82,6 +82,8 @@ struct ext4_crypt_info {
 	struct crypto_ablkcipher *ci_ctfm;
 	char		ci_master_key[EXT4_KEY_DESCRIPTOR_SIZE];
 	char		ci_raw_key[EXT4_MAX_KEY_SIZE];
+	atomic_t	ci_dedup_refcnt; /* 0 if not deduplicated */
+	struct hlist_node ci_dedup_node;
 };
 
 
