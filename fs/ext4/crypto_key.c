@@ -110,12 +110,6 @@ void ext4_free_encryption_info(struct inode *inode,
 	ext4_free_crypt_info(ci);
 }
 
-static int ext4_default_data_encryption_mode(void)
-{
-	return ext4_is_ice_enabled() ? EXT4_ENCRYPTION_MODE_PRIVATE :
-		EXT4_ENCRYPTION_MODE_AES_256_XTS;
-}
-
 int ext4_get_encryption_info(struct inode *inode)
 {
 	struct ext4_inode_info *ei = EXT4_I(inode);
@@ -146,13 +140,17 @@ int ext4_get_encryption_info(struct inode *inode)
 				 EXT4_XATTR_NAME_ENCRYPTION_CONTEXT,
 				 &ctx, sizeof(ctx));
 	if (res < 0) {
-		if (!DUMMY_ENCRYPTION_ENABLED(sbi))
+		if (!DUMMY_ENCRYPTION_ENABLED(sbi) ||
+		    ext4_encrypted_inode(inode))
 			return res;
+		/* Fake up a context for an unencrypted directory */
+		memset(&ctx, 0, sizeof(ctx));
 		ctx.contents_encryption_mode =
-			ext4_default_data_encryption_mode();
+			EXT4_ENCRYPTION_MODE_AES_256_XTS;
 		ctx.filenames_encryption_mode =
 			EXT4_ENCRYPTION_MODE_AES_256_CTS;
-		ctx.flags = 0;
+		memset(ctx.master_key_descriptor, 0x42,
+		       EXT4_KEY_DESCRIPTOR_SIZE);
 	} else if (res != sizeof(ctx))
 		return -EINVAL;
 	res = 0;
@@ -189,10 +187,6 @@ int ext4_get_encryption_info(struct inode *inode)
 			    mode, (unsigned) inode->i_ino);
 		res = -ENOKEY;
 		goto out;
-	}
-	if (DUMMY_ENCRYPTION_ENABLED(sbi)) {
-		memset(crypt_info->ci_raw_key, 0x42, EXT4_AES_256_XTS_KEY_SIZE);
-		goto got_key;
 	}
 	memcpy(full_key_descriptor, EXT4_KEY_DESC_PREFIX,
 	       EXT4_KEY_DESC_PREFIX_SIZE);
@@ -236,7 +230,6 @@ int ext4_get_encryption_info(struct inode *inode)
 	up_read(&keyring_key->sem);
 	if (res)
 		goto out;
-got_key:
 	if (for_fname ||
 	    (crypt_info->ci_data_mode != EXT4_ENCRYPTION_MODE_PRIVATE)) {
 		ctfm = crypto_alloc_ablkcipher(cipher_str, 0, 0);
