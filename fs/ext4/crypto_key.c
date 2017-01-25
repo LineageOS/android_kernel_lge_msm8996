@@ -90,6 +90,7 @@ void ext4_free_crypt_info(struct ext4_crypt_info *ci)
 		return;
 
 	crypto_free_ablkcipher(ci->ci_ctfm);
+	memset(ci, 0, sizeof(*ci));
 	kmem_cache_free(ext4_crypt_info_cachep, ci);
 }
 
@@ -225,8 +226,25 @@ int ext4_get_encryption_info(struct inode *inode)
 		up_read(&keyring_key->sem);
 		goto out;
 	}
-	res = ext4_derive_key_aes(ctx.nonce, master_key->raw,
-				  crypt_info->ci_raw_key);
+
+	/*
+	 * For performance reasons, key derivation is skipped for ICE-encrypted
+	 * files (data mode PRIVATE).  This is understood not to result in IV
+	 * reuse because ICE chooses IVs based on physical sector number.
+	 */
+	if (for_fname ||
+	    (crypt_info->ci_data_mode != EXT4_ENCRYPTION_MODE_PRIVATE)) {
+		res = ext4_derive_key_aes(ctx.nonce, master_key->raw,
+					  crypt_info->ci_raw_key);
+	} else if (ext4_is_ice_enabled()) {
+		memcpy(crypt_info->ci_raw_key, master_key->raw,
+		       EXT4_MAX_KEY_SIZE);
+		res = 0;
+	} else {
+		pr_warn("%s: ICE support not available\n", __func__);
+		res = -EINVAL;
+	}
+
 	up_read(&keyring_key->sem);
 	if (res)
 		goto out;
@@ -249,11 +267,6 @@ int ext4_get_encryption_info(struct inode *inode)
 			goto out;
 		memzero_explicit(crypt_info->ci_raw_key,
 			sizeof(crypt_info->ci_raw_key));
-	} else if (!ext4_is_ice_enabled()) {
-		pr_warn("%s: ICE support not available\n",
-		       __func__);
-		res = -EINVAL;
-		goto out;
 	}
 	if (cmpxchg(&ei->i_crypt_info, NULL, crypt_info) == NULL)
 		crypt_info = NULL;
