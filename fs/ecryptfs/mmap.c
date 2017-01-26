@@ -512,11 +512,12 @@ static int ecryptfs_write_inode_size_to_xattr(struct inode *ecryptfs_inode)
 	rc = lower_inode->i_op->setxattr(lower_dentry, ECRYPTFS_XATTR_NAME,
 					 xattr_virt, size, 0);
 	mutex_unlock(&lower_inode->i_mutex);
-	if (rc)
+	if (rc) {
 		printk(KERN_ERR "Error whilst attempting to write inode size "
 		       "to lower file xattr; rc = [%d]\n", rc);
 		printk(KERN_ERR " [CCAudit] Error whilst attempting to write inode size "
 		       "to lower file xattr; rc = [%d]\n", rc);
+	}
 	kmem_cache_free(ecryptfs_xattr_cache, xattr_virt);
 out:
 	return rc;
