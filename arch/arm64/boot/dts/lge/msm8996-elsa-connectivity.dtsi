@@ -33,10 +33,7 @@
 
 	bcm43xx {
 		compatible = "bcm,bcm43xx";
-		bcm,reg-on-gpio = <&tlmm 19 0x00>; /* BT_REG_ON */
-		pinctrl-names = "default", "sleep";
-		pinctrl-0 = <&msm_gpio_19>;
-		pinctrl-1 = <&msm_gpio_19>;
+                bcm,reg-on-gpio = <&pm8994_gpios 19 0x00>; /* BT_REG_ON */
 	};
 };
 
@@ -82,18 +79,4 @@
         };
     };
 
-    /* GPIO_19 : BT_REG_ON */
-    msm_gpio_19: msm_gpio_19 {
-        mux {
-            pins = "gpio19";
-            function = "gpio";
-        };
-
-        config {
-            pins = "gpio19";
-            drive-strength = <2>;
-            bias-disable;
-            output-low;
-        };
-    };
 };
