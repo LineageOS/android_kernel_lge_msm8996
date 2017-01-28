@@ -1,0 +1,128 @@
+/* Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2017, The LineageOS Project. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/ {
+    /* I2C : BLSP8 */
+    i2c@75b6000 { /* BLSP2 QUP1 */
+        qcom,clk-freq-out = <355000>;
+        pinctrl-0 = <&msm_gpio_6 &msm_gpio_7>;
+        pinctrl-1 = <&msm_gpio_6 &msm_gpio_7>;
+        status = "okay";
+
+        /delete-node/ nq@28;
+
+        nfc@28 {
+            compatible = "nxp,pn547";
+            reg = <0x28>;
+            interrupt-parent = <&tlmm>;
+            interrupts = <9 0x1>;
+            nxp,irq_gpio = <&tlmm 9 0x00>;
+            nxp,dwld_en = <&tlmm 11 0x00>;
+            nxp,ven = <&tlmm 12 0x00>;
+            //qcom,clk-src = "BBCLK2";
+            //qcom,clk-gpio = <&pm8994_gpios 10 0x00>;
+            //clocks = <&clock_gcc clk_bb_clk2_pin>;
+            //clock-names = "nfc_clk";
+            pinctrl-names = "pn547-active", "pn547-inactive";
+            pinctrl-0 = <&msm_gpio_9 &msm_gpio_11>;
+            pinctrl-1 = <&msm_gpio_9 &msm_gpio_11>;
+        };
+    };
+};
+
+
+&tlmm {
+    /* GPIO_6 : NFC_I2C_SDA */
+	msm_gpio_6: msm_gpio_6 {
+		mux {
+			pins = "gpio6";
+			function = "blsp_i2c8";
+		};
+
+		config {
+			pins = "gpio6";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
+	/* GPIO_7 : NFC_I2C_SCL */
+	msm_gpio_7: msm_gpio_7 {
+		mux {
+			pins = "gpio7";
+			function = "blsp_i2c8";
+		};
+
+		config {
+			pins = "gpio7";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
+    /* GPIO_9 : "NFC_IRQ FELICA_INT_N" */
+    msm_gpio_9: msm_gpio_9 {
+        mux {
+            pins = "gpio9";
+            function = "gpio";
+        };
+
+        config {
+            pins = "gpio9";
+            drive-strength = <2>;
+            bias-pull-down;
+        };
+    };
+
+    /* GPIO_11 : NFC_DWLD_EN  FELICA_PON */
+    msm_gpio_11: msm_gpio_11 {
+        mux {
+            pins = "gpio11";
+            function = "gpio";
+        };
+
+        config {
+            pins = "gpio11";
+            drive-strength = <2>;
+            bias-disable;
+            output-low;
+        };
+    };
+
+    /* GPIO_12 : NFC_VEN */
+    msm_gpio_12: msm_gpio_12 {
+        mux {
+            pins = "gpio12";
+            function = "gpio";
+        };
+
+        config {
+            pins = "gpio12";
+            drive-strength = <2>;
+            bias-disable;
+            output-low;
+        };
+    };
+};
+
+&pm8994_gpios {
+    /* GPIO_10: NFC_CLK_REQ */
+	//gpio@c900 {
+		//qcom,src-sel = <0>;		/* GPIO */
+		//qcom,mode = <0>;		/* In */
+		//qcom,vin-sel = <2>;		/* S4 */
+		//qcom,pull = <4>;		/* PD */
+		//qcom,master-en = <1>;		/* Enable */
+		//status = "ok";
+	//};
+};
