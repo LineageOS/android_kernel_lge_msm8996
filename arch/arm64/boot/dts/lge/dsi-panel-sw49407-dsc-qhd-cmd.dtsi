@@ -39,7 +39,7 @@
 		qcom,mdss-dsi-lane-map = "lane_map_0123";
 		qcom,mdss-dsi-bllp-eof-power-mode;
 		qcom,mdss-dsi-bllp-power-mode;
-		qcom,panel-roi-alignment = <1440 16 1440 16 1440 16>;
+		qcom,panel-roi-alignment = <1440 160 1440 160 1440 160>;
 		qcom,mdss-dsi-lane-0-state;
 		qcom,mdss-dsi-lane-1-state;
 		qcom,mdss-dsi-lane-2-state;
@@ -91,7 +91,7 @@
 			/* Partial Area Set */
 			39 01 00 00 00 00 05 30 00 00 00 A3
 			/* TE line */
-			39 01 00 00 00 00 03 44 00 00
+			39 01 00 00 00 00 03 44 0A 8F
 			/* Tearing Effect Line on */
 			15 01 00 00 00 00 02 35 00
 			/* Write Display Brightness */
@@ -111,7 +111,7 @@
 			/* Panel Setting */
 			39 01 00 00 00 00 05 B7 61 75 EA A9
 			/* Touch Timing Control */
-			39 01 00 00 00 00 1F B8 70 01 04 40 BF F0 8B 00 00 18 33 04 01 40 01 45 F8 C1 21 00 00 10 01 15 01 0A A0 0A 0A 00
+			39 01 00 00 00 00 1F B8 70 02 90 40 BF F0 8B 00 00 18 33 04 01 40 01 45 F8 C1 21 00 00 10 01 15 01 0A A0 0A 0A 00
 			/* Touch Source Setting */
 			39 01 00 00 00 00 06 B9 64 64 2A 3F EE
 			/* Backlight Control */
@@ -149,7 +149,7 @@
 			/* Negative Gamma Curve for Blue */
 			39 01 00 00 00 00 0E D5 00 12 1E 2C 39 40 4F 45 38 28 15 00 03
 			/* Test1 */
-			39 01 00 00 00 00 05 ED 61 6A 00 87
+			39 01 00 00 00 00 05 ED 61 6A 00 82
 			/* CABC Test */
 			39 01 00 00 00 00 18 F9 20 40 60 80 A0 C0 E0 0B 1C 20 20 1F 10 18 00 B4 C0 CD DA E8 F0 F7 FF
 			/* CABC Test */
@@ -196,8 +196,6 @@
 		lge,mode-change-cmds-u2-to-u3 = [
 			/* Power Sequence Option Configuration */
 			39 01 00 00 00 00 06 C9 05 5D 03 04 01
-			/* Sending pps 1st parameter*/
-			15 01 00 00 00 00 02 BD 11
 			/* Normmal DisplayMode On + min 40ms */
 			05 01 00 00 28 00 01 13
 		];
@@ -299,12 +297,6 @@
 		];
 
 		qcom,mdss-dsi-reader-mode-command-state = "dsi_hs_mode";
-
-		qcom,mdss-dsi-screen-command = [
-			39 01 00 00 00 00 0E C7 00 00 00 00 00 00 00 00 00 00 00 00 00
-		];
-
-		qcom,mdss-dsi-screen-command-state = "dsi_hs_mode";
 
 		lge,blmap = <
 			0
@@ -509,7 +501,7 @@
 		dsi_sw49407_dsc_cmd_config1: config1 {
 		        qcom,lm-split = <720 720>;
 		        qcom,mdss-dsc-encoders = <1>; /* 3D Mux */
-		        qcom,mdss-dsc-slice-height = <16>;
+		        qcom,mdss-dsc-slice-height = <160>;
 		        qcom,mdss-dsc-slice-width = <1440>;
 		        qcom,mdss-dsc-slice-per-pkt = <1>;
 
