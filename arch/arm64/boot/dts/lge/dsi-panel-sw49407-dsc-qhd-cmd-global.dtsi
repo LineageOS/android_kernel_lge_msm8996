@@ -18,7 +18,7 @@
 		qcom,mdss-dsi-virtual-channel-id = <0>;
 		qcom,mdss-dsi-stream = <0>;
 		qcom,mdss-dsi-panel-width = <1440>;
-		qcom,mdss-dsi-panel-height = <2560>;
+		qcom,mdss-dsi-panel-height = <2720>;
 		qcom,mdss-dsi-h-front-porch = <100>;
 		qcom,mdss-dsi-h-back-porch = <32>;
 		qcom,mdss-dsi-h-pulse-width = <16>;
@@ -28,7 +28,7 @@
 		qcom,mdss-dsi-v-pulse-width = <1>;
 		qcom,mdss-dsi-h-left-border = <0>;
 		qcom,mdss-dsi-h-right-border = <0>;
-		qcom,mdss-dsi-v-top-border = <160>;
+		qcom,mdss-dsi-v-top-border = <0>;
 		qcom,mdss-dsi-v-bottom-border = <0>;
 		qcom,mdss-dsi-bpp = <24>;
 		qcom,mdss-dsi-color-order = "rgb_swap_rgb";
@@ -39,6 +39,7 @@
 		qcom,mdss-dsi-lane-map = "lane_map_0123";
 		qcom,mdss-dsi-bllp-eof-power-mode;
 		qcom,mdss-dsi-bllp-power-mode;
+		qcom,partial-update-enabled;
 		qcom,panel-roi-alignment = <1440 160 1440 160 1440 160>;
 		qcom,mdss-dsi-lane-0-state;
 		qcom,mdss-dsi-lane-1-state;
@@ -196,6 +197,8 @@
 		lge,mode-change-cmds-u2-to-u3 = [
 			/* Power Sequence Option Configuration */
 			39 01 00 00 00 00 06 C9 05 5D 03 04 01
+			/* Sending pps 1st parameter*/
+			15 01 00 00 00 00 02 BD 11
 			/* Normmal DisplayMode On + min 40ms */
 			05 01 00 00 28 00 01 13
 		];
