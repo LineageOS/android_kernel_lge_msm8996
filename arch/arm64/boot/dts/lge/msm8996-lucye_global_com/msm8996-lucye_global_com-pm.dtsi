@@ -20,7 +20,7 @@
 };
 
 &i2c_6 {
-        idtp9223-charger@61 {
-                status = "disabled";
-        };
+	idtp9223-charger@61 {
+		status = "disabled";
+	};
 };

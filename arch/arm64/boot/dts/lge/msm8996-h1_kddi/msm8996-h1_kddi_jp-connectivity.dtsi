@@ -12,18 +12,18 @@
 
 /*[H1_BT_BRINGUP_S]*/
 &blsp1_uart2 {
-                interrupt-names = "core_irq", "bam_irq";
-                interrupts = <0 1>;
-                interrupt-map = <0 &intc 0 0 108 0
-                                 1 &intc 0 0 238 0>;
-                /delete-property/ qcom,inject-rx-on-wakeup;
-                /delete-property/ qcom,rx-char-to-inject;
-                qcom,msm-obs;
+	interrupt-names = "core_irq", "bam_irq";
+	interrupts = <0 1>;
+	interrupt-map = <0 &intc 0 0 108 0
+			1 &intc 0 0 238 0>;
+	/delete-property/ qcom,inject-rx-on-wakeup;
+	/delete-property/ qcom,rx-char-to-inject;
+	qcom,msm-obs;
 };
 /*[H1_BT_BRINGUP_E]*/
 
 / {
-        /*[H1_BT_BRINGUP_S]*/
+	/*[H1_BT_BRINGUP_S]*/
 	bt_bluetooth_pm {
 		compatible = "lge,bluetooth_pm";
 		gpio-bt-reset = <&tlmm 81 0>;
@@ -35,8 +35,8 @@
 
 		pinctrl-names = "bt_default";
 		pinctrl-0 = <&bt_default>;
-     };
-        /*[H1_BT_BRINGUP_E]*/
+	};
+	/*[H1_BT_BRINGUP_E]*/
 
 	/* BCMDHD for Wi-Fi */
 	bcmdhd_wifi {

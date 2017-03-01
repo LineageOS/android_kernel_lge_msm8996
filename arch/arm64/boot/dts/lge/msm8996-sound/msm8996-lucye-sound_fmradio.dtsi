@@ -123,7 +123,7 @@
 				>;
 			interrupt-names = "silabs_fm_int", "silabs_fm_status_int";
 		};
-    };
+	};
 
 	i2c_1: i2c@7575000 {
 		silabs4709@10 { /* SiLabs FM si4709 chip, slave id 0x10*/

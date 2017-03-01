@@ -52,7 +52,7 @@
 
 			// [Fixed] Specifies maximum SPI clock frequency of AP(50 MHz). (ref. QCT SPI datasheet)
 			spi-max-frequency = <50000000>;
-			
+
 			// [Modified] BLSP bus master ID. (ref. AP datasheet)
 			qcom,master-id = <84>;
 
@@ -99,7 +99,7 @@
 		reg = <0>;
 		interrupt-parent = <&tlmm>; // [Fixed] tlmm is the parent
 		interrupts = <21 0x0>; // [Modified] Set INT GPIO, first # is gpio #, second flag keep it 0.
-		
+
 		// [Fixed] Specifies maximum SPI clock frequency of DMB chipset(38.4 MHz). (ref. FC8080 datasheet)
 		spi-max-frequency = <38400000>;
 

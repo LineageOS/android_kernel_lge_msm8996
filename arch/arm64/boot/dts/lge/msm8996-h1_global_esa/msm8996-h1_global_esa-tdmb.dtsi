@@ -46,7 +46,7 @@
 			qcom,gpio-miso = <&tlmm 59 0x00>;
 			qcom,gpio-cs0 = <&tlmm 60 0x00>;
 			qcom,gpio-clk = <&tlmm 61 0x00>;
-			
+
 			qcom,infinite-mode = <0>;
 			qcom,use-bam;
 			qcom,ver-reg-exists;

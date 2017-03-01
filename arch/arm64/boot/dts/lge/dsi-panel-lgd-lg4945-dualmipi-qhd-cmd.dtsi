@@ -132,7 +132,7 @@
 			05 01 00 00 00 00 01 29
 			/* Sleep Out + 100ms */
 			05 01 00 00 64 00 01 11
-			];
+		];
 		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 		qcom,mdss-dsi-off-command = [
 			/* Display Off */
@@ -143,7 +143,7 @@
 			05 01 00 00 00 00 02 10 00
 			/* Mail box + 105ms */
 			39 01 00 00 69 00 05 CC 01 00 00 00
-			];
+		];
 		qcom,mdss-dsi-off-command-state = "dsi_lp_mode";
 		qcom,cont-splash-enabled;
 
@@ -350,15 +350,15 @@
 };
 &spmi_bus {
 	qcom,pmi8994@3 {
-			labibb: qpnp-labibb-regulator {
-				ibb_regulator: qcom,ibb@dc00 {
-					qcom,qpnp-ibb-init-voltage = <5500000>;
-					qcom,qpnp-ibb-init-lcd-voltage = <5500000>;
-				};
-				lab_regulator: qcom,lab@de00 {
-					qcom,qpnp-lab-init-voltage = <5400000>;
-					qcom,qpnp-lab-init-lcd-voltage = <5400000>;
-				};
+		labibb: qpnp-labibb-regulator {
+			ibb_regulator: qcom,ibb@dc00 {
+				qcom,qpnp-ibb-init-voltage = <5500000>;
+				qcom,qpnp-ibb-init-lcd-voltage = <5500000>;
 			};
+			lab_regulator: qcom,lab@de00 {
+				qcom,qpnp-lab-init-voltage = <5400000>;
+				qcom,qpnp-lab-init-lcd-voltage = <5400000>;
+			};
+		};
 	};
 };

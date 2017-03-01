@@ -55,7 +55,7 @@
 				compatible = "qcom,wsa881x";
 				reg = <0x00 0x21170213>;
 				qcom,spkr-sd-n-gpio = <&pmi8994_gpios 3 0>;
-			};	
+			};
 		};
 	};
 };

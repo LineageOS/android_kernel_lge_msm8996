@@ -173,9 +173,9 @@
 		qcom,gpio-req-tbl-num   = <0 1 2 3>;
 		qcom,gpio-req-tbl-flags = <1 0 0 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK0",
-								  "CAM_RESET0",
-								  "OIS_RESET",
-								  "OISANA_AFVDD_EN";
+			"CAM_RESET0",
+			"OIS_RESET",
+			"OISANA_AFVDD_EN";
 
 		qcom,cam-power-seq-type    = "sensor_vreg";
 		qcom,cam-power-seq-val     = "cam_vio";
@@ -220,7 +220,7 @@
 		qcom,gpio-req-tbl-num   = <0 1>;
 		qcom,gpio-req-tbl-flags = <1 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK2",
-								  "CAM_RESET2";
+			"CAM_RESET2";
 
 		qcom,cam-power-seq-type    = "sensor_vreg", "sensor_vreg"; //TODO: Check for each revision
 		qcom,cam-power-seq-val     = "cam_vio", "cam_vi2c";
@@ -258,9 +258,9 @@
 		pinctrl-1 = <&cam_sensor_mclk0_suspend &cam_sensor_rear_suspend>;
 
 		gpios = <&tlmm 13 0>,  //CAM_MCLK
-		        <&tlmm 30 0>,  //CAM_RESET
-		        <&tlmm 26 0>,  //OIS_RESET
-		        <&pm8994_gpios 11 0>; //OISANA_AFVDD_EN
+			<&tlmm 30 0>,  //CAM_RESET
+			<&tlmm 26 0>,  //OIS_RESET
+			<&pm8994_gpios 11 0>; //OISANA_AFVDD_EN
 
 		qcom,gpio-no-mux    = <0>;
 		qcom,gpio-reset     = <1>;
@@ -270,9 +270,9 @@
 		qcom,gpio-req-tbl-num   = <0 1 2 3>;
 		qcom,gpio-req-tbl-flags = <1 0 0 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK0",
-		                          "CAM_RESET0",
-		                          "OIS_RESET",
-		                          "OISANA_AFVDD_EN";
+					"CAM_RESET0",
+					"OIS_RESET",
+					"OISANA_AFVDD_EN";
 
 		qcom,sensor-position = <0>;
 		qcom,sensor-mode = <0>;
@@ -310,14 +310,14 @@
 		pinctrl-1 = <&cam_sensor_mclk2_suspend &cam_sensor_front_suspend>;
 
 		gpios     = <&tlmm 15 0>, //VT_CAM_MCLK
-                    <&tlmm 23 0>; //VT_CAM_RESET_N
+			<&tlmm 23 0>; //VT_CAM_RESET_N
 
 		qcom,gpio-no-mux        = <0>;
 		qcom,gpio-reset         = <1>;
 		qcom,gpio-req-tbl-num   = <0 1>;
 		qcom,gpio-req-tbl-flags = <1 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK2",
-                                  "CAM_RESET2";
+			"CAM_RESET2";
 
 		qcom,sensor-position = <1>; //FRONT_CAMERA_B
 		qcom,sensor-mode     = <1>; //CAMERA_MODE_2D_B
@@ -325,7 +325,7 @@
 
 		status = "ok";
 		clocks = <&clock_mmss clk_mclk2_clk_src>,
-                 <&clock_mmss clk_camss_mclk2_clk>;
+			<&clock_mmss clk_camss_mclk2_clk>;
 		clock-names = "cam_src_clk", "cam_clk";
 		qcom,clock-rates = <24000000 0>;
 	};

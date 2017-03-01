@@ -13,7 +13,7 @@
 #include "../msm8996-lucye-common/msm8996-lucye-common-pm.dtsi"
 
 &i2c_6 {
-        idtp9223-charger@61 {
-                status = "disabled";
-        };
+	idtp9223-charger@61 {
+		status = "disabled";
+	};
 };

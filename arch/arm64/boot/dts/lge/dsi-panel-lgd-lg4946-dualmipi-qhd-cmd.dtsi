@@ -171,42 +171,42 @@
 			05 01 00 00 00 00 01 29
 			/* Sleep Out + 50ms */
 			05 01 00 00 32 00 01 11
-			];
+		];
 		qcom,mdss-dsi-sharpness-on-command = [
 			15 01 00 00 00 00 02 B0 AC
 			15 01 00 00 00 00 02 F0 42
 			39 01 00 00 00 00 05 F2 01 00 04 00
-			];
+		];
 		qcom,mdss-dsi-ce-on-command = [
 			15 01 00 00 00 00 02 B0 AC
 			15 01 00 00 00 00 02 F0 42
 			39 01 00 00 00 00 18 F3 00 47 87 D0 FF A0 00 40 87 D0 FF E0 00 40 80 C0 FF 00 00 40 80 C0 FF
-			];
+		];
 		qcom,mdss-dsi-ie-on-command = [
 			15 01 00 00 00 00 02 B0 AC
 			15 01 00 00 00 00 02 55 80
 			15 01 00 00 00 00 02 F0 42
-			];
+		];
 		qcom,mdss-dsi-ie-off-command = [
 			15 01 00 00 00 00 02 B0 AC
 			15 01 00 00 00 00 02 55 00
 			15 01 00 00 00 00 02 F0 00
-			];
+		];
 		qcom,mdss-dsi-cabc-20-command = [
 			15 01 00 00 00 00 02 B0 AC
 			39 01 00 00 00 00 18 FE 20 40 60 80 A0 C0 E0 10 13 14 03 18 17 14 00 CD D3 DA E0 E8 F5 FA FF
-			];
+		];
 		qcom,mdss-dsi-cabc-30-command = [
 			15 01 00 00 00 00 02 B0 AC
 			39 01 00 00 00 00 18 FE 20 40 60 80 A0 C0 E0 10 15 14 03 15 0E 0E 00 B7 C3 CD DE E7 F5 FA FF
-			];
+		];
 		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 		qcom,mdss-dsi-off-command = [
 			/* Display Off */
 			05 01 00 00 0A 00 02 28 00
 			/* Sleep In + 100ms */
 			05 01 00 00 64 00 02 10 00
-			];
+		];
 		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
 
 		lge,blmap = <
@@ -266,7 +266,7 @@
 			  3826 3833 3840 3847 3854 3861 3868 3876 3883 3890
 			  3897 3904 3911 3919 3927 3935 3943 3951 3959 3968
 			  3976 3984 3992 4000 4009
-	>;
+		>;
 		qcom,mdss-pan-physical-width-dimension = <66>;
 		qcom,mdss-pan-physical-height-dimension = <117>;
 
@@ -274,7 +274,7 @@
 
 		lge,mode-change-cmds-u3-to-u2 = [
 			/* 2nd CABC Parametrs for NEW CABC algorithm */
-                        39 01 00 00 00 00 0D FF 88 11 22 02 52 00 02 00 0A 00 02 D0
+			39 01 00 00 00 00 0D FF 88 11 22 02 52 00 02 00 0A 00 02 D0
 			/* Write Control Display */
 			15 01 00 00 00 00 02 53 0D
 			/* LFD Control */
@@ -284,7 +284,7 @@
 		];
 		lge,mode-change-cmds-u2-to-u3 = [
 			/* 2nd CABC Parametrs for NEW CABC algorithm */
-                        39 01 00 00 00 00 0D FF 88 11 22 02 52 C2 02 00 0A 00 02 D0
+			39 01 00 00 00 00 0D FF 88 11 22 02 52 C2 02 00 0A 00 02 D0
 			/* Write Control Display */
 			15 01 00 00 00 00 02 53 2D
 			/* Page Address Set */
@@ -298,15 +298,15 @@
 };
 &spmi_bus {
 	qcom,pmi8994@3 {
-			labibb: qpnp-labibb-regulator {
-				ibb_regulator: qcom,ibb@dc00 {
-					qcom,qpnp-ibb-init-voltage = <5500000>;
-					qcom,qpnp-ibb-init-lcd-voltage = <5500000>;
-				};
-				lab_regulator: qcom,lab@de00 {
-					qcom,qpnp-lab-init-voltage = <5400000>;
-					qcom,qpnp-lab-init-lcd-voltage = <5400000>;
-				};
+		labibb: qpnp-labibb-regulator {
+			ibb_regulator: qcom,ibb@dc00 {
+				qcom,qpnp-ibb-init-voltage = <5500000>;
+				qcom,qpnp-ibb-init-lcd-voltage = <5500000>;
 			};
+			lab_regulator: qcom,lab@de00 {
+				qcom,qpnp-lab-init-voltage = <5400000>;
+				qcom,qpnp-lab-init-lcd-voltage = <5400000>;
+			};
+		};
 	};
 };

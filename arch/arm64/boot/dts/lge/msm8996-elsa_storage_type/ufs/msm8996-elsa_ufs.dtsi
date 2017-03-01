@@ -17,7 +17,7 @@
 };
 
 &sdcc1_ice {
-        status = "ok";
+	status = "ok";
 };
 
 &ufsphy1 {
@@ -46,7 +46,7 @@
 				drive-strength = <2>;
 				bias-pull-down;
 				output-high;
-		    };
+			};
 		};
 
 		ufs_reset_off: ufs_reset_off {

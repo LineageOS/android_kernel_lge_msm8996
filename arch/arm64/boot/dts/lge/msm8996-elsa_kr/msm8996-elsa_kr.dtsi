@@ -152,7 +152,7 @@
 };
 
 &sdcc1_ice {
-        status = "ok";
+	status = "ok";
 };
 
 &ufsphy1 {
@@ -250,7 +250,7 @@
 		qcom,fast-avg-setup = <0>;
 	};
 
-        chan@72 {
+	chan@72 {
 		label = "xo_therm";
 		reg = <0x72>;
 		qcom,decimation = <0>;
@@ -941,12 +941,12 @@
 };
 
 &pcie1 {
-       status = "disabled";
+	status = "disabled";
 };
 
 &pcie2 {
-       status = "disabled";
+	status = "disabled";
 };
 &pil_modem {
-       /delete-property/ qcom,mx-spike-wa;
+	/delete-property/ qcom,mx-spike-wa;
 };

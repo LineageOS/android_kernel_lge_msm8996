@@ -11,8 +11,8 @@
  */
 
 &mdss_mdp {
-    dsi_sw49407_dsc_video: qcom,mdss_dsi_sw49407_dsc_qhd_video {
-        qcom,mdss-dsi-panel-name = "SW49407 video mode dsc dsi panel";
+	dsi_sw49407_dsc_video: qcom,mdss_dsi_sw49407_dsc_qhd_video {
+		qcom,mdss-dsi-panel-name = "SW49407 video mode dsc dsi panel";
 		qcom,mdss-dsi-panel-type = "dsi_video_mode";
 		qcom,mdss-dsi-panel-framerate = <60>;
 		qcom,mdss-dsi-pan-enable-dynamic-fps;
@@ -62,7 +62,7 @@
 			21 1D 06 07 04 03 04 a0
 			21 1D 06 07 04 03 04 a0
 			21 13 06 07 04 03 04 a0		/* Clk lane */
-			];
+		];
 		qcom,mdss-dsi-reset-sequence = <1 10>, <0 10>, <1 10>;
 		qcom,mdss-dsi-t-clk-post = <0x0B>;
 		qcom,mdss-dsi-t-clk-pre = <0x26>;
@@ -177,7 +177,7 @@
 			39 01 00 00 00 00 06 B1 47 00 80 00 00
 			/* Normal Display mode on */
 			05 01 00 00 00 00 01 13
-			];
+		];
 
 		qcom,v-to-c-on-command = [ /*initset v1.9*/
 			/* Manufacturer Command Protection */
@@ -274,13 +274,13 @@
 			05 01 00 00 00 00 01 13
 			/* All off */
 			05 01 00 00 00 00 01 22
-			];
+		];
 		qcom,mdss-display-on-command = [
 			/* Display On */
 			05 01 00 00 00 00 01 29
 			/* Sleep Out */
 			05 01 00 00 00 00 01 11
-			];
+		];
 		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
 		qcom,mdss-dsi-off-command = [
 			/* Display Off */
@@ -650,15 +650,15 @@
 };
 &spmi_bus {
 	qcom,pmi8994@3 {
-			labibb: qpnp-labibb-regulator {
-				ibb_regulator: qcom,ibb@dc00 {
-					qcom,qpnp-ibb-init-voltage = <5500000>;
-					qcom,qpnp-ibb-init-lcd-voltage = <5500000>;
-				};
-				lab_regulator: qcom,lab@de00 {
-					qcom,qpnp-lab-init-voltage = <5500000>;
-					qcom,qpnp-lab-init-lcd-voltage = <5500000>;
-				};
+		labibb: qpnp-labibb-regulator {
+			ibb_regulator: qcom,ibb@dc00 {
+				qcom,qpnp-ibb-init-voltage = <5500000>;
+				qcom,qpnp-ibb-init-lcd-voltage = <5500000>;
 			};
+			lab_regulator: qcom,lab@de00 {
+				qcom,qpnp-lab-init-voltage = <5500000>;
+				qcom,qpnp-lab-init-lcd-voltage = <5500000>;
+			};
+		};
 	};
 };

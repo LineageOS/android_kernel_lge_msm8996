@@ -143,7 +143,7 @@
 };
 
 &pmi8994_charger {
-    lge,lge_otp_enable;
+	lge,lge_otp_enable;
 };
 
 /* set unused gpio to off */
@@ -261,25 +261,25 @@
 };
 
 &spmi_bus {
-    qcom,pm8994@0 {
-        qcom,power-on@800 {
-            qcom,s3-debounce = <128>;
-            qcom,s3-src = "kpdpwr-and-resin";
-            qcom,pon_1 {  /* KPD_PWR_N */
-                status = "ok";
-                qcom,support-reset = <0>;
-            };
-            qcom,pon_2 {  /* RESIN_N */
-                status = "ok";
-                qcom,support-reset = <0>;
-            };
-            qcom,pon_3 {  /* KPD_PWR_N AND RESIN_N */
-                status = "ok";
-                qcom,support-reset = <1>;
-                qcom,s1-timer = <10256>;
-                qcom,s2-timer = <0>;
-                qcom,s2-type = <7>;
-            };
-        };
-    };
+	qcom,pm8994@0 {
+		qcom,power-on@800 {
+			qcom,s3-debounce = <128>;
+			qcom,s3-src = "kpdpwr-and-resin";
+			qcom,pon_1 {  /* KPD_PWR_N */
+				status = "ok";
+				qcom,support-reset = <0>;
+			};
+			qcom,pon_2 {  /* RESIN_N */
+				status = "ok";
+				qcom,support-reset = <0>;
+			};
+			qcom,pon_3 {  /* KPD_PWR_N AND RESIN_N */
+				status = "ok";
+				qcom,support-reset = <1>;
+				qcom,s1-timer = <10256>;
+				qcom,s2-timer = <0>;
+				qcom,s2-type = <7>;
+			};
+		};
+	};
 };

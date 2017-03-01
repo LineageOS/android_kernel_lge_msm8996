@@ -12,7 +12,7 @@
  */
 
 &blsp1_uart2 {
-  compatible = "qcom,msm-hsuart-v14-brcmbt";
+	compatible = "qcom,msm-hsuart-v14-brcmbt";
 	interrupt-names = "core_irq", "bam_irq";
 	interrupts = <0 1>;
 	interrupt-map = <0 &intc 0 0 108 0
@@ -43,26 +43,26 @@
 		pinctrl-names = "bt_wake_host_gpio_on", "bt_wake_host_gpio_off";
 		pinctrl-0 = <&bt_wake_host_gpio_on>;
 		pinctrl-1 = <&bt_wake_host_gpio_off>;
-  };
+	};
 };
 
 &tlmm {
-    /* GPIO_24 : BT_HOST_WAKE */
-    bluetooth_wake_host_pin {
-			bt_wake_host_gpio_on: bt_wake_host_gpio_on {
-				config {
-					pins = "gpio24";
-					drive-strength = <2>;
-					bias-pull-up;
-				};
-			};
-
-			bt_wake_host_gpio_off: bt_wake_host_gpio_off {
-				config {
-					pins = "gpio24";
-					drive-strength = <2>;
-					bias-pull-down;
-				};
+	/* GPIO_24 : BT_HOST_WAKE */
+	bluetooth_wake_host_pin {
+		bt_wake_host_gpio_on: bt_wake_host_gpio_on {
+			config {
+				pins = "gpio24";
+				drive-strength = <2>;
+				bias-pull-up;
 			};
 		};
+
+		bt_wake_host_gpio_off: bt_wake_host_gpio_off {
+			config {
+				pins = "gpio24";
+				drive-strength = <2>;
+				bias-pull-down;
+			};
+		};
+	};
 };
