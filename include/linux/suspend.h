@@ -222,10 +222,6 @@ extern void arch_suspend_disable_irqs(void);
  */
 extern void arch_suspend_enable_irqs(void);
 
-#ifdef CONFIG_LGE_PM
-extern bool suspend_debug_irq_pin(void);
-#endif
-
 extern int pm_suspend(suspend_state_t state);
 #else /* !CONFIG_SUSPEND */
 #define suspend_valid_only_mem	NULL

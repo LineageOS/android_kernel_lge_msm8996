@@ -464,18 +464,9 @@ static int enter_state(suspend_state_t state)
 		freeze_begin();
 
 	trace_suspend_resume(TPS("sync_filesystems"), 0, true);
-#ifdef CONFIG_MACH_LGE
-	printk(KERN_INFO "PM: Check and Syncing filesystems ... \n");
-	if (check_and_sync() != 0) {
-		error = -EBUSY;
-		goto Unlock;
-	}
-	printk("PM: done.\n");
-#else
 	printk(KERN_INFO "PM: Syncing filesystems ... ");
 	sys_sync();
 	printk("done.\n");
-#endif
 	trace_suspend_resume(TPS("sync_filesystems"), 0, false);
 
 	pr_debug("PM: Preparing system for %s sleep\n", pm_states[state]);
@@ -512,12 +503,6 @@ static void pm_suspend_marker(char *annotation)
 		tm.tm_hour, tm.tm_min, tm.tm_sec, ts.tv_nsec);
 }
 
-#ifdef CONFIG_LGE_PM
-static bool debug_irq_pin = false;
-bool suspend_debug_irq_pin(void) { return debug_irq_pin; }
-EXPORT_SYMBOL(suspend_debug_irq_pin);
-#endif
-
 /**
  * pm_suspend - Externally visible function for suspending the system.
  * @state: System sleep state to enter.
@@ -532,11 +517,7 @@ int pm_suspend(suspend_state_t state)
 	if (state <= PM_SUSPEND_ON || state >= PM_SUSPEND_MAX)
 		return -EINVAL;
 
-#ifdef CONFIG_LGE_PM
-	debug_irq_pin = true;
-#endif
 	pm_suspend_marker("entry");
-
 	error = enter_state(state);
 	if (error) {
 		suspend_stats.fail++;
@@ -545,9 +526,6 @@ int pm_suspend(suspend_state_t state)
 		suspend_stats.success++;
 	}
 	pm_suspend_marker("exit");
-#ifdef CONFIG_LGE_PM
-	debug_irq_pin = false;
-#endif
 	return error;
 }
 EXPORT_SYMBOL(pm_suspend);

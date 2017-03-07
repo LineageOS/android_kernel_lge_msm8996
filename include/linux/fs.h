@@ -124,18 +124,6 @@ typedef void (dio_iodone_t)(struct kiocb *iocb, loff_t offset,
 /* File is opened with O_PATH; almost nothing can be done with it */
 #define FMODE_PATH		((__force fmode_t)0x4000)
 
-#ifdef CONFIG_SDCARD_FS
-/* File hasn't page cache and can't be mmaped, for stakable filesystem */
-#define FMODE_NOMAPPABLE	((__force fmode_t)0x8000)
-/* File needs atomic accesses to f_pos */
-#define FMODE_ATOMIC_POS	((__force fmode_t)0x10000)
-/* Write access to underlying fs */
-#define FMODE_WRITER		((__force fmode_t)0x20000)
-/* Has read method(s) */
-#define FMODE_CAN_READ          ((__force fmode_t)0x40000)
-/* Has write method(s) */
-#define FMODE_CAN_WRITE         ((__force fmode_t)0x80000)
-#else
 /* File needs atomic accesses to f_pos */
 #define FMODE_ATOMIC_POS	((__force fmode_t)0x8000)
 /* Write access to underlying fs */
@@ -144,7 +132,6 @@ typedef void (dio_iodone_t)(struct kiocb *iocb, loff_t offset,
 #define FMODE_CAN_READ          ((__force fmode_t)0x20000)
 /* Has write method(s) */
 #define FMODE_CAN_WRITE         ((__force fmode_t)0x40000)
-#endif
 
 /* File was opened by fanotify and shouldn't generate fanotify events */
 #define FMODE_NONOTIFY		((__force fmode_t)0x1000000)
@@ -1445,9 +1432,6 @@ extern int vfs_rmdir(struct inode *, struct dentry *);
 extern int vfs_unlink(struct inode *, struct dentry *, struct inode **);
 extern int vfs_rename(struct inode *, struct dentry *, struct inode *, struct dentry *, struct inode **, unsigned int);
 extern int vfs_whiteout(struct inode *, struct dentry *);
-#ifdef CONFIG_SDCARD_FS
-extern long do_unlinkat(int, const char __user *, bool);
-#endif
 
 /*
  * VFS dentry helper functions.
@@ -1518,7 +1502,7 @@ struct file_operations {
 	ssize_t (*write) (struct file *, const char __user *, size_t, loff_t *);
 	ssize_t (*aio_read) (struct kiocb *, const struct iovec *, unsigned long, loff_t);
 	ssize_t (*aio_write) (struct kiocb *, const struct iovec *, unsigned long, loff_t);
-    ssize_t (*read_iter) (struct kiocb *, struct iov_iter *);
+	ssize_t (*read_iter) (struct kiocb *, struct iov_iter *);
 	ssize_t (*write_iter) (struct kiocb *, struct iov_iter *);
 	int (*iterate) (struct file *, struct dir_context *);
 	unsigned int (*poll) (struct file *, struct poll_table_struct *);
@@ -1542,10 +1526,6 @@ struct file_operations {
 	long (*fallocate)(struct file *file, int mode, loff_t offset,
 			  loff_t len);
 	int (*show_fdinfo)(struct seq_file *m, struct file *f);
-#ifdef CONFIG_SDCARD_FS
-	/* get_lower_file is for stakable file system */
-	struct file* (*get_lower_file)(struct file *f);
-#endif
 };
 
 struct inode_operations {
@@ -1584,9 +1564,6 @@ struct inode_operations {
 	int (*set_acl)(struct inode *, struct posix_acl *, int);
 
 	/* WARNING: probably going away soon, do not use! */
-#ifdef CONFIG_SDCARD_FS
-	struct inode * (*get_lower_inode)(struct inode *);
-#endif
 } ____cacheline_aligned;
 
 ssize_t rw_copy_check_uvector(int type, const struct iovec __user * uvector,
@@ -1628,9 +1605,6 @@ struct super_operations {
 	int (*bdev_try_to_free_page)(struct super_block*, struct page*, gfp_t);
 	long (*nr_cached_objects)(struct super_block *, int);
 	long (*free_cached_objects)(struct super_block *, long, int);
-#ifdef CONFIG_SDCARD_FS
-	long (*unlink_callback)(struct inode *, char *);
-#endif
 };
 
 /*
@@ -2306,9 +2280,6 @@ extern int filemap_fdatawrite_range(struct address_space *mapping,
 extern int vfs_fsync_range(struct file *file, loff_t start, loff_t end,
 			   int datasync);
 extern int vfs_fsync(struct file *file, int datasync);
-#ifdef CONFIG_MACH_LGE
-extern int check_and_sync(void);
-#endif
 static inline int generic_write_sync(struct file *file, loff_t pos, loff_t count)
 {
 	if (!(file->f_flags & O_DSYNC) && !IS_SYNC(file->f_mapping->host))

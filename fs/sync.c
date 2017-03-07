@@ -16,10 +16,6 @@
 #include <linux/quotaops.h>
 #include <linux/backing-dev.h>
 #include "internal.h"
-#ifdef CONFIG_MACH_LGE
-#include <linux/genhd.h>
-#include <linux/blkdev.h>
-#endif
 
 #define VALID_FLAGS (SYNC_FILE_RANGE_WAIT_BEFORE|SYNC_FILE_RANGE_WRITE| \
 			SYNC_FILE_RANGE_WAIT_AFTER)
@@ -76,20 +72,7 @@ static void sync_inodes_one_sb(struct super_block *sb, void *arg)
 	if (!(sb->s_flags & MS_RDONLY))
 		sync_inodes_sb(sb);
 }
-#ifdef CONFIG_MACH_LGE
-static void check_and_sync_inodes_one_sb(struct super_block *sb, void *arg)
-{
-	if(sb->s_bdi->max_sync_count) {
-		if (sb->s_bdev->bd_queue->root_rl.count[0] > sb->s_bdi->max_sync_count) {
-			int *ret = (int *)arg;
-			*ret = 1;
-			async_inodes_sb(sb);
-			printk("Do async due to long sync time. syncing data count = %d(%s).\n",
-				sb->s_bdev->bd_queue->root_rl.count[0],sb->s_bdev->bd_disk->disk_name);
-		}
-	}
-}
-#endif
+
 static void sync_fs_one_sb(struct super_block *sb, void *arg)
 {
 	if (!(sb->s_flags & MS_RDONLY) && sb->s_op->sync_fs)
@@ -130,30 +113,6 @@ SYSCALL_DEFINE0(sync)
 		laptop_sync_completion();
 	return 0;
 }
-#ifdef CONFIG_MACH_LGE
-int check_and_sync()
-{
-	int nowait = 0, wait = 1, congested = 0;
-
-	wakeup_flusher_threads(0, WB_REASON_SYNC);
-
-	iterate_supers(check_and_sync_inodes_one_sb, &congested);
-
-	if (congested)
-		return 1;
-
-	iterate_supers(sync_inodes_one_sb, NULL);
-	iterate_supers(sync_fs_one_sb, &nowait);
-	iterate_supers(sync_fs_one_sb, &wait);
-	iterate_bdevs(fdatawrite_one_bdev, NULL);
-	iterate_bdevs(fdatawait_one_bdev, NULL);
-	if (unlikely(laptop_mode))
-		laptop_sync_completion();
-
-	return 0;
-}
-EXPORT_SYMBOL(check_and_sync);
-#endif
 
 static void do_sync_work(struct work_struct *work)
 {
