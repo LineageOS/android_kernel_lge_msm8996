@@ -34,3 +34,4 @@ static inline appid_t multiuser_get_app_id(uid_t uid) {
 static inline uid_t multiuser_get_uid(userid_t userId, appid_t appId) {
     return userId * MULTIUSER_APP_PER_USER_RANGE + (appId % MULTIUSER_APP_PER_USER_RANGE);
 }
+

@@ -150,10 +150,6 @@ int ecryptfs_write(struct inode *ecryptfs_inode, char *data, loff_t offset,
 			       "index [%ld] from eCryptfs inode "
 			       "mapping; rc = [%d]\n", __func__,
 			       ecryptfs_page_idx, rc);
-			printk(KERN_ERR " [CCAudit] %s: Error getting page at "
-			       "index [%ld] from eCryptfs inode "
-			       "mapping; rc = [%d]\n", __func__,
-			       ecryptfs_page_idx, rc);
 			goto out;
 		}
 		ecryptfs_page_virt = kmap_atomic(ecryptfs_page);
@@ -194,8 +190,6 @@ int ecryptfs_write(struct inode *ecryptfs_inode, char *data, loff_t offset,
 		if (rc) {
 			printk(KERN_ERR "%s: Error encrypting "
 			       "page; rc = [%d]\n", __func__, rc);
-			printk(KERN_ERR " [CCAudit] %s: Error encrypting "
-			       "page; rc = [%d]\n", __func__, rc);
 			goto out;
 		}
 		pos += num_bytes;
@@ -209,9 +203,6 @@ int ecryptfs_write(struct inode *ecryptfs_inode, char *data, loff_t offset,
 								ecryptfs_inode);
 			if (rc2) {
 				printk(KERN_ERR	"Problem with "
-				       "ecryptfs_write_inode_size_to_metadata; "
-				       "rc = [%d]\n", rc2);
-				printk(KERN_ERR	" [CCAudit] Problem with "
 				       "ecryptfs_write_inode_size_to_metadata; "
 				       "rc = [%d]\n", rc2);
 				if (!rc)

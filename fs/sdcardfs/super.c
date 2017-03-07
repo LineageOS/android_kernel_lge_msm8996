@@ -41,9 +41,6 @@ static void sdcardfs_put_super(struct super_block *sb)
 		path_put(&spd->obbpath);
 	}
 
-	if(spd->options.label)
-		kfree(spd->options.label);
-
 	/* decrement lower super references */
 	s = sdcardfs_lower_super(sb);
 	sdcardfs_set_lower_super(sb, NULL);
@@ -180,73 +177,17 @@ void sdcardfs_destroy_inode_cache(void)
 		kmem_cache_destroy(sdcardfs_inode_cachep);
 }
 
-long sdcardfs_propagate_unlink(struct inode *parent, char* pathname) {
-	long ret = 0;
-	char *propagate_path = NULL;
-	struct sdcardfs_sb_info *sbi;
-	const struct cred *saved_cred = NULL;
-	/* old_fs is just temporary code to avoid the problem with memory address */
-	mm_segment_t old_fs;
-
-	sbi = SDCARDFS_SB(parent->i_sb);
-	propagate_path = kmalloc(PATH_MAX, GFP_KERNEL);
-	OVERRIDE_ROOT_CRED(saved_cred);
-	old_fs = get_fs();
-	set_fs(KERNEL_DS);
-	if (sbi->options.type != TYPE_NONE && sbi->options.type != TYPE_DEFAULT) {
-		snprintf(propagate_path, PATH_MAX, "/mnt/runtime/default/%s%s",
-				sbi->options.label, pathname);
-		ret = do_unlinkat(AT_FDCWD, propagate_path, false);
-	}
-
-	if (sbi->options.type != TYPE_NONE && sbi->options.type != TYPE_READ) {
-		snprintf(propagate_path, PATH_MAX, "/mnt/runtime/read/%s%s",
-				sbi->options.label, pathname);
-		ret = do_unlinkat(AT_FDCWD, propagate_path, false);
-	}
-
-	if (sbi->options.type != TYPE_NONE && sbi->options.type != TYPE_WRITE) {
-		snprintf(propagate_path, PATH_MAX, "/mnt/runtime/write/%s%s",
-				sbi->options.label, pathname);
-		ret = do_unlinkat(AT_FDCWD, propagate_path, false);
-	}
-
-	if (sbi->options.type != TYPE_NONE) {
-		snprintf(propagate_path, PATH_MAX, "/storage/%s%s",
-				sbi->options.label, pathname);
-		ret = do_unlinkat(AT_FDCWD, propagate_path, false);
-	}
-	set_fs(old_fs);
-	REVERT_CRED(saved_cred);
-	kfree(propagate_path);
-	return ret;
-}
-
 /*
  * Used only in nfs, to kill any pending RPC tasks, so that subsequent
  * code can actually succeed and won't leave tasks that need handling.
- * This function is called only umount with MNT_FORCE flag.
- * if umount with MNT_FORCE flag is called , it may cause a kernel crash
- * because packagelist_data has a super_block information.
  */
 static void sdcardfs_umount_begin(struct super_block *sb)
 {
 	struct super_block *lower_sb;
-	struct sdcardfs_sb_info *spd;
-	type_t type;
 
 	lower_sb = sdcardfs_lower_super(sb);
 	if (lower_sb && lower_sb->s_op && lower_sb->s_op->umount_begin)
 		lower_sb->s_op->umount_begin(lower_sb);
-
-	spd = SDCARDFS_SB(sb);
-	if (!spd)
-		return;
-
-	type = ((struct sdcardfs_sb_info *)sb->s_fs_info)->options.type;
-
-	if(spd->pkgl_id)
-		packagelist_destroy(spd->pkgl_id,type);
 }
 
 static int sdcardfs_show_options(struct seq_file *m, struct dentry *root)
@@ -258,12 +199,9 @@ static int sdcardfs_show_options(struct seq_file *m, struct dentry *root)
 		seq_printf(m, ",uid=%u", opts->fs_low_uid);
 	if (opts->fs_low_gid != 0)
 		seq_printf(m, ",gid=%u", opts->fs_low_gid);
-    if (opts->sdfs_gid != 0)
-        seq_printf(m, ",sdfs_gid=%u", opts->sdfs_gid);
-    if (opts->sdfs_mask != 0)
-        seq_printf(m, ",sdfs_mask%u", opts->sdfs_mask);
-    if (opts->multi_user != 0)
-        seq_printf(m, ",multi_user");
+
+	if (opts->multiuser)
+		seq_printf(m, ",multiuser");
 
 	if (opts->reserved_mb != 0)
 		seq_printf(m, ",reserved=%uMB", opts->reserved_mb);
@@ -281,7 +219,4 @@ const struct super_operations sdcardfs_sops = {
 	.alloc_inode	= sdcardfs_alloc_inode,
 	.destroy_inode	= sdcardfs_destroy_inode,
 	.drop_inode	= generic_delete_inode,
-#ifdef CONFIG_SDCARD_FS
-	.unlink_callback = sdcardfs_propagate_unlink,
-#endif
 };

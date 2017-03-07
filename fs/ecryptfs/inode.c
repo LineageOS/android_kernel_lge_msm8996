@@ -154,7 +154,6 @@ static int ecryptfs_do_unlink(struct inode *dir, struct dentry *dentry,
 	rc = vfs_unlink(lower_dir_inode, lower_dentry, NULL);
 	if (rc) {
 		printk(KERN_ERR "Error in vfs_unlink; rc = [%d]\n", rc);
-		printk(KERN_ERR " [CCAudit] Error in vfs_unlink; rc = [%d]\n", rc);
 		goto out_unlock;
 	}
 	fsstack_copy_attr_times(dir, lower_dir_inode);
@@ -195,8 +194,6 @@ ecryptfs_do_create(struct inode *directory_inode,
 	if (rc) {
 		printk(KERN_ERR "%s: Failure to create dentry in lower fs; "
 		       "rc = [%d]\n", __func__, rc);
-		printk(KERN_ERR " [CCAudit] %s: Failure to create dentry in lower fs; "
-		       "rc = [%d]\n", __func__, rc);
 		inode = ERR_PTR(rc);
 		goto out_lock;
 	}
@@ -226,11 +223,6 @@ int ecryptfs_initialize_file(struct dentry *ecryptfs_dentry,
 {
 	struct ecryptfs_crypt_stat *crypt_stat =
 		&ecryptfs_inode_to_private(ecryptfs_inode)->crypt_stat;
-#ifdef FEATURE_SDCARD_ENCRYPTION
-	struct ecryptfs_mount_sd_crypt_stat *mount_sd_crypt_stat =
-		&ecryptfs_superblock_to_private(
-			ecryptfs_dentry->d_sb)->mount_sd_crypt_stat;
-#endif
 	int rc = 0;
 
 	if (S_ISDIR(ecryptfs_inode->i_mode)) {
@@ -238,31 +230,10 @@ int ecryptfs_initialize_file(struct dentry *ecryptfs_dentry,
 		crypt_stat->flags &= ~(ECRYPTFS_ENCRYPTED);
 		goto out;
 	}
-#ifdef FEATURE_SDCARD_ENCRYPTION
-	if (mount_sd_crypt_stat && (mount_sd_crypt_stat->flags & ECRYPTFS_MEDIA_EXCEPTION)) {
-		if (ecryptfs_media_file_search(ecryptfs_dentry->d_name.name)) {
-			crypt_stat->flags &= ~(ECRYPTFS_ENCRYPTED);
-			goto out;
-		}
-	}
-
-	if (ecryptfs_asec_file_search(ecryptfs_dentry->d_name.name)) {
-		crypt_stat->flags &= ~(ECRYPTFS_ENCRYPTED);
-		goto out;
-	}
-
-	if (mount_sd_crypt_stat && (mount_sd_crypt_stat->flags
-			& ECRYPTFS_DECRYPTION_ONLY)) {
-		crypt_stat->flags &= ~(ECRYPTFS_ENCRYPTED);
-		goto out;
-	}
-#endif
 	ecryptfs_printk(KERN_DEBUG, "Initializing crypto context\n");
 	rc = ecryptfs_new_file_context(ecryptfs_inode);
 	if (rc) {
 		ecryptfs_printk(KERN_ERR, "Error creating new file "
-				"context; rc = [%d]\n", rc);
-		ecryptfs_printk(KERN_ERR, " [CCAudit] Error creating new file "
 				"context; rc = [%d]\n", rc);
 		goto out;
 	}
@@ -272,17 +243,11 @@ int ecryptfs_initialize_file(struct dentry *ecryptfs_dentry,
 			"the lower file for the dentry with name "
 			"[%pd]; rc = [%d]\n", __func__,
 			ecryptfs_dentry, rc);
-		printk(KERN_ERR " [CCAudit] %s: Error attempting to initialize "
-			"the lower file for the dentry with name "
-			"[%pd]; rc = [%d]\n", __func__,
-			ecryptfs_dentry, rc);
 		goto out;
 	}
 	rc = ecryptfs_write_metadata(ecryptfs_dentry, ecryptfs_inode);
-	if (rc) {
+	if (rc)
 		printk(KERN_ERR "Error writing headers; rc = [%d]\n", rc);
-		printk(KERN_ERR " [CCAudit] Error writing headers; rc = [%d]\n", rc);
-	}
 	ecryptfs_put_lower_file(ecryptfs_inode);
 out:
 	return rc;
@@ -298,12 +263,15 @@ out:
  *
  * Returns zero on success; non-zero on error condition
  */
+
+
 static int
 ecryptfs_create(struct inode *directory_inode, struct dentry *ecryptfs_dentry,
 		umode_t mode, bool excl)
 {
 	struct inode *ecryptfs_inode;
 	int rc;
+	struct ecryptfs_crypt_stat *crypt_stat;
 
 	ecryptfs_inode = ecryptfs_do_create(directory_inode, ecryptfs_dentry,
 					    mode);
@@ -313,6 +281,7 @@ ecryptfs_create(struct inode *directory_inode, struct dentry *ecryptfs_dentry,
 		rc = PTR_ERR(ecryptfs_inode);
 		goto out;
 	}
+
 	/* At this point, a file exists on "disk"; we need to make sure
 	 * that this on disk file is prepared to be an ecryptfs file */
 	rc = ecryptfs_initialize_file(ecryptfs_dentry, ecryptfs_inode);
@@ -325,6 +294,13 @@ ecryptfs_create(struct inode *directory_inode, struct dentry *ecryptfs_dentry,
 		goto out;
 	}
 	unlock_new_inode(ecryptfs_inode);
+
+	crypt_stat = &ecryptfs_inode_to_private(ecryptfs_inode)->crypt_stat;
+	if (get_events() && get_events()->open_cb)
+			get_events()->open_cb(
+				ecryptfs_inode_to_lower(ecryptfs_inode),
+					crypt_stat);
+
 	d_instantiate(ecryptfs_dentry, ecryptfs_inode);
 out:
 	return rc;
@@ -338,10 +314,6 @@ static int ecryptfs_i_size_read(struct dentry *dentry, struct inode *inode)
 	rc = ecryptfs_get_lower_file(dentry, inode);
 	if (rc) {
 		printk(KERN_ERR "%s: Error attempting to initialize "
-			"the lower file for the dentry with name "
-			"[%pd]; rc = [%d]\n", __func__,
-			dentry, rc);
-		printk(KERN_ERR " [CCAudit] %s: Error attempting to initialize "
 			"the lower file for the dentry with name "
 			"[%pd]; rc = [%d]\n", __func__,
 			dentry, rc);
@@ -382,9 +354,6 @@ static int ecryptfs_lookup_interpose(struct dentry *dentry,
 		printk(KERN_ERR "%s: Out of memory whilst attempting "
 		       "to allocate ecryptfs_dentry_info struct\n",
 			__func__);
-		printk(KERN_ERR " [CCAudit] %s: Out of memory whilst attempting "
-		       "to allocate ecryptfs_dentry_info struct\n",
-			__func__);
 		dput(lower_dentry);
 		return -ENOMEM;
 	}
@@ -405,8 +374,6 @@ static int ecryptfs_lookup_interpose(struct dentry *dentry,
 	inode = __ecryptfs_get_inode(lower_inode, dir_inode->i_sb);
 	if (IS_ERR(inode)) {
 		printk(KERN_ERR "%s: Error interposing; rc = [%ld]\n",
-		       __func__, PTR_ERR(inode));
-		printk(KERN_ERR " [CCAudit] %s: Error interposing; rc = [%ld]\n",
 		       __func__, PTR_ERR(inode));
 		return PTR_ERR(inode);
 	}
@@ -471,8 +438,6 @@ static struct dentry *ecryptfs_lookup(struct inode *ecryptfs_dir_inode,
 		ecryptfs_dentry->d_name.len);
 	if (rc) {
 		printk(KERN_ERR "%s: Error attempting to encrypt and encode "
-		       "filename; rc = [%d]\n", __func__, rc);
-		printk(KERN_ERR " [CCAudit] %s: Error attempting to encrypt and encode "
 		       "filename; rc = [%d]\n", __func__, rc);
 		goto out;
 	}
@@ -839,9 +804,6 @@ static int truncate_upper(struct dentry *dentry, struct iattr *ia,
 				printk(KERN_ERR "Error attempting to zero out "
 				       "the remainder of the end page on "
 				       "reducing truncate; rc = [%d]\n", rc);
-				printk(KERN_ERR " [CCAudit] Error attempting to zero out "
-				       "the remainder of the end page on "
-				       "reducing truncate; rc = [%d]\n", rc);
 				goto out;
 			}
 		}
@@ -849,9 +811,6 @@ static int truncate_upper(struct dentry *dentry, struct iattr *ia,
 		rc = ecryptfs_write_inode_size_to_metadata(inode);
 		if (rc) {
 			printk(KERN_ERR	"Problem with "
-			       "ecryptfs_write_inode_size_to_metadata; "
-			       "rc = [%d]\n", rc);
-			printk(KERN_ERR	" [CCAudit] Problem with "
 			       "ecryptfs_write_inode_size_to_metadata; "
 			       "rc = [%d]\n", rc);
 			goto out;

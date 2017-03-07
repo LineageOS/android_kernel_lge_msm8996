@@ -20,27 +20,3 @@ config ECRYPT_FS_MESSAGING
 	  Enables the /dev/ecryptfs entry for use by ecryptfsd. This allows
 	  for userspace to wrap/unwrap file encryption keys by other
 	  backends, like OpenSSL.
-
-config CRYPTO_DEV_HWCRYPTO_FOR_SDCARD
-    bool "Enable Qcom HW crypto for sdcard encryption"
-    help
-      Enables Qcom HW crypto for sdcard encryption.
-
-config CRYPTO_DEV_FOR_H1_SPRINT
-    bool "Enable flage for SPRINT"
-    help
-      This config is only for SPRINT.
-
-config CRYPTO_DEV_KEY_INTEGRITY_CHECK
-    bool "Enable flage for key integrity check"
-    help
-      This config is only for DISA model.
-
-config SD_ENCRYPTION_MANAGER
-	bool "Enable LG SDCard encryption for media exception/decryption only"
-	depends on ECRYPT_FS
-	help
-	  LG provides SD card encryption to protect external SD card data.
-	  all created data on the external SD card is automatically encrypted by
-	  file system (eCryptfs) before committing it to SD card and all reads
-	  automatically decrypt data before returning it to the calling process.

@@ -1,17 +1,9 @@
 config SDCARD_FS
 	tristate "sdcard file system"
-	depends on BLOCK
+	depends on CONFIGFS_FS
 	default n
 	help
 	  Sdcardfs is based on Wrapfs file system.
-
-config SDCARD_FS_ANDROID_M
-	bool  "Android M support"
-	depends on SDCARD_FS
-	default y
-	select SDCARD_FS_32BIT_INO
-	help
-		Sdcardfs supports Android M
 
 config SDCARD_FS_FADV_NOACTIVE
 	bool "sdcardfs fadvise noactive support"
@@ -19,20 +11,3 @@ config SDCARD_FS_FADV_NOACTIVE
 	default y
 	help
 	  Sdcardfs supports fadvise noactive mode.
-
-config SDCARD_FS_CI_SEARCH
-	tristate "sdcardfs case-insensitive search support"
-	depends on SDCARD_FS
-	default y
-
-config SDCARD_FS_32BIT_INO
-	bool
-	depends on SDCARD_FS
-	default y
-	help
-		limit inode number to 32-bit
-
-config SDCARD_FS_SUPPORT_SYMLINK
-	tristate "sdcardfs symlink support"
-	depends on SDCARD_FS
-	default y

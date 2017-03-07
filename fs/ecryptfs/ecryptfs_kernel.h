@@ -39,9 +39,6 @@
 #include <linux/backing-dev.h>
 #include <linux/ecryptfs.h>
 #include <linux/crypto.h>
-#ifdef CONFIG_SD_ENCRYPTION_MANAGER
-#include "sdcard_encrypt_mgr.h"
-#endif
 
 #define ECRYPTFS_DEFAULT_IV_BYTES 16
 #define ECRYPTFS_DEFAULT_EXTENT_SIZE 4096
@@ -139,9 +136,6 @@ ecryptfs_get_key_payload_data(struct key *key)
 #define ECRYPTFS_DEFAULT_CIPHER "aes"
 #define ECRYPTFS_DEFAULT_KEY_BYTES 16
 #define ECRYPTFS_DEFAULT_HASH "md5"
-#ifdef CONFIG_CRYPTO_CCMODE
-#define ECRYPTFS_SHA256_HASH  "sha256"
-#endif //CONFIG_CRYPTO_CCMODE
 #define ECRYPTFS_TAG_70_DIGEST ECRYPTFS_DEFAULT_HASH
 #define ECRYPTFS_TAG_1_PACKET_TYPE 0x01
 #define ECRYPTFS_TAG_3_PACKET_TYPE 0x8C
@@ -168,9 +162,6 @@ ecryptfs_get_key_payload_data(struct key *key)
 #define ECRYPTFS_FILENAME_MIN_RANDOM_PREPEND_BYTES 16
 #define ECRYPTFS_NON_NULL 0x42 /* A reasonable substitute for NULL */
 #define MD5_DIGEST_SIZE 16
-#ifdef CONFIG_CRYPTO_CCMODE
-#define SHA256_HASH_SIZE 32
-#endif //CONFIG_CRYPTO_CCMODE
 #define ECRYPTFS_TAG_70_DIGEST_SIZE MD5_DIGEST_SIZE
 #define ECRYPTFS_TAG_70_MIN_METADATA_SIZE (1 + ECRYPTFS_MIN_PKT_LEN_SIZE \
 					   + ECRYPTFS_SIG_SIZE + 1 + 1)
@@ -254,9 +245,7 @@ struct ecryptfs_crypt_stat {
 	struct mutex cs_tfm_mutex;
 	struct mutex cs_hash_tfm_mutex;
 	struct mutex cs_mutex;
-#ifdef CONFIG_CRYPTO_DEV_KEY_INTEGRITY_CHECK
-    unsigned char key_hash[SHA256_HASH_SIZE];
-#endif
+	unsigned char cipher_mode[ECRYPTFS_MAX_CIPHER_NAME_SIZE + 1];
 };
 
 /* inode private data. */
@@ -357,22 +346,14 @@ struct ecryptfs_mount_crypt_stat {
 	unsigned char global_default_fn_cipher_name[
 		ECRYPTFS_MAX_CIPHER_NAME_SIZE + 1];
 	char global_default_fnek_sig[ECRYPTFS_SIG_SIZE_HEX + 1];
+	unsigned char global_default_cipher_mode[ECRYPTFS_MAX_CIPHER_NAME_SIZE
+							 + 1];
 };
-#ifdef FEATURE_SDCARD_ENCRYPTION
-struct ecryptfs_mount_sd_crypt_stat {
-#define ECRYPTFS_DECRYPTION_ONLY               0x00000001
-#define ECRYPTFS_MEDIA_EXCEPTION               0x00000002
-	u32 flags;
-};
-#endif
 
 /* superblock private data. */
 struct ecryptfs_sb_info {
 	struct super_block *wsi_sb;
 	struct ecryptfs_mount_crypt_stat mount_crypt_stat;
-#ifdef FEATURE_SDCARD_ENCRYPTION
-	struct ecryptfs_mount_sd_crypt_stat mount_sd_crypt_stat;
-#endif
 	struct backing_dev_info bdi;
 };
 
@@ -549,6 +530,53 @@ ecryptfs_dentry_to_lower_path(struct dentry *dentry)
 	return &((struct ecryptfs_dentry_info *)dentry->d_fsdata)->lower_path;
 }
 
+/**
+ * Given a cipher and mode strings, the function
+ * concatenates them to create a new string of
+ * <cipher>_<mode> format.
+ */
+static inline unsigned char *ecryptfs_get_full_cipher(
+	unsigned char *cipher, unsigned char *mode,
+	unsigned char *final, size_t final_size)
+{
+	memset(final, 0, final_size);
+
+	if (strlen(mode) > 0) {
+		snprintf(final, final_size, "%s_%s", cipher, mode);
+		return final;
+	}
+
+	return cipher;
+}
+
+/**
+ * Given a <cipher>[_<mode>] formatted string, the function
+ * extracts cipher string and/or mode string.
+ * Note: the passed cipher and/or mode strings will be null-terminated.
+ */
+static inline void ecryptfs_parse_full_cipher(
+	char *s, char *cipher, char *mode)
+{
+	char input[2*ECRYPTFS_MAX_CIPHER_NAME_SIZE+1+1];
+			/* +1 for '_'; +1 for '\0' */
+	char *p;
+	char *input_p = input;
+
+	if (s == NULL || cipher == NULL)
+		return;
+
+	memset(input, 0, sizeof(input));
+	strlcpy(input, s, sizeof(input));
+
+	p = strsep(&input_p, "_");
+	strlcpy(cipher, p, ECRYPTFS_MAX_CIPHER_NAME_SIZE + 1);
+
+
+	/* check if mode is specified */
+	if (input_p != NULL && mode != NULL)
+		strlcpy(mode, input_p, ECRYPTFS_MAX_CIPHER_NAME_SIZE + 1);
+}
+
 #define ecryptfs_printk(type, fmt, arg...) \
         __ecryptfs_printk(type "%s: " fmt, __func__, ## arg);
 __printf(1, 2)
@@ -597,6 +625,10 @@ int ecryptfs_encrypt_and_encode_filename(
 	const char *name, size_t name_size);
 struct dentry *ecryptfs_lower_dentry(struct dentry *this_dentry);
 void ecryptfs_dump_hex(char *data, int bytes);
+void ecryptfs_dump_salt_hex(char *data, int key_size,
+		const struct ecryptfs_crypt_stat *crypt_stat);
+extern void ecryptfs_dump_cipher(struct ecryptfs_crypt_stat *stat);
+
 int virt_to_scatterlist(const void *addr, int size, struct scatterlist *sg,
 			int sg_size);
 int ecryptfs_compute_root_iv(struct ecryptfs_crypt_stat *crypt_stat);
@@ -739,5 +771,34 @@ int ecryptfs_set_f_namelen(long *namelen, long lower_namelen,
 			   struct ecryptfs_mount_crypt_stat *mount_crypt_stat);
 int ecryptfs_derive_iv(char *iv, struct ecryptfs_crypt_stat *crypt_stat,
 		       loff_t offset);
+
+void clean_inode_pages(struct address_space *mapping,
+		pgoff_t start, pgoff_t end);
+
+void ecryptfs_drop_pagecache_sb(struct super_block *sb, void *unused);
+
+void ecryptfs_free_events(void);
+
+void ecryptfs_freepage(struct page *page);
+
+struct ecryptfs_events *get_events(void);
+
+size_t ecryptfs_get_salt_size_for_cipher(
+		const struct ecryptfs_crypt_stat *crypt_stat);
+
+size_t ecryptfs_get_salt_size_for_cipher_mount(
+		const struct ecryptfs_mount_crypt_stat *mount_crypt_stat);
+
+size_t ecryptfs_get_key_size_to_enc_data(
+		const struct ecryptfs_crypt_stat *crypt_stat);
+
+size_t ecryptfs_get_key_size_to_store_key(
+		const struct ecryptfs_crypt_stat *crypt_stat);
+
+size_t ecryptfs_get_key_size_to_restore_key(size_t stored_key_size,
+		const struct ecryptfs_crypt_stat *crypt_stat);
+
+bool ecryptfs_check_space_for_salt(const size_t key_size,
+		const size_t salt_size);
 
 #endif /* #ifndef ECRYPTFS_KERNEL_H */
