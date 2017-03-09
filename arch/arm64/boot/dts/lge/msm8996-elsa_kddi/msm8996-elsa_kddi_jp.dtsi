@@ -16,7 +16,7 @@
 #include "msm8996-elsa_kddi_jp-pm.dtsi"
 #include "msm8996-elsa_kddi_jp-connectivity.dtsi"
 
-#include "msm8996-elsa_kddi_jp-hdmi.dtsi"
+#include "../msm8996-elsa-hdmi.dtsi"
 #include "msm8996-elsa_kddi_jp-fingerprint.dtsi"
 #include "msm8996-elsa_kddi_jp-usb.dtsi"
 

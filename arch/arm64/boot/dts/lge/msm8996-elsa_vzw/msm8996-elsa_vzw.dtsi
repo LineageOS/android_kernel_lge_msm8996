@@ -17,7 +17,7 @@
 #include "msm8996-elsa_vzw-sound.dtsi"
 #include "../msm8996-elsa-connectivity.dtsi"
 #include "../msm8996-nfc.dtsi"
-#include "msm8996-elsa_vzw-hdmi.dtsi"
+#include "../msm8996-elsa-hdmi.dtsi"
 #include "msm8996-elsa_vzw-fingerprint.dtsi"
 #include "msm8996-elsa_vzw-usb.dtsi"
 
