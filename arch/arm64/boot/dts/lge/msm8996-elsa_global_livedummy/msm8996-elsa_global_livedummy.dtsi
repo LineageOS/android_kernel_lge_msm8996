@@ -18,7 +18,7 @@
 #include "msm8996-elsa_global_livedummy-connectivity.dtsi"
 #include "msm8996-elsa_global_livedummy-nfc.dtsi"
 #include "../msm8996-elsa-hdmi.dtsi"
-#include "msm8996-elsa_global_livedummy-fingerprint.dtsi"
+#include "../msm8996-fingerprint-fpc1022.dtsi"
 #include "msm8996-elsa_global_livedummy-usb.dtsi"
 
 / {
