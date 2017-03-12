@@ -18,7 +18,11 @@
 		qcom,mdss-dsi-virtual-channel-id = <0>;
 		qcom,mdss-dsi-stream = <0>;
 		qcom,mdss-dsi-panel-width = <1440>;
+#ifdef CONFIG_LGE_DISABLE_SECOND_SCREEN
+		qcom,mdss-dsi-panel-height = <2560>;
+#else
 		qcom,mdss-dsi-panel-height = <2720>;
+#endif
 		qcom,mdss-dsi-h-front-porch = <100>;
 		qcom,mdss-dsi-h-back-porch = <32>;
 		qcom,mdss-dsi-h-pulse-width = <16>;
@@ -28,7 +32,11 @@
 		qcom,mdss-dsi-v-pulse-width = <1>;
 		qcom,mdss-dsi-h-left-border = <0>;
 		qcom,mdss-dsi-h-right-border = <0>;
+#ifdef CONFIG_LGE_DISABLE_SECOND_SCREEN
+		qcom,mdss-dsi-v-top-border = <160>;
+#else
 		qcom,mdss-dsi-v-top-border = <0>;
+#endif
 		qcom,mdss-dsi-v-bottom-border = <0>;
 		qcom,mdss-dsi-bpp = <24>;
 		qcom,mdss-dsi-color-order = "rgb_swap_rgb";

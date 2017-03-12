@@ -8,4 +8,13 @@ config LGE_HALL_IC
 	  Support sending a device-tree defined gpio code when hall IC
 	  is triggered.
 
+config LGE_DISABLE_SECOND_SCREEN
+	bool "Disable the secondary screen on elsa devices"
+	depends on MACH_MSM8996_ELSA
+	help
+	  Disables the second screen for devices with userspace which lacks
+	  support.  Notably this includes all non-stock versions of Android
+	  for LGE devices at the time of this writing (progress is being
+	  made for other Android versions though).
+
 endmenu
