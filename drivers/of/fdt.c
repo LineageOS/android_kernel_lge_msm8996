@@ -958,6 +958,123 @@ static const char *const config_cmdline __initconst = CONFIG_CMDLINE;
 static const char *const config_cmdline __initconst = "";
 #endif
 
+/* the for the Real(tm) command-line magic */
+#ifdef CONFIG_CMDLINE_SEARCHREPLACE
+static const char *const cmdline_searchreplace_list[][2] __initconst = {
+#ifdef CONFIG_CMDLINE_SAR_VERIFY_GREEN
+{" androidboot.verifiedbootstate=",     " androidboot.verifiedbootstate=green "},
+#endif
+#ifdef CONFIG_CMDLINE_SAR_ENABLE0
+{CONFIG_CMDLINE_SAR_SEARCH0,		CONFIG_CMDLINE_SAR_REPLACE0},
+#endif
+#ifdef CONFIG_CMDLINE_SAR_ENABLE1
+{CONFIG_CMDLINE_SAR_SEARCH1,		CONFIG_CMDLINE_SAR_REPLACE1},
+#endif
+#ifdef CONFIG_CMDLINE_SAR_ENABLE2
+{CONFIG_CMDLINE_SAR_SEARCH2,		CONFIG_CMDLINE_SAR_REPLACE2},
+#endif
+#ifdef CONFIG_CMDLINE_SAR_ENABLE3
+{CONFIG_CMDLINE_SAR_SEARCH3,		CONFIG_CMDLINE_SAR_REPLACE3},
+#endif
+#ifdef CONFIG_CMDLINE_SAR_ENABLE4
+{CONFIG_CMDLINE_SAR_SEARCH4,		CONFIG_CMDLINE_SAR_REPLACE4},
+#endif
+#ifdef CONFIG_CMDLINE_SAR_ENABLE5
+{CONFIG_CMDLINE_SAR_SEARCH5,		CONFIG_CMDLINE_SAR_REPLACE5},
+#endif
+#ifdef CONFIG_CMDLINE_SAR_ENABLE6
+{CONFIG_CMDLINE_SAR_SEARCH6,		CONFIG_CMDLINE_SAR_REPLACE6},
+#endif
+#ifdef CONFIG_CMDLINE_SAR_ENABLE7
+{CONFIG_CMDLINE_SAR_SEARCH7,		CONFIG_CMDLINE_SAR_REPLACE7},
+#endif
+#ifdef CONFIG_CMDLINE_SAR_ENABLE8
+{CONFIG_CMDLINE_SAR_SEARCH8,		CONFIG_CMDLINE_SAR_REPLACE8},
+#endif
+#ifdef CONFIG_CMDLINE_SAR_ENABLE9
+{CONFIG_CMDLINE_SAR_SEARCH9,		CONFIG_CMDLINE_SAR_REPLACE9},
+#endif
+};
+
+static bool __init do_command_line_searchreplace(char *command_line, unsigned size)
+{
+	int i;
+	const char *search, *replace;
+	char *match;
+	int slen, rlen, mlen;
+	bool firstspace=false, lastspace=false;
+	int curlen=strlen(command_line);
+	bool ret=true;
+
+	/* add a space at begining to make searching easier */
+	if(command_line[0]!=' ') {
+		if(++curlen>size) goto fail_len;
+
+		firstspace=true;
+		memmove(command_line+1, command_line, curlen+1);
+		command_line[0]=' ';
+	}
+	/* add a space at end to make searching easier */
+	if(command_line[curlen-1]!=' ') {
+		if(++curlen>size) goto fail_len;
+
+		lastspace=true;
+		command_line[curlen-1]=' ';
+		command_line[curlen]='\0';
+	}
+
+	for(i=0; i<ARRAY_SIZE(cmdline_searchreplace_list); ++i) {
+		search=cmdline_searchreplace_list[i][0];
+		slen=strlen(search);
+		replace=cmdline_searchreplace_list[i][1];
+		rlen=strlen(replace);
+
+		if(!(match=strstr(command_line, search))) continue;
+
+		mlen=slen;
+		/* match misses start of word, but replace start of word */
+		if(search[0]!=' ' && replace[0]==' ') do {
+			--match;
+			++mlen;
+		} while(*match!=' ');
+		/* match misses end of word, but replace end of word */
+		if(search[slen-1]!=' ' && replace[rlen-1]==' ')
+			mlen=strchrnul(match+mlen, ' ')-match+1;
+
+		if(mlen!=rlen) {
+			/* avoid overflow due to lengthening */
+			if(curlen+rlen-mlen>size) {
+				printk(KERN_WARNING "Command-line lengthening for match \"%s\" failed\n", search);
+
+				/* can try the other modifications... */
+				/* goto fail; */
+				ret=false;
+				continue;
+			}
+
+			memmove(match+rlen, match+mlen, curlen-
+(match-command_line)-mlen+1);
+		}
+		memcpy(match, replace, rlen);
+
+		curlen+=rlen-mlen;
+	}
+
+	while(0) {
+fail_len:
+		--curlen;
+		ret=false;
+		printk(KERN_WARNING "Lengthening command-line for modification failed\n");
+	}
+
+// fail:
+	if(lastspace) command_line[--curlen]='\0';
+	if(firstspace) memmove(command_line, command_line+1, curlen);
+
+	return ret;
+}
+#endif
+
 int __init early_init_dt_scan_chosen(unsigned long node, const char *uname,
 				     int depth, void *data)
 {
@@ -995,6 +1112,10 @@ int __init early_init_dt_scan_chosen(unsigned long node, const char *uname,
 			strlcpy(cmdline, p, min((int)l, COMMAND_LINE_SIZE));
 		}
 	}
+
+#ifdef CONFIG_CMDLINE_SEARCHREPLACE
+	do_command_line_searchreplace(cmdline, COMMAND_LINE_SIZE);
+#endif
 
 	pr_debug("Command line is: %s\n", (char*)data);
 
