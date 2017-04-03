@@ -379,7 +379,7 @@ static struct device_attribute power_supply_attrs[] = {
 #ifdef CONFIG_LGE_PM
 	POWER_SUPPLY_ATTR(fastchg),
 #endif
-#ifdef CONFIG_BATTERY_MAX17050
+#if defined(CONFIG_BATTERY_MAX17050) || defined(CONFIG_LGE_PM_FG_AGE)
 	POWER_SUPPLY_ATTR(battery_condition),
 	POWER_SUPPLY_ATTR(battery_age),
 #endif
@@ -397,7 +397,7 @@ static struct device_attribute power_supply_attrs[] = {
 #if defined(CONFIG_LGE_USB_FLOATED_CHARGER_DETECT) && defined(CONFIG_LGE_USB_TYPE_C)
 	POWER_SUPPLY_ATTR(ctype_charger),
 #endif
-#ifdef CONFIG_LGE_USB_ANX7688_OVP
+#if defined(CONFIG_LGE_USB_ANX7688_OVP) || defined(CONFIG_LGE_USB_TUSB422)
 	POWER_SUPPLY_ATTR(ctype_rp),
 #endif
 	POWER_SUPPLY_ATTR(allow_hvdcp3),

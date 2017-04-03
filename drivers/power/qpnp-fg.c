@@ -39,9 +39,6 @@
 #include <linux/cpufreq.h>
 #include <soc/qcom/lge/board_lge.h>
 #endif
-#ifdef CONFIG_LGE_PM_BATT_MANAGER
-#include "lge_battery_manager.h"
-#endif
 
 #ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_BATTERY_ID_CHECKER
 #include <linux/power/lge_battery_id.h>
@@ -343,6 +340,7 @@ static struct fg_mem_data fg_backup_regs[FG_BACKUP_MAX] = {
 };
 
 #ifdef CONFIG_LGE_PM
+#if !defined (CONFIG_MACH_MSM8996_LUCYE)
 extern bool minfreq_enabled;
 static void fg_set_minfreq(bool enable) {
 	int i;
@@ -358,36 +356,37 @@ static void fg_set_minfreq(bool enable) {
 	unlock_device_hotplug();
 	pr_info("Set minfreq %sable\n", enable ? "en" : "dis");
 }
+#endif
 #define NUMBER_DELTA_TEMP 25
 
 static int temp_comp[NUMBER_DELTA_TEMP][2] = {
 	/* Measured  degree *10 ,  delta degree
 	 * delta degree = (Measured Temp - FG temp) * 10 */
-	{-300, -120},
-	{-200, -70},
-	{-190, -80},
-	{-180, -70},
-	{-170, -70},
-	{-160, -50},
-	{-150, -40},
-	{-100, -20},
-	{ -50, -10},
+	{-300, -105},
+	{-200, -45},
+	{-190, -45},
+	{-180, -30},
+	{-170, -30},
+	{-160, -25},
+	{-150, -25},
+	{-100, -30},
+	{ -50, -20},
 	{  0,  -10},
-	{  50, 0},
-	{ 100, -20},
+	{  50, -10},
+	{ 100, -10},
 	{ 150, -10},
-	{ 200, -10},
-	{ 250, -30},
-	{ 300, -30},
-	{ 350, -30},
-	{ 400, -30},
-	{ 450, -30},
+	{ 200, -15},
+	{ 250, -15},
+	{ 300, -20},
+	{ 350, -20},
+	{ 400, -20},
+	{ 450, -20},
 	{ 500, -20},
-	{ 550, -30},
-	{ 600, -20},
+	{ 550, -10},
+	{ 600, 0},
 	{ 700, 10},
-	{ 800, 70},
-	{ 900, 120},
+	{ 800, 60},
+	{ 900, 100},
 };
 #endif
 
@@ -732,6 +731,7 @@ struct fg_chip {
 	bool		use_last_cc_soc;
 	int64_t 	last_cc_soc;
         /* Sanity check */
+
 	struct delayed_work	check_sanity_work;
 	struct fg_wakeup_source	sanity_wakeup_source;
 	u8			last_beat_count;
@@ -1136,7 +1136,14 @@ static int fg_set_ram_addr(struct fg_chip *chip, u16 *address)
 }
 
 #ifdef CONFIG_LGE_PM
-#define COMP_FACTOR             15     /* -1.7degree/1A */
+#if defined(CONFIG_MACH_MSM8996_ELSA_KDDI_JP) || \
+	defined(CONFIG_MACH_MSM8996_ELSA_DCM_JP)
+#define COMP_FACTOR              60     /* -0.6degree/1A */
+#elif defined(CONFIG_MACH_MSM8996_LUCYE)
+#define COMP_FACTOR              66
+#else
+#define COMP_FACTOR             150     /* -1.7degree/1A */
+#endif
 #define CHG_CURR_SAMPLE_COUNT   3
 
 /*
@@ -1203,7 +1210,7 @@ static int comp_temp_by_chg_current(int fg_temp, int first_ctemp)
 
 	/* assume that temp is proportional to current*current */
 	comp_delta = ((chg_current / CHG_CURR_SAMPLE_COUNT) *
-		(chg_current / CHG_CURR_SAMPLE_COUNT) * COMP_FACTOR) / 1000000;
+		(chg_current / CHG_CURR_SAMPLE_COUNT) * COMP_FACTOR) / 10000000;
 	comp_temp = temp - comp_delta;
 
 	if (pre_delta / 10 != (fg_temp - comp_temp) / 10) {
@@ -2420,10 +2427,10 @@ static int rescale_monotonic_soc (int msoc, struct fg_chip *chip)
 #endif
 
 	if (msoc > 0)
-#ifdef CONFIG_LGE_PM_BATT_PROFILE //0xF0 94% -> 100% rescaling
-		capacity = (((msoc - 1) * (FULL_CAPACITY - 2))*100/(0xF0 - 2)) + 100;
+#ifdef CONFIG_LGE_PM_BATT_PROFILE //0xF5 96% -> 100% rescaling
+		capacity = (((msoc - 1) * (FULL_CAPACITY - 2))*100/(0xF5 - 2)) + 100;
 #else
-		capacity = ((msoc - 1) * (FULL_CAPACITY - 2)/(0xF0 - 2)) + 100;
+		capacity = ((msoc - 1) * (FULL_CAPACITY - 2)/(0xF5 - 2)) + 100;
 #endif
 
 #ifdef CONFIG_LGE_PM_BATT_PROFILE
@@ -2478,6 +2485,7 @@ static int rescale_monotonic_soc (int msoc, struct fg_chip *chip)
 		capacity /= 100;
 	}
 #endif
+	pr_info("msoc : %d, capacity : %d\n", msoc*FULL_CAPACITY/FULL_SOC_RAW, capacity);
 	if (capacity != prev_capacity)
 		power_supply_changed(&chip->bms_psy);
 	return prev_capacity = capacity;
@@ -2552,6 +2560,44 @@ static int get_prop_capacity(struct fg_chip *chip)
 			FULL_SOC_RAW - 2) + 1;
 }
 
+#ifdef CONFIG_LGE_PM_FG_AGE
+int fg_age_detection(struct fg_chip *chip)
+{
+	int full_cap, design_cap;
+	int age;
+	static int pre_age;
+	if(chip->learning_data.learned_cc_uah == 0 ||
+			chip->nom_cap_uah == 0) {
+		/*not init learned*/
+		pr_info("battery age not init\n");
+		return 1;
+	}
+
+	full_cap = (int)chip->learning_data.learned_cc_uah / 1000;
+	design_cap = (int)chip->nom_cap_uah / 1000;
+	pr_debug("full cap =%d,design cap=%d\n",full_cap, design_cap);
+
+	age = (full_cap*100) / design_cap;
+	if (pre_age != age) {
+		pr_info("full cap =%d,design cap=%d, age=%d.\n",full_cap, design_cap,age);
+		pre_age = age;
+	}
+
+	if(age == 999){
+		return 0;
+	} else if (age >= 80) {
+		return 1;
+	} else if (age >= 50) {
+		return 2;
+	} else if (age >= 0){
+		return 3;
+	} else {
+		return 0;
+	}
+	return age;
+}
+#endif
+
 #define HIGH_BIAS	3
 #define MED_BIAS	BIT(1)
 #define LOW_BIAS	BIT(0)
@@ -2583,9 +2629,15 @@ static int get_sram_prop_now(struct fg_chip *chip, unsigned int type)
 			fg_data[type].address, fg_data[type].offset,
 			fg_data[type].value);
 
-	if (type == FG_DATA_BATT_ID)
-		return get_batt_id(fg_data[type].value,
+	if (type == FG_DATA_BATT_ID) {
+#ifdef CONFIG_LGE_PM_EMBEDDED_BATT_ID_ADC
+		if (fg_data[FG_DATA_BATT_ID_INFO].value & 0x40)
+			return 0;
+		else
+#endif
+			return get_batt_id(fg_data[type].value,
 				   fg_data[FG_DATA_BATT_ID_INFO].value);
+	}
 
 	return fg_data[type].value;
 }
@@ -2908,6 +2960,10 @@ static int update_sram_data(struct fg_chip *chip, int *resched_ms)
 	if(fg_lge_debug) {
 		fg_sram_update_period_ms = 1000;
 		fg_stay_awake(&chip->lge_debug_wakeup_source);
+	} else if (lge_get_boot_mode() !=LGE_BOOT_MODE_NORMAL
+		&& lge_get_boot_mode() !=LGE_BOOT_MODE_CHARGERLOGO) {
+		fg_sram_update_period_ms = 5000;
+		fg_relax(&chip->lge_debug_wakeup_source);
 	} else {
 		fg_relax(&chip->lge_debug_wakeup_source);
 		fg_sram_update_period_ms = 30000;
@@ -3451,20 +3507,6 @@ static int lookup_ocv_for_soc(struct fg_chip *chip, int soc)
 		     + div_s64(coeffs[2] * soc * soc, 1000000LL)
 		     + div_s64(coeffs[3] * soc * soc * soc, 1000000000LL));
 }
-
-#ifdef CONFIG_LGE_PM_BATT_MANAGER
-static void batt_mngr_get_ocv_table(struct fg_chip *chip,
-				    const union power_supply_propval *val)
-{
-	int i;
-	int ocv_table[102] = {0};
-
-	for(i = 0; i < val->intval; i++){
-		ocv_table[i] = lookup_ocv_for_soc(chip, i*10);
-	}
-	batt_mngr_ocv_table(ocv_table, i);
-}
-#endif
 
 static int lookup_soc_for_ocv(struct fg_chip *chip, int ocv)
 {
@@ -4909,6 +4951,9 @@ static enum power_supply_property fg_power_props[] = {
 #ifdef CONFIG_LGE_PM_CHARGERLOGO_WAIT_FOR_FG_INIT
 	POWER_SUPPLY_PROP_FIRST_SOC_EST_DONE,
 #endif
+#ifdef CONFIG_LGE_PM_FG_AGE
+	POWER_SUPPLY_PROP_BATTERY_CONDITION,
+#endif
 };
 
 static int fg_power_get_property(struct power_supply *psy,
@@ -5005,6 +5050,9 @@ static int fg_power_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_ENABLE_JEITA_DETECTION:
 		val->intval = chip->use_soft_jeita_irq;
 		break;
+	case POWER_SUPPLY_PROP_SAFETY_TIMER_EXPIRED:
+		val->intval = chip->safety_timer_expired;
+		break;
 #ifdef CONFIG_LGE_PM_RESTORE_BATT_INFO
 	case POWER_SUPPLY_PROP_BATTERY_INFO:
 		if (chip->batt_info_id < 0 ||
@@ -5020,6 +5068,11 @@ static int fg_power_get_property(struct power_supply *psy,
         case POWER_SUPPLY_PROP_FIRST_SOC_EST_DONE:
                 val->intval = chip->first_soc_est_done;
                 break;
+#endif
+#ifdef CONFIG_LGE_PM_FG_AGE
+	case POWER_SUPPLY_PROP_BATTERY_CONDITION:
+		val->intval = fg_age_detection(chip);
+		break;
 #endif
 	default:
 		return -EINVAL;
@@ -5150,11 +5203,6 @@ static int fg_power_set_property(struct power_supply *psy,
 			schedule_work(&chip->bcl_hi_power_work);
 		}
 		break;
-#ifdef CONFIG_LGE_PM_BATT_MANAGER
-	case POWER_SUPPLY_PROP_ENERGY_FULL_DESIGN:
-		batt_mngr_get_ocv_table(chip, val);
-		break;
-#endif
 #ifdef CONFIG_LGE_PM_RESTORE_BATT_INFO
 	case POWER_SUPPLY_PROP_BATTERY_INFO:
 		rc = fg_set_battery_info(chip, val->intval);
@@ -5788,7 +5836,11 @@ static irqreturn_t fg_soc_irq_handler(int irq, void *_chip)
 		pr_err("recharge_M last_soc : %d recharge_soc : %d\n"
 			,chip->last_soc,chip->recharge_soc_raw);
 		if(chip->last_soc <= chip->recharge_soc_raw
+#ifdef CONFIG_MACH_MSM8996_LUCYE
+			|| chip->last_soc <= 0xF8 ){	//97.2%
+#else
 			|| chip->last_soc <= 0xF3 ){	//95.2%
+#endif
 			fg_stay_awake(&chip->recharge_wakeup_source);
 			schedule_work(&chip->recharge_work);
 		}
@@ -5968,8 +6020,8 @@ static int populate_system_data(struct fg_chip *chip)
 			chip->ocv_coeffs[4], chip->ocv_coeffs[5],
 			chip->ocv_coeffs[6], chip->ocv_coeffs[7]);
 		pr_info("coeffs3 = %lld %lld %lld %lld\n",
-				chip->ocv_coeffs[8], chip->ocv_coeffs[9],
-				chip->ocv_coeffs[10], chip->ocv_coeffs[11]);
+			chip->ocv_coeffs[8], chip->ocv_coeffs[9],
+			chip->ocv_coeffs[10], chip->ocv_coeffs[11]);
 	}
 	rc = fg_mem_read(chip, buffer, OCV_JUNCTION_REG, 2, 0, 0);
 	if (rc) {
@@ -6763,6 +6815,7 @@ static int fg_batt_profile_init(struct fg_chip *chip)
 		pr_info("battery id = %d\n",
 			get_sram_prop_now(chip, FG_DATA_BATT_ID));
 
+#ifndef CONFIG_LGE_PM_EMBEDDED_BATT_ID_ADC
 #ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_BATTERY_ID_CHECKER
 	if (!fg_batt_type)
 		update_battery_type();
@@ -6771,8 +6824,9 @@ static int fg_batt_profile_init(struct fg_chip *chip)
 		update_battery_type(&fg_batt_type);
 	pr_info("will be load battery profile to %s\n", fg_batt_type);
 #endif
+#endif
 
-#ifdef CONFIG_MACH_MSM8996_ELSA
+#if defined (CONFIG_MACH_MSM8996_ELSA)
 	profile_node = of_batterydata_get_best_profile(batt_node,fg_batt_type);
 #else
 	profile_node = of_batterydata_get_best_profile(batt_node, "bms",
@@ -6823,6 +6877,17 @@ static int fg_batt_profile_init(struct fg_chip *chip)
 
 	if (rc)
 		pr_warn("couldn't find battery max voltage\n");
+
+#if defined (CONFIG_MACH_MSM8996_LUCYE)
+	// temp patch
+	pr_err("chg_rs_to_rslow %d chg_rslow_comp_c1 %d chg_rslow_comp_c2 %d" \
+			" chg_rslow_comp_thr %d batt_max_voltage_uv %d\n",
+		chip->rslow_comp.chg_rs_to_rslow,
+		chip->rslow_comp.chg_rslow_comp_c1,
+		chip->rslow_comp.chg_rslow_comp_c2,
+		chip->rslow_comp.chg_rslow_comp_thr,
+		chip->batt_max_voltage_uv);
+#endif
 
 	/*
 	 * Only configure from profile if fg-cc-cv-threshold-mv is not
@@ -6879,7 +6944,7 @@ static int fg_batt_profile_init(struct fg_chip *chip)
 		goto no_profile;
 	}
 
-#ifdef CONFIG_LGE_PM
+#if defined(CONFIG_LGE_PM) && !defined(CONFIG_MACH_MSM8996_LUCYE)
 	fg_set_minfreq(true);
 #endif
 
@@ -6972,7 +7037,7 @@ static int fg_batt_profile_init(struct fg_chip *chip)
 			pr_err("Error in updating ESR, rc=%d\n", rc);
 	}
 done:
-#ifdef CONFIG_LGE_PM
+#if defined(CONFIG_LGE_PM) && !defined(CONFIG_MACH_MSM8996_LUCYE)
 	fg_set_minfreq(false);
 #endif
 
@@ -7089,7 +7154,7 @@ static void check_empty_work(struct work_struct *work)
 		msoc = get_monotonic_soc_raw(chip);
 
 		if (fg_debug_mask & FG_STATUS)
-			pr_info("Vbatt_low: %d, msoc: %d\n", vbatt_low_sts,
+			pr_info("Vbatt_low: %d, msoc: %d\n", vbatt_low_sts, 
 					msoc);
 		if (vbatt_low_sts || (msoc == 0))
 		        chip->soc_empty = true;
@@ -9206,7 +9271,8 @@ static void fg_soc_level_log(struct work_struct *work)
 		return;
 	}
 	pr_info("batt_soc_modify : %d, batt_soc_original : %d, voltage : %d\n",
-		batt_soc_modify, batt_soc_original, get_sram_prop_now(chip, FG_DATA_VOLTAGE));
+		batt_soc_modify, batt_soc_original,
+		get_sram_prop_now(chip, FG_DATA_VOLTAGE));
 	schedule_delayed_work(&chip->soc_level_log, 6000);
 	return;
 }
@@ -9431,8 +9497,19 @@ static int fg_probe(struct spmi_device *spmi)
 	chip->bms_psy.type = POWER_SUPPLY_TYPE_BMS;
 	chip->bms_psy.properties = fg_power_props;
 	chip->bms_psy.num_properties = ARRAY_SIZE(fg_power_props);
+#ifdef CONFIG_LGE_PM_BATTERY_VENEER
+{	int fg_power_get_property_ext(struct power_supply *psy,
+		enum power_supply_property prop, union power_supply_propval *val);
+	int fg_power_set_property_ext(struct power_supply *psy,
+		enum power_supply_property prop, const union power_supply_propval *val);
+
+	chip->bms_psy.get_property = fg_power_get_property_ext;
+	chip->bms_psy.set_property = fg_power_set_property_ext;
+}
+#else
 	chip->bms_psy.get_property = fg_power_get_property;
 	chip->bms_psy.set_property = fg_power_set_property;
+#endif
 	chip->bms_psy.external_power_changed = fg_external_power_changed;
 	chip->bms_psy.supplied_to = fg_supplicants;
 	chip->bms_psy.num_supplicants = ARRAY_SIZE(fg_supplicants);
@@ -9759,6 +9836,10 @@ static void __exit fg_exit(void)
 {
 	return spmi_driver_unregister(&fg_driver);
 }
+
+#ifdef CONFIG_LGE_PM_BATTERY_VENEER
+#include "./lge/adapter-qpnp-fg.c"
+#endif
 
 module_init(fg_init);
 module_exit(fg_exit);

@@ -27,11 +27,11 @@
 };
 
 &pmi8994_torch0 {
-	qcom,current = <100>;
+	qcom,current = <25>;
 };
 
 &pmi8994_torch1 {
-	qcom,current = <100>;
+	qcom,current = <25>;
 };
 
 &pmi8994_switch {
@@ -84,11 +84,11 @@
 &cam_sensor_rear_active{
 	/* RESET, WP */
 	mux {
-		pins = "gpio30", "gpio93";
+		pins = "gpio30", "gpio58";
 	};
 
 	config {
-		pins = "gpio30", "gpio93";
+		pins = "gpio30", "gpio58";
 		output-low;
 	};
 };
@@ -96,12 +96,12 @@
 &cam_sensor_rear_suspend{
 	/* RESET, WP */
 	mux {
-		pins = "gpio30", "gpio93";
+		pins = "gpio30", "gpio58";
 		function = "gpio";
 	};
 
 	config {
-		pins = "gpio30", "gpio93";
+		pins = "gpio30", "gpio58";
 		output-low;
 	};
 };

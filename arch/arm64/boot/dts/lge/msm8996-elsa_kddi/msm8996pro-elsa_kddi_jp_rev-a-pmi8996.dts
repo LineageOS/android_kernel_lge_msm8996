@@ -33,6 +33,12 @@
 	status = "disabled";
 };
 
+&i2c_7 {
+	smb1351-charger@1d {
+		qcom,float-voltage-mv = <4350>;
+	};
+};
+
 /* Display Function */
 &soc {
 	dsi_panel_pwr_supply: dsi_panel_pwr_supply {
@@ -64,10 +70,40 @@
 			status = "ok";
 		};
 	};
+
+	lge,battery_id_check {
+		lge,pack_name = "BLT19";
+		lge,batt_capacity = "2700";
+	};
+
+	/* vts, -0.59 * XO + 0.59 * Bd2 + 0.88 * PA0 + 5.72 */
+	virtual_temp_sensor: lge,vts {
+		compatible = "lge,vts";
+		lge,index = <101>;
+		qcom,vts-vadc = <&pm8994_vadc>;
+		lge,scaling-factor = <10>;
+		lge,constant-milli = <5720>;
+		composite_sensor_0: lge,sensor0 {
+			label = "xo_therm";
+			channel = <0x72>;
+			weight-milli = <590>;
+			weight-negative;
+		};
+		composite_sensor_1: lge,sensor1 {
+			label = "bd_therm_2";
+			channel = <0x74>;
+			weight-milli = <590>;
+		};
+		composite_sensor_2: lge,sensor2 {
+			label = "pa_therm0";
+			channel = <0x75>;
+			weight-milli = <880>;
+		};
+	};
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&dsi_sw49407_dsc_cmd>;
+	qcom,dsi-pref-prim-pan = <&dsi_sw49407_dsc_video>;
 	lge,extra-gpio-names = "vddio", "vpnl";
 
 	lge,gpio-vddio = <&tlmm 69 0>;
@@ -149,6 +185,11 @@
 
 &pmi8994_charger {
     lge,lge_otp_enable;
+    qcom,float-voltage-mv = <4350>;
+};
+
+&pmi8994_fg {
+	qcom,fg-cc-cv-threshold-mv = <4340>;
 };
 
 /* set unused and changed assigne gpios on here */
@@ -437,14 +478,6 @@
 			qcom,vdd-voltage-level = <3300000 3300000>;
 			regulator-always-on;
 			status = "okay";
-		};
-	};
-};
-
-&spmi_bus {
-	qcom,pmi8994@2 {
-		bcl@4200 {
-			status = "disabled";
 		};
 	};
 };

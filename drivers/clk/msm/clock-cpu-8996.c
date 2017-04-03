@@ -41,6 +41,12 @@
 #include "clock.h"
 #include "vdd-level-8994.h"
 
+#ifdef CONFIG_LGE_PM
+#include <soc/qcom/lge/board_lge.h>
+#include <soc/qcom/socinfo.h>
+#include <soc/qcom/smem.h>
+#endif
+
 enum {
 	APC0_PLL_BASE,
 	APC1_PLL_BASE,
@@ -1257,6 +1263,10 @@ static void populate_opp_table(struct platform_device *pdev)
 	perfcl_fmax = perfcl_clk.c.fmax[perfcl_clk.c.num_fmax - 1];
 	cbf_fmax = cbf_clk.c.fmax[cbf_clk.c.num_fmax - 1];
 
+#ifdef CONFIG_LGE_PM
+	pr_err("pwrcl_fmax, perfcl_fmax, cbf_fmax : %lu %lu %lu\n",
+			pwrcl_fmax, perfcl_fmax, cbf_fmax);
+#endif
 	for_each_possible_cpu(cpu) {
 		if (logical_cpu_to_clk(cpu) == &pwrcl_clk.c) {
 			WARN(add_opp(&pwrcl_clk.c, get_cpu_device(cpu),
@@ -1302,6 +1312,23 @@ unsigned long perfcl_early_boot_rate = 883200000;
 unsigned long cbf_early_boot_rate = 614400000;
 unsigned long alt_pll_early_boot_rate = 307200000;
 
+#ifdef CONFIG_LGE_PM
+#define BUILD_ID_LENGTH 32
+
+struct socinfo_v0_1 {
+	uint32_t format;
+	uint32_t id;
+	uint32_t version;
+	char build_id[BUILD_ID_LENGTH];
+};
+
+static union {
+	struct socinfo_v0_1 v0_1;
+} *_socinfo;
+
+static unsigned size;
+#endif
+
 static int cpu_clock_8996_driver_probe(struct platform_device *pdev)
 {
 	int ret, cpu;
@@ -1331,7 +1358,17 @@ static int cpu_clock_8996_driver_probe(struct platform_device *pdev)
 
 	snprintf(perfclspeedbinstr, ARRAY_SIZE(perfclspeedbinstr),
 			"qcom,perfcl-speedbin%d-v%d", perfclspeedbin, pvs_ver);
+#ifdef CONFIG_LGE_PM
+	_socinfo = smem_get_entry(SMEM_HW_SW_BUILD_ID, &size, 0, SMEM_ANY_HOST_FLAG);
+	pr_err("soc_id = %d\n", _socinfo->v0_1.id);
 
+	if (_socinfo->v0_1.id == 305 &&
+			(lge_get_factory_boot() || lge_get_laf_mode())) {
+		snprintf(perfclspeedbinstr, ARRAY_SIZE(perfclspeedbinstr),
+				"qcom,perfcl-speedbin%d-v%d-%s", perfclspeedbin, pvs_ver, "f");
+	}
+	pr_err("%s\n", perfclspeedbinstr);
+#endif
 	ret = of_get_fmax_vdd_class(pdev, &perfcl_clk.c, perfclspeedbinstr);
 	if (ret) {
 		dev_err(&pdev->dev, "Can't get speed bin for perfcl. Falling back to zero.\n");
@@ -1342,10 +1379,18 @@ static int cpu_clock_8996_driver_probe(struct platform_device *pdev)
 			return ret;
 		}
 	}
-
 	snprintf(pwrclspeedbinstr, ARRAY_SIZE(pwrclspeedbinstr),
 			"qcom,pwrcl-speedbin%d-v%d", perfclspeedbin, pvs_ver);
 
+#ifdef CONFIG_LGE_PM
+	if (_socinfo->v0_1.id == 305 &&
+			(lge_get_factory_boot() || lge_get_laf_mode())) {
+		snprintf(pwrclspeedbinstr, ARRAY_SIZE(pwrclspeedbinstr),
+				"qcom,pwrcl-speedbin%d-v%d-%s", perfclspeedbin, pvs_ver, "f");
+	}
+
+	pr_err("%s\n", pwrclspeedbinstr);
+#endif
 	ret = of_get_fmax_vdd_class(pdev, &pwrcl_clk.c, pwrclspeedbinstr);
 	if (ret) {
 		dev_err(&pdev->dev, "Can't get speed bin for pwrcl. Falling back to zero.\n");

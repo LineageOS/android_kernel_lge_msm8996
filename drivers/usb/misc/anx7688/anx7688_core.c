@@ -385,19 +385,23 @@ inline static void anx7688_dump_register(void)
 }
 
 #define PWR_DELAY    50
-#define BOOT_TIMEOUT (3200/PWR_DELAY)
+#define BOOT_TIMEOUT (1000/PWR_DELAY)
 void anx7688_pwr_on(struct anx7688_chip *chip)
 {
 	struct i2c_client *client = chip->client;
 	struct device *cdev = &client->dev;
 	int i;
 	int ret;
-	int timeout = 0;
+	int timeout;
+	int count = 0;
 
 	if (atomic_read(&chip->power_on))
 		return;
 
 	init_completion(&chip->wait_pwr_ctrl);
+pwron:
+	timeout = 0;
+
 	gpio_set_value(chip->pdata->pwren_gpio, 1);
 	mdelay(10);
 
@@ -414,15 +418,14 @@ void anx7688_pwr_on(struct anx7688_chip *chip)
 	 *  this bug only shown firmware version under
          *  0032. it will fixed next firmware version.
 	 */
-	if (chip->pdata->fwver <= MI1_FWVER_RC2) {
+	if (chip->pdata->fwver <= MI1_FWVER_RC2 && chip->pdata->fwver != 0x00) {
 		OhioWriteReg(USBC_ADDR, USBC_ANALOG_CTRL_0, 0xA0);
 		OhioWriteReg(USBC_ADDR, USBC_ANALOG_CTRL_2, 0x09);
 	}
 
 	for (i = 0; i < BOOT_TIMEOUT ; i++) {
-
-		if ((chip->pdata->fwver == 0x00) ||
-			chip->pdata->fwver >= MI1_FWVER_RC3) {
+		if ((chip->pdata->fwver >= MI1_FWVER_RC3) ||
+			(chip->pdata->fwver == 0x00)) {
 			ret = OhioReadReg(USBC_ADDR, OCM_DEBUG_1);
 			if ((ret & 0x01) == 0x01) {
 				dev_info(cdev, "boot load done\n");
@@ -439,8 +442,17 @@ void anx7688_pwr_on(struct anx7688_chip *chip)
 		timeout++;
 	}
 
-	if (timeout >= (BOOT_TIMEOUT * 2))
-		anx7688_power_reset(chip);
+	if (timeout >= BOOT_TIMEOUT) {
+		if (count++ < 3) {
+			anx7688_power_reset(chip);
+			gpio_set_value(chip->pdata->pwren_gpio, 0);
+			mdelay(2);
+			gpio_set_value(chip->pdata->rstn_gpio, 0);
+			mdelay(100);
+			goto pwron;
+		}
+		dev_err(cdev, "boot load failed\n");
+	}
 
 	complete(&chip->wait_pwr_ctrl);
 	atomic_set(&chip->power_on, 1);
@@ -541,6 +553,10 @@ static int usbpd_get_property(struct power_supply *psy,
 			chip->rp.intval);
 		val->intval = chip->rp.intval;
 		break;
+#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_SIMPLE
+	case POWER_SUPPLY_PROP_DP_ALT_MODE:
+		val->intval = chip->dp_alt_mode;
+#endif
 #endif
 	default:
 		return -EINVAL;
@@ -678,9 +694,12 @@ static int usbpd_set_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_CTYPE_RP:
 		chip->rp.intval = val->intval;
 		dev_dbg(cdev, "%s: Rp %dK\n", __func__, chip->rp.intval);
-
+#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_SIMPLE
+		// do nothing
+#else
 		chip->batt_psy->set_property(chip->batt_psy,
 				POWER_SUPPLY_PROP_CTYPE_RP, &chip->rp);
+#endif
 		break;
 #endif
 	default:
@@ -762,7 +781,7 @@ static void anx7688_ctype_work(struct work_struct *w)
 
 		break;
 	case USBC_PD_CHARGER:
-#ifdef CONFIG_MACH_MSM8996_ELSA
+#if defined (CONFIG_MACH_MSM8996_ELSA) || defined (CONFIG_MACH_MSM8996_LUCYE)
 #ifdef CONFIG_LGE_DP_ANX7688
 		/*
 		 * Current Restict Mode
@@ -814,6 +833,9 @@ static void anx7688_ctype_work(struct work_struct *w)
 void anx7688_sbu_ctrl(struct anx7688_chip *chip, bool dir)
 {
 #ifdef CONFIG_LGE_USB_TYPE_C
+#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_SIMPLE
+	chip->dp_alt_mode = !dir;
+#else
 	struct device *cdev = &chip->client->dev;
 	union power_supply_propval prop;
 	int rc;
@@ -823,6 +845,7 @@ void anx7688_sbu_ctrl(struct anx7688_chip *chip, bool dir)
 			POWER_SUPPLY_PROP_DP_ALT_MODE, &prop);
 	if (rc < 0)
 		dev_err(cdev, "fail to dp alt set %d\n", rc);
+#endif
 #endif
 	gpio_set_value(chip->pdata->sbu_gpio, dir);
 	if (dir)
@@ -1408,7 +1431,7 @@ static void anx7688_register_init(struct anx7688_chip *chip)
 	 * USB PD CTS tunning value
 	 * this value depend on hardware chariteristics
 	 */
-#ifdef CONFIG_MACH_MSM8996_ELSA
+#if defined (CONFIG_MACH_MSM8996_ELSA) || defined (CONFIG_MACH_MSM8996_LUCYE)
 	OhioMaskWriteReg(USBC_ADDR, OCM_DEBUG_21, BIT(0)|BIT(1)|BIT(2), 2);
 	OhioMaskWriteReg(USBC_ADDR, OCM_DEBUG_20, BIT(0)|BIT(1)|BIT(2), 3);
 	OhioMaskWriteReg(USBC_ADDR, OCM_DEBUG_19, BIT(2)|BIT(3), 3);
@@ -1766,12 +1789,12 @@ static int anx7688_check_firmware(struct anx7688_chip *chip)
 			dev_err(cdev, "cannot read fw ver skip update\n");
 			goto out1;
 		}
+		chip->pdata->fwver = ((rc & 0xFF00) >> 8) |
+					((rc & 0x00FF) << 8);
 
 		mdelay(5);
-	} while ((retry++ < 50) && (rc == 0x00));
-
-	chip->pdata->fwver = ((rc & 0xFF00) >> 8) |
-				((rc & 0x00FF) << 8);
+	} while ((retry++ < 100) && (rc == 0x00) &&
+			chip->pdata->fwver != MI1_NEW_FWVER);
 
 	rc = 0;
 

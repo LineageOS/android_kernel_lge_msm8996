@@ -329,6 +329,12 @@ static enum hrtimer_restart dhd_tcpack_send(struct hrtimer *timer)
 		goto done;
 	}
 	tcpack_sup_mod = dhdp->tcpack_sup_module;
+	if (!tcpack_sup_mod) {
+		DHD_ERROR(("%s %d: tcpack suppress module NULL!!\n",
+			__FUNCTION__, __LINE__));
+		dhd_os_tcpackunlock(dhdp, flags);
+		goto done;
+	}
 	pkt = cur_tbl->pkt_in_q;
 	ifidx = cur_tbl->ifidx;
 	if (!pkt) {
@@ -398,12 +404,37 @@ int dhd_tcpack_suppress_set(dhd_pub_t *dhdp, uint8 mode)
 	dhdp->tcpack_sup_mode = mode;
 
 	if (mode == TCPACK_SUP_OFF) {
+		tcpack_sup_module_t *tcpack_sup_mod = dhdp->tcpack_sup_module;
 		ASSERT(dhdp->tcpack_sup_module != NULL);
 		/* Clean up timer/data structure for any remaining/pending packet or timer. */
-		dhd_tcpack_info_tbl_clean(dhdp);
-		MFREE(dhdp->osh, dhdp->tcpack_sup_module, sizeof(tcpack_sup_module_t));
-		dhdp->tcpack_sup_module = NULL;
-		goto exit;
+		if (tcpack_sup_mod) {
+			int i;
+			dhd_txflowcontrol(dhdp, ALL_INTERFACES, ON);
+			dhd_os_tcpackunlock(dhdp, flags);
+			for (i = 0; i < TCPACK_INFO_MAXNUM; i++) {
+#ifndef TCPACK_SUPPRESS_HOLD_HRT
+				del_timer_sync(&tcpack_sup_mod->tcpack_info_tbl[i].timer);
+#else
+				hrtimer_cancel(&tcpack_sup_mod->tcpack_info_tbl[i].timer.timer);
+#endif
+				flags = dhd_os_tcpacklock(dhdp);
+				if (tcpack_sup_mod->tcpack_info_tbl[i].pkt_in_q) {
+					void* pkt;
+					pkt = tcpack_sup_mod->tcpack_info_tbl[i].pkt_in_q;
+					tcpack_sup_mod->tcpack_info_tbl[i].pkt_in_q = NULL;
+					dhd_os_tcpackunlock(dhdp, flags);
+					DHD_TRACE(("%s %d: sending suppressed(%d) ack\n", __FUNCTION__, __LINE__,i));
+					dhd_sendpkt(dhdp, tcpack_sup_mod->tcpack_info_tbl[i].ifidx, pkt);
+					flags = dhd_os_tcpacklock(dhdp);
+				}
+				dhd_os_tcpackunlock(dhdp, flags);
+			}
+			flags = dhd_os_tcpacklock(dhdp);
+			dhd_txflowcontrol(dhdp, ALL_INTERFACES, OFF);
+			MFREE(dhdp->osh, tcpack_sup_mod, sizeof(tcpack_sup_module_t));
+			dhdp->tcpack_sup_module = NULL;
+			goto exit;
+		}
 	}
 
 	if (dhdp->tcpack_sup_module == NULL) {

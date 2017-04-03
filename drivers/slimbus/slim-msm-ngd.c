@@ -26,6 +26,11 @@
 #include <linux/of_slimbus.h>
 #include <linux/timer.h>
 #include <linux/msm-sps.h>
+#ifdef CONFIG_MACH_LGE
+#include <linux/reboot.h>
+#include <soc/qcom/lge/board_lge.h>
+#endif
+
 #include "slim-msm.h"
 
 #define NGD_SLIM_NAME	"ngd_msm_ctrl"
@@ -1258,9 +1263,12 @@ hw_init_retry:
 				retries++;
 				goto hw_init_retry;
 			}
-
-			panic("[LGE_BSP_AUDIO]SLIM power req failed all 3 times... reboot");
-			
+#ifdef CONFIG_MACH_LGE
+            if((lge_get_boot_mode() == LGE_BOOT_MODE_QEM_56K) || (lge_get_boot_mode() == LGE_BOOT_MODE_QEM_910K))
+				kernel_restart(NULL);
+            else
+			    panic("[LGE_BSP_AUDIO]SLIM power req failed all 3 times... reboot");
+#endif
 			return ret;
 		}
 	}

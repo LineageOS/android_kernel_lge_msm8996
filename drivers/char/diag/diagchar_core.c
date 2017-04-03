@@ -314,7 +314,9 @@ static int diagchar_open(struct inode *inode, struct file *file)
 	void *temp;
 
 	if (driver) {
+		DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diagchar_mutex to obtain ", __LINE__);
 		mutex_lock(&driver->diagchar_mutex);
+		DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diagchar_mutex obatined ", __LINE__);
 
 		for (i = 0; i < driver->num_clients; i++)
 			if (driver->client_map[i].pid == 0)
@@ -342,6 +344,7 @@ static int diagchar_open(struct inode *inode, struct file *file)
 				diag_add_client(i, file);
 			} else {
 				mutex_unlock(&driver->diagchar_mutex);
+				DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diagchar_mutex released ", __LINE__);
 				pr_err_ratelimited("diag: Max client limit for DIAG reached\n");
 				pr_err_ratelimited("diag: Cannot open handle %s"
 					   " %d", current->comm, current->tgid);
@@ -363,12 +366,14 @@ static int diagchar_open(struct inode *inode, struct file *file)
 			diag_mempool_init();
 		driver->ref_count++;
 		mutex_unlock(&driver->diagchar_mutex);
+		DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diagchar_mutex released ", __LINE__);
 		return 0;
 	}
 	return -ENOMEM;
 
 fail:
 	mutex_unlock(&driver->diagchar_mutex);
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diagchar_mutex released ", __LINE__);
 	driver->num_clients--;
 	pr_err_ratelimited("diag: Insufficient memory for new client");
 	return -ENOMEM;
@@ -413,9 +418,12 @@ static void diag_close_logging_process(const int pid)
 	params.mode_param = 0;
 	params.peripheral_mask =
 		diag_translate_kernel_to_user_mask(session_peripheral_mask);
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diagchar_mutex to obtain ", __LINE__);
 	mutex_lock(&driver->diagchar_mutex);
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diagchar_mutex obtained ", __LINE__);
 	diag_switch_logging(&params);
 	mutex_unlock(&driver->diagchar_mutex);
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diagchar_mutex released ", __LINE__);
 }
 
 static int diag_remove_client_entry(struct file *file)
@@ -427,15 +435,19 @@ static int diag_remove_client_entry(struct file *file)
 	if (!driver)
 		return -ENOMEM;
 
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diag_file_mutex to obtain ", __LINE__);	
 	mutex_lock(&driver->diag_file_mutex);
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diag_file_mutex obtained ", __LINE__);	
 	if (!file) {
 		DIAG_LOG(DIAG_DEBUG_USERSPACE, "Invalid file pointer\n");
 		mutex_unlock(&driver->diag_file_mutex);
+		DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diag_file_mutex released ", __LINE__);
 		return -ENOENT;
 	}
 	if (!(file->private_data)) {
 		DIAG_LOG(DIAG_DEBUG_USERSPACE, "Invalid private data\n");
 		mutex_unlock(&driver->diag_file_mutex);
+		DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diag_file_mutex released ", __LINE__);
 		return -EINVAL;
 	}
 
@@ -447,17 +459,22 @@ static int diag_remove_client_entry(struct file *file)
 	 * This call will remove any pending registrations of such client
 	 */
 	mutex_lock(&driver->dci_mutex);
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:dci_mutex obtained ", __LINE__);
 	dci_entry = dci_lookup_client_entry_pid(current->tgid);
 	if (dci_entry)
 		diag_dci_deinit_client(dci_entry);
 	mutex_unlock(&driver->dci_mutex);
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:dci_mutex released ", __LINE__);
+
 
 	diag_close_logging_process(current->tgid);
 
 	/* Delete the pkt response table entry for the exiting process */
 	diag_cmd_remove_reg_by_pid(current->tgid);
 
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diagchar_mutex to obtain ", __LINE__);	
 	mutex_lock(&driver->diagchar_mutex);
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diagchar_mutex obtained ", __LINE__);
 	driver->ref_count--;
 	if (driver->ref_count == 0)
 		diag_mempool_exit();
@@ -474,6 +491,9 @@ static int diag_remove_client_entry(struct file *file)
 	}
 	mutex_unlock(&driver->diagchar_mutex);
 	mutex_unlock(&driver->diag_file_mutex);
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diagchar_mutex released ", __LINE__);
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diag_file_mutex released ", __LINE__);
+
 	return 0;
 }
 static int diagchar_close(struct inode *inode, struct file *file)
@@ -2063,9 +2083,12 @@ long diagchar_compat_ioctl(struct file *filp,
 		if (copy_from_user((void *)&mode_param, (void __user *)ioarg,
 				   sizeof(mode_param)))
 			return -EFAULT;
+		DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diagchar_mutex to obtain ", __LINE__); 
 		mutex_lock(&driver->diagchar_mutex);
+		DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diagchar_mutex obatined ", __LINE__);
 		result = diag_switch_logging(&mode_param);
 		mutex_unlock(&driver->diagchar_mutex);
+		DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diagchar_mutex released ", __LINE__);
 		break;
 	case DIAG_IOCTL_REMOTE_DEV:
 		remote_dev = diag_get_remote_device_mask();
@@ -2186,9 +2209,12 @@ long diagchar_ioctl(struct file *filp,
 		if (copy_from_user((void *)&mode_param, (void __user *)ioarg,
 				   sizeof(mode_param)))
 			return -EFAULT;
+		DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diagchar_mutex to obtain ", __LINE__); 
 		mutex_lock(&driver->diagchar_mutex);
+		DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diagchar_mutex obtained ", __LINE__);
 		result = diag_switch_logging(&mode_param);
 		mutex_unlock(&driver->diagchar_mutex);
+		DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diagchar_mutex released ", __LINE__);
 		break;
 	case DIAG_IOCTL_REMOTE_DEV:
 		remote_dev = diag_get_remote_device_mask();
@@ -2764,8 +2790,9 @@ static ssize_t diagchar_read(struct file *file, char __user *buf, size_t count,
 		return -EFAULT;
 	}
 	wait_event_interruptible(driver->wait_q, driver->data_ready[index]);
-
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diagchar_mutex to obtain ", __LINE__);	
 	mutex_lock(&driver->diagchar_mutex);
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diagchar_mutex obtained ", __LINE__);
 
 	if ((driver->data_ready[index] & USER_SPACE_DATA_TYPE) &&
 	    (driver->logging_mode == DIAG_MEMORY_DEVICE_MODE ||
@@ -2805,6 +2832,7 @@ static ssize_t diagchar_read(struct file *file, char __user *buf, size_t count,
 		COPY_USER_SPACE_OR_EXIT(buf, data_type, 4);
 		driver->data_ready[index] ^= DEINIT_TYPE;
 		mutex_unlock(&driver->diagchar_mutex);
+		DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diagchar_mutex released ", __LINE__);
 		diag_remove_client_entry(file);
 		return ret;
 	}
@@ -2901,6 +2929,7 @@ static ssize_t diagchar_read(struct file *file, char __user *buf, size_t count,
 
 exit:
 	mutex_unlock(&driver->diagchar_mutex);
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diagchar_mutex released ", __LINE__);
 	if (driver->data_ready[index] & DCI_DATA_TYPE) {
 		mutex_lock(&driver->dci_mutex);
 		/* Copy the type of data being passed */
@@ -2925,9 +2954,12 @@ exit:
 			ret += sizeof(int);
 			copy_dci_data = 1;
 			exit_stat = diag_copy_dci(buf, count, entry, &ret);
+			DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diagchar_mutex to obtain ", __LINE__); 
 			mutex_lock(&driver->diagchar_mutex);
+			DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diagchar_mutex obtained ", __LINE__);
 			driver->data_ready[index] ^= DCI_DATA_TYPE;
 			mutex_unlock(&driver->diagchar_mutex);
+			DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diagchar_mutex released ", __LINE__);
 			if (exit_stat == 1) {
 				mutex_unlock(&driver->dci_mutex);
 				goto end;

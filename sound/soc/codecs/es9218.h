@@ -52,6 +52,8 @@
 #define ESS9218_46				46
 #define	ESS9218_47				47
 #define	ESS9218_48				48
+#define	ESS9218_52				52
+
 #define ESS9218_CHIPSTATUS		64
 #define ESS9218_65				65	
 #define ESS9218_DPLLRATIO1		66

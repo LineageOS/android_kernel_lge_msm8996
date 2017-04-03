@@ -17,7 +17,7 @@
 enum cell_type {
 	LGC_LLL,
 	TCD_AAC,
-#ifdef CONFIG_MACH_MSM8996_ELSA
+#if defined (CONFIG_MACH_MSM8996_ELSA) || defined (CONFIG_MACH_MSM8996_LUCYE)
 	BYD_YBY
 #endif
 };
@@ -51,7 +51,7 @@ bool lge_battery_check(void);
 
 #define BATT_ID_LIST_MAX 8
 #define BATT_ID_DEFAULT BATT_ID_SW3800_VC0
-#ifdef CONFIG_MACH_MSM8996_ELSA
+#if defined (CONFIG_MACH_MSM8996_ELSA) || defined (CONFIG_MACH_MSM8996_LUCYE)
 #define BATT_ID_DEFAULT_TYPE_NAME "LGE_BL44E1F_LGC_3200mAh"
 #else
 #define BATT_ID_DEFAULT_TYPE_NAME "Generic_2810mah_sept9th2015"

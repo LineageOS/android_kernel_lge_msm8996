@@ -1516,6 +1516,7 @@ static int ssr(struct glink_transport_if *if_ptr)
 	struct intent_info *intent;
 	unsigned long flags;
 
+	trace_printk("QMCK %s start \n", __func__);
 	einfo = container_of(if_ptr, struct edge_info, xprt_if);
 
 	einfo->in_ssr = true;

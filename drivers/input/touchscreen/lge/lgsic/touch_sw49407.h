@@ -244,6 +244,17 @@ enum {
 	IC_INIT_DONE,
 };
 
+enum {
+	GLOBAL_RESET_START = 0,
+	GLOBAL_RESETING,
+	GLOBAL_RESET_DONE,
+};
+
+enum {
+	LOG_WRITE_DONE = 0,
+	DO_WRITE_LOG,
+};
+
 /* SPR control */
 
 /* Firmware control */
@@ -464,6 +475,8 @@ struct sw49407_data {
 	struct delayed_work font_download_work;
 	struct delayed_work fb_notify_work;
 	struct delayed_work debug_info_work;
+	struct delayed_work u0_set_work;
+	struct delayed_work te_test_work;
 	u32 charger;
 	u32 earjack;
 	u32 frame_cnt;
@@ -471,9 +484,14 @@ struct sw49407_data {
 	u8 swipe_debug_type;
 	atomic_t block_watch_cfg;
 	atomic_t init;
+	atomic_t global_reset;
 	struct pm_qos_request pm_qos_req;
 	u32 q_sensitivity;
-	u8 code_cfg_crc_err_cnt;
+	char te_test_log[64];
+	int te_ret;
+	u8 te_write_log;
+	u8 code_crc_err_cnt;
+	u8 cfg_crc_err_cnt;
 };
 
 #define TCI_MAX_NUM				2

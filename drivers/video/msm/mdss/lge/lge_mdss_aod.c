@@ -15,6 +15,7 @@
 #include "lge_mdss_aod.h"
 #include "lge_mdss_fb.h"
 #include <linux/input/lge_touch_notify.h>
+#include <linux/delay.h>
 
 extern int mdss_dsi_parse_dcs_cmds(struct device_node *np,
 		struct dsi_panel_cmds *pcmds, char *cmd_key, char *link_key);
@@ -22,14 +23,18 @@ extern int mdss_dsi_parse_dcs_cmds(struct device_node *np,
 extern void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
 			struct dsi_panel_cmds *pcmds, u32 flags);
 
+#if defined(CONFIG_LGE_DISPLAY_AOD_WITH_MIPI)
+extern int lcd_watch_deside_status(struct  msm_fb_data_type *mfd, unsigned int cur_mode, unsigned int next_mode);
+#endif
+
 static char *aod_mode_cmd_dt[] = {
 	"lge,mode-change-cmds-u3-to-u2",
 	"lge,mode-change-cmds-u2-to-u3",
 #ifdef CONFIG_LGE_DISPLAY_BL_EXTENDED
 	"lge,mode-change-cmds-u0-to-u2",
 	"lge,mode-change-cmds-u2-to-u0",
-	"lge,mode-change-cmds-u3-ready",
-	"lge,mode-change-cmds-u2-ready",
+	"lge,fps-change-to-30",
+        "lge,fps-change-to-60",
 #endif
 };
 
@@ -73,6 +78,25 @@ int oem_mdss_aod_init(struct device_node *node,
 		"lge,mq-register-access-cmd", "lge,mq-register-access-control-dsi-state");
 #endif
 
+#if defined(CONFIG_LGE_DISPLAY_AOD_WITH_MIPI)
+	mdss_dsi_parse_dcs_cmds(node, &ctrl_pdata->watch_rtc_set_cmd,
+		"lge,watch-rtc-set", "lge,watch-cmd-control-dsi-state");
+	mdss_dsi_parse_dcs_cmds(node, &ctrl_pdata->watch_rtc_info_cmd,
+		"lge,watch-rtc-info", "lge,watch-cmd-control-dsi-state");
+	mdss_dsi_parse_dcs_cmds(node, &ctrl_pdata->watch_ctl_cmd,
+		"lge,watch-ctl", "lge,watch-cmd-control-dsi-state");
+	mdss_dsi_parse_dcs_cmds(node, &ctrl_pdata->watch_set_cmd,
+		"lge,watch-set", "lge,watch-cmd-control-dsi-state");
+	mdss_dsi_parse_dcs_cmds(node, &ctrl_pdata->watch_fd_ctl_cmd,
+		"lge,watch-fd-ctl", "lge,watch-cmd-control-dsi-state");
+	mdss_dsi_parse_dcs_cmds(node, &ctrl_pdata->watch_font_set_cmd,
+		"lge,watch-font-set", "lge,watch-cmd-control-dsi-state");
+	mdss_dsi_parse_dcs_cmds(node, &ctrl_pdata->watch_u2_scr_fad_cmd,
+		"lge,watch-u2-scr-fad", "lge,watch-cmd-control-dsi-state");
+	mdss_dsi_parse_dcs_cmds(node, &ctrl_pdata->watch_font_crc_cmd,
+		"lge,watch-font-crc", "lge,watch-cmd-control-dsi-state");
+#endif
+
 	return AOD_RETURN_SUCCESS;
 }
 
@@ -82,7 +106,7 @@ int oem_mdss_aod_decide_status(struct msm_fb_data_type *mfd, int blank_mode)
 	enum aod_panel_mode cur_mode, next_mode;
 	enum aod_cmd_status cmd_status;
 	int aod_node, aod_keep_u2, rc;
-	bool labibb_ctrl = false;
+	bool labibb_ctrl = true;
 
 #ifdef CONFIG_LGE_DISPLAY_BL_EXTENDED
 	if(blank_mode == FB_BLANK_UNBLANK)
@@ -117,15 +141,20 @@ int oem_mdss_aod_decide_status(struct msm_fb_data_type *mfd, int blank_mode)
 	switch (cur_mode) {
 	case AOD_PANEL_MODE_U0_BLANK:
 #ifdef CONFIG_LGE_DISPLAY_BL_EXTENDED
-		/* U0_BLANK -> U3_UNBLANK */
-		if ((blank_mode == FB_BLANK_UNBLANK && aod_node == 0) ||
-		    (blank_mode == FB_BLANK_UNBLANK && aod_node == 1 &&
-		    (aod_keep_u2 == AOD_MOVE_TO_U3 || aod_keep_u2 == AOD_KEEP_U2))) {
-			cmd_status = ON_CMD;
+#if defined(CONFIG_LGE_DISPLAY_DYN_DSI_MODE_SWITCH)
+		// video and command mode switch
+		if(mfd->panel_info->dynamic_switch_pending == true && blank_mode == FB_BLANK_UNBLANK) {
+			if(mfd->panel_info->mode_switch == VIDEO_TO_CMD)
+				cmd_status = SWITCH_VIDEO_TO_CMD;
+			if(mfd->panel_info->mode_switch == CMD_TO_VIDEO){
+				cmd_status = SWITCH_CMD_TO_VIDEO;
+				labibb_ctrl = true;
+			}
 			next_mode = AOD_PANEL_MODE_U3_UNBLANK;
-			labibb_ctrl = true;
+			break;
 		}
-#else
+
+		// normal power mode switch
 		/* U0_BLANK -> U2_UNBLANK*/
 		if (blank_mode == FB_BLANK_UNBLANK && aod_node == 1 && aod_keep_u2 == AOD_KEEP_U2) {
 			cmd_status = ON_AND_AOD;
@@ -133,32 +162,61 @@ int oem_mdss_aod_decide_status(struct msm_fb_data_type *mfd, int blank_mode)
 		}
 		/* U0_BLANK -> U3_UNBLANK */
 		else if ((blank_mode == FB_BLANK_UNBLANK && aod_node == 0) ||
-				 (blank_mode == FB_BLANK_UNBLANK && aod_node == 1 && aod_keep_u2 == AOD_MOVE_TO_U3)) {
+			 (blank_mode == FB_BLANK_UNBLANK && aod_node == 1 && aod_keep_u2 == AOD_MOVE_TO_U3)) {
+			cmd_status = SWITCH_CMD_TO_VIDEO;
+			next_mode = AOD_PANEL_MODE_U3_UNBLANK;
+			labibb_ctrl = true;
+		}
+#else
+		/* U0_BLANK -> U3_UNBLANK */
+		if((blank_mode == FB_BLANK_UNBLANK && aod_node == 0) ||
+			(blank_mode == FB_BLANK_UNBLANK && aod_node == 1 &&
+			 (aod_keep_u2 == AOD_MOVE_TO_U3 || aod_keep_u2 == AOD_KEEP_U2))) {
 			cmd_status = ON_CMD;
 			next_mode = AOD_PANEL_MODE_U3_UNBLANK;
 			labibb_ctrl = true;
 		}
 #endif
-		else {
-			rc = AOD_RETURN_ERROR_NO_SCENARIO;
-			pr_err("[AOD]  NOT Checked Scenario\n");
-			goto error;
-		}
+#else
+			/* U0_BLANK -> U2_UNBLANK*/
+			if (blank_mode == FB_BLANK_UNBLANK && aod_node == 1 && aod_keep_u2 == AOD_KEEP_U2) {
+				cmd_status = ON_AND_AOD;
+				next_mode = AOD_PANEL_MODE_U2_UNBLANK;
+				labibb_ctrl = true;
+			}
+			/* U0_BLANK -> U3_UNBLANK */
+			else if ((blank_mode == FB_BLANK_UNBLANK && aod_node == 0) ||
+				 (blank_mode == FB_BLANK_UNBLANK && aod_node == 1 && aod_keep_u2 == AOD_MOVE_TO_U3)) {
+				cmd_status = ON_CMD;
+				next_mode = AOD_PANEL_MODE_U3_UNBLANK;
+				labibb_ctrl = true;
+			}
+#endif
+			else {
+				rc = AOD_RETURN_ERROR_NO_SCENARIO;
+				pr_err("[AOD]  NOT Checked Scenario\n");
+				goto error;
+			}
+
 		break;
 	case AOD_PANEL_MODE_U2_UNBLANK:
 		/* U2_UNBLANK -> U0_BLANK */
-		if (blank_mode == FB_BLANK_POWERDOWN && aod_node == 0) {
+		if (blank_mode == FB_BLANK_POWERDOWN && (aod_node == 0 || mfd->panel_info->dynamic_switch_pending == true)) {
 #ifdef CONFIG_LGE_DISPLAY_BL_EXTENDED
 			cmd_status = ON_AND_AOD;
 #else
 			cmd_status = OFF_CMD;
 #endif
 			next_mode = AOD_PANEL_MODE_U0_BLANK;
+#if defined(CONFIG_LGE_DISPLAY_AOD_WITH_MIPI)
+			mfd->watch.current_font_type = FONT_NONE;
+#endif
 		}
 		/* U2_UNBLANK -> U2_BLANK */
 		else if (blank_mode == FB_BLANK_POWERDOWN && aod_node == 1) {
 			cmd_status = CMD_SKIP;
 			next_mode = AOD_PANEL_MODE_U2_BLANK;
+			labibb_ctrl = false;
 		}
 		else {
 			rc = AOD_RETURN_ERROR_NO_SCENARIO;
@@ -169,29 +227,17 @@ int oem_mdss_aod_decide_status(struct msm_fb_data_type *mfd, int blank_mode)
 	case AOD_PANEL_MODE_U2_BLANK:
 		/* U2_BLANK -> U3_UNBLANK */
 		if ((blank_mode == FB_BLANK_UNBLANK && aod_node == 1 && aod_keep_u2 != AOD_KEEP_U2) ||
-		    (blank_mode == FB_BLANK_UNBLANK && aod_node == 0 && aod_keep_u2 == AOD_MOVE_TO_U3)) {
+			(blank_mode == FB_BLANK_UNBLANK && aod_node == 0 && aod_keep_u2 == AOD_MOVE_TO_U3)) {
 			cmd_status = AOD_CMD_DISABLE;
 			next_mode = AOD_PANEL_MODE_U3_UNBLANK;
-			labibb_ctrl = true;
+			labibb_ctrl = false;
 		}
-#if defined(CONFIG_LGE_DISPLAY_MARQUEE_SUPPORTED)
-		else if (blank_mode == FB_BLANK_UNBLANK && aod_keep_u2 == AOD_KEEP_U2 && mfd->panel_info->mq_mode) {
-			mfd->panel_info->ext_off_temp = 0;
-			cmd_status = AOD_CMD_DISABLE;
-			next_mode = AOD_PANEL_MODE_U3_UNBLANK;
-			labibb_ctrl = true;
-			mutex_lock(&mfd->bl_lock);
-			mfd->unset_bl_level_ex = mfd->bl_level_ex;
-			mdss_fb_set_backlight_ex(mfd, 0);
-			mfd->allow_bl_update_ex = false;
-			mutex_unlock(&mfd->bl_lock);
-		}
-#endif
 		/* U2_BLANK -> U2_UNBLANK */
 		else if ((blank_mode == FB_BLANK_UNBLANK && aod_node == 0) ||
 				(blank_mode == FB_BLANK_UNBLANK && aod_node == 1 && aod_keep_u2 == AOD_KEEP_U2)) {
 			cmd_status = CMD_SKIP;
 			next_mode = AOD_PANEL_MODE_U2_UNBLANK;
+			labibb_ctrl = false;
 		}
 		else {
 			rc = AOD_RETURN_ERROR_NO_SCENARIO;
@@ -200,6 +246,15 @@ int oem_mdss_aod_decide_status(struct msm_fb_data_type *mfd, int blank_mode)
 		}
 		break;
 	case AOD_PANEL_MODE_U3_UNBLANK:
+#if defined(CONFIG_LGE_DISPLAY_DYN_DSI_MODE_SWITCH)
+		// video and command mode switch
+		if(mfd->panel_info->dynamic_switch_pending == true && blank_mode == FB_BLANK_POWERDOWN) {
+			cmd_status = OFF_CMD;
+			next_mode = AOD_PANEL_MODE_U0_BLANK;
+			//labibb_ctrl = true;
+			break;
+		}
+		// normal power mode transition
 		/* U3_UNBLANK -> U0_BLANK */
 		if (blank_mode == FB_BLANK_POWERDOWN && aod_node == 0) {
 			cmd_status = OFF_CMD;
@@ -208,9 +263,42 @@ int oem_mdss_aod_decide_status(struct msm_fb_data_type *mfd, int blank_mode)
 		}
 		/* U3_UNBLANK -> U2_BLANK */
 		else if (blank_mode == FB_BLANK_POWERDOWN && aod_node == 1) {
+			if(mfd->panel_info->mipi.mode == DSI_VIDEO_MODE) {
+				cmd_status = OFF_CMD;
+				next_mode = AOD_PANEL_MODE_U0_BLANK;
+				labibb_ctrl = true;
+			}
+			if(mfd->panel_info->mipi.mode == DSI_CMD_MODE) {
+				cmd_status = AOD_CMD_ENABLE;
+				next_mode = AOD_PANEL_MODE_U2_BLANK;
+				labibb_ctrl = true;
+			}
+		} else {
+			rc = AOD_RETURN_ERROR_NO_SCENARIO;
+			pr_err("[AOD]  NOT Checked Scenario\n");
+			goto error;
+		}
+		break;
+#else
+		/* U3_UNBLANK -> U0_BLANK */
+		if (blank_mode == FB_BLANK_POWERDOWN && aod_node == 0) {
+			cmd_status = OFF_CMD;
+			next_mode = AOD_PANEL_MODE_U0_BLANK;
+			labibb_ctrl = true;
+		}
+#if defined(CONFIG_LGE_DISPLAY_AOD_WITH_MIPI)
+		/* AOD App didn't alive. U3_UNBLANK -> U0 */
+		else if (blank_mode == FB_BLANK_POWERDOWN && aod_node == 1 && !mfd->watch.current_font_type) {
+			cmd_status = OFF_CMD;
+			next_mode = AOD_PANEL_MODE_U0_BLANK;
+			labibb_ctrl = true;
+		}
+#endif
+		/* U3_UNBLANK -> U2_BLANK */
+		else if (blank_mode == FB_BLANK_POWERDOWN && aod_node == 1) {
 			cmd_status = AOD_CMD_ENABLE;
 			next_mode = AOD_PANEL_MODE_U2_BLANK;
-			labibb_ctrl = true;
+			labibb_ctrl = false;
 		}
 		else {
 			rc = AOD_RETURN_ERROR_NO_SCENARIO;
@@ -218,6 +306,7 @@ int oem_mdss_aod_decide_status(struct msm_fb_data_type *mfd, int blank_mode)
 			goto error;
 		}
 		break;
+#endif
 	default:
 		pr_err("[AOD] Unknown Mode : %d\n", blank_mode);
 		rc = AOD_RETURN_ERROR_UNKNOWN;
@@ -231,6 +320,10 @@ int oem_mdss_aod_decide_status(struct msm_fb_data_type *mfd, int blank_mode)
 
 	/* set backlight mode as aod mode changes */
 	oem_mdss_aod_set_backlight_mode(mfd);
+#if defined(CONFIG_LGE_DISPLAY_AOD_WITH_MIPI)
+	if (mfd->panel_info->panel_type == LGD_SIC_LG49408_1440_2880_INCELL_CMD_PANEL)
+		lcd_watch_deside_status(mfd, cur_mode, next_mode);
+#endif
 
 	return AOD_RETURN_SUCCESS;
 error:
@@ -285,7 +378,7 @@ int oem_mdss_aod_cmd_send(struct msm_fb_data_type *mfd, int cmd)
 			return AOD_RETURN_ERROR_SEND_CMD;
 		}
 		break;
-#if defined(CONFIG_LGE_DISPLAY_BL_EXTENDED)
+#if defined(CONFIG_LGE_DISPLAY_BL_EXTENDED) && !defined(CONFIG_LGE_DISPLAY_DYN_DSI_MODE_SWITCH)
 	case AOD_CMD_U3_READY:
 	case AOD_CMD_U2_READY:
 		mdss_dsi_clk_ctrl(ctrl, ctrl->dsi_clk_handle,
@@ -325,6 +418,7 @@ extern int qpnp_wled_set_sink(int enable);
  */
 #ifdef CONFIG_LGE_DISPLAY_BL_EXTENDED
 /* for extended backlight */
+/* only change dimming mode */
 static void aod_setblmode_ex(struct msm_fb_data_type *mfd)
 {
 	struct mdss_panel_info *pinfo;
@@ -361,7 +455,6 @@ static void aod_setblmode_ex(struct msm_fb_data_type *mfd)
 		/* change bl with new ext aod mode */
 		mutex_lock(&mfd->bl_lock);
 		pinfo->bl2_dimm = next_dimm_mode;
-		mdss_fb_set_bl_brightness_aod_sub(mfd, mfd->br_lvl_ex);
 		mutex_unlock(&mfd->bl_lock);
 	}
 }
@@ -371,7 +464,9 @@ static void aod_setblmode(struct msm_fb_data_type *mfd)
 	struct mdss_panel_info *pinfo;
 	struct mdss_panel_data *pdata;
 	enum aod_panel_mode aod_mode;
+#if defined(CONFIG_LGE_DISPLAY_AOD_USE_QPNP_WLED)
 	bool next_dimm_mode;
+#endif
 
 	if(mfd->index != 0) {
 		pr_err("[AOD]fb[%d] is not for aod\n", mfd->index);
@@ -425,6 +520,7 @@ void oem_mdss_mq_cmd_set(struct mdss_dsi_ctrl_pdata *ctrl)
 
 	pdata = &ctrl->panel_data;
 	pinfo = &pdata->panel_info;
+	pr_info("%s : marquee is set!!!\n",__func__);
 
 	memset(mq_reg, 0, sizeof(u32)*7);
 	mq_reg[0] = (pinfo->mq_pos.start_x) & 0xFF;
@@ -443,12 +539,21 @@ void oem_mdss_mq_cmd_set(struct mdss_dsi_ctrl_pdata *ctrl)
 	}
 	ctrl->mq_control_cmds.cmds->payload[3] = mq_reg[6];
 	pr_info("%s: mq_control_cmds.cmds->payload[3]: %x\n",__func__,ctrl->mq_control_cmds.cmds->payload[3]);
+
+	oem_mdss_mq_access_set(ctrl, 1);
+	mdss_dsi_panel_cmds_send(ctrl, &ctrl->mq_column_row_cmds, CMD_REQ_COMMIT);
+	mdss_dsi_panel_cmds_send(ctrl, &ctrl->mq_control_cmds, CMD_REQ_COMMIT);
+	oem_mdss_mq_access_set(ctrl, 0);
 }
 void oem_mdss_mq_cmd_unset(struct mdss_dsi_ctrl_pdata *ctrl)
 {
 	pr_info("%s : marquee is unset!!!\n",__func__);
-	oem_mdss_mq_access_set(ctrl,1);
+	ctrl->mq_column_row_cmds.cmds->payload[7] = 0x00;
+	ctrl->mq_column_row_cmds.cmds->payload[8] = 0x00;
 	ctrl->mq_control_cmds.cmds->payload[3] = 0x00;//unset marquee
+
+	oem_mdss_mq_access_set(ctrl,1);
+	mdss_dsi_panel_cmds_send(ctrl, &ctrl->mq_column_row_cmds, CMD_REQ_COMMIT);
 	mdss_dsi_panel_cmds_send(ctrl, &ctrl->mq_control_cmds, CMD_REQ_COMMIT);
 	oem_mdss_mq_access_set(ctrl,0);
 }

@@ -118,6 +118,8 @@ struct afe_ctl {
 	struct aanc_data aanc_info;
 	struct mutex afe_cmd_lock;
 	int set_custom_topology;
+	int dev_id_tb[AFE_MAX_PORTS];
+	routing_cb rt_cb;
 };
 
 static atomic_t afe_ports_mad_type[SLIMBUS_PORT_LAST - SLIMBUS_0_RX];
@@ -1208,6 +1210,10 @@ static struct cal_block_data *afe_find_cal_topo_id_by_port(
 	struct cal_block_data	*cal_block = NULL;
 	int32_t path;
 	struct audio_cal_info_afe_top *afe_top;
+	int afe_port_index = q6audio_get_port_index(port_id);
+
+	if (afe_port_index < 0)
+		goto err_exit;
 
 	list_for_each_safe(ptr, next,
 		&cal_type->cal_blocks) {
@@ -1218,13 +1224,15 @@ static struct cal_block_data *afe_find_cal_topo_id_by_port(
 			MSM_AFE_PORT_TYPE_TX)?(TX_DEVICE):(RX_DEVICE));
 		afe_top =
 		(struct audio_cal_info_afe_top *)cal_block->cal_info;
-		if (afe_top->path == path) {
+		if ((afe_top->path == path) &&
+		    (afe_top->acdb_id == this_afe.dev_id_tb[afe_port_index])) {
 			pr_debug("%s: top_id:%x acdb_id:%d afe_port:%d\n",
 			__func__, afe_top->topology, afe_top->acdb_id,
 			q6audio_get_port_id(port_id));
 			return cal_block;
 		}
 	}
+err_exit:
 	return NULL;
 }
 
@@ -1314,10 +1322,10 @@ static int afe_send_port_topology_id(u16 port_id)
 	config.port.topology.minor_version = AFE_API_VERSION_TOPOLOGY_V1;
 	config.port.topology.topology_id = topology_id;
 
-	pr_debug("%s: param PL size=%d iparam_size[%d][%zd %zd %zd %zd] param_id[0x%x]\n",
+	pr_debug("%s: param PL size=%d iparam_size[%d][%zd %zd %zd %zd] param_id[0x%x] top[%d]\n",
 		__func__, config.param.payload_size, config.pdata.param_size,
 		sizeof(config), sizeof(config.param), sizeof(config.port),
-		sizeof(struct apr_hdr), config.pdata.param_id);
+		sizeof(struct apr_hdr), config.pdata.param_id, topology_id);
 
 	ret = afe_apr_send_pkt(&config, &this_afe.wait[index]);
 	if (ret) {
@@ -1368,6 +1376,39 @@ done:
 	return ret;
 }
 
+static struct cal_block_data *afe_find_cal(int cal_index, int port_id)
+{
+	struct list_head		*ptr, *next;
+	struct cal_block_data		*cal_block = NULL;
+	struct audio_cal_info_afe	*afe_cal_info = NULL;
+	int afe_port_index = q6audio_get_port_index(port_id);
+
+	pr_debug("%s: port_index %d\n", __func__, afe_port_index);
+	if (afe_port_index < 0)
+		goto exit;
+
+	list_for_each_safe(ptr, next,
+		&this_afe.cal_data[cal_index]->cal_blocks) {
+		cal_block = list_entry(ptr, struct cal_block_data, list);
+		afe_cal_info = cal_block->cal_info;
+		pr_debug("%s: acdb_id %d, cal_acdb_id %d, rate %d, cal_rate %d\n",
+			__func__, this_afe.dev_id_tb[afe_port_index],
+			afe_cal_info->acdb_id,
+			this_afe.afe_sample_rates[afe_port_index],
+			afe_cal_info->sample_rate);
+		if ((afe_cal_info->acdb_id ==
+		     this_afe.dev_id_tb[afe_port_index]) &&
+		    (afe_cal_info->sample_rate ==
+		     this_afe.afe_sample_rates[afe_port_index])) {
+			pr_debug("%s: find match acdb_id %d\n",
+				__func__, afe_cal_info->acdb_id);
+			break;
+		}
+	}
+exit:
+	return cal_block;
+}
+
 static void send_afe_cal_type(int cal_index, int port_id)
 {
 	struct cal_block_data		*cal_block = NULL;
@@ -1381,7 +1422,13 @@ static void send_afe_cal_type(int cal_index, int port_id)
 	}
 
 	mutex_lock(&this_afe.cal_data[cal_index]->lock);
-	cal_block = cal_utils_get_only_cal_block(this_afe.cal_data[cal_index]);
+
+	if ((AFE_COMMON_RX_CAL == cal_index) ||
+	    (AFE_COMMON_TX_CAL == cal_index))
+		cal_block = afe_find_cal(cal_index, port_id);
+	else
+		cal_block = cal_utils_get_only_cal_block(
+				this_afe.cal_data[cal_index]);
 	if (cal_block == NULL) {
 		pr_err("%s cal_block not found!!\n", __func__);
 		goto unlock;
@@ -2482,6 +2529,12 @@ int afe_tdm_port_start(u16 port_id, struct afe_tdm_port_config *tdm_port,
 		return ret;
 	}
 
+	if ((index >= 0) && (index < AFE_MAX_PORTS))
+		this_afe.afe_sample_rates[index] = rate;
+
+	if (this_afe.rt_cb)
+		this_afe.dev_id_tb[index] = this_afe.rt_cb(port_id);
+
 	/* Also send the topology id here: */
 	port_index = afe_get_port_index(port_id);
 	if (!(this_afe.afe_cal_mode[port_index] == AFE_CAL_MODE_NONE)) {
@@ -2576,6 +2629,11 @@ void afe_set_cal_mode(u16 port_id, enum afe_cal_mode afe_cal_mode)
 	this_afe.afe_cal_mode[port_index] = afe_cal_mode;
 }
 
+void afe_set_routing_callback(routing_cb cb)
+{
+	this_afe.rt_cb = cb;
+}
+
 int afe_port_start(u16 port_id, union afe_port_config *afe_config,
 	u32 rate) /* This function is no blocking */
 {
@@ -2621,7 +2679,7 @@ int afe_port_start(u16 port_id, union afe_port_config *afe_config,
 	pr_debug("%s: port id: 0x%x\n", __func__, port_id);
 
 	index = q6audio_get_port_index(port_id);
-	if (index < 0 || index > AFE_MAX_PORTS) {
+	if (index < 0 || index >= AFE_MAX_PORTS) {
 		pr_err("%s: AFE port index[%d] invalid!\n",
 				__func__, index);
 		return -EINVAL;
@@ -2637,6 +2695,12 @@ int afe_port_start(u16 port_id, union afe_port_config *afe_config,
 		pr_err("%s: Q6 interface prepare failed %d\n", __func__, ret);
 		return ret;
 	}
+
+	if ((index >= 0) && (index < AFE_MAX_PORTS))
+		this_afe.afe_sample_rates[index] = rate;
+
+	if (this_afe.rt_cb)
+		this_afe.dev_id_tb[index] = this_afe.rt_cb(port_id);
 
 	mutex_lock(&this_afe.afe_cmd_lock);
 	/* Also send the topology id here: */
@@ -2784,7 +2848,6 @@ int afe_port_start(u16 port_id, union afe_port_config *afe_config,
 
 	port_index = afe_get_port_index(port_id);
 	if ((port_index >= 0) && (port_index < AFE_MAX_PORTS)) {
-		this_afe.afe_sample_rates[port_index] = rate;
 		/*
 		 * If afe_port_start() for tx port called before
 		 * rx port, then aanc rx sample rate is zero. So,
@@ -3063,6 +3126,12 @@ int afe_open(u16 port_id,
 		pr_err("%s: Q6 interface prepare failed %d\n", __func__, ret);
 		return -EINVAL;
 	}
+
+	if ((index >= 0) && (index < AFE_MAX_PORTS))
+		this_afe.afe_sample_rates[index] = rate;
+
+	if (this_afe.rt_cb)
+		this_afe.dev_id_tb[index] = this_afe.rt_cb(port_id);
 	/* Also send the topology id here: */
 	afe_send_custom_topology(); /* One time call: only for first time  */
 	afe_send_port_topology_id(port_id);
@@ -4808,6 +4877,7 @@ int afe_close(int port_id)
 	if ((port_index >= 0) && (port_index < AFE_MAX_PORTS)) {
 		this_afe.afe_sample_rates[port_index] = 0;
 		this_afe.topology[port_index] = 0;
+		this_afe.dev_id_tb[port_index] = 0;
 	} else {
 		pr_err("%s: port %d\n", __func__, port_index);
 		ret = -EINVAL;
@@ -6262,6 +6332,7 @@ static int __init afe_init(void)
 	mutex_init(&this_afe.afe_cmd_lock);
 	for (i = 0; i < AFE_MAX_PORTS; i++) {
 		this_afe.afe_cal_mode[i] = AFE_CAL_MODE_DEFAULT;
+		this_afe.dev_id_tb[i] = 0;
 		init_waitqueue_head(&this_afe.wait[i]);
 	}
 	wakeup_source_init(&wl.ws, "spkr-prot");

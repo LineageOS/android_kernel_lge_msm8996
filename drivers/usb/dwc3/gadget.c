@@ -1933,10 +1933,12 @@ static int dwc3_gadget_run_stop(struct dwc3 *dwc, int is_on, int suspend)
 
 		dwc->pullups_connected = true;
 #ifdef CONFIG_LGE_USB_MAXIM_EVP
-		pr_info("%s Queue DCP check work! %u\n", __func__, dwc->gadget.evp_sts);
-		if (dwc->gadget.evp_sts & EVP_STS_DCP)
+		if (dwc->gadget.evp_sts & EVP_STS_DCP) {
+			pr_info("%s Queue DCP check work! %u\n", __func__,
+				dwc->gadget.evp_sts);
 			schedule_delayed_work(&dwc->dcp_check_work,
 					(msecs_to_jiffies(1500)));
+		}
 #endif
 	} else {
 		dwc3_gadget_disable_irq(dwc);

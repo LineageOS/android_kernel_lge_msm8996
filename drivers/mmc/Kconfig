@@ -68,6 +68,12 @@ config LGE_MMC_CLK_SCALE_DISABLE
 	  If you say Y here, clock scaling for mmc device will be disabled.
 	  Set Y in kernel/arch/arm/configs/XXXX_defconfig file.
 
+config LGE_SHOW_SDCARD_DETECT_PIN_STATUS
+    bool "Show SD Card Detect pin status"
+    default n
+    help
+        Show SD Card Detect pin status at /sys/devices/soc/7864900.sdhci/mmc_host/mmc1/cd_status
+
 if MMC
 
 source "drivers/mmc/core/Kconfig"

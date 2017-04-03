@@ -24,11 +24,10 @@
 #include <linux/stat.h>
 #include <linux/types.h>
 
-#if defined(CONFIG_LGE_USB_ANX7418)
-#ifdef CONFIG_LGE_ALICE_FRIENDS
+#ifdef CONFIG_LGE_USB_TYPE_C
+#if defined(CONFIG_LGE_USB_ANX7418) && defined(CONFIG_LGE_ALICE_FRIENDS)
 #include <soc/qcom/lge/board_lge.h>
 #endif
-
 #define DUAL_ROLE_NOTIFICATION_DELAY 1000
 #endif
 
@@ -80,7 +79,7 @@ static char *kstrdupcase(const char *str, gfp_t gfp, bool to_upper)
 
 static void dual_role_changed_work(struct work_struct *work)
 {
-#if defined(CONFIG_LGE_USB_ANX7418)
+#ifdef CONFIG_LGE_USB_TYPE_C
 	struct dual_role_phy_instance *dual_role =
 	    container_of(work, struct dual_role_phy_instance,
 			 changed_work.work);
@@ -98,8 +97,8 @@ void dual_role_instance_changed(struct dual_role_phy_instance *dual_role)
 {
 	dev_dbg(&dual_role->dev, "%s\n", __func__);
 	pm_wakeup_event(&dual_role->dev, DUAL_ROLE_NOTIFICATION_TIMEOUT);
-#if defined(CONFIG_LGE_USB_ANX7418)
-#ifdef CONFIG_LGE_ALICE_FRIENDS
+#ifdef CONFIG_LGE_USB_TYPE_C
+#if defined(CONFIG_LGE_USB_ANX7418) && defined(CONFIG_LGE_ALICE_FRIENDS)
 	if (lge_get_alice_friends() == LGE_ALICE_FRIENDS_NONE) {
 		cancel_delayed_work_sync(&dual_role->changed_work);
 		schedule_delayed_work(&dual_role->changed_work,
@@ -182,7 +181,7 @@ __dual_role_register(struct device *parent,
 	if (rc)
 		goto dev_set_name_failed;
 
-#if defined(CONFIG_LGE_USB_ANX7418)
+#ifdef CONFIG_LGE_USB_TYPE_C
 	INIT_DELAYED_WORK(&dual_role->changed_work, dual_role_changed_work);
 #else
 	INIT_WORK(&dual_role->changed_work, dual_role_changed_work);
@@ -213,7 +212,7 @@ dev_set_name_failed:
 static void dual_role_instance_unregister(struct dual_role_phy_instance
 					  *dual_role)
 {
-#if defined(CONFIG_LGE_USB_ANX7418)
+#ifdef CONFIG_LGE_USB_TYPE_C
 	cancel_delayed_work_sync(&dual_role->changed_work);
 #else
 	cancel_work_sync(&dual_role->changed_work);

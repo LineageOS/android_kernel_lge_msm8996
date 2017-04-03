@@ -48,7 +48,7 @@ struct lge_battery_id_info {
 static enum power_supply_property lge_battery_id_battery_props[] = {
 	POWER_SUPPLY_PROP_BATTERY_ID,
 };
-#ifdef CONFIG_MACH_MSM8996_ELSA
+#if defined (CONFIG_MACH_MSM8996_ELSA) || defined (CONFIG_MACH_MSM8996_LUCYE)
 struct battery_id_type battery_id_list[] = {
 	{
 		.battery_id = BATT_ID_RA4301_VC0,

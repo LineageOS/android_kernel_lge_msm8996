@@ -312,6 +312,29 @@ static inline void mmc_host_clk_sysfs_init(struct mmc_host *host)
 
 #endif
 
+#ifdef CONFIG_LGE_SHOW_SDCARD_DETECT_PIN_STATUS
+static ssize_t cd_status_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct mmc_host *host = cls_dev_to_mmc_host(dev);
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", mmc_gpio_get_cd(host));
+}
+
+
+DEVICE_ATTR(cd_status, S_IRUGO,
+		cd_status_show, NULL);
+
+static inline void mmc_host_cd_status_sysfs_init(struct mmc_host *host)
+{
+
+
+	if (device_create_file(&host->class_dev, &dev_attr_cd_status))
+		pr_err("%s: Failed to create clkgate_delay sysfs entry\n",
+				mmc_hostname(host));
+}
+#endif
+
 /**
  *	mmc_of_parse() - parse host's device-tree node
  *	@host: host whose node should be parsed.
@@ -787,6 +810,9 @@ int mmc_add_host(struct mmc_host *host)
 
 #ifdef CONFIG_DEBUG_FS
 	mmc_add_host_debugfs(host);
+#endif
+#ifdef CONFIG_LGE_SHOW_SDCARD_DETECT_PIN_STATUS
+	mmc_host_cd_status_sysfs_init(host);
 #endif
 	mmc_host_clk_sysfs_init(host);
 	mmc_trace_init(host);

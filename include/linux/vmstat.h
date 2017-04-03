@@ -299,12 +299,20 @@ static inline void drain_zonestat(struct zone *zone,
 			struct per_cpu_pageset *pset) { }
 #endif		/* CONFIG_SMP */
 
+#ifdef CONFIG_MIGRATE_HIGHORDER
+#define is_migrate_highorder(migratetype) unlikely((migratetype) == MIGRATE_HIGHORDER)
+#endif
+
 static inline void __mod_zone_freepage_state(struct zone *zone, int nr_pages,
 					     int migratetype)
 {
 	__mod_zone_page_state(zone, NR_FREE_PAGES, nr_pages);
 	if (is_migrate_cma(migratetype))
 		__mod_zone_page_state(zone, NR_FREE_CMA_PAGES, nr_pages);
+#ifdef CONFIG_MIGRATE_HIGHORDER
+	if (is_migrate_highorder(migratetype))
+		__mod_zone_page_state(zone, NR_FREE_HIGHORDER_PAGES, nr_pages);
+#endif
 }
 
 extern const char * const vmstat_text[];

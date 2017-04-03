@@ -113,6 +113,11 @@ void *ion_page_pool_alloc(struct ion_page_pool *pool, bool *from_pool)
 		mutex_unlock(&pool->mutex);
 	}
 	if (!page) {
+#ifdef CONFIG_MIGRATE_HIGHORDER
+		if (pool->order > 0 &&
+				(global_page_state(NR_FREE_HIGHORDER_PAGES) < (1 << pool->order)))
+			return page;
+#endif
 		page = ion_page_pool_alloc_pages(pool);
 		*from_pool = false;
 	}

@@ -67,7 +67,7 @@
 };
 
 &mdss_dsi0 {
-	qcom,dsi-pref-prim-pan = <&dsi_sw49407_dsc_cmd>;
+	qcom,dsi-pref-prim-pan = <&dsi_sw49407_dsc_video>;
 	lge,extra-gpio-names = "vddio", "vpnl";
 
 	lge,gpio-vddio = <&tlmm 79 0>;
@@ -75,7 +75,7 @@
 };
 
 &mdss_dsi1 {
-	qcom,dsi-pref-prim-pan = <&dsi_sw49407_dsc_cmd>;
+	qcom,dsi-pref-prim-pan = <&dsi_sw49407_dsc_video>;
 	lge,extra-gpio-names = "vddio", "vpnl";
 
 	lge,gpio-vddio = <&tlmm 79 0>;

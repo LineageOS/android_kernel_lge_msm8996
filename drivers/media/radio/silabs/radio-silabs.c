@@ -346,7 +346,7 @@ static int silabs_fm_areg_cfg(struct silabs_fm_device *radio, bool on)
 		return rc;
 	}
 	if (on) {
-		FMDBG("vreg is : %s", vreg->name);
+		FMDBG("%s vreg is : %s", __func__,vreg->name);
 		if (vreg->set_voltage_sup) {
 			rc = regulator_set_voltage(vreg->reg,
 						vreg->low_vol_level,
@@ -402,7 +402,7 @@ static int silabs_fm_dreg_cfg(struct silabs_fm_device *radio, bool on)
 	}
 
 	if (on) {
-		FMDBG("vreg is : %s", vreg->name);
+		FMDBG("%s vreg is : %s",__func__, vreg->name);
 		if (vreg->set_voltage_sup) {
 			rc = regulator_set_voltage(vreg->reg,
 						vreg->low_vol_level,
@@ -464,18 +464,20 @@ static int silabs_fm_power_cfg(struct silabs_fm_device *radio, bool on)
 			return rc;
 		}
 		/* If pinctrl is supported, select active state */
+#if 0
 		if (radio->fm_pinctrl) {
 			rc = silabs_fm_pinctrl_select(radio, true);
 			if (rc)
 				FMDERR("%s: error setting active pin state\n",
 								__func__);
 		}
-
+#endif
 		rc = fm_configure_gpios(radio, on);
 		if (rc < 0) {
 			FMDERR("fm_power gpio config failed\n");
-			silabs_fm_dreg_cfg(radio, false);
-			silabs_fm_areg_cfg(radio, false);
+		/* do not disable for leakage current */
+		/*	silabs_fm_dreg_cfg(radio, false);
+			silabs_fm_areg_cfg(radio, false); */
 			return rc;
 		}
 	} else {
@@ -491,12 +493,15 @@ static int silabs_fm_power_cfg(struct silabs_fm_device *radio, bool on)
 				FMDERR("%s: error setting suspend pin state\n",
 								__func__);
 		}
+		/*do not disable for leakage current */
+		/*
 		rc = silabs_fm_dreg_cfg(radio, on);
 		if (rc < 0)
 			FMDERR("In %s, dreg cfg failed %x\n", __func__, rc);
 		rc = silabs_fm_areg_cfg(radio, on);
 		if (rc < 0)
 			FMDERR("In %s, areg cfg failed %x\n", __func__, rc);
+		*/
 	}
 	return rc;
 }
@@ -716,7 +721,7 @@ static void silabs_scan(struct work_struct *work)
 	}
 
 	current_freq_khz = radio->tuned_freq_khz;
-	FMDBG("current freq is %d\n", current_freq_khz);
+	FMDBG("%s current freq is %d\n", __func__,current_freq_khz);
 
 	radio->seek_tune_status = SCAN_PENDING;
 	/* tune to lowest freq of the band */
@@ -2452,7 +2457,7 @@ static int silabs_fm_request_irq(struct silabs_fm_device *radio)
 		FMDERR("Couldn't acquire FM gpio %d\n", irq);
 		return retval;
 	} else {
-		FMDBG("FM GPIO %d registered\n", irq);
+		FMDBG("%s FM GPIO %d registered\n", __func__,irq);
 	}
 	retval = enable_irq_wake(irq);
 	if (retval < 0) {
@@ -2471,7 +2476,7 @@ static int silabs_fm_request_irq(struct silabs_fm_device *radio)
 		/* Do not error out for status int. FM can work without it. */
 		return 0;
 	} else {
-		FMDBG("FM status GPIO %d registered\n", irq);
+		FMDBG("%s FM status GPIO %d registered\n", __func__,irq);
 	}
 	retval = enable_irq_wake(irq);
 	if (retval < 0) {
@@ -2519,7 +2524,7 @@ static int silabs_fm_fops_open(struct file *file)
 		goto open_err_req_irq;
 	}
 
-	FMDBG("irq number is = %d\n", radio->irq);
+	FMDBG("%s irq number is = %d\n", __func__,radio->irq);
 
 	if (radio->status_gpio > 0) {
 		radio->status_irq = gpio_to_irq(radio->status_gpio);
@@ -2530,7 +2535,7 @@ static int silabs_fm_fops_open(struct file *file)
 			goto open_err_req_irq;
 		}
 
-		FMDBG("status irq number is = %d\n", radio->status_irq);
+		FMDBG("%s status irq number is = %d\n", __func__,radio->status_irq);
 	}
 
 	/* enable irq */
@@ -3657,6 +3662,7 @@ static int silabs_fm_probe(struct i2c_client *client,
 	int retval = 0;
 	int i = 0;
 	int kfifo_alloc_rc = 0;
+	//int rc = 0;
 
 	if (!i2c_check_functionality(client->adapter, I2C_FUNC_I2C)) {
 		FMDERR("%s: no support for i2c read/write byte data\n",
@@ -3852,6 +3858,7 @@ static int silabs_fm_probe(struct i2c_client *client,
 		retval = -ENOMEM;
 		goto err_wqueue_rds;
 	}
+
 
 	/* register video device */
 	retval = video_register_device(radio->videodev,

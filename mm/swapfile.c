@@ -742,6 +742,119 @@ noswap:
 	return (swp_entry_t) {0};
 }
 
+#ifdef CONFIG_HSWAP
+unsigned long get_lowest_prio_swapper_space_nrpages()
+{
+	int i;
+	int lp_prio;
+	int lp_index;
+
+	lp_prio = SHRT_MAX + 1;
+	lp_index = -1;
+
+	for (i = 0; i < nr_swapfiles; ++i) {
+		if ((swap_info[i]->flags & SWP_WRITEOK) &&
+			(swap_info[i]->prio < lp_prio)) {
+			lp_prio = swap_info[i]->prio;
+			lp_index = i;
+		}
+	}
+
+	if (lp_index != -1)
+		return swapper_spaces[lp_index].nrpages;
+
+	return 0;
+}
+
+swp_entry_t get_lowest_prio_swap_page(void)
+{
+	int i;
+	int lp_prio;
+	int lp_index;
+	struct swap_info_struct *si, *next;
+	pgoff_t offset;
+	int first = 1;
+
+	if (atomic_long_read(&nr_swap_pages) <= 0)
+		goto noswap;
+	atomic_long_dec(&nr_swap_pages);
+
+	lp_prio = SHRT_MAX + 1;
+	lp_index = 0;
+
+	spin_lock(&swap_avail_lock);
+
+	for (i = 0; i < nr_swapfiles; ++i) {
+		if ((swap_info[i]->flags & SWP_WRITEOK) &&
+			(swap_info[i]->prio < lp_prio)) {
+			lp_prio = swap_info[i]->prio;
+			lp_index = i;
+		}
+	}
+
+start_over:
+	plist_for_each_entry_safe(si, next, &swap_avail_head, avail_list) {
+		/* requeue si to after same-priority siblings */
+		plist_requeue(&si->avail_list, &swap_avail_head);
+		spin_unlock(&swap_avail_lock);
+		spin_lock(&si->lock);
+		if (first) {
+			if (si->prio != swap_info[lp_index]->prio) {
+				spin_lock(&swap_avail_lock);
+				spin_unlock(&si->lock);
+				goto nextsi;
+			}
+		}
+
+		if (!si->highest_bit || !(si->flags & SWP_WRITEOK)) {
+			spin_lock(&swap_avail_lock);
+			if (plist_node_empty(&si->avail_list)) {
+				spin_unlock(&si->lock);
+				goto nextsi;
+			}
+			WARN(!si->highest_bit,
+			     "swap_info %d in list but !highest_bit\n",
+			     si->type);
+			WARN(!(si->flags & SWP_WRITEOK),
+			     "swap_info %d in list but !SWP_WRITEOK\n",
+			     si->type);
+			plist_del(&si->avail_list, &swap_avail_head);
+			spin_unlock(&si->lock);
+			goto nextsi;
+		}
+
+		/* This is called for allocating swap entry for cache */
+		offset = scan_swap_map(si, SWAP_HAS_CACHE);
+		spin_unlock(&si->lock);
+		if (offset)
+			return swp_entry(si->type, offset);
+		pr_debug("scan_swap_map of si %d failed to find offset\n",
+		       si->type);
+		spin_lock(&swap_avail_lock);
+nextsi:
+		/*
+		 * if we got here, it's likely that si was almost full before,
+		 * and since scan_swap_map() can drop the si->lock, multiple
+		 * callers probably all tried to get a page from the same si
+		 * and it filled up before we could get one; or, the si filled
+		 * up between us dropping swap_avail_lock and taking si->lock.
+		 * Since we dropped the swap_avail_lock, the swap_avail_head
+		 * list may have been modified; so if next is still in the
+		 * swap_avail_head list then try it, otherwise start over.
+		 */
+		if (plist_node_empty(&next->avail_list)) {
+			first = 0;
+			goto start_over;
+		}
+	}
+
+	spin_unlock(&swap_avail_lock);
+	atomic_long_inc(&nr_swap_pages);
+noswap:
+	return (swp_entry_t) {0};
+}
+#endif
+
 /* The only caller of this function is now suspend routine */
 swp_entry_t get_swap_page_of_type(int type)
 {

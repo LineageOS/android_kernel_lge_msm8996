@@ -262,7 +262,7 @@ struct swap_info_struct {
 
 /* linux/mm/workingset.c */
 void *workingset_eviction(struct address_space *mapping, struct page *page);
-bool workingset_refault(void *shadow);
+void workingset_refault(struct page *page, void *shadow);
 void workingset_activation(struct page *page);
 extern struct list_lru workingset_shadow_nodes;
 
@@ -308,7 +308,14 @@ extern unsigned long nr_free_pagecache_pages(void);
 
 
 /* linux/mm/swap.c */
+enum lru_cost_type {
+	COST_CPU,
+	COST_IO,
+};
+extern void lru_note_cost(struct lruvec *lruvec, enum lru_cost_type cost,
+			  bool file, unsigned int nr_pages);
 extern void lru_cache_add(struct page *);
+extern void lru_cache_putback(struct page *page);
 extern void lru_cache_add_anon(struct page *page);
 extern void lru_cache_add_file(struct page *page);
 extern void lru_add_page_tail(struct page *page, struct page *page_tail,
@@ -441,6 +448,10 @@ static inline long get_nr_swap_pages(void)
 
 extern void si_swapinfo(struct sysinfo *);
 extern swp_entry_t get_swap_page(void);
+#ifdef CONFIG_HSWAP
+extern unsigned long get_lowest_prio_swapper_space_nrpages(void);
+extern swp_entry_t get_lowest_prio_swap_page(void);
+#endif
 extern swp_entry_t get_swap_page_of_type(int);
 extern int add_swap_count_continuation(swp_entry_t, gfp_t);
 extern void swap_shmem_alloc(swp_entry_t);

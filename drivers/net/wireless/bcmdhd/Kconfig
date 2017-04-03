@@ -225,3 +225,10 @@ config DHD_DEBUG_ENABLED
 	default y
 	---help---
 	  Enables debugability features.
+
+config CONFIG_RUNTIME_TCPACK_SUPPRESS
+	bool "Enabling a feture to dynamically control on/off of TCPACK_SUPPRESS based on framework command"
+	depends on BCMDHD
+	default n
+	---help---
+	  This configuration controls on/off function of TCPACK_SUPPRESS dynamically.

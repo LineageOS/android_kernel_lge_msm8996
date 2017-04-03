@@ -43,6 +43,7 @@
 	qcom,parallel-usb-9v-min-current-ma = <900>;
 	qcom,charging-timeout-mins = <768>;
 	qcom,skip-usb-suspend-for-fake-battery;
+	qcom,bmd-algo-disabled;
 
 	qcom,usb_id-vadc = <&pm8994_vadc>;
 	qcom,usbin-vadc = <&pmi8994_vadc>;

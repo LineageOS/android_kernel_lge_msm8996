@@ -144,3 +144,24 @@ config LGE_PM_EMBEDDED_BATTERY
         default n
         help
             Enable embedded battery
+
+config LGE_PM_LGE_POWER_CLASS_SIMPLE
+	bool "Simplify LG Power Class"
+	depends on LGE_PM_LGE_POWER_CORE
+	default n
+	help
+	  Say Y here enable simplify LG Power Class
+
+config LGE_PM_LGE_POWER_CLASS_PSEUDO_BATTERY
+	bool "pseudo battery driver for LG Power Class"
+	depends on LGE_PM_LGE_POWER_CORE
+	default n
+	help
+	  Say Y here enable pseudo battery driver for LG Power Class
+
+config LGE_PM_LGE_POWER_CLASS_SUPPORT_CCD
+	bool "support CCD"
+	depends on LGE_PM_LGE_POWER_CORE
+	default n
+	help
+	  Say Y here enable CCD

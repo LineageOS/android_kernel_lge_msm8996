@@ -31,21 +31,25 @@
 extern "C" {
 #endif
 
+#include <linux/types.h>
+
+#define FEATURE_GET_FIC_POLLING
+
     /* INTERFACE */
 #define FC8080_SPI
 /*#define FC8080_I2C*/
 /*#define FC8080_PPI*/
 
-    /* X-TAL Frequency Configuration */
+/* X-TAL Frequency Configuration */
 /*#define FC8080_FREQ_XTAL  16000*/
 /*#define FC8080_FREQ_XTAL  16384*/
-/*#define FC8080_FREQ_XTAL    19200*/ // 19.2MHz
-//#define FC8080_FREQ_XTAL  24576
+/*#define FC8080_FREQ_XTAL  19200*/  // 19.2MHz
+/*#define FC8080_FREQ_XTAL  24576*/
 /*#define FC8080_FREQ_XTAL  24000*/
 /*#define FC8080_FREQ_XTAL  24576*/
 /*#define FC8080_FREQ_XTAL  26000*/
 /*#define FC8080_FREQ_XTAL  27000*/
-#define FC8080_FREQ_XTAL  27120
+/*#define FC8080_FREQ_XTAL  27120*/
 /*#define FC8080_FREQ_XTAL  32000*/
 /*#define FC8080_FREQ_XTAL  38400*/
 

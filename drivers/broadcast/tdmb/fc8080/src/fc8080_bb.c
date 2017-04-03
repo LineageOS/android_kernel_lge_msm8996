@@ -32,6 +32,10 @@
 #define POWER_SAVE_MODE
 #undef FEATURE_DEBUG_LOG
 
+extern unsigned int tdmb_fc8080_get_xtal_freq(void);
+
+unsigned int freq_xtal;
+
 #define LOCK_TIME_TICK  5    /* 5ms */
 #define SLOCK_MAX_TIME  200
 #define FLOCK_MAX_TIME  300
@@ -39,215 +43,223 @@
 
 static fci_s32 fc8080_set_xtal(HANDLE handle)
 {
-#if (FC8080_FREQ_XTAL == 24576)
-    bbm_long_write(handle, BBM_NCO_OFFSET, 0x04000000);
-    bbm_byte_write(handle, BBM_NCO_INV, 0x80);
-    bbm_byte_write(handle, BBM_EZ_CONST, 0x80);
-    bbm_byte_write(handle, BBM_CLK_MODE, 0x02);
+    if (freq_xtal == 24576) {
+        bbm_long_write(handle, BBM_NCO_OFFSET, 0x04000000);
+        bbm_byte_write(handle, BBM_NCO_INV, 0x80);
+        bbm_byte_write(handle, BBM_EZ_CONST, 0x80);
+        bbm_byte_write(handle, BBM_CLK_MODE, 0x02);
 
-    /* filter coefficient */
-    bbm_byte_write(handle, BBM_COEF00, 0x02);
-    bbm_byte_write(handle, BBM_COEF01, 0x0f);
-    bbm_byte_write(handle, BBM_COEF02, 0x0d);
-    bbm_byte_write(handle, BBM_COEF03, 0x00);
-    bbm_byte_write(handle, BBM_COEF04, 0x04);
-    bbm_byte_write(handle, BBM_COEF05, 0x03);
-    bbm_byte_write(handle, BBM_COEF06, 0x1c);
-    bbm_byte_write(handle, BBM_COEF07, 0x19);
-    bbm_byte_write(handle, BBM_COEF08, 0x02);
-    bbm_byte_write(handle, BBM_COEF09, 0x0c);
-    bbm_byte_write(handle, BBM_COEF0A, 0x04);
-    bbm_byte_write(handle, BBM_COEF0B, 0x30);
-    bbm_byte_write(handle, BBM_COEF0C, 0xed);
-    bbm_byte_write(handle, BBM_COEF0D, 0x13);
-    bbm_byte_write(handle, BBM_COEF0E, 0x4f);
-    bbm_byte_write(handle, BBM_COEF0F, 0x6b);
-#elif (FC8080_FREQ_XTAL == 16384)
-    /* clock mode */
-    bbm_long_write(handle, BBM_NCO_OFFSET, 0x04000000);
-    bbm_byte_write(handle, BBM_NCO_INV, 0x80);
-    bbm_byte_write(handle, BBM_EZ_CONST, 0x80);
-    bbm_byte_write(handle, BBM_CLK_MODE, 0x00);
+        /* filter coefficient */
+        bbm_byte_write(handle, BBM_COEF00, 0x02);
+        bbm_byte_write(handle, BBM_COEF01, 0x0f);
+        bbm_byte_write(handle, BBM_COEF02, 0x0d);
+        bbm_byte_write(handle, BBM_COEF03, 0x00);
+        bbm_byte_write(handle, BBM_COEF04, 0x04);
+        bbm_byte_write(handle, BBM_COEF05, 0x03);
+        bbm_byte_write(handle, BBM_COEF06, 0x1c);
+        bbm_byte_write(handle, BBM_COEF07, 0x19);
+        bbm_byte_write(handle, BBM_COEF08, 0x02);
+        bbm_byte_write(handle, BBM_COEF09, 0x0c);
+        bbm_byte_write(handle, BBM_COEF0A, 0x04);
+        bbm_byte_write(handle, BBM_COEF0B, 0x30);
+        bbm_byte_write(handle, BBM_COEF0C, 0xed);
+        bbm_byte_write(handle, BBM_COEF0D, 0x13);
+        bbm_byte_write(handle, BBM_COEF0E, 0x4f);
+        bbm_byte_write(handle, BBM_COEF0F, 0x6b);
+    }
+    else if (freq_xtal == 16384) {
+        /* clock mode */
+        bbm_long_write(handle, BBM_NCO_OFFSET, 0x04000000);
+        bbm_byte_write(handle, BBM_NCO_INV, 0x80);
+        bbm_byte_write(handle, BBM_EZ_CONST, 0x80);
+        bbm_byte_write(handle, BBM_CLK_MODE, 0x00);
 
-    /* filter coefficient */
-    bbm_byte_write(handle, BBM_COEF00, 0x02);
-    bbm_byte_write(handle, BBM_COEF01, 0x0f);
-    bbm_byte_write(handle, BBM_COEF02, 0x0d);
-    bbm_byte_write(handle, BBM_COEF03, 0x00);
-    bbm_byte_write(handle, BBM_COEF04, 0x04);
-    bbm_byte_write(handle, BBM_COEF05, 0x03);
-    bbm_byte_write(handle, BBM_COEF06, 0x1c);
-    bbm_byte_write(handle, BBM_COEF07, 0x19);
-    bbm_byte_write(handle, BBM_COEF08, 0x02);
-    bbm_byte_write(handle, BBM_COEF09, 0x0c);
-    bbm_byte_write(handle, BBM_COEF0A, 0x04);
-    bbm_byte_write(handle, BBM_COEF0B, 0x30);
-    bbm_byte_write(handle, BBM_COEF0C, 0xed);
-    bbm_byte_write(handle, BBM_COEF0D, 0x13);
-    bbm_byte_write(handle, BBM_COEF0E, 0x4f);
-    bbm_byte_write(handle, BBM_COEF0F, 0x6b);
-#elif (FC8080_FREQ_XTAL == 19200)
-    bbm_long_write(handle, BBM_NCO_OFFSET, 0x0369d037);
-    bbm_byte_write(handle, BBM_NCO_INV, 0x96);
-    bbm_byte_write(handle, BBM_EZ_CONST, 0x6d);
-    bbm_byte_write(handle, BBM_CLK_MODE, 0x00);
+        /* filter coefficient */
+        bbm_byte_write(handle, BBM_COEF00, 0x02);
+        bbm_byte_write(handle, BBM_COEF01, 0x0f);
+        bbm_byte_write(handle, BBM_COEF02, 0x0d);
+        bbm_byte_write(handle, BBM_COEF03, 0x00);
+        bbm_byte_write(handle, BBM_COEF04, 0x04);
+        bbm_byte_write(handle, BBM_COEF05, 0x03);
+        bbm_byte_write(handle, BBM_COEF06, 0x1c);
+        bbm_byte_write(handle, BBM_COEF07, 0x19);
+        bbm_byte_write(handle, BBM_COEF08, 0x02);
+        bbm_byte_write(handle, BBM_COEF09, 0x0c);
+        bbm_byte_write(handle, BBM_COEF0A, 0x04);
+        bbm_byte_write(handle, BBM_COEF0B, 0x30);
+        bbm_byte_write(handle, BBM_COEF0C, 0xed);
+        bbm_byte_write(handle, BBM_COEF0D, 0x13);
+        bbm_byte_write(handle, BBM_COEF0E, 0x4f);
+        bbm_byte_write(handle, BBM_COEF0F, 0x6b);
+    }
+    else if (freq_xtal == 19200) {
+        bbm_long_write(handle, BBM_NCO_OFFSET, 0x0369d037);
+        bbm_byte_write(handle, BBM_NCO_INV, 0x96);
+        bbm_byte_write(handle, BBM_EZ_CONST, 0x6d);
+        bbm_byte_write(handle, BBM_CLK_MODE, 0x00);
 
-    /* filter coefficient */
-    bbm_byte_write(handle, BBM_COEF00, 0x0e);
-    bbm_byte_write(handle, BBM_COEF01, 0x00);
-    bbm_byte_write(handle, BBM_COEF02, 0x03);
-    bbm_byte_write(handle, BBM_COEF03, 0x03);
-    bbm_byte_write(handle, BBM_COEF04, 0x1f);
-    bbm_byte_write(handle, BBM_COEF05, 0x1a);
-    bbm_byte_write(handle, BBM_COEF06, 0x1b);
-    bbm_byte_write(handle, BBM_COEF07, 0x03);
-    bbm_byte_write(handle, BBM_COEF08, 0x0a);
-    bbm_byte_write(handle, BBM_COEF09, 0x05);
-    bbm_byte_write(handle, BBM_COEF0A, 0x37);
-    bbm_byte_write(handle, BBM_COEF0B, 0x2d);
-    bbm_byte_write(handle, BBM_COEF0C, 0xfa);
-    bbm_byte_write(handle, BBM_COEF0D, 0x1f);
-    bbm_byte_write(handle, BBM_COEF0E, 0x49);
-    bbm_byte_write(handle, BBM_COEF0F, 0x5c);
-#elif (FC8080_FREQ_XTAL == 24000)
-    bbm_long_write(handle, BBM_NCO_OFFSET, 0x02bb0cf8);
-    bbm_byte_write(handle, BBM_NCO_INV, 0xbc);
-    bbm_byte_write(handle, BBM_EZ_CONST, 0x57);
-    bbm_byte_write(handle, BBM_CLK_MODE, 0x00);
+        /* filter coefficient */
+        bbm_byte_write(handle, BBM_COEF00, 0x0e);
+        bbm_byte_write(handle, BBM_COEF01, 0x00);
+        bbm_byte_write(handle, BBM_COEF02, 0x03);
+        bbm_byte_write(handle, BBM_COEF03, 0x03);
+        bbm_byte_write(handle, BBM_COEF04, 0x1f);
+        bbm_byte_write(handle, BBM_COEF05, 0x1a);
+        bbm_byte_write(handle, BBM_COEF06, 0x1b);
+        bbm_byte_write(handle, BBM_COEF07, 0x03);
+        bbm_byte_write(handle, BBM_COEF08, 0x0a);
+        bbm_byte_write(handle, BBM_COEF09, 0x05);
+        bbm_byte_write(handle, BBM_COEF0A, 0x37);
+        bbm_byte_write(handle, BBM_COEF0B, 0x2d);
+        bbm_byte_write(handle, BBM_COEF0C, 0xfa);
+        bbm_byte_write(handle, BBM_COEF0D, 0x1f);
+        bbm_byte_write(handle, BBM_COEF0E, 0x49);
+        bbm_byte_write(handle, BBM_COEF0F, 0x5c);
+    }
+    else if (freq_xtal == 24000) {
+        bbm_long_write(handle, BBM_NCO_OFFSET, 0x02bb0cf8);
+        bbm_byte_write(handle, BBM_NCO_INV, 0xbc);
+        bbm_byte_write(handle, BBM_EZ_CONST, 0x57);
+        bbm_byte_write(handle, BBM_CLK_MODE, 0x00);
 
-    /* filter coefficient */
-    bbm_byte_write(handle, BBM_COEF00, 0x02);
-    bbm_byte_write(handle, BBM_COEF01, 0x02);
-    bbm_byte_write(handle, BBM_COEF02, 0x00);
-    bbm_byte_write(handle, BBM_COEF03, 0x0c);
-    bbm_byte_write(handle, BBM_COEF04, 0x1c);
-    bbm_byte_write(handle, BBM_COEF05, 0x1f);
-    bbm_byte_write(handle, BBM_COEF06, 0x05);
-    bbm_byte_write(handle, BBM_COEF07, 0x08);
-    bbm_byte_write(handle, BBM_COEF08, 0x04);
-    bbm_byte_write(handle, BBM_COEF09, 0x3a);
-    bbm_byte_write(handle, BBM_COEF0A, 0x31);
-    bbm_byte_write(handle, BBM_COEF0B, 0x34);
-    bbm_byte_write(handle, BBM_COEF0C, 0x07);
-    bbm_byte_write(handle, BBM_COEF0D, 0x26);
-    bbm_byte_write(handle, BBM_COEF0E, 0x42);
-    bbm_byte_write(handle, BBM_COEF0F, 0x4e);
-#elif (FC8080_FREQ_XTAL == 26000)
-    bbm_long_write(handle, BBM_NCO_OFFSET, 0x03c7ea98);
-    bbm_byte_write(handle, BBM_NCO_INV, 0x87);
-    bbm_byte_write(handle, BBM_EZ_CONST, 0x79);
-    bbm_byte_write(handle, BBM_CLK_MODE, 0x02);
+        /* filter coefficient */
+        bbm_byte_write(handle, BBM_COEF00, 0x02);
+        bbm_byte_write(handle, BBM_COEF01, 0x02);
+        bbm_byte_write(handle, BBM_COEF02, 0x00);
+        bbm_byte_write(handle, BBM_COEF03, 0x0c);
+        bbm_byte_write(handle, BBM_COEF04, 0x1c);
+        bbm_byte_write(handle, BBM_COEF05, 0x1f);
+        bbm_byte_write(handle, BBM_COEF06, 0x05);
+        bbm_byte_write(handle, BBM_COEF07, 0x08);
+        bbm_byte_write(handle, BBM_COEF08, 0x04);
+        bbm_byte_write(handle, BBM_COEF09, 0x3a);
+        bbm_byte_write(handle, BBM_COEF0A, 0x31);
+        bbm_byte_write(handle, BBM_COEF0B, 0x34);
+        bbm_byte_write(handle, BBM_COEF0C, 0x07);
+        bbm_byte_write(handle, BBM_COEF0D, 0x26);
+        bbm_byte_write(handle, BBM_COEF0E, 0x42);
+        bbm_byte_write(handle, BBM_COEF0F, 0x4e);
+    }
+    else if (freq_xtal == 26000) {
+        bbm_long_write(handle, BBM_NCO_OFFSET, 0x03c7ea98);
+        bbm_byte_write(handle, BBM_NCO_INV, 0x87);
+        bbm_byte_write(handle, BBM_EZ_CONST, 0x79);
+        bbm_byte_write(handle, BBM_CLK_MODE, 0x02);
 
-    /* filter coefficient */
-    bbm_byte_write(handle, BBM_COEF00, 0x0f);
-    bbm_byte_write(handle, BBM_COEF01, 0x0d);
-    bbm_byte_write(handle, BBM_COEF02, 0x0f);
-    bbm_byte_write(handle, BBM_COEF03, 0x03);
-    bbm_byte_write(handle, BBM_COEF04, 0x04);
-    bbm_byte_write(handle, BBM_COEF05, 0x1f);
-    bbm_byte_write(handle, BBM_COEF06, 0x19);
-    bbm_byte_write(handle, BBM_COEF07, 0x1c);
-    bbm_byte_write(handle, BBM_COEF08, 0x07);
-    bbm_byte_write(handle, BBM_COEF09, 0x0b);
-    bbm_byte_write(handle, BBM_COEF0A, 0x3f);
-    bbm_byte_write(handle, BBM_COEF0B, 0x2d);
-    bbm_byte_write(handle, BBM_COEF0C, 0xf2);
-    bbm_byte_write(handle, BBM_COEF0D, 0x19);
-    bbm_byte_write(handle, BBM_COEF0E, 0x4d);
-    bbm_byte_write(handle, BBM_COEF0F, 0x65);
-#elif (FC8080_FREQ_XTAL == 27000)
-    bbm_long_write(handle, BBM_NCO_OFFSET, 0x03a4114b);
-    bbm_byte_write(handle, BBM_NCO_INV, 0x8d);
-    bbm_byte_write(handle, BBM_EZ_CONST, 0x75);
-    bbm_byte_write(handle, BBM_CLK_MODE, 0x02);
+        /* filter coefficient */
+        bbm_byte_write(handle, BBM_COEF00, 0x0f);
+        bbm_byte_write(handle, BBM_COEF01, 0x0d);
+        bbm_byte_write(handle, BBM_COEF02, 0x0f);
+        bbm_byte_write(handle, BBM_COEF03, 0x03);
+        bbm_byte_write(handle, BBM_COEF04, 0x04);
+        bbm_byte_write(handle, BBM_COEF05, 0x1f);
+        bbm_byte_write(handle, BBM_COEF06, 0x19);
+        bbm_byte_write(handle, BBM_COEF07, 0x1c);
+        bbm_byte_write(handle, BBM_COEF08, 0x07);
+        bbm_byte_write(handle, BBM_COEF09, 0x0b);
+        bbm_byte_write(handle, BBM_COEF0A, 0x3f);
+        bbm_byte_write(handle, BBM_COEF0B, 0x2d);
+        bbm_byte_write(handle, BBM_COEF0C, 0xf2);
+        bbm_byte_write(handle, BBM_COEF0D, 0x19);
+        bbm_byte_write(handle, BBM_COEF0E, 0x4d);
+        bbm_byte_write(handle, BBM_COEF0F, 0x65);
+    }
+    else if (freq_xtal == 27000) {
+        bbm_long_write(handle, BBM_NCO_OFFSET, 0x03a4114b);
+        bbm_byte_write(handle, BBM_NCO_INV, 0x8d);
+        bbm_byte_write(handle, BBM_EZ_CONST, 0x75);
+        bbm_byte_write(handle, BBM_CLK_MODE, 0x02);
 
-    /* filter coefficient */
-    bbm_byte_write(handle, BBM_COEF00, 0x0e);
-    bbm_byte_write(handle, BBM_COEF01, 0x0e);
-    bbm_byte_write(handle, BBM_COEF02, 0x01);
-    bbm_byte_write(handle, BBM_COEF03, 0x04);
-    bbm_byte_write(handle, BBM_COEF04, 0x03);
-    bbm_byte_write(handle, BBM_COEF05, 0x1d);
-    bbm_byte_write(handle, BBM_COEF06, 0x19);
-    bbm_byte_write(handle, BBM_COEF07, 0x1f);
-    bbm_byte_write(handle, BBM_COEF08, 0x09);
-    bbm_byte_write(handle, BBM_COEF09, 0x09);
-    bbm_byte_write(handle, BBM_COEF0A, 0x3b);
-    bbm_byte_write(handle, BBM_COEF0B, 0x2d);
-    bbm_byte_write(handle, BBM_COEF0C, 0xf5);
-    bbm_byte_write(handle, BBM_COEF0D, 0x1c);
-    bbm_byte_write(handle, BBM_COEF0E, 0x4b);
-    bbm_byte_write(handle, BBM_COEF0F, 0x61);
-#elif (FC8080_FREQ_XTAL == 27120)
-    bbm_long_write(handle, BBM_NCO_OFFSET, 0x039ff180);
-    bbm_byte_write(handle, BBM_NCO_INV, 0x8d);
-    bbm_byte_write(handle, BBM_EZ_CONST, 0x74);
-    bbm_byte_write(handle, BBM_CLK_MODE, 0x02);
+        /* filter coefficient */
+        bbm_byte_write(handle, BBM_COEF00, 0x0e);
+        bbm_byte_write(handle, BBM_COEF01, 0x0e);
+        bbm_byte_write(handle, BBM_COEF02, 0x01);
+        bbm_byte_write(handle, BBM_COEF03, 0x04);
+        bbm_byte_write(handle, BBM_COEF04, 0x03);
+        bbm_byte_write(handle, BBM_COEF05, 0x1d);
+        bbm_byte_write(handle, BBM_COEF06, 0x19);
+        bbm_byte_write(handle, BBM_COEF07, 0x1f);
+        bbm_byte_write(handle, BBM_COEF08, 0x09);
+        bbm_byte_write(handle, BBM_COEF09, 0x09);
+        bbm_byte_write(handle, BBM_COEF0A, 0x3b);
+        bbm_byte_write(handle, BBM_COEF0B, 0x2d);
+        bbm_byte_write(handle, BBM_COEF0C, 0xf5);
+        bbm_byte_write(handle, BBM_COEF0D, 0x1c);
+        bbm_byte_write(handle, BBM_COEF0E, 0x4b);
+        bbm_byte_write(handle, BBM_COEF0F, 0x61);
+    }
+    else if (freq_xtal == 27120) {
+        bbm_long_write(handle, BBM_NCO_OFFSET, 0x039ff180);
+        bbm_byte_write(handle, BBM_NCO_INV, 0x8d);
+        bbm_byte_write(handle, BBM_EZ_CONST, 0x74);
+        bbm_byte_write(handle, BBM_CLK_MODE, 0x02);
 
-    /* filter coefficient */
-    bbm_byte_write(handle, BBM_COEF00, 0x0e);
-    bbm_byte_write(handle, BBM_COEF01, 0x0e);
-    bbm_byte_write(handle, BBM_COEF02, 0x01);
-    bbm_byte_write(handle, BBM_COEF03, 0x04);
-    bbm_byte_write(handle, BBM_COEF04, 0x03);
-    bbm_byte_write(handle, BBM_COEF05, 0x1d);
-    bbm_byte_write(handle, BBM_COEF06, 0x19);
-    bbm_byte_write(handle, BBM_COEF07, 0x1f);
-    bbm_byte_write(handle, BBM_COEF08, 0x09);
-    bbm_byte_write(handle, BBM_COEF09, 0x09);
-    bbm_byte_write(handle, BBM_COEF0A, 0x3b);
-    bbm_byte_write(handle, BBM_COEF0B, 0x2d);
-    bbm_byte_write(handle, BBM_COEF0C, 0xf5);
-    bbm_byte_write(handle, BBM_COEF0D, 0x1c);
-    bbm_byte_write(handle, BBM_COEF0E, 0x4b);
-    bbm_byte_write(handle, BBM_COEF0F, 0x61);
-#elif (FC8080_FREQ_XTAL == 32000)
-    bbm_long_write(handle, BBM_NCO_OFFSET, 0x03126eb8);
-    bbm_byte_write(handle, BBM_NCO_INV, 0xa7);
-    bbm_byte_write(handle, BBM_EZ_CONST, 0x62);
-    bbm_byte_write(handle, BBM_CLK_MODE, 0x02);
+        /* filter coefficient */
+        bbm_byte_write(handle, BBM_COEF00, 0x0e);
+        bbm_byte_write(handle, BBM_COEF01, 0x0e);
+        bbm_byte_write(handle, BBM_COEF02, 0x01);
+        bbm_byte_write(handle, BBM_COEF03, 0x04);
+        bbm_byte_write(handle, BBM_COEF04, 0x03);
+        bbm_byte_write(handle, BBM_COEF05, 0x1d);
+        bbm_byte_write(handle, BBM_COEF06, 0x19);
+        bbm_byte_write(handle, BBM_COEF07, 0x1f);
+        bbm_byte_write(handle, BBM_COEF08, 0x09);
+        bbm_byte_write(handle, BBM_COEF09, 0x09);
+        bbm_byte_write(handle, BBM_COEF0A, 0x3b);
+        bbm_byte_write(handle, BBM_COEF0B, 0x2d);
+        bbm_byte_write(handle, BBM_COEF0C, 0xf5);
+        bbm_byte_write(handle, BBM_COEF0D, 0x1c);
+        bbm_byte_write(handle, BBM_COEF0E, 0x4b);
+        bbm_byte_write(handle, BBM_COEF0F, 0x61);
+    }
+    else if (freq_xtal == 32000) {
+        bbm_long_write(handle, BBM_NCO_OFFSET, 0x03126eb8);
+        bbm_byte_write(handle, BBM_NCO_INV, 0xa7);
+        bbm_byte_write(handle, BBM_EZ_CONST, 0x62);
+        bbm_byte_write(handle, BBM_CLK_MODE, 0x02);
 
-    /* filter coefficient */
-    bbm_byte_write(handle, BBM_COEF00, 0x0e);
-    bbm_byte_write(handle, BBM_COEF01, 0x0e);
-    bbm_byte_write(handle, BBM_COEF02, 0x01);
-    bbm_byte_write(handle, BBM_COEF03, 0x04);
-    bbm_byte_write(handle, BBM_COEF04, 0x03);
-    bbm_byte_write(handle, BBM_COEF05, 0x1d);
-    bbm_byte_write(handle, BBM_COEF06, 0x19);
-    bbm_byte_write(handle, BBM_COEF07, 0x1f);
-    bbm_byte_write(handle, BBM_COEF08, 0x09);
-    bbm_byte_write(handle, BBM_COEF09, 0x09);
-    bbm_byte_write(handle, BBM_COEF0A, 0x3b);
-    bbm_byte_write(handle, BBM_COEF0B, 0x3d);
-    bbm_byte_write(handle, BBM_COEF0C, 0xf5);
-    bbm_byte_write(handle, BBM_COEF0D, 0x1c);
-    bbm_byte_write(handle, BBM_COEF0E, 0x4b);
-    bbm_byte_write(handle, BBM_COEF0F, 0x61);
-#elif (FC8080_FREQ_XTAL == 38400)
-    bbm_long_write(handle, BBM_NCO_OFFSET, 0x0369d037);
-    bbm_byte_write(handle, BBM_NCO_INV, 0x96);
-    bbm_byte_write(handle, BBM_EZ_CONST, 0x6d);
-    bbm_byte_write(handle, BBM_CLK_MODE, 0x01);
+        /* filter coefficient */
+        bbm_byte_write(handle, BBM_COEF00, 0x0e);
+        bbm_byte_write(handle, BBM_COEF01, 0x0e);
+        bbm_byte_write(handle, BBM_COEF02, 0x01);
+        bbm_byte_write(handle, BBM_COEF03, 0x04);
+        bbm_byte_write(handle, BBM_COEF04, 0x03);
+        bbm_byte_write(handle, BBM_COEF05, 0x1d);
+        bbm_byte_write(handle, BBM_COEF06, 0x19);
+        bbm_byte_write(handle, BBM_COEF07, 0x1f);
+        bbm_byte_write(handle, BBM_COEF08, 0x09);
+        bbm_byte_write(handle, BBM_COEF09, 0x09);
+        bbm_byte_write(handle, BBM_COEF0A, 0x3b);
+        bbm_byte_write(handle, BBM_COEF0B, 0x3d);
+        bbm_byte_write(handle, BBM_COEF0C, 0xf5);
+        bbm_byte_write(handle, BBM_COEF0D, 0x1c);
+        bbm_byte_write(handle, BBM_COEF0E, 0x4b);
+        bbm_byte_write(handle, BBM_COEF0F, 0x61);
+    }
+    else if (freq_xtal == 38400) {
+        bbm_long_write(handle, BBM_NCO_OFFSET, 0x0369d037);
+        bbm_byte_write(handle, BBM_NCO_INV, 0x96);
+        bbm_byte_write(handle, BBM_EZ_CONST, 0x6d);
+        bbm_byte_write(handle, BBM_CLK_MODE, 0x01);
 
-    /* filter coefficient */
-    bbm_byte_write(handle, BBM_COEF00, 0x0e);
-    bbm_byte_write(handle, BBM_COEF01, 0x00);
-    bbm_byte_write(handle, BBM_COEF02, 0x03);
-    bbm_byte_write(handle, BBM_COEF03, 0x03);
-    bbm_byte_write(handle, BBM_COEF04, 0x1f);
-    bbm_byte_write(handle, BBM_COEF05, 0x1a);
-    bbm_byte_write(handle, BBM_COEF06, 0x1b);
-    bbm_byte_write(handle, BBM_COEF07, 0x03);
-    bbm_byte_write(handle, BBM_COEF08, 0x0a);
-    bbm_byte_write(handle, BBM_COEF09, 0x05);
-    bbm_byte_write(handle, BBM_COEF0A, 0x37);
-    bbm_byte_write(handle, BBM_COEF0B, 0x2d);
-    bbm_byte_write(handle, BBM_COEF0C, 0xfa);
-    bbm_byte_write(handle, BBM_COEF0D, 0x1f);
-    bbm_byte_write(handle, BBM_COEF0E, 0x49);
-    bbm_byte_write(handle, BBM_COEF0F, 0x5c);
-#endif
+        /* filter coefficient */
+        bbm_byte_write(handle, BBM_COEF00, 0x0e);
+        bbm_byte_write(handle, BBM_COEF01, 0x00);
+        bbm_byte_write(handle, BBM_COEF02, 0x03);
+        bbm_byte_write(handle, BBM_COEF03, 0x03);
+        bbm_byte_write(handle, BBM_COEF04, 0x1f);
+        bbm_byte_write(handle, BBM_COEF05, 0x1a);
+        bbm_byte_write(handle, BBM_COEF06, 0x1b);
+        bbm_byte_write(handle, BBM_COEF07, 0x03);
+        bbm_byte_write(handle, BBM_COEF08, 0x0a);
+        bbm_byte_write(handle, BBM_COEF09, 0x05);
+        bbm_byte_write(handle, BBM_COEF0A, 0x37);
+        bbm_byte_write(handle, BBM_COEF0B, 0x2d);
+        bbm_byte_write(handle, BBM_COEF0C, 0xfa);
+        bbm_byte_write(handle, BBM_COEF0D, 0x1f);
+        bbm_byte_write(handle, BBM_COEF0E, 0x49);
+        bbm_byte_write(handle, BBM_COEF0F, 0x5c);
+    }
     return BBM_OK;
 }
 
@@ -273,6 +285,10 @@ fci_s32 fc8080_probe(HANDLE handle)
 
 fci_s32 fc8080_init(HANDLE handle)
 {
+    freq_xtal = tdmb_fc8080_get_xtal_freq();
+
+    printk("fc8080_init freq_xtal=%d\n", freq_xtal);
+
     fc8080_reset(handle);
     fc8080_set_xtal(handle);
 
@@ -294,17 +310,17 @@ fci_s32 fc8080_init(HANDLE handle)
     bbm_write(handle, BBM_PGA_GAIN_MAX, 0x18);
     bbm_write(handle, BBM_PGA_GAIN_MIN, 0xe8);
 
-#if (FC8080_FREQ_XTAL == 24000)
-    bbm_write(handle, BBM_SYNC_MTH, 0x43);
-#else
-    bbm_write(handle, BBM_SYNC_MTH, 0xc3);
-#endif
+    if (freq_xtal == 24000) {
+        bbm_write(handle, BBM_SYNC_MTH, 0x43);
+    } else {
+        bbm_write(handle, BBM_SYNC_MTH, 0xc3);
+    }
 
-#if (FC8080_FREQ_XTAL == 16384) || (FC8080_FREQ_XTAL == 24576)
-    bbm_write(handle, BBM_SFSYNC_ON, 0x00);
-#else
-    bbm_write(handle, BBM_SFSYNC_ON, 0x01);
-#endif
+    if ((freq_xtal == 16384) || (freq_xtal == 24576)) {
+        bbm_write(handle, BBM_SFSYNC_ON, 0x00);
+    } else {
+        bbm_write(handle, BBM_SFSYNC_ON, 0x01);
+    }
 
     bbm_write(handle, BBM_RESYNC_EN, 0x01);
     bbm_write(handle, BBM_RESYNC_AUTO_CONDITION_EN, 0x00);

@@ -463,6 +463,7 @@ static int ramoops_parse_dt(struct device *dev, struct device_node *node)
 	of_property_read_u32(node, "record-size", (u32 *)&pdata->record_size);
 	of_property_read_u32(node, "console-size", (u32 *)&pdata->console_size);
 	of_property_read_u32(node, "ftrace-size", (u32 *)&pdata->ftrace_size);
+	of_property_read_u32(node, "pmsg-size", (u32 *)&pdata->pmsg_size);
 	of_property_read_u32(node, "dump-oops", (u32 *)&pdata->dump_oops);
 
 	dev->platform_data = pdata;

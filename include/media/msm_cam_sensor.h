@@ -235,6 +235,7 @@ struct msm_ois_set_info_t32 {
 
 struct msm_ois_cfg_data32 {
 	int cfgtype;
+	uint16_t eeprom_slave_addr;
 	union {
 		struct msm_ois_set_info_t32 set_info;
 		compat_uptr_t settings;

@@ -52,6 +52,7 @@ struct tlc_tui_response_t {
 #define TLC_TUI_CMD_FREE_FB             6
 /* hide secure surface */
 #define TLC_TUI_CMD_HIDE_SURFACE        7
+#define TLC_TUI_CMD_GET_RESOLUTION      8
 
 /* Return codes */
 #define TLC_TUI_OK                  0

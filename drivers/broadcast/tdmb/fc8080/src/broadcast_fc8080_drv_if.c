@@ -25,6 +25,9 @@ static unsigned int s_opmode = FC8080_SERVICE_MAX;
 static uint8    gpMPI_Array[TDMB_MPI_BUF_SIZE*TDMB_MPI_BUF_CHUNK_NUM];
 #endif // FC8080_USES_STATIC_BUFFER
 
+static broadcast_callback_func gCBFunc = NULL;
+static void* gCookie = NULL;
+
 int broadcast_fc8080_drv_if_power_on(void)
 {
     int8 res = ERROR;
@@ -70,6 +73,8 @@ int broadcast_fc8080_drv_if_power_off(void)
     boolean retval = FALSE;
 
     retval = tunerbb_drv_fc8080_power_off();
+
+    gCBFunc = NULL;
 
     if(retval == TRUE)
     {
@@ -137,6 +142,16 @@ int broadcast_fc8080_drv_if_set_channel(unsigned int freq_num, unsigned int subc
     }
 
     return rc;
+}
+
+void broadcast_fc8080_drv_if_register_callback(broadcast_callback_func cb, void *cookie)
+{
+    if(cb != NULL && cookie != NULL)
+    {
+        gCBFunc = cb;
+        gCookie = cookie;
+        printk("boradcast_fc8080_drv_if_regstercallback cb is registered\n");
+    }
 }
 
 int broadcast_drv_if_resync(void)
@@ -302,22 +317,44 @@ int broadcast_fc8080_drv_if_isr(void)
 #if !defined(STREAM_TS_UPLOAD)
     tunerbb_drv_fc8080_read_data(read_buffer_ptr, &read_buffer_size);
 #endif
-   if(gBBBuffer_ridx == ((gBBBuffer_widx + 1)%TDMB_MPI_BUF_CHUNK_NUM))
+    if(s_opmode != FC8080_ENSQUERY)
     {
-        //printk("======================================\n");
-        if(s_opmode != FC8080_BLT_TEST)
+        if(gBBBuffer_ridx == ((gBBBuffer_widx + 1)%TDMB_MPI_BUF_CHUNK_NUM))
         {
-            printk("### buffer is full, skip the data (ridx=%d, widx=%d)  ###\n", gBBBuffer_ridx, gBBBuffer_widx);
+            //printk("======================================\n");
+            if(s_opmode != FC8080_BLT_TEST)
+            {
+                printk("### buffer is full, skip the data (ridx=%d, widx=%d)  ###\n", gBBBuffer_ridx, gBBBuffer_widx);
+            }
+            //printk("======================================\n");
+            return ERROR;
         }
-        //printk("======================================\n");
-        return ERROR;
-    }
 
-    if(read_buffer_size > 0)
+        if(read_buffer_size > 0)
+        {
+            tdmb_real_read_size[gBBBuffer_widx] = read_buffer_size;
+            gBBBuffer_widx = ((gBBBuffer_widx + 1)%TDMB_MPI_BUF_CHUNK_NUM);
+
+            if(gCBFunc)
+            {
+                gCBFunc(gCookie);
+            }
+            return OK;
+        }
+    }else
     {
-        tdmb_real_read_size[gBBBuffer_widx] = read_buffer_size;
-        gBBBuffer_widx = ((gBBBuffer_widx + 1)%TDMB_MPI_BUF_CHUNK_NUM);
-        return OK;
+        if(read_buffer_size > 0)
+        {
+            if(gCBFunc)
+            {
+                gCBFunc(gCookie);
+            }
+            return OK;
+        }
+        else
+        {
+            printk("read fic data is failed, read_buffer_size=%d", read_buffer_size);
+        }
     }
 
     //printk("broadcast_tdmb_read_data, ridx=%d, widx=%d, wsize=%d\n",gBBBuffer_ridx, gBBBuffer_widx,  read_buffer_size);

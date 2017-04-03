@@ -43,6 +43,9 @@
 #define QPNP_WLED_OVP_REG(b)		(b + 0x4D)
 #define QPNP_WLED_ILIM_REG(b)		(b + 0x4E)
 #define QPNP_WLED_SOFTSTART_RAMP_DLY(b) (b + 0x53)
+#if defined(CONFIG_LGE_DISPLAY_LUCYE_COMMON)
+#define QPNP_WLED_SLEW_REG(b)		(b + 0x54)
+#endif
 #define QPNP_WLED_VLOOP_COMP_RES_REG(b)	(b + 0x55)
 #define QPNP_WLED_VLOOP_COMP_GM_REG(b)	(b + 0x56)
 #define QPNP_WLED_PSM_CTRL_REG(b)	(b + 0x5B)
@@ -97,6 +100,12 @@
 #endif
 #define QPNP_WLED_SWITCH_FREQ_800_KHZ	800
 #define QPNP_WLED_SWITCH_FREQ_1600_KHZ	1600
+#if defined(CONFIG_LGE_DISPLAY_LUCYE_COMMON)
+#define QPNP_WLED_SWITCH_SLEW_RATE_x1	0x00
+#define QPNP_WLED_SWITCH_SLEW_RATE_x1P5	0x01
+#define QPNP_WLED_SWITCH_SLEW_RATE_x2	0x02
+#define QPNP_WLED_SWITCH_SLEW_RATE_x2P5	0x03
+#endif
 #define QPNP_WLED_SWITCH_FREQ_OVERWRITE 0x80
 #define QPNP_WLED_OVP_MASK		0xFC
 #define QPNP_WLED_OVP_17800_MV		17800
@@ -1358,6 +1367,14 @@ static int qpnp_wled_config(struct qpnp_wled *wled)
 			QPNP_WLED_SWITCH_FREQ_REG(wled->ctrl_base));
 	if (rc)
 		return rc;
+
+#if defined(CONFIG_LGE_DISPLAY_LUCYE_COMMON)
+	reg = QPNP_WLED_SWITCH_SLEW_RATE_x1;
+	rc = qpnp_wled_write_reg(wled, &reg,
+			QPNP_WLED_SLEW_REG(wled->ctrl_base));
+	if (rc)
+		return rc;
+#endif
 
 	/* Configure the OVP register */
 	if (wled->ovp_mv <= QPNP_WLED_OVP_17800_MV) {

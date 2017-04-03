@@ -31,21 +31,12 @@
 #include <sound/q6core.h>
 #include <sound/pcm_params.h>
 #include <sound/info.h>
-#include <device_event.h>
+#include "device_event.h"
 #include "qdsp6v2/msm-pcm-routing-v2.h"
 #include "../codecs/wcd9xxx-common.h"
 #include "../codecs/wcd9330.h"
 #include "../codecs/wcd9335.h"
 #include "../codecs/wsa881x.h"
-
-#ifdef CONFIG_SND_SOC_ES9018
-#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_BOARD_REVISION
-#include <soc/qcom/lge/power/lge_board_revision.h>
-#include <soc/qcom/lge/power/lge_power_class.h>
-#else
-#include <soc/qcom/lge/board_lge.h>
-#endif
-#endif
 
 #define DRV_NAME "msm8996-asoc-snd"
 
@@ -72,9 +63,11 @@
 static int slim0_rx_sample_rate = SAMPLING_RATE_48KHZ;
 static int slim0_tx_sample_rate = SAMPLING_RATE_48KHZ;
 static int slim1_tx_sample_rate = SAMPLING_RATE_48KHZ;
+static int slim3_tx_sample_rate = SAMPLING_RATE_48KHZ;
 static int slim0_rx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
 static int slim0_tx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
 static int slim1_tx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
+static int slim3_tx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
 static int hdmi_rx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
 static int msm8996_auxpcm_rate = SAMPLING_RATE_8KHZ;
 static int slim5_rx_sample_rate = SAMPLING_RATE_48KHZ;
@@ -88,6 +81,7 @@ static int msm8996_spk_control = 1;
 static int msm_slim_0_rx_ch = 1;
 static int msm_slim_0_tx_ch = 1;
 static int msm_slim_1_tx_ch = 1;
+static int msm_slim_3_tx_ch = 1;
 static int msm_slim_5_rx_ch = 1;
 static int msm_slim_6_rx_ch = 1;
 static int msm_hifi_control;
@@ -100,6 +94,10 @@ static int msm_tert_mi2s_tx_ch = 2;
 #ifdef CONFIG_SND_USE_QUAT_MI2S
 static int msm_quat_mi2s_tx_ch = 2;
 #endif
+#if defined(CONFIG_SND_SOC_ES9218P)
+bool enable_es9218p = false;
+#endif
+
 
 static bool codec_reg_done;
 
@@ -255,7 +253,7 @@ static struct wcd_mbhc_config wcd_mbhc_cfg = {
 	.key_code[6] = 0,
 	.key_code[7] = 0,
 	.linein_th = 5000,
-#ifdef CONFIG_SND_SOC_ES9018
+#if defined(CONFIG_SND_SOC_ES9018)||defined(CONFIG_SND_SOC_ES9218P)
 	.moist_cfg = { false, false },
 #else
 	.moist_cfg = { V_45_MV, I_3P0_UA },
@@ -909,9 +907,6 @@ static int slim0_rx_sample_rate_put(struct snd_kcontrol *kcontrol,
 	default:
 		slim0_rx_sample_rate = SAMPLING_RATE_48KHZ;
 	}
-#ifdef CONFIG_SND_USE_SEC_MI2S
-	sec_mi2s_sample_rate = slim0_rx_sample_rate;
-#endif
 	pr_debug("%s: slim0_rx_sample_rate = %d\n", __func__,
 		 slim0_rx_sample_rate);
 
@@ -1103,9 +1098,6 @@ static int slim0_rx_bit_format_put(struct snd_kcontrol *kcontrol,
 		slim0_rx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
 		break;
 	}
-#ifdef CONFIG_SND_USE_SEC_MI2S
-	sec_mi2s_bit_format = slim0_rx_bit_format;
-#endif
 	return 0;
 }
 
@@ -1195,6 +1187,24 @@ static int msm_slim_1_tx_ch_put(struct snd_kcontrol *kcontrol,
 	msm_slim_1_tx_ch = ucontrol->value.integer.value[0] + 1;
 
 	pr_debug("%s: msm_slim_1_tx_ch = %d\n", __func__, msm_slim_1_tx_ch);
+	return 1;
+}
+
+static int msm_slim_3_tx_ch_get(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s: msm_slim_3_tx_ch  = %d\n", __func__,
+		 msm_slim_3_tx_ch);
+	ucontrol->value.integer.value[0] = msm_slim_3_tx_ch - 1;
+	return 0;
+}
+
+static int msm_slim_3_tx_ch_put(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	msm_slim_3_tx_ch = ucontrol->value.integer.value[0] + 1;
+
+	pr_debug("%s: msm_slim_3_tx_ch = %d\n", __func__, msm_slim_3_tx_ch);
 	return 1;
 }
 
@@ -1846,6 +1856,22 @@ static int msm_slim_1_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 	return 0;
 }
 
+static int msm_slim_3_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
+					    struct snd_pcm_hw_params *params)
+{
+	struct snd_interval *rate = hw_param_interval(params,
+					SNDRV_PCM_HW_PARAM_RATE);
+	struct snd_interval *channels = hw_param_interval(params,
+					SNDRV_PCM_HW_PARAM_CHANNELS);
+
+	pr_debug("%s()\n", __func__);
+	param_set_mask(params, SNDRV_PCM_HW_PARAM_FORMAT, slim3_tx_bit_format);
+	rate->min = rate->max = slim3_tx_sample_rate;
+	channels->min = channels->max = msm_slim_3_tx_ch;
+
+	return 0;
+}
+
 static int msm_slim_4_tx_be_hw_params_fixup(struct snd_soc_pcm_runtime *rtd,
 					    struct snd_pcm_hw_params *params)
 {
@@ -1941,6 +1967,8 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 			msm_slim_0_tx_ch_get, msm_slim_0_tx_ch_put),
 	SOC_ENUM_EXT("SLIM_1_TX Channels", msm_snd_enum[2],
 			msm_slim_1_tx_ch_get, msm_slim_1_tx_ch_put),
+	SOC_ENUM_EXT("SLIM_3_TX Channels", msm_snd_enum[2],
+			msm_slim_3_tx_ch_get, msm_slim_3_tx_ch_put),
 	SOC_ENUM_EXT("AUX PCM SampleRate", msm8996_auxpcm_enum[0],
 			msm8996_auxpcm_rate_get,
 			msm8996_auxpcm_rate_put),
@@ -2361,7 +2389,7 @@ static void *def_tasha_mbhc_cal(void)
 	}
 
 #define S(X, Y) ((WCD_MBHC_CAL_PLUG_TYPE_PTR(tasha_wcd_cal)->X) = (Y))
-#ifdef CONFIG_SND_SOC_ES9018
+#if defined(CONFIG_SND_SOC_ES9018)||defined(CONFIG_SND_SOC_ES9218P)
 	S(v_hs_max, 2800);
 #else
 	S(v_hs_max, 1500);
@@ -2462,7 +2490,7 @@ static int msm_snd_hw_params(struct snd_pcm_substream *substream,
 			 * Since Rx is fed as reference for EC, the config of
 			 * this DAI is based on that of the Rx path.
 			 */
-			user_set_tx_ch = msm_slim_0_rx_ch;
+			user_set_tx_ch = msm_slim_3_tx_ch;
 		else if (dai_link->be_id == MSM_BACKEND_DAI_SLIMBUS_4_TX)
 			user_set_tx_ch = msm_vi_feed_tx_ch;
 		else
@@ -3636,11 +3664,11 @@ static struct snd_soc_dai_link msm8996_tasha_be_dai_links[] = {
 		.cpu_dai_name = "msm-dai-q6-dev.16391",
 		.platform_name = "msm-pcm-routing",
 		.codec_name = "tasha_codec",
-		.codec_dai_name = "tasha_tx1",
+		.codec_dai_name = "tasha_tx3",
 		.no_pcm = 1,
 		.dpcm_capture = 1,
 		.be_id = MSM_BACKEND_DAI_SLIMBUS_3_TX,
-		.be_hw_params_fixup = msm_slim_0_tx_be_hw_params_fixup,
+		.be_hw_params_fixup = msm_slim_3_tx_be_hw_params_fixup,
 		.ops = &msm8996_be_ops,
 		.ignore_suspend = 1,
 	},
@@ -3811,6 +3839,21 @@ static struct snd_soc_dai_link msm8996_lge_dai_links[] = {
 		.ignore_suspend = 1,
 	},
 #endif /* CONFIG_SND_USE_TERT_MI2S */
+	{
+        .name = "SLIMBUS_3 Hostless Capture",
+        .stream_name = "SLIMBUS3_HOSTLESS Capture",
+        .cpu_dai_name = "SLIMBUS3_HOSTLESS",
+        .platform_name = "msm-pcm-hostless",
+        .dynamic = 1,
+        .dpcm_capture = 1,
+        .trigger = {SND_SOC_DPCM_TRIGGER_POST,
+                SND_SOC_DPCM_TRIGGER_POST},
+        .no_host_mode = SND_SOC_DAI_LINK_NO_HOST,
+        .ignore_suspend = 1,
+        .ignore_pmdown_time = 1,
+        .codec_dai_name = "snd-soc-dummy-dai",
+        .codec_name = "snd-soc-dummy",
+	},
 
 };
 #endif	/* CONFIG_SND_USE_QUAT_MI2S || CONFIG_SND_LGE_DSDP_DUAL_AUDIO || CONFIG_SND_USE_SEC_MI2S || CONFIG_SND_USE_TERT_MI2S */
@@ -4035,12 +4078,6 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 	struct snd_soc_dai_link *dailink;
 	int len_1, len_2, len_3, len_4;
 	const struct of_device_id *match;
-#if defined(CONFIG_LGE_PM_LGE_POWER_CLASS_BOARD_REVISION) && defined(CONFIG_MACH_MSM8996_H1)
-	union lge_power_propval lge_val = {0,};
-	struct lge_power *lge_hw_rev_lpc = NULL;
-	int rc;
-	int hw_rev = HW_REV_EVB1;
-#endif
 
 	match = of_match_node(msm8996_asoc_machine_of_match, dev->of_node);
 	if (!match) {

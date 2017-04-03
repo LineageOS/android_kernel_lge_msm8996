@@ -259,9 +259,9 @@ static inline int map_buffer(struct task_struct *task, const void *data,
 
 			/* Buffer was allocated in user space */
 			down_read(&task->mm->mmap_sem);
-			gup_ret = get_user_pages(task, task->mm,
+			gup_ret = __get_user_pages(task, task->mm,
 						 (uintptr_t)reader, pages_nr,
-						 1, 0, pages, 0);
+						 FOLL_TOUCH | FOLL_GET | FOLL_WRITE | FOLL_CMA, pages, NULL, NULL);
 			up_read(&task->mm->mmap_sem);
 			if (gup_ret < 0) {
 				ret = gup_ret;

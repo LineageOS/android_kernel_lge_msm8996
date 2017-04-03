@@ -16,7 +16,7 @@
 #define _MC_USER_H_
 
 #define MCDRVMODULEAPI_VERSION_MAJOR 3
-#define MCDRVMODULEAPI_VERSION_MINOR 0
+#define MCDRVMODULEAPI_VERSION_MINOR 1
 
 #include <linux/types.h>
 

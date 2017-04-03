@@ -327,7 +327,8 @@ err:
 }
 #endif
 
-static int qusb_phy_enable_power(struct qusb_phy *qphy, bool on)
+static int qusb_phy_enable_power(struct qusb_phy *qphy, bool on,
+						bool toggle_vdd)
 {
 	int ret = 0;
 
@@ -481,7 +482,7 @@ static int qusb_phy_update_dpdm(struct usb_phy *phy, int value)
 	case POWER_SUPPLY_DP_DM_DPF_DMF:
 		dev_dbg(phy->dev, "POWER_SUPPLY_DP_DM_DPF_DMF\n");
 		if (!qphy->rm_pulldown) {
-			ret = qusb_phy_enable_power(qphy, true);
+			ret = qusb_phy_enable_power(qphy, true, false);
 			if (ret >= 0) {
 				qphy->rm_pulldown = true;
 				dev_dbg(phy->dev, "DP_DM_F: rm_pulldown:%d\n",
@@ -565,7 +566,7 @@ static int qusb_phy_update_dpdm(struct usb_phy *phy, int value)
 
 			if (!qphy->cable_connected) {
 				dev_dbg(phy->dev, "turn off for HVDCP case\n");
-				ret = qusb_phy_enable_power(qphy, false);
+				ret = qusb_phy_enable_power(qphy, false, false);
 			}
 			if (ret >= 0) {
 				qphy->rm_pulldown = false;
@@ -848,7 +849,7 @@ static int qusb_phy_init(struct usb_phy *phy)
 
 	dev_dbg(phy->dev, "%s\n", __func__);
 
-	ret = qusb_phy_enable_power(qphy, true);
+	ret = qusb_phy_enable_power(qphy, true, true);
 	if (ret)
 		return ret;
 
@@ -1553,7 +1554,7 @@ static int qusb_phy_remove(struct platform_device *pdev)
 		qphy->clocks_enabled = false;
 	}
 
-	qusb_phy_enable_power(qphy, false);
+	qusb_phy_enable_power(qphy, false, true);
 
 	return 0;
 }

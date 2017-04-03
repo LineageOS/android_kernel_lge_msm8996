@@ -330,6 +330,7 @@ static const struct qmp_reg_val qmp_settings_rev1_misc[] = {
 #ifdef CONFIG_LGE_USB_G_ANDROID
 #define QSERDES_TX_TX_EMP_POST1_LVL 0x218
 #define QSERDES_TX_TX_DRV_LVL       0x22C
+#define RX_RX_EQU_ADAPTOR_CNTRL4    0x4E0
 
 static uint32_t override_tx_pre_emphasis = 0;
 module_param(override_tx_pre_emphasis, uint, S_IRUGO|S_IWUSR);
@@ -338,6 +339,10 @@ MODULE_PARM_DESC(override_tx_pre_emphasis, "Overide TX_PRE_EMPHASIS tuning regis
 static uint32_t override_tx_swing = 0;
 module_param(override_tx_swing, uint, S_IRUGO|S_IWUSR);
 MODULE_PARM_DESC(override_tx_swing, "Override TX_SWING tuning register");
+
+static uint32_t override_rx_equalization = 0;
+module_param(override_rx_equalization, uint, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(override_rx_equalization, "Override rx_equalization tuning register");
 #endif
 
 struct msm_ssphy_qmp {
@@ -371,6 +376,7 @@ struct msm_ssphy_qmp {
 #ifdef CONFIG_LGE_USB_G_ANDROID
 	uint32_t		tx_pre_emphasis;
 	uint32_t		tx_swing;
+	uint32_t		rx_equalization;
 #endif
 };
 
@@ -559,6 +565,19 @@ static int configure_phy_regs(struct usb_phy *uphy,
 			writel_relaxed(phy->tx_swing | 0x20,
 					phy->base + QSERDES_TX_TX_DRV_LVL);
 	}
+
+	if (override_rx_equalization) {
+		dev_dbg(uphy->dev, "%s(), Programming rx_equalization tuning"
+					" register as: %d",
+					__func__,
+					override_rx_equalization);
+		writel_relaxed(override_rx_equalization | 0x20,
+				phy->base + RX_RX_EQU_ADAPTOR_CNTRL4);
+	} else {
+		if (phy->rx_equalization)
+			writel_relaxed(phy->rx_equalization | 0x20,
+					phy->base + RX_RX_EQU_ADAPTOR_CNTRL4);
+	}
 #endif
 
 	return 0;
@@ -692,6 +711,11 @@ static int msm_ssphy_qmp_init(struct usb_phy *uphy)
 			QSERDES_TX_TX_EMP_POST1_LVL) & 0x1F),
 			(readl_relaxed(phy->base +\
 			QSERDES_TX_TX_DRV_LVL)) & 0x1F);
+
+	dev_dbg(uphy->dev, "%s, RX_EQUALIZATION tuning register: 0x%X\n",
+			__func__,
+			(readl_relaxed(phy->base +\
+			RX_RX_EQU_ADAPTOR_CNTRL4)) & 0x1F);
 #endif
 
 	return 0;
@@ -1066,6 +1090,11 @@ static int msm_ssphy_qmp_probe(struct platform_device *pdev)
 						&phy->tx_swing);
 	if (ret)
 		phy->tx_swing = 0;
+
+	ret = of_property_read_u32(dev->of_node, "qcom,rx_equalization",
+						&phy->rx_equalization);
+	if (ret)
+		phy->rx_equalization = 0;
 #endif
 
 	phy->emulation = of_property_read_bool(dev->of_node,

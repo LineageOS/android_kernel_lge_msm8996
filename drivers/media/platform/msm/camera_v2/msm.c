@@ -1433,7 +1433,7 @@ static int msm_probe(struct platform_device *pdev)
 	} else {
 		if (!debugfs_create_file(MSM_CAM_LOGSYNC_FILE_NAME,
 		//CTS Issue Fix (MLM HONE-5010, Case#02316080)
-		#ifdef CONFIG_LGE_CAMERA_DRIVER
+		#ifdef CONFIG_MACH_LGE
 					 0644,
 		#else //QCT Original
 					 0666,

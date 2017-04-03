@@ -514,7 +514,7 @@ static void msm_gpio_dbg_show_one(struct seq_file *s,
 	int drive;
 	int pull;
 	u32 ctl_reg;
-#ifdef CONFIG_MACH_MSM8996_ELSA
+#if defined (CONFIG_MACH_MSM8996_ELSA) || defined (CONFIG_MACH_MSM8996_LUCYE)
 	u32 val = 0 ;
 #endif
 	static const char * const pulls[] = {
@@ -526,7 +526,7 @@ static void msm_gpio_dbg_show_one(struct seq_file *s,
 
 	g = &pctrl->soc->groups[offset];
 	ctl_reg = readl(pctrl->regs + g->ctl_reg);
-#ifdef CONFIG_MACH_MSM8996_ELSA
+#if defined (CONFIG_MACH_MSM8996_ELSA) || defined (CONFIG_MACH_MSM8996_LUCYE)
 	val = readl(pctrl->regs + g->io_reg);
 	val &= BIT(g->out_bit);
 #endif
@@ -538,7 +538,7 @@ static void msm_gpio_dbg_show_one(struct seq_file *s,
 	seq_printf(s, " %-8s: %-3s %d", g->name, is_out ? "out" : "in", func);
 	seq_printf(s, " %dmA", msm_regval_to_drive(drive));
 	seq_printf(s, " %s", pulls[pull]);
-#ifdef CONFIG_MACH_MSM8996_ELSA
+#if defined (CONFIG_MACH_MSM8996_ELSA) || defined (CONFIG_MACH_MSM8996_LUCYE)
 	if ( is_out )
 	seq_printf(s, " %s", val ? "HIGH" : "LOW" );
 #endif

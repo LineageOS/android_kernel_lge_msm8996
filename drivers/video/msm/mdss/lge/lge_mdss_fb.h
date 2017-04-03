@@ -18,6 +18,7 @@
 int lge_br_to_bl(struct msm_fb_data_type *mfd, int br_lvl);
 #if defined(CONFIG_LGE_SP_MIRRORING_CTRL_BL)
 int lge_is_bl_update_blocked(int bl_lvl);
+void lge_set_bl_update_blocked(bool enable);
 #endif
 #ifdef CONFIG_LGE_LCD_OFF_DIMMING
 void lge_set_blank_called(void);

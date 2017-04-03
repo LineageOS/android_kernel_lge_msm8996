@@ -60,6 +60,9 @@ enum {
 #ifdef CONFIG_MEMORY_ISOLATION
 	MIGRATE_ISOLATE,	/* can't allocate from here */
 #endif
+#ifdef CONFIG_MIGRATE_HIGHORDER
+	MIGRATE_HIGHORDER,
+#endif
 	MIGRATE_TYPES
 };
 
@@ -165,12 +168,15 @@ enum zone_stat_item {
 	NUMA_LOCAL,		/* allocation from local node */
 	NUMA_OTHER,		/* allocation from other node */
 #endif
-	WORKINGSET_REFAULT,
-	WORKINGSET_ACTIVATE,
-	WORKINGSET_NODERECLAIM,
+	REFAULT_INACTIVE_FILE,
+	REFAULT_ACTIVE_FILE,
+	REFAULT_NODERECLAIM,
 	NR_ANON_TRANSPARENT_HUGEPAGES,
 	NR_FREE_CMA_PAGES,
 	NR_SWAPCACHE,
+#ifdef CONFIG_MIGRATE_HIGHORDER
+	NR_FREE_HIGHORDER_PAGES,
+#endif
 	NR_VM_ZONE_STAT_ITEMS };
 
 /*
@@ -214,22 +220,23 @@ static inline int is_unevictable_lru(enum lru_list lru)
 	return (lru == LRU_UNEVICTABLE);
 }
 
-struct zone_reclaim_stat {
-	/*
-	 * The pageout code in vmscan.c keeps track of how many of the
-	 * mem/swap backed and file backed pages are referenced.
-	 * The higher the rotated/scanned ratio, the more valuable
-	 * that cache is.
-	 *
-	 * The anon LRU stats live in [0], file LRU stats in [1]
-	 */
-	unsigned long		recent_rotated[2];
-	unsigned long		recent_scanned[2];
+/*
+ * This tracks cost of reclaiming one LRU type - file or anon - over
+ * the other. As the observed cost of pressure on one type increases,
+ * the scan balance in vmscan.c tips toward the other type.
+ *
+ * The recorded cost for anon is in numer[0], file in numer[1].
+ */
+struct lru_cost {
+	unsigned long		numer[2];
+	unsigned long		denom;
 };
 
 struct lruvec {
 	struct list_head lists[NR_LRU_LISTS];
-	struct zone_reclaim_stat reclaim_stat;
+	struct lru_cost			balance;
+	/* Evictions & activations on the inactive file list */
+	atomic_long_t                   inactive_age;
 #ifdef CONFIG_MEMCG
 	struct zone *zone;
 #endif
@@ -831,6 +838,7 @@ static inline struct zone *lruvec_zone(struct lruvec *lruvec)
 	return container_of(lruvec, struct zone, lruvec);
 #endif
 }
+extern unsigned long get_lru_size(struct lruvec *lruvec, enum lru_list lru);
 
 #ifdef CONFIG_HAVE_MEMORY_PRESENT
 void memory_present(int nid, unsigned long start, unsigned long end);
@@ -906,6 +914,9 @@ int min_free_kbytes_sysctl_handler(struct ctl_table *, int,
 extern int sysctl_lowmem_reserve_ratio[MAX_NR_ZONES-1];
 int lowmem_reserve_ratio_sysctl_handler(struct ctl_table *, int,
 					void __user *, size_t *, loff_t *);
+int wmark_tune_level_sysctl_handler(struct ctl_table *, int,
+		void __user *, size_t *, loff_t *);
+
 int percpu_pagelist_fraction_sysctl_handler(struct ctl_table *, int,
 					void __user *, size_t *, loff_t *);
 int sysctl_min_unmapped_ratio_sysctl_handler(struct ctl_table *, int,

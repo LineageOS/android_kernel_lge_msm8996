@@ -152,6 +152,7 @@ typedef struct {
 } response_t;
 
 int anx7418_pd_init(struct anx7418 *anx);
+int anx7418_pd_src_cap_init(struct anx7418 *anx);
 int anx7418_pd_process(struct anx7418 *anx);
 
 int anx7418_send_pd_msg(struct i2c_client *client, u8 type,

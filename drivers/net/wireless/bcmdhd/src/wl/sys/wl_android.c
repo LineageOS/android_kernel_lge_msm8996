@@ -55,7 +55,9 @@
 #ifdef WL_NAN
 #include <wl_cfgnan.h>
 #endif /* WL_NAN */
-
+#ifdef DHDTCPACK_SUPPRESS
+#include <dhd_ip.h>
+#endif
 /*
  * Android private command strings, PLEASE define new private commands here
  * so they can be updated easily in the future (if needed)
@@ -282,6 +284,9 @@ typedef struct android_wifi_af_params {
 #define CMD_RPSMODE  "RPSMODE"
 #endif /* SET_RPS_CPUS */
 
+#ifdef SET_TCPACK_SUPPRESS // kds tcpack
+#define CMD_TCPACK_MODE "TCPACK_MODE"
+#endif
 #ifdef BT_WIFI_HANDOVER
 #define CMD_TBOW_TEARDOWN "TBOW_TEARDOWN"
 #endif /* BT_WIFI_HANDOVER */
@@ -1770,6 +1775,13 @@ wls_parse_batching_cmd(struct net_device *dev, char *command, int total_len)
 						DHD_PNO(("band : %s\n",
 							(*token2 == 'A')? "A" : "B"));
 					} else {
+						if ((batch_params.nchan >= WL_NUMCHANNELS) ||
+						    (i >= WL_NUMCHANNELS)) {
+						    DHD_ERROR(("Too many nchan %d\n",
+						           batch_params.nchan));
+						    err = BCME_BUFTOOSHORT;
+						    goto exit;
+						}
 						batch_params.chan_list[i++] =
 						simple_strtol(token2, NULL, 0);
 						batch_params.nchan++;
@@ -2996,15 +3008,15 @@ wl_android_set_sarlimit_txctrl(struct net_device *dev, const char* string_num)
 	/* As Samsung specific and their requirement, '0' means activate sarlimit
 	 * and '-1' means back to normal state (deactivate sarlimit)
 	 */
-	if (mode == 0) {
-		DHD_INFO(("%s: SAR limit control activated\n", __FUNCTION__));
-		setval = 1;
-	} else if (mode == -1) {
-		DHD_INFO(("%s: SAR limit control deactivated\n", __FUNCTION__));
-		setval = 0;
-	} else {
-		return -EINVAL;
-	}
+        if (mode >= 0 && mode < 3) {
+                DHD_INFO(("%s: SAR limit control activated mode = %d\n", __FUNCTION__, mode));
+                setval = mode + 1;
+        } else if (mode == -1) {
+                DHD_INFO(("%s: SAR limit control deactivated\n", __FUNCTION__));
+                setval = 0;
+        } else {
+                return -EINVAL;
+        }
 
 	err = wldev_iovar_setint(dev, "sar_enable", setval);
 	if (unlikely(err)) {
@@ -3820,7 +3832,27 @@ wl_android_set_rps_cpus(struct net_device *dev, char *command, int total_len)
 	return error;
 }
 #endif /* SET_RPS_CPUS */
-
+#ifdef SET_TCPACK_SUPPRESS
+static int
+wl_android_set_tcpack_mode(struct net_device *dev, char *command, int total_len)
+{
+	int error=0;
+#if defined(DHDTCPACK_SUPPRESS) && defined(BCMPCIE) && defined(WL_CFG80211)
+	int enable=0;
+	void *dhdp = wl_cfg80211_get_dhdp();
+	enable = command[strlen(CMD_TCPACK_MODE) + 1] - '0';
+	if (enable){
+		DHD_TRACE(("%s : set ack suppress. TCPACK_SUP_HOLD.\n", __FUNCTION__));
+		dhd_tcpack_suppress_set(dhdp, TCPACK_SUP_HOLD);
+	}
+	else {
+		DHD_TRACE(("%s : clear ack suppress.\n", __FUNCTION__));
+		dhd_tcpack_suppress_set(dhdp, TCPACK_SUP_OFF);
+	}
+#endif
+	return error;
+}
+#endif
 #ifdef LPS_SUPPORT /* Low Power SCAN(BSSID based PNO) */
 #define MAX_LPS_BSSID_NUM	100
 
@@ -4523,6 +4555,11 @@ int wl_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 		bytes_written = wl_android_set_rps_cpus(net, command, priv_cmd.total_len);
 	}
 #endif /* SET_RPS_CPUS */
+#ifdef SET_TCPACK_SUPPRESS
+	else if (strnicmp(command, CMD_TCPACK_MODE, strlen(CMD_TCPACK_MODE)) == 0) {
+		bytes_written = wl_android_set_tcpack_mode(net, command, priv_cmd.total_len);
+	}
+#endif /* SET_TCPACK_SUPPRESS */
 #ifdef WLWFDS
 	else if (strnicmp(command, CMD_ADD_WFDS_HASH, strlen(CMD_ADD_WFDS_HASH)) == 0) {
 		bytes_written = wl_android_set_wfds_hash(net, command, priv_cmd.total_len, 1);

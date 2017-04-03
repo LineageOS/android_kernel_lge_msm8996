@@ -106,6 +106,9 @@ extern unsigned int core_pipe_limit;
 extern int pid_max;
 extern int extra_free_kbytes;
 extern int min_free_order_shift;
+#ifdef CONFIG_HSWAP
+extern int wmark_tune_level;
+#endif
 extern int pid_max_min, pid_max_max;
 extern int percpu_pagelist_fraction;
 extern int compat_log;
@@ -1618,6 +1621,15 @@ static struct ctl_table vm_table[] = {
 		.mode		= 0644,
 		.proc_handler	= &proc_dointvec
 	},
+#ifdef CONFIG_HSWAP
+	{
+		.procname = "wmark_tune_level",
+		.data = &wmark_tune_level,
+		.maxlen = sizeof(wmark_tune_level),
+		.mode = 0644,
+		.proc_handler = wmark_tune_level_sysctl_handler,
+	},
+#endif
 	{
 		.procname	= "percpu_pagelist_fraction",
 		.data		= &percpu_pagelist_fraction,

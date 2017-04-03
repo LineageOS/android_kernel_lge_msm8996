@@ -1,0 +1,23 @@
+/* Copyright (c) 2016, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/* MME driver bring up based on rev_0.0 lucye_global_ldu */
+
+&soc {
+	lge-mme {
+		compatible = "lge-mme";
+		lge-mme,mme_dcdc_en = <&pm8994_gpios 9 0>;
+		lge-mme,gpio_sleep_n = <&pm8994_gpios 12 0>;
+		lge-mme,gpio_ph = <&pm8994_gpios 13 0>;
+		lge-mme,gpio_en = <&pm8994_gpios 14 0>;
+	};
+};

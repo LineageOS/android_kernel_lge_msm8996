@@ -19,7 +19,7 @@
 #define WRITE_REG_NUM           8
 #define READ_REG_NUM            16
 
-#define FMDBG(fmt, args...) pr_debug("silabs_radio: " fmt, ##args)
+#define FMDBG(fmt, args...) pr_info("silabs_radio: " fmt, ##args)
 
 #define FMDERR(fmt, args...) pr_err("silabs_radio: " fmt, ##args)
 

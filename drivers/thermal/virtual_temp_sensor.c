@@ -36,6 +36,11 @@ typedef struct virtual_temp_sensor {
 LIST_HEAD(composite_sensors_head);
 LIST_HEAD(value_sensors_head);
 
+static int vts_manual_set = 0;
+module_param_named(
+	debug_mask, vts_manual_set, int, S_IRUGO | S_IWUSR | S_IWGRP
+);
+
 int vts_register_value_sensor(struct value_sensor *vs) {
 	int ret = 0;
 	struct composite_sensor *sensor;
@@ -115,6 +120,12 @@ value_sensor:
 	val *= vts->scaling_factor;
 	val /= 1000L;
 	*temp = (unsigned long)val;
+
+	if (vts_manual_set) {
+		pr_err("vts force set to %d from %lu\n", vts_manual_set, *temp);
+		*temp = (unsigned long)vts_manual_set;
+	}
+
 	return 0;
 }
 
@@ -192,6 +203,10 @@ static int vts_probe(struct platform_device *pdev)
 			kfree(sensor);
 			continue;
 		}
+		if (of_property_read_bool(child,"weight-negative")) {
+			sensor->weight *= -1;
+		}
+
 		pr_info("%s: %s is registered. chan=%d, weight=%d\n",
 			vts->name, sensor->name, sensor->channel, sensor->weight);
 		INIT_LIST_HEAD(&sensor->list);

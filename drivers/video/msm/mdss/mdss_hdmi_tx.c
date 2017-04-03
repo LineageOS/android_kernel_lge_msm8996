@@ -22,7 +22,6 @@
 #include <linux/types.h>
 #include <linux/hdcp_qseecom.h>
 #include <linux/clk.h>
-#include <linux/slimport.h>
 
 #define REG_DUMP 0
 
@@ -352,10 +351,6 @@ static void hdmi_tx_audio_setup(struct hdmi_tx_ctrl *hdmi_ctrl)
 
 static inline u32 hdmi_tx_is_dvi_mode(struct hdmi_tx_ctrl *hdmi_ctrl)
 {
-#ifdef CONFIG_SLIMPORT_CTYPE
-	if (!is_slimport_vga())
-		return 0;
-#endif
 #ifdef NO_USE // CONFIG_LGE_DP_ANX7688
 	if (rx_get_cable_type() != VGA_TYPE)
 		return 0;
@@ -1560,7 +1555,6 @@ static void hdmi_tx_hdcp_cb_work(struct work_struct *work)
 				DEV_ERR("%s: HDCP reauth failed. rc=%d\n",
 					__func__, rc);
 		} else {
-			hdmi_tx_set_audio_switch_node(hdmi_ctrl, 0);
 			DEV_DBG("%s: Not reauthenticating. Cable not conn\n",
 				__func__);
 		}
@@ -2142,7 +2136,7 @@ static int hdmi_tx_read_sink_info(struct hdmi_tx_ctrl *hdmi_ctrl)
 error:
 #ifdef CONFIG_SLIMPORT_CTYPE
 	if (status)
-		hdmi_edid_reset_parser(hdmi_ctrl->feature_data[HDMI_TX_FEAT_EDID]);
+		hdmi_edid_reset_parser(data);
 #endif
 	return status;
 } /* hdmi_tx_read_sink_info */
@@ -2219,6 +2213,14 @@ static void hdmi_tx_hpd_int_work(struct work_struct *work)
 		/* Enable SW DDC before EDID read */
 		DSS_REG_W_ND(io, HDMI_DDC_ARBITRATION ,
 			DSS_REG_R(io, HDMI_DDC_ARBITRATION) & ~(BIT(4)));
+
+		hdmi_tx_update_hdcp_info(hdmi_ctrl);
+
+		if (hdmi_tx_is_hdcp_enabled(hdmi_ctrl)) {
+			if (hdmi_ctrl->hdcp_ops->load_keys)
+				hdmi_ctrl->hdcp_ops->load_keys(
+					hdmi_ctrl->hdcp_data);
+		}
 
 		while (rc && retry--)
 			rc = hdmi_tx_read_sink_info(hdmi_ctrl);
@@ -3064,8 +3066,8 @@ static int hdmi_tx_power_off(struct hdmi_tx_ctrl *hdmi_ctrl)
 	if (hdmi_ctrl->panel_ops.off)
 		hdmi_ctrl->panel_ops.off(pdata);
 
-	hdmi_ctrl->panel_power_on = false;
 	hdmi_tx_core_off(hdmi_ctrl);
+	hdmi_ctrl->panel_power_on = false;
 
 	if (hdmi_ctrl->hpd_off_pending || hdmi_ctrl->panel_suspend)
 		hdmi_tx_hpd_off(hdmi_ctrl);
@@ -3616,7 +3618,7 @@ static int hdmi_tx_init_switch_dev(struct hdmi_tx_ctrl *hdmi_ctrl)
 end:
 	return rc;
 }
-
+#define LGE_NULL_CRASH_PATCH
 static int hdmi_tx_hdcp_off(struct hdmi_tx_ctrl *hdmi_ctrl)
 {
 	int rc = 0;
@@ -3629,9 +3631,11 @@ static int hdmi_tx_hdcp_off(struct hdmi_tx_ctrl *hdmi_ctrl)
 	DEV_DBG("%s: Turning off HDCP\n", __func__);
 	hdmi_ctrl->hdcp_ops->hdmi_hdcp_off(
 		hdmi_ctrl->hdcp_data);
+#ifdef LGE_NULL_CRASH_PATCH
+	cancel_delayed_work(&hdmi_ctrl->hdcp_cb_work);
+#endif
 
 	hdmi_ctrl->hdcp_ops = NULL;
-
 	rc = hdmi_tx_enable_power(hdmi_ctrl, HDMI_TX_DDC_PM,
 		false);
 	if (rc)

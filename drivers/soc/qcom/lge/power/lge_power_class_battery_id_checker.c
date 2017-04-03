@@ -38,6 +38,11 @@ struct lge_battery_id{
 	struct device 		*dev;
 	struct lge_power lge_batt_id_lpc;
 	struct lge_power *lge_cd_lpc;
+#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_PSEUDO_BATTERY
+	struct lge_power *lge_pb_lpc;
+	int pseudo_batt;
+	int pseudo_batt_id;
+#endif
 	int battery_id_info;
 	int is_factory_cable;
 	enum cell_type batt_cell_no;
@@ -143,6 +148,11 @@ static int lge_power_lge_batt_id_get_property(struct lge_power *lpc,
 					struct lge_battery_id, lge_batt_id_lpc);
 	switch (lpp) {
 	case LGE_POWER_PROP_BATTERY_ID_CHECKER:
+#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_PSEUDO_BATTERY
+		if (battery_id->pseudo_batt == 1)
+			val->intval = battery_id->pseudo_batt_id;
+		else
+#endif
 		val->intval = read_lge_battery_id(battery_id);
 		break;
 	case LGE_POWER_PROP_VALID_BATT:
@@ -200,6 +210,25 @@ static void lge_batt_id_external_lge_power_changed(struct lge_power *lpc)
 		battery_id->is_factory_cable = lge_val.intval;
 	}
 
+#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_PSEUDO_BATTERY
+	if (!battery_id->lge_pb_lpc) {
+		battery_id->lge_pb_lpc = lge_power_get_by_name("pseudo_battery");
+		if (!battery_id->lge_pb_lpc) {
+			pr_err("%s : cable_detect is not yet ready\n", __func__);
+		} else {
+			rc = battery_id->lge_pb_lpc->get_property(battery_id->lge_pb_lpc,
+					LGE_POWER_PROP_PSEUDO_BATT, &lge_val);
+			pr_info("pseudo battery : %d\n", lge_val.intval);
+			battery_id->pseudo_batt = lge_val.intval;
+			if (battery_id->pseudo_batt == 1) {
+				rc = battery_id->lge_pb_lpc->get_property(battery_id->lge_pb_lpc,
+						LGE_POWER_PROPS_PSEUDO_BATT_ID, &lge_val);
+				battery_id->pseudo_batt_id = lge_val.intval;
+			}
+		}
+
+	}
+#endif
 }
 
 static int lge_battery_id_probe(struct platform_device *pdev)
@@ -247,6 +276,9 @@ static int lge_battery_id_probe(struct platform_device *pdev)
 	battery_id->is_factory_cable = 0;
 	lge_power_batt_id = &battery_id->lge_batt_id_lpc;
 
+#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_PSEUDO_BATTERY
+	battery_id->pseudo_batt = 0;
+#endif
 	lge_power_batt_id->name = "lge_batt_id";
 
 	lge_power_batt_id->properties = lge_power_lge_batt_id_properties;

@@ -1070,13 +1070,6 @@ int dwc3_debugfs_init(struct dwc3 *dwc)
 	struct dentry		*file;
 	int			ret;
 
-	if (count >= DWC_CTRL_COUNT) {
-		dev_err(dwc->dev, "Err dwc instance %d >= %d available\n",
-				count, DWC_CTRL_COUNT);
-		ret = -EINVAL;
-		return ret;
-	}
-
 	root = debugfs_create_dir(dev_name(dwc->dev), NULL);
 	if (!root) {
 		ret = -ENOMEM;

@@ -235,8 +235,12 @@ irqreturn_t touch_irq_thread(int irq, void *dev_id)
 			touch_interrupt_control(ts->dev, INTERRUPT_DISABLE);
 			ts->driver->power(ts->dev, POWER_OFF);
 			ts->driver->power(ts->dev, POWER_ON);
-			mod_delayed_work(ts->wq, &ts->init_work,
-				msecs_to_jiffies(ts->caps.hw_reset_delay));
+			touch_msleep(ts->caps.hw_reset_delay);
+			mod_delayed_work(ts->wq, &ts->init_work, 0);
+		}
+		if (ret == -EUPGRADE) {
+			ts->force_fwup = 1;
+			queue_delayed_work(ts->wq, &ts->upgrade_work, 0);
 		}
 	}
 
@@ -296,10 +300,10 @@ static void touch_upgrade_work_func(struct work_struct *upgrade_work)
 
 	ts->driver->power(ts->dev, POWER_OFF);
 	ts->driver->power(ts->dev, POWER_ON);
+	touch_msleep(ts->caps.hw_reset_delay);
 	mutex_unlock(&ts->lock);
 
-	mod_delayed_work(ts->wq, &ts->init_work,
-			msecs_to_jiffies(ts->caps.hw_reset_delay));
+	mod_delayed_work(ts->wq, &ts->init_work, 0);
 }
 
 static void touch_fb_work_func(struct work_struct *fb_work)

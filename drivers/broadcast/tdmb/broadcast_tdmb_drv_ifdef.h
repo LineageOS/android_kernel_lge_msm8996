@@ -115,6 +115,8 @@ enum
     LGE_BROADCAST_TDMB_ANT_TYPE_EXTERNAL
 };
 
+typedef void (*broadcast_callback_func) (void *cookie);
+
 struct broadcast_drv_if {
     int (*broadcast_drv_if_power_on)(void);
     int (*broadcast_drv_if_power_off)(void);
@@ -130,6 +132,7 @@ struct broadcast_drv_if {
     int (*broadcast_drv_if_select_antenna)(unsigned int sel);
     int (*broadcast_drv_if_set_nation)(unsigned int nation);
     int (*broadcast_drv_if_is_on)(void);
+    void (*broadcast_drv_if_register_callback)(broadcast_callback_func cb, void *cookie);
 };
 typedef struct broadcast_drv_if Device_drv ;
 

@@ -145,6 +145,10 @@ uint32_t send_cmd_to_user(uint32_t command_id, uint32_t data0, uint32_t data1)
 	/* Check that the client (TuiService) is still present before to return
 	 * the command. */
 	if (atomic_read(&fileopened)) {
+		/* Clean up previous response. */
+		complete_all(&io_comp);
+		reinit_completion(&io_comp);
+
 		/* Unlock the ioctl thread (IOCTL_WAIT) in order to let the
 		 * client know that there is a command to process. */
 		pr_info("%s: give way to ioctl thread\n", __func__);

@@ -27,7 +27,7 @@ EXPORT_SYMBOL_GPL(get_cc_mode_state);
 static int cc_mode_enable(char *str)
 {
 	cc_mode_flag = simple_strtol(str, NULL, 10);
-	if ((cc_mode_flag > 0x3f) || (cc_mode_flag < 0)) {
+	if ((cc_mode_flag > 0x7f) || (cc_mode_flag < 0)) {
 		cc_mode_flag = 0;
 	}
 	cc_mode = cc_mode_flag & 0x01;

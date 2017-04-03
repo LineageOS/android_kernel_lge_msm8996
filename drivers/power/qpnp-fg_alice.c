@@ -627,6 +627,7 @@ struct fg_chip {
 	bool			charge_done;
 	bool			resume_soc_lowered;
 	bool			vbat_low_irq_enabled;
+	bool			full_soc_irq_enabled;
 	bool			charge_full;
 	bool			hold_soc_while_full;
 	bool			input_present;
@@ -1125,7 +1126,7 @@ static int fg_set_ram_addr(struct fg_chip *chip, u16 *address)
 }
 
 #ifdef CONFIG_LGE_PM
-#define COMP_FACTOR             150     /* -1.7degree/1A */
+#define COMP_FACTOR             68     /* -0.68degree/1A */
 #define CHG_CURR_SAMPLE_COUNT   3
 
 /*
@@ -1553,8 +1554,11 @@ static void fg_enable_irqs(struct fg_chip *chip, bool enable)
 		enable_irq(chip->soc_irq[DELTA_SOC].irq);
 		enable_irq_wake(chip->soc_irq[DELTA_SOC].irq);
 		enable_irq(chip->soc_irq[FULL_SOC].irq);
-		enable_irq_wake(chip->soc_irq[FULL_SOC].irq);
-		enable_irq(chip->batt_irq[BATT_MISSING].irq);
+		if (!chip->full_soc_irq_enabled) {
+			enable_irq_wake(chip->soc_irq[FULL_SOC].irq);
+			enable_irq(chip->batt_irq[BATT_MISSING].irq);
+			chip->full_soc_irq_enabled = true;
+		}
 		if (!chip->vbat_low_irq_enabled) {
 			enable_irq(chip->batt_irq[VBATT_LOW].irq);
 			enable_irq_wake(chip->batt_irq[VBATT_LOW].irq);
@@ -1568,8 +1572,11 @@ static void fg_enable_irqs(struct fg_chip *chip, bool enable)
 	} else {
 		disable_irq_wake(chip->soc_irq[DELTA_SOC].irq);
 		disable_irq_nosync(chip->soc_irq[DELTA_SOC].irq);
-		disable_irq_wake(chip->soc_irq[FULL_SOC].irq);
-		disable_irq_nosync(chip->soc_irq[FULL_SOC].irq);
+		if (chip->full_soc_irq_enabled) {
+			disable_irq_wake(chip->soc_irq[FULL_SOC].irq);
+			disable_irq_nosync(chip->soc_irq[FULL_SOC].irq);
+			chip->full_soc_irq_enabled = false;
+		}
 		disable_irq(chip->batt_irq[BATT_MISSING].irq);
 		if (chip->vbat_low_irq_enabled) {
 			disable_irq_wake(chip->batt_irq[VBATT_LOW].irq);
@@ -4356,6 +4363,13 @@ static void status_change_work(struct work_struct *work)
 			enable_irq_wake(chip->batt_irq[VBATT_LOW].irq);
 			chip->vbat_low_irq_enabled = true;
 		}
+
+		if (!chip->full_soc_irq_enabled) {
+			enable_irq(chip->soc_irq[FULL_SOC].irq);
+			enable_irq_wake(chip->soc_irq[FULL_SOC].irq);
+			chip->full_soc_irq_enabled = true;
+		}
+
 		if (!!(chip->wa_flag & PULSE_REQUEST_WA) && capacity == 100)
 			fg_configure_soc(chip);
 	} else if (chip->status == POWER_SUPPLY_STATUS_DISCHARGING) {
@@ -4364,6 +4378,12 @@ static void status_change_work(struct work_struct *work)
 			disable_irq_wake(chip->batt_irq[VBATT_LOW].irq);
 			disable_irq_nosync(chip->batt_irq[VBATT_LOW].irq);
 			chip->vbat_low_irq_enabled = false;
+		}
+
+		if (chip->full_soc_irq_enabled) {
+			disable_irq_wake(chip->soc_irq[FULL_SOC].irq);
+			disable_irq_nosync(chip->soc_irq[FULL_SOC].irq);
+			chip->full_soc_irq_enabled = false;
 		}
 	}
 	fg_cap_learning_check(chip);
@@ -5599,9 +5619,11 @@ static irqreturn_t fg_batt_missing_irq_handler(int irq, void *_chip)
 		clear_cycle_counter(chip);
 		mutex_unlock(&chip->cyc_ctr.lock);
 	} else {
+#ifndef CONFIG_LGE_PM
 		if (!chip->use_otp_profile)
 			fg_handle_battery_insertion(chip);
 		else
+#endif
 			chip->battery_missing = false;
 	}
 
@@ -7767,7 +7789,6 @@ static int fg_init_irqs(struct fg_chip *chip)
 			}
 
 			enable_irq_wake(chip->soc_irq[DELTA_SOC].irq);
-			enable_irq_wake(chip->soc_irq[FULL_SOC].irq);
 			if (!chip->use_vbat_low_empty_soc)
 				enable_irq_wake(chip->soc_irq[EMPTY_SOC].irq);
 			break;

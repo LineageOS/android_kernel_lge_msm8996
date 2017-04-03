@@ -821,9 +821,13 @@ void msm_isp_increment_frame_id(struct vfe_device *vfe_dev,
 	struct msm_vfe_sof_info *sof_info = NULL;
 	enum msm_vfe_dual_hw_type dual_hw_type;
 	enum msm_vfe_dual_hw_ms_type ms_type;
+    /* LGE_CHANGE_S, Fix issue that frame ID is reversed using dual camera, 2016-11-26, hyungtae.lee@lge.com */
+    #if 0
 	struct msm_vfe_sof_info *master_sof_info = NULL;
 	int32_t time, master_time, delta;
-	uint32_t sof_incr = 0;
+	//uint32_t sof_incr = 0;
+    #endif
+    /* LGE_CHANGE_E, Fix issue that frame ID is reversed using dual camera, 2016-11-26, hyungtae.lee@lge.com */
 	unsigned long flags;
 
 	if (vfe_dev->axi_data.src_info[frame_src].frame_id == 0)
@@ -851,6 +855,9 @@ void msm_isp_increment_frame_id(struct vfe_device *vfe_dev,
 		(ms_type == MS_TYPE_SLAVE) &&
 		(vfe_dev->common_data->ms_resource.master_active == 1)) {
 		/* DUAL_HW_MS_SLAVE  && MASTER active */
+
+        /* LGE_CHANGE_S, Fix issue that frame ID is reversed using dual camera, 2016-11-26, hyungtae.lee@lge.com */
+        #if 0 // QCT original
 		time = ts->buf_time.tv_sec * 1000 +
 			ts->buf_time.tv_usec / 1000;
 		master_sof_info = &vfe_dev->common_data->ms_resource.
@@ -872,6 +879,13 @@ void msm_isp_increment_frame_id(struct vfe_device *vfe_dev,
 		 */
 		vfe_dev->axi_data.src_info[frame_src].frame_id =
 			master_sof_info->frame_id + sof_incr;
+        #else
+        /* In case that HW sync is not used*/
+        /* Need to increase frame id of slave unconditionally
+            because it happens that slave frames comes continuously without master frames */
+        vfe_dev->axi_data.src_info[frame_src].frame_id++;
+        #endif
+        /* LGE_CHANGE_E, Fix issue that frame ID is reversed using dual camera, 2016-11-26, hyungtae.lee@lge.com */
 	} else {
 		if (frame_src == VFE_PIX_0) {
 			vfe_dev->axi_data.src_info[frame_src].frame_id +=
@@ -1553,7 +1567,17 @@ void msm_isp_halt_send_error(struct vfe_device *vfe_dev, uint32_t event)
 			&irq_status0, &irq_status1, 1);
 		return;
 	}
-
+#if 0 //LGE_CHANGE, Duplicated part, 2016-11-24, seungmin.hong@lge.com
+	if (ISP_EVENT_PING_PONG_MISMATCH == event &&
+		vfe_dev->axi_data.recovery_count < MAX_RECOVERY_THRESHOLD) {
+		pr_err("%s:pingpong mismatch from vfe%d, core%d,recovery_count %d\n",
+			__func__, vfe_dev->pdev->id, smp_processor_id(),
+			vfe_dev->axi_data.recovery_count);
+		vfe_dev->axi_data.recovery_count++;
+		msm_isp_start_error_recovery(vfe_dev);
+		return;
+	}
+#endif
 	memset(&halt_cmd, 0, sizeof(struct msm_vfe_axi_halt_cmd));
 	memset(&error_event, 0, sizeof(struct msm_isp_event_data));
 	halt_cmd.stop_camif = 1;

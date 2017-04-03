@@ -71,7 +71,7 @@ static const struct file_operations pmsg_fops = {
 
 static struct class *pmsg_class;
 static int pmsg_major;
-#define PMSG_NAME "pmsg"
+#define PMSG_NAME "pmsglite"
 #undef pr_fmt
 #define pr_fmt(fmt) PMSG_NAME ": " fmt
 

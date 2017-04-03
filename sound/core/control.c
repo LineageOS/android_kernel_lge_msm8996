@@ -103,7 +103,7 @@ static void snd_ctl_empty_read_queue(struct snd_ctl_file * ctl)
 {
 	unsigned long flags;
 	struct snd_kctl_event *cread;
-
+	
 	spin_lock_irqsave(&ctl->read_lock, flags);
 	while (!list_empty(&ctl->events)) {
 		cread = snd_kctl_event(ctl->events.next);
@@ -147,7 +147,7 @@ void snd_ctl_notify(struct snd_card *card, unsigned int mask,
 	unsigned long flags;
 	struct snd_ctl_file *ctl;
 	struct snd_kctl_event *ev;
-
+	
 	if (snd_BUG_ON(!card || !id))
 		return;
 	if (card->shutdown)
@@ -189,7 +189,7 @@ EXPORT_SYMBOL(snd_ctl_notify);
  * @control: the control template
  * @access: the default control access
  *
- * Allocates a new struct snd_kcontrol instance and copies the given template
+ * Allocates a new struct snd_kcontrol instance and copies the given template 
  * to the new instance. It does not copy volatile data (access).
  *
  * Return: The pointer of the new instance, or %NULL on failure.
@@ -199,7 +199,7 @@ static struct snd_kcontrol *snd_ctl_new(struct snd_kcontrol *control,
 {
 	struct snd_kcontrol *kctl;
 	unsigned int idx;
-
+	
 	if (snd_BUG_ON(!control || !control->count))
 		return NULL;
 
@@ -222,7 +222,7 @@ static struct snd_kcontrol *snd_ctl_new(struct snd_kcontrol *control,
  * @ncontrol: the initialization record
  * @private_data: the private data to set
  *
- * Allocates a new struct snd_kcontrol instance and initialize from the given
+ * Allocates a new struct snd_kcontrol instance and initialize from the given 
  * template.  When the access field of ncontrol is 0, it's assumed as
  * READWRITE access. When the count field is 0, it's assumes as one.
  *
@@ -233,7 +233,7 @@ struct snd_kcontrol *snd_ctl_new1(const struct snd_kcontrol_new *ncontrol,
 {
 	struct snd_kcontrol kctl;
 	unsigned int access;
-
+	
 	if (snd_BUG_ON(!ncontrol || !ncontrol->info))
 		return NULL;
 	memset(&kctl, 0, sizeof(kctl));
@@ -725,7 +725,7 @@ static int snd_ctl_elem_list(struct snd_card *card,
 	struct snd_kcontrol *kctl;
 	struct snd_ctl_elem_id *dst, *id;
 	unsigned int offset, space, jidx;
-
+	
 	if (copy_from_user(&list, _list, sizeof(list)))
 		return -EFAULT;
 	offset = list.offset;
@@ -789,7 +789,7 @@ static int snd_ctl_elem_info(struct snd_ctl_file *ctl,
 	struct snd_kcontrol_volatile *vd;
 	unsigned int index_offset;
 	int result;
-
+	
 	down_read(&card->controls_rwsem);
 	kctl = snd_ctl_find_id(card, &info->id);
 	if (kctl == NULL) {
@@ -952,7 +952,7 @@ static int snd_ctl_elem_lock(struct snd_ctl_file *file,
 	struct snd_kcontrol *kctl;
 	struct snd_kcontrol_volatile *vd;
 	int result;
-
+	
 	if (copy_from_user(&id, _id, sizeof(id)))
 		return -EFAULT;
 	down_write(&card->controls_rwsem);
@@ -980,7 +980,7 @@ static int snd_ctl_elem_unlock(struct snd_ctl_file *file,
 	struct snd_kcontrol *kctl;
 	struct snd_kcontrol_volatile *vd;
 	int result;
-
+	
 	if (copy_from_user(&id, _id, sizeof(id)))
 		return -EFAULT;
 	down_write(&card->controls_rwsem);

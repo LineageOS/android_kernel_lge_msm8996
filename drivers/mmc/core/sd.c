@@ -1461,8 +1461,14 @@ int mmc_attach_sd(struct mmc_host *host)
 
 	err = mmc_send_app_op_cond(host, 0, &ocr);
 	if (err)
+#ifdef CONFIG_MMC_PARANOID_SD_INIT
+	{
+		printk(KERN_ERR "%s: SD card identify failure by ACMD41 (err = %d)\n",mmc_hostname(host), err);
 		return err;
-
+	}
+#else
+		return err;
+#endif
 	mmc_attach_bus(host, &mmc_sd_ops);
 	if (host->ocr_avail_sd)
 		host->ocr_avail = host->ocr_avail_sd;

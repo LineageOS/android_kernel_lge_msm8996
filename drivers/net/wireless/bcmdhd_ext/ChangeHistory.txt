@@ -1,0 +1,14 @@
+BCM43596 DHD 1.80 Release Note.
+
+DHD 1.80.4 (2016.11.29)
+  - apply Downloadable CLM blob file and uses all ccode rev0.
+    * must locate the file in 'system/etc/wifi/4359_lg.clm_blob' from Official FW release
+  - Sync up with previous additional project fixes
+  - Linkstat Fix
+
+DHD 1.80.2 (2016.11.07)
+  - Sync up with previous project fixes
+  - NOS Update: GSCAN/LinkStat/NDOE/ePNO
+DHD 1.80.1 (2016.10.13)
+  - Initial release for G6 bring up
+

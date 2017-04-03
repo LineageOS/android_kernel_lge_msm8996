@@ -75,6 +75,18 @@
 
 #define UFS_BIT(x)	BIT(x)
 
+#if defined(CONFIG_UFS_LGE_FEATURE) && defined(CONFIG_MACH_MSM8996_ELSA) && !defined(CONFIG_MACH_MSM8996_ELSA_KDDI_JP) && !defined(CONFIG_MACH_MSM8996_ELSA_DCM_JP)
+#define LGE_UFS_THERM_TWEAK
+#endif
+
+#ifdef LGE_UFS_THERM_TWEAK
+#define CHECK_THERMAL_TIME  30000
+enum lge_ufs_tweak_status {
+	UFS_NORMAL_THERM_ENABLE_CLK_SCALING,
+	UFS_LOW_THERM_DISABLE_CLK_SCALING,
+};
+#endif
+
 struct ufs_hba;
 
 enum dev_cmd_type {
@@ -694,6 +706,7 @@ struct ufs_stats {
  * @is_urgent_bkops_lvl_checked: keeps track if the urgent bkops level for
  *  device is known or not.
  * @scsi_block_reqs_cnt: reference counting for scsi block requests
+ * @do_full_init: recovery from Line-Reset on Hibern8
  */
 struct ufs_hba {
 	void __iomem *mmio_base;
@@ -850,6 +863,10 @@ struct ufs_hba {
 	struct ufs_clk_gating clk_gating;
 	struct ufs_hibern8_on_idle hibern8_on_idle;
 
+#ifdef LGE_UFS_THERM_TWEAK
+	struct delayed_work therm_clk_ctrl_work;
+#endif
+
 	/* Control to enable/disable host capabilities */
 	u32 caps;
 	/* Allow dynamic clk gating */
@@ -895,6 +912,8 @@ struct ufs_hba {
 	bool no_ref_clk_gating;
 
 	int scsi_block_reqs_cnt;
+
+	bool do_full_init;
 
 #ifdef CONFIG_UFS_LGE_CARD_RESET
 	void*	card_reset_info;

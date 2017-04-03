@@ -127,6 +127,9 @@ struct anx7688_chip {
 
 #ifdef CONFIG_LGE_USB_ANX7688_OVP
 	union power_supply_propval rp;
+#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_SIMPLE
+	int dp_alt_mode;
+#endif
 #endif
 };
 

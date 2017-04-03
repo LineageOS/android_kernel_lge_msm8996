@@ -118,7 +118,7 @@
  * the only thing eating into inactive list space is active pages.
  *
  *
- *		Activating refaulting pages
+ *		Refaulting inactive pages
  *
  * All that is known about the active list is that the pages have been
  * accessed more than once in the past.  This means that at any given
@@ -131,12 +131,40 @@
  * used less frequently than the refaulting page - or even not used at
  * all anymore.
  *
+ * That means, if inactive cache is refaulting with a suitable refault
+ * distance, we assume the cache workingset is transitioning and put
+ * pressure on the existing cache pages on the active list.
+ *
  * If this is wrong and demotion kicks in, the pages which are truly
  * used more frequently will be reactivated while the less frequently
  * used once will be evicted from memory.
  *
  * But if this is right, the stale pages will be pushed out of memory
  * and the used pages get to stay in cache.
+ *
+ *
+ *		Refaulting active pages
+ *
+ * If, on the other hand, the refaulting pages have been recently
+ * deactivated, it means that the active list is no longer protecting
+ * actively used cache from reclaim: the cache is not transitioning to
+ * a different workingset, the existing workingset is thrashing in the
+ * space allocated to the page cache.
+ *
+ * When that is the case, mere activation of the refaulting pages is
+ * not enough. The page reclaim code needs to be informed of the high
+ * IO cost associated with the continued reclaim of page cache, so
+ * that it can steer pressure to the anonymous list.
+ *
+ * Just as when refaulting inactive pages, it's possible that there
+ * are cold(er) anonymous pages that can be swapped and forgotten in
+ * order to increase the space available to the page cache as a whole.
+ *
+ * If anonymous pages start thrashing as well, the reclaim scanner
+ * will aim for the list that imposes the lowest cost on the system,
+ * where cost is defined as:
+ *
+ *	refault rate * relative IO cost (as determined by swappiness)
  *
  *
  *		Implementation
@@ -150,56 +178,66 @@
  *
  * On cache misses for which there are shadow entries, an eligible
  * refault distance will immediately activate the refaulting page.
+ *
+ * On activation, cache pages are marked PageWorkingset, which is not
+ * cleared until the page is freed. Shadow entries will remember that
+ * flag to be able to tell inactive from active refaults. Refaults of
+ * previous workingset pages will restore that page flag and inform
+ * page reclaim of the IO cost.
+ *
+ * XXX: Since we don't track anonymous references, every swap-in event
+ * is considered a workingset refault - regardless of distance. Swapin
+ * floods will thus always raise the assumed IO cost of reclaiming the
+ * anonymous LRU lists, even if the pages haven't been used recently.
+ * Temporary events don't matter that much other than they might delay
+ * the stabilization a bit. But during continuous thrashing, anonymous
+ * pages can have a leg-up against page cache. This might need fixing
+ * for ultra-fast IO devices or secondary memory types.
  */
 
-static void *pack_shadow(unsigned long eviction, struct zone *zone)
+#define EVICTION_SHIFT	(RADIX_TREE_EXCEPTIONAL_ENTRY +			\
+			 1 + ZONES_SHIFT + NODES_SHIFT)
+#define EVICTION_MASK	(~0UL >> EVICTION_SHIFT)
+
+/*
+ * Eviction timestamps need to be able to cover the full range of
+ * actionable refaults. However, bits are tight in the radix tree
+ * entry, and after storing the identifier for the lruvec there might
+ * not be enough left to represent every single actionable refault. In
+ * that case, we have to sacrifice granularity for distance, and group
+ * evictions into coarser buckets by shaving off lower timestamp bits.
+ */
+static unsigned int bucket_order __read_mostly;
+
+static void *pack_shadow(struct zone *zone, unsigned long eviction,
+			 bool workingset)
 {
+	eviction >>= bucket_order;
 	eviction = (eviction << NODES_SHIFT) | zone_to_nid(zone);
 	eviction = (eviction << ZONES_SHIFT) | zone_idx(zone);
+	eviction = (eviction << 1) | workingset;
 	eviction = (eviction << RADIX_TREE_EXCEPTIONAL_SHIFT);
 
 	return (void *)(eviction | RADIX_TREE_EXCEPTIONAL_ENTRY);
 }
 
-static void unpack_shadow(void *shadow,
-			  struct zone **zone,
-			  unsigned long *distance)
+static void unpack_shadow(void *shadow, struct zone **zonep,
+			  unsigned long *evictionp, bool *workingsetp)
 {
 	unsigned long entry = (unsigned long)shadow;
-	unsigned long eviction;
-	unsigned long refault;
-	unsigned long mask;
-	int zid, nid;
+	int nid, zid;
+	bool workingset;
 
 	entry >>= RADIX_TREE_EXCEPTIONAL_SHIFT;
+	workingset = entry & 1;
+	entry >>= 1;
 	zid = entry & ((1UL << ZONES_SHIFT) - 1);
 	entry >>= ZONES_SHIFT;
 	nid = entry & ((1UL << NODES_SHIFT) - 1);
 	entry >>= NODES_SHIFT;
-	eviction = entry;
-
-	*zone = NODE_DATA(nid)->node_zones + zid;
-
-	refault = atomic_long_read(&(*zone)->inactive_age);
-	mask = ~0UL >> (NODES_SHIFT + ZONES_SHIFT +
-			RADIX_TREE_EXCEPTIONAL_SHIFT);
-	/*
-	 * The unsigned subtraction here gives an accurate distance
-	 * across inactive_age overflows in most cases.
-	 *
-	 * There is a special case: usually, shadow entries have a
-	 * short lifetime and are either refaulted or reclaimed along
-	 * with the inode before they get too old.  But it is not
-	 * impossible for the inactive_age to lap a shadow entry in
-	 * the field, which can then can result in a false small
-	 * refault distance, leading to a false activation should this
-	 * old entry actually refault again.  However, earlier kernels
-	 * used to deactivate unconditionally with *every* reclaim
-	 * invocation for the longest time, so the occasional
-	 * inappropriate activation leading to pressure on the active
-	 * list is not a problem.
-	 */
-	*distance = (refault - eviction) & mask;
+	*zonep = NODE_DATA(nid)->node_zones + zid;
+	*evictionp = entry << bucket_order;
+	*workingsetp = workingset;
 }
 
 /**
@@ -214,33 +252,102 @@ void *workingset_eviction(struct address_space *mapping, struct page *page)
 {
 	struct zone *zone = page_zone(page);
 	unsigned long eviction;
+	struct lruvec *lruvec;
 
-	eviction = atomic_long_inc_return(&zone->inactive_age);
-	return pack_shadow(eviction, zone);
+	lruvec = &zone->lruvec;
+	eviction = atomic_long_inc_return(&lruvec->inactive_age);
+	return pack_shadow(zone, eviction, PageWorkingset(page));
 }
 
 /**
  * workingset_refault - evaluate the refault of a previously evicted page
+ * @page: the freshly allocated replacement page
  * @shadow: shadow entry of the evicted page
  *
  * Calculates and evaluates the refault distance of the previously
  * evicted page in the context of the zone it was allocated in.
- *
- * Returns %true if the page should be activated, %false otherwise.
  */
-bool workingset_refault(void *shadow)
+void workingset_refault(struct page *page, void *shadow)
 {
 	unsigned long refault_distance;
+	unsigned long active_file;
+	unsigned long eviction;
+	struct lruvec *lruvec;
+	unsigned long anon;
+	unsigned long refault;
 	struct zone *zone;
+	bool workingset;
 
-	unpack_shadow(shadow, &zone, &refault_distance);
-	inc_zone_state(zone, WORKINGSET_REFAULT);
+	unpack_shadow(shadow, &zone, &eviction, &workingset);
 
-	if (refault_distance <= zone_page_state(zone, NR_ACTIVE_FILE)) {
-		inc_zone_state(zone, WORKINGSET_ACTIVATE);
-		return true;
+	rcu_read_lock();
+	/*
+	 * Look up the memcg associated with the stored ID. It might
+	 * have been deleted since the page's eviction.
+	 *
+	 * Note that in rare events the ID could have been recycled
+	 * for a new cgroup that refaults a shared page. This is
+	 * impossible to tell from the available data. However, this
+	 * should be a rare and limited disturbance, and activations
+	 * are always speculative anyway. Ultimately, it's the aging
+	 * algorithm's job to shake out the minimum access frequency
+	 * for the active cache.
+	 *
+	 */
+	lruvec = &zone->lruvec;
+	refault = atomic_long_read(&lruvec->inactive_age);
+	active_file = get_lru_size(lruvec, LRU_ACTIVE_FILE);
+	anon = get_lru_size(lruvec, LRU_ACTIVE_ANON) +
+			get_lru_size(lruvec, LRU_INACTIVE_ANON);
+
+	/*
+	 * Calculate the refault distance.
+	 *
+	 * The unsigned subtraction here gives an accurate distance
+	 * across inactive_age overflows in most cases. There is a
+	 * special case: usually, shadow entries have a short lifetime
+	 * and are either refaulted or reclaimed along with the inode
+	 * before they get too old.  But it is not impossible for the
+	 * inactive_age to lap a shadow entry in the field, which can
+	 * then can result in a false small refault distance, leading
+	 * to a false activation should this old entry actually
+	 * refault again.  However, earlier kernels used to deactivate
+	 * unconditionally with *every* reclaim invocation for the
+	 * longest time, so the occasional inappropriate activation
+	 * leading to pressure on the active list is not a problem.
+	 */
+	refault_distance = (refault - eviction) & EVICTION_MASK;
+
+
+	/*
+	 * Compare the distance with the existing workingset. We don't
+	 * act on pages that couldn't stay resident even with all the
+	 * memory available to the page cache.
+	 */
+	if (refault_distance > active_file + anon)
+		goto out;
+
+	/*
+	 * If inactive cache is refaulting, activate the page to
+	 * challenge the current cache workingset. The existing cache
+	 * might be stale, or at least colder than the contender.
+	 *
+	 * If active cache is refaulting (PageWorkingset set at time
+	 * of eviction), it means that the page cache as a whole is
+	 * thrashing. Restore PageWorkingset to inform the LRU code
+	 * about the additional cost of reclaiming more page cache.
+	 */
+	SetPageActive(page);
+	atomic_long_inc(&lruvec->inactive_age);
+
+	if (workingset) {
+		SetPageWorkingset(page);
+		inc_zone_state(zone, REFAULT_ACTIVE_FILE);
+	} else {
+		inc_zone_state(zone, REFAULT_INACTIVE_FILE);
 	}
-	return false;
+out:
+	rcu_read_unlock();
 }
 
 /**
@@ -249,7 +356,20 @@ bool workingset_refault(void *shadow)
  */
 void workingset_activation(struct page *page)
 {
-	atomic_long_inc(&page_zone(page)->inactive_age);
+	struct zone *zone = page_zone(page);
+	struct lruvec *lruvec;
+
+	rcu_read_lock();
+	/*
+	 * Filter non-memcg pages here, e.g. unmap can call
+	 * mark_page_accessed() on VDSO pages.
+	 *
+	 */
+
+	lruvec = &zone->lruvec;
+	atomic_long_inc(&lruvec->inactive_age);
+
+	rcu_read_unlock();
 }
 
 /*
@@ -278,7 +398,8 @@ static unsigned long count_shadow_nodes(struct shrinker *shrinker,
 	shadow_nodes = list_lru_count_node(&workingset_shadow_nodes, sc->nid);
 	local_irq_enable();
 
-	pages = node_present_pages(sc->nid);
+	pages = node_page_state(sc->nid, NR_ACTIVE_FILE) +
+		node_page_state(sc->nid, NR_INACTIVE_FILE);
 	/*
 	 * Active cache pages are limited to 50% of memory, and shadow
 	 * entries that represent a refault distance bigger than that
@@ -355,7 +476,7 @@ static enum lru_status shadow_lru_isolate(struct list_head *item,
 		}
 	}
 	BUG_ON(node->count);
-	inc_zone_state(page_zone(virt_to_page(node)), WORKINGSET_NODERECLAIM);
+	inc_zone_state(page_zone(virt_to_page(node)), REFAULT_NODERECLAIM);
 	if (!__radix_tree_delete_node(&mapping->page_tree, node))
 		BUG();
 
@@ -397,7 +518,24 @@ static struct lock_class_key shadow_nodes_key;
 
 static int __init workingset_init(void)
 {
+	unsigned int timestamp_bits;
+	unsigned int max_order;
 	int ret;
+
+	BUILD_BUG_ON(BITS_PER_LONG < EVICTION_SHIFT);
+	/*
+	 * Calculate the eviction bucket size to cover the longest
+	 * actionable refault distance, which is currently half of
+	 * memory (totalram_pages/2). However, memory hotplug may add
+	 * some more pages at runtime, so keep working with up to
+	 * double the initial memory by using totalram_pages as-is.
+	 */
+	timestamp_bits = BITS_PER_LONG - EVICTION_SHIFT;
+	max_order = fls_long(totalram_pages - 1);
+	if (max_order > timestamp_bits)
+		bucket_order = max_order - timestamp_bits;
+	printk("workingset: timestamp_bits=%d max_order=%d bucket_order=%u\n",
+	       timestamp_bits, max_order, bucket_order);
 
 	ret = list_lru_init_key(&workingset_shadow_nodes, &shadow_nodes_key);
 	if (ret)

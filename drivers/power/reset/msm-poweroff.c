@@ -159,12 +159,14 @@ static void set_dload_mode(int on)
 	dload_mode_enabled = on;
 }
 
-#ifndef CONFIG_LGE_HANDLE_PANIC
+#if !defined(CONFIG_LGE_HANDLE_PANIC) || defined(CONFIG_LGE_DEFAULT_HARD_RESET)
 static bool get_dload_mode(void)
 {
 	return dload_mode_enabled;
 }
+#endif
 
+#ifndef CONFIG_LGE_HANDLE_PANIC
 static void enable_emergency_dload_mode(void)
 {
 	int ret;
@@ -302,8 +304,12 @@ static void msm_restart_prepare(const char *cmd)
 			(in_panic || restart_mode == RESTART_DLOAD));
 #endif
 
-#ifdef CONFIG_LGE_HANDLE_PANIC
+#if defined(CONFIG_LGE_HANDLE_PANIC) && !defined(CONFIG_LGE_DEFAULT_HARD_RESET)
 	if (!hard_reset)
+		need_warm_reset = true;
+#elif defined(CONFIG_LGE_DEFAULT_HARD_RESET)
+	/* Set warm reset as true when device is in dload mode */
+	if (in_panic || get_dload_mode())
 		need_warm_reset = true;
 #else
 	if (qpnp_pon_check_hard_reset_stored()) {
@@ -335,12 +341,16 @@ static void msm_restart_prepare(const char *cmd)
 				PON_RESTART_REASON_RECOVERY);
 			__raw_writel(0x77665502, restart_reason);
 		} else if (!strncmp(cmd, "fota", 4)) {
+			qpnp_pon_set_restart_reason(
+				PON_RESTART_REASON_FOTA);
 			__raw_writel(0x77665566, restart_reason);
 		} else if (!strcmp(cmd, "rtc")) {
 			qpnp_pon_set_restart_reason(
 				PON_RESTART_REASON_RTC);
 			__raw_writel(0x77665503, restart_reason);
 		} else if (!strcmp(cmd, "wallpaper_fail")) {
+			qpnp_pon_set_restart_reason(
+				PON_RESTART_REASON_WALLPAPER_FAIL);
 			__raw_writel(0x77665507, restart_reason);
 		} else if (!strcmp(cmd, "dm-verity device corrupted")) {
 			qpnp_pon_set_restart_reason(
@@ -365,9 +375,13 @@ static void msm_restart_prepare(const char *cmd)
 				PON_RESTART_REASON_FOTA_OUT_LCD_OFF);
 		} else if (!strncmp(cmd, "LCD off", 7)) {
 			__raw_writel(0x77665562, restart_reason);
+			qpnp_pon_set_restart_reason(
+				PON_RESTART_REASON_LCD_OFF);
 #endif
 #ifdef CONFIG_LGE_PM
 		} else if (!strncmp(cmd, "charge_reset", 12)) {
+			qpnp_pon_set_restart_reason(
+				PON_RESTART_REASON_CHARGE_RESET);
 			__raw_writel(0x776655a0, restart_reason);
 #endif
 		} else if (!strncmp(cmd, "oem-", 4)) {
@@ -377,16 +391,29 @@ static void msm_restart_prepare(const char *cmd)
 			if (!ret)
 				__raw_writel(0x6f656d00 | (code & 0xff),
 					     restart_reason);
+#ifdef CONFIG_LGE_DEFAULT_HARD_RESET
+			if (!strncmp(cmd, "oem-90466252",12)) {
+				qpnp_pon_set_restart_reason(
+					PON_RESTART_REASON_LAF_RESTART_MODE);
+			} else if (!strncmp(cmd, "oem-02179092",12)) {
+				qpnp_pon_set_restart_reason(
+					PON_RESTART_REASON_LAF_ONRS);
+			}
+#endif
 #ifndef CONFIG_LGE_HANDLE_PANIC
 		} else if (!strncmp(cmd, "edl", 3)) {
 			enable_emergency_dload_mode();
 #endif
 		} else {
+			qpnp_pon_set_restart_reason(
+				PON_RESTART_REASON_NORMAL);
 			__raw_writel(0x77665501, restart_reason);
 		}
 	}
 #ifdef CONFIG_LGE_HANDLE_PANIC
 	else {
+		qpnp_pon_set_restart_reason(
+			PON_RESTART_REASON_NORMAL);
 		__raw_writel(0x776655ff, restart_reason);
 	}
 #endif
@@ -395,6 +422,8 @@ static void msm_restart_prepare(const char *cmd)
 	if (restart_mode == RESTART_DLOAD) {
 		set_dload_mode(0);
 		lge_set_restart_reason(LAF_DLOAD_MODE);
+		qpnp_pon_set_restart_reason(
+				PON_RESTART_REASON_LAF_DLOAD_MODE);
 	}
 
 	if (in_panic)

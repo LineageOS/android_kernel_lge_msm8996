@@ -18,13 +18,10 @@
 #if IS_ENABLED(CONFIG_LGE_DISPLAY_READER_MODE)
 #include "lge_reader_mode.h"
 #include "../mdss_mdp.h"
-
 struct dsi_panel_cmds reader_mode_step0_cmds;
 struct dsi_panel_cmds reader_mode_step1_cmds;
 struct dsi_panel_cmds reader_mode_step2_cmds;
 struct dsi_panel_cmds reader_mode_step3_cmds;
-struct dsi_panel_cmds reader_mode_on_cmds;
-struct dsi_panel_cmds reader_mode_off_cmds;
 #endif
 
 char *lge_blmap_name[] = {
@@ -95,59 +92,55 @@ int lge_mdss_dsi_parse_reader_mode_cmds(struct device_node *np, struct mdss_dsi_
 			"qcom,panel-reader-mode-step2-command", "qcom,mdss-dsi-reader-mode-command-state");
 	mdss_dsi_parse_dcs_cmds(np, &reader_mode_step3_cmds,
 			"qcom,panel-reader-mode-step3-command", "qcom,mdss-dsi-reader-mode-command-state");
-
-
-	mdss_dsi_parse_dcs_cmds(np, &reader_mode_on_cmds,
-			"qcom,panel-reader-mode-on-command", "qcom,mdss-dsi-reader-mode-command-state");
-	mdss_dsi_parse_dcs_cmds(np, &reader_mode_off_cmds,
-			"qcom,panel-reader-mode-off-command", "qcom,mdss-dsi-reader-mode-command-state");
 	return 0;
 }
 
 bool lge_change_reader_mode(struct mdss_dsi_ctrl_pdata *ctrl, int new_mode)
 {
 	switch(new_mode) {
+		char mask;
 	case READER_MODE_STEP_1:
-		if (reader_mode_step1_cmds.cmd_cnt && reader_mode_on_cmds.cmd_cnt) {
-			pr_info("[Display]%s: reader_mode_step1 \n",__func__);
-			mdss_dsi_panel_cmds_send(ctrl, &reader_mode_step1_cmds, CMD_REQ_COMMIT);
-			mdss_dsi_panel_cmds_send(ctrl, &reader_mode_on_cmds, CMD_REQ_COMMIT);
-		}
+		pr_info("%s: Reader Mode Step 1\n",__func__);
+		mdss_dsi_panel_cmds_send(ctrl, &reader_mode_step1_cmds, CMD_REQ_COMMIT);
+		mask = MONO_MASK;
+		ctrl->reg_55h_cmds.cmds[0].payload[1] &= (~mask);
+		ctrl->reg_f0h_cmds.cmds[0].payload[1] |= READER_GC_MASK;
 		break;
 	case READER_MODE_STEP_2:
-		if (reader_mode_step2_cmds.cmd_cnt && reader_mode_on_cmds.cmd_cnt) {
-			pr_info("[Display]%s: reader_mode_step2 \n",__func__);
-			mdss_dsi_panel_cmds_send(ctrl, &reader_mode_step2_cmds, CMD_REQ_COMMIT);
-			mdss_dsi_panel_cmds_send(ctrl, &reader_mode_on_cmds, CMD_REQ_COMMIT);
-		}
+		pr_info("%s: Reader Mode Step 2\n",__func__);
+		mdss_dsi_panel_cmds_send(ctrl, &reader_mode_step2_cmds, CMD_REQ_COMMIT);
+		mask = MONO_MASK;
+		ctrl->reg_55h_cmds.cmds[0].payload[1] &= (~mask);
+		ctrl->reg_f0h_cmds.cmds[0].payload[1] |= READER_GC_MASK;
 		break;
 	case READER_MODE_STEP_3:
-		if (reader_mode_step3_cmds.cmd_cnt && reader_mode_on_cmds.cmd_cnt) {
-			pr_info("[Display]%s: reader_mode_step3 \n",__func__);
-			mdss_dsi_panel_cmds_send(ctrl, &reader_mode_step3_cmds, CMD_REQ_COMMIT);
-			mdss_dsi_panel_cmds_send(ctrl, &reader_mode_on_cmds, CMD_REQ_COMMIT);
-		}
+		pr_info("%s: Reader Mode Step 3\n",__func__);
+		mdss_dsi_panel_cmds_send(ctrl, &reader_mode_step3_cmds, CMD_REQ_COMMIT);
+		mask = MONO_MASK;
+		ctrl->reg_55h_cmds.cmds[0].payload[1] &= (~mask);
+		ctrl->reg_f0h_cmds.cmds[0].payload[1] |= READER_GC_MASK;
 		break;
 	case READER_MODE_STEP_4:
+		pr_info("%s: Reader Mode Step 4(MONO)\n",__func__);
+		ctrl->reg_55h_cmds.cmds[0].payload[1] |= MONO_MASK;
+		mask = READER_GC_MASK;
+		ctrl->reg_f0h_cmds.cmds[0].payload[1] &= (~mask);
+		break;
 	case READER_MODE_OFF:
 	default:
-		if (reader_mode_step0_cmds.cmd_cnt && reader_mode_off_cmds.cmd_cnt) {
-			pr_info("[Display]%s: reader_mode_step4 or off \n",__func__);
-			mdss_dsi_panel_cmds_send(ctrl, &reader_mode_step0_cmds, CMD_REQ_COMMIT);
-#if defined(CONFIG_LGE_LCD_DYNAMIC_CABC_MIE_CTRL)
-			if(ctrl->ie_on == 1){
-				pr_info("[Display]%s: image enhance on\n",__func__);
-				reader_mode_off_cmds.cmds[0].payload[1] = 0x81;
-			}
-			else
-			{
-				pr_info("[Display]%s: image enhance off\n",__func__);
-				reader_mode_off_cmds.cmds[0].payload[1] = 0x01;
-			}
-			mdss_dsi_panel_cmds_send(ctrl, &reader_mode_off_cmds, CMD_REQ_COMMIT);
-#endif
-		}
-	} /* switch(new_mode) */
+		pr_info("%s: Reader Mode Step OFF\n",__func__);
+		mdss_dsi_panel_cmds_send(ctrl, &reader_mode_step0_cmds, CMD_REQ_COMMIT);
+		mask = MONO_MASK;
+		ctrl->reg_55h_cmds.cmds[0].payload[1] &= (~mask);
+		mask = READER_GC_MASK;
+		ctrl->reg_f0h_cmds.cmds[0].payload[1] &= (~mask);
+	}
+	mdss_dsi_panel_cmds_send(ctrl, &ctrl->reg_55h_cmds, CMD_REQ_COMMIT);
+	mdss_dsi_panel_cmds_send(ctrl, &ctrl->reg_f0h_cmds, CMD_REQ_COMMIT);
+	pr_info("%s : 55h:0x%02x, f0h:0x%02x, f2h(SH):0x%02x, fbh(CABC):0x%02x \n",__func__,
+		ctrl->reg_55h_cmds.cmds[0].payload[1],	ctrl->reg_f0h_cmds.cmds[0].payload[1],
+		ctrl->reg_f2h_cmds.cmds[0].payload[3], ctrl->reg_fbh_cmds.cmds[0].payload[4]);
+
 	return true;
 }
 

@@ -38,6 +38,7 @@
 #include "diag_masks.h"
 #include "diag_usb.h"
 #include "diag_mux.h"
+#include "diag_ipc_logging.h"
 
 #define STM_CMD_VERSION_OFFSET	4
 #define STM_CMD_MASK_OFFSET	5
@@ -449,7 +450,9 @@ void diag_update_pkt_buffer(unsigned char *buf, uint32_t len, int type)
 		return;
 	}
 
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diagchar_mutex to obtain ", __LINE__);	
 	mutex_lock(&driver->diagchar_mutex);
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diagchar_mutex obtained ", __LINE__);
 	if (CHK_OVERFLOW(ptr, ptr, ptr + max_len, len)) {
 		memcpy(ptr, temp , len);
 		*length = len;
@@ -459,25 +462,32 @@ void diag_update_pkt_buffer(unsigned char *buf, uint32_t len, int type)
 			 __func__, len, type);
 	}
 	mutex_unlock(&driver->diagchar_mutex);
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diagchar_mutex released ", __LINE__);
 }
 
 void diag_update_userspace_clients(unsigned int type)
 {
 	int i;
 
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diagchar_mutex to obtain ", __LINE__);	
 	mutex_lock(&driver->diagchar_mutex);
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diagchar_mutex obtained ", __LINE__);
 	for (i = 0; i < driver->num_clients; i++)
 		if (driver->client_map[i].pid != 0)
 			driver->data_ready[i] |= type;
 	wake_up_interruptible(&driver->wait_q);
 	mutex_unlock(&driver->diagchar_mutex);
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diagchar_mutex released ", __LINE__);
 }
 
 void diag_update_md_clients(unsigned int type)
 {
 	int i, j;
 
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diagchar_mutex to obtain ", __LINE__);	
+
 	mutex_lock(&driver->diagchar_mutex);
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diagchar_mutex obtained ", __LINE__);
 	for (i = 0; i < NUM_MD_SESSIONS; i++) {
 		if (driver->md_session_map[i] != NULL)
 			for (j = 0; j < driver->num_clients; j++) {
@@ -491,6 +501,7 @@ void diag_update_md_clients(unsigned int type)
 	}
 	wake_up_interruptible(&driver->wait_q);
 	mutex_unlock(&driver->diagchar_mutex);
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diagchar_mutex released ", __LINE__);
 }
 
 #ifdef CONFIG_LGE_USB_DIAG_LOCK_SPR
@@ -498,7 +509,9 @@ void diag_update_sleeping_process_atd(int data_type)
 {
 	int i;
 
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diagchar_mutex to obtain ", __LINE__);
 	mutex_lock(&driver->diagchar_mutex);
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diagchar_mutex obtained ", __LINE__);
 	for (i = 0; i < driver->num_clients; i++)
 		if (!strcmp(driver->client_map[i].name, "atd")) {
 			pr_debug("%s: process atd found\n", __func__);
@@ -522,6 +535,7 @@ void diag_update_sleeping_process(int process_id, int data_type)
 		}
 	wake_up_interruptible(&driver->wait_q);
 	mutex_unlock(&driver->diagchar_mutex);
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:diagchar_mutex released ", __LINE__);
 }
 
 static int diag_send_data(struct diag_cmd_reg_t *entry, unsigned char *buf,
@@ -1395,9 +1409,11 @@ static int diagfwd_mux_close(int id, int mode)
 		pr_debug("diag: In %s, re-enabling HDLC encoding\n",
 		       __func__);
 		mutex_lock(&driver->hdlc_disable_mutex);
+		DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:hdlc_disable_mutex obtained ", __LINE__);
 		if (driver->md_session_mode == DIAG_MD_NONE)
 			driver->hdlc_disabled = 0;
 		mutex_unlock(&driver->hdlc_disable_mutex);
+		DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:hdlc_disable_mutex released ", __LINE__);
 		queue_work(driver->diag_wq,
 			&(driver->update_user_clients));
 	}

@@ -688,129 +688,16 @@ static int32_t msm_actuator_move_focus(
 
 #ifdef CONFIG_LG_OIS
 extern void lc898122a_af_vcm_code(int16_t UsVcmCod);
-extern void lgit_imx234_rohm_write_vcm(int16_t nDAC);
-extern void lgit_imx298_rohm_write_vcm(int16_t nDAC);
-
-
-#define EEPROM_SLAVE_ID (0x54) //(0xA8 >> 1)
-#define EEPROM_ADDR_VCM_VERSION (0x92E)
-
-static int32_t msm_actuator_get_vcm_version(struct msm_actuator_ctrl_t *a_ctrl, uint16_t* vcm_ver)
-{
-	int32_t rc = 0;
-	struct msm_camera_cci_client *cci_client = NULL;
-
-
-	cci_client = a_ctrl->i2c_eeprom_client.cci_client;
-	cci_client->sid = EEPROM_SLAVE_ID; //0xA0 >> 1;
-	cci_client->retries = 3;
-	cci_client->id_map = 0;
-	cci_client->cci_i2c_master = a_ctrl->cci_master;
-	a_ctrl->i2c_eeprom_client.addr_type = MSM_CAMERA_I2C_WORD_ADDR;
-
-	if( a_ctrl->i2c_eeprom_client.i2c_func_tbl->i2c_read)
-	{
-		rc = a_ctrl->i2c_eeprom_client.i2c_func_tbl->i2c_read(
-				&a_ctrl->i2c_eeprom_client,
-				EEPROM_ADDR_VCM_VERSION,
-				vcm_ver,
-				MSM_CAMERA_I2C_WORD_DATA);
-	}
-	if (rc < 0) {
-		pr_err("%s: read vcm version failed! (rc: %d)\n", __func__, rc);
-	}
-
-	pr_err("%s: [CHECK] vcm_ver(%d) rc(%d)\n", __func__, *vcm_ver, rc);
-	return rc;
-}
-
-
-static int msm_actuator_get_dt_data(struct msm_actuator_ctrl_t *a_ctrl)
-{
-	int rc = 0, i = 0;
-	struct msm_eeprom_board_info *eb_info;
-	struct msm_camera_power_ctrl_t *power_info =
-		&a_ctrl->eboard_info->power_info;
-	struct device_node *of_node = NULL;
-	struct msm_camera_gpio_conf *gconf = NULL;
-	int8_t gpio_array_size = 0;
-	uint16_t *gpio_array = NULL;
-
-	eb_info = a_ctrl->eboard_info;
-
-	if (a_ctrl->act_device_type == MSM_CAMERA_SPI_DEVICE)
-		of_node = a_ctrl->i2c_client.
-			spi_client->spi_master->dev.of_node;
-	else if (a_ctrl->act_device_type == MSM_CAMERA_PLATFORM_DEVICE)
-		of_node = a_ctrl->pdev->dev.of_node;
-
-	if (!of_node) {
-		pr_err("%s: %d of_node is NULL\n", __func__ , __LINE__);
-		return -ENOMEM;
-	}
-	rc = msm_camera_get_dt_vreg_data(of_node, &power_info->cam_vreg,
-					     &power_info->num_vreg);
-	if (rc < 0){
-		pr_err("%s: %d msm_camera_get_dt_vreg_data fail\n", __func__ , __LINE__);
-		return rc;
-	}
-
-	rc = msm_camera_get_dt_power_setting_data(of_node,
-		power_info->cam_vreg, power_info->num_vreg,
-		power_info);
-	if (rc < 0)
-		goto ERROR1;
-
-	power_info->gpio_conf = kzalloc(sizeof(struct msm_camera_gpio_conf),
-					GFP_KERNEL);
-	if (!power_info->gpio_conf) {
-		rc = -ENOMEM;
-		goto ERROR2;
-	}
-	gconf = power_info->gpio_conf;
-	gpio_array_size = of_gpio_count(of_node);
-	pr_info("%s gpio count %d\n", __func__, gpio_array_size);
-
-	if (gpio_array_size > 0) {
-		gpio_array = kzalloc(sizeof(uint16_t) * gpio_array_size,
-			GFP_KERNEL);
-		if (!gpio_array) {
-			pr_err("%s failed %d\n", __func__, __LINE__);
-			goto ERROR3;
-		}
-		for (i = 0; i < gpio_array_size; i++) {
-			gpio_array[i] = of_get_gpio(of_node, i);
-			CDBG("%s gpio_array[%d] = %d\n", __func__, i,
-				gpio_array[i]);
-		}
-
-		rc = msm_camera_get_dt_gpio_req_tbl(of_node, gconf,
-			gpio_array, gpio_array_size);
-		if (rc < 0) {
-			pr_err("%s failed %d\n", __func__, __LINE__);
-			goto ERROR4;
-		}
-
-		rc = msm_camera_init_gpio_pin_tbl(of_node, gconf,
-			gpio_array, gpio_array_size);
-		if (rc < 0) {
-			pr_err("%s failed %d\n", __func__, __LINE__);
-			goto ERROR4;
-		}
-		kfree(gpio_array);
-	}
-
-	return rc;
-ERROR4:
-	kfree(gpio_array);
-ERROR3:
-	kfree(power_info->gpio_conf);
-ERROR2:
-	kfree(power_info->cam_vreg);
-ERROR1:
-	kfree(power_info->power_setting);
-	return rc;
-}
+#ifdef CONFIG_MACH_MSM8996_LUCYE
+extern void lgit_imx258_rohm_write_vcm(int16_t nDAC);
+extern void lgit_imx258_claf_rohm_write_vcm(int16_t nDAC);
+extern void imt_imx258_rohm_write_vcm(int16_t nDAC);
+extern uint16_t map_ver;
+extern uint16_t eeprom_slave_id;
+extern uint16_t cal_ver;
+#define LGIT_EEPROM_SLAVE_ID (0x54)
+#define IMT_EEPROM_SLAVE_ID (0x51)
+#endif
 
 static void msm_actuator_parse_claf_i2c_params(struct msm_actuator_ctrl_t *a_ctrl,
 	int16_t next_lens_position, uint32_t hw_params, uint16_t delay)
@@ -956,20 +843,23 @@ static int32_t msm_actuator_claf_move_focus(
 		}
 	}
 	#endif
-	tar_pos = curr_lens_pos - 300;// - 512; [Offset]
+	tar_pos = curr_lens_pos;// - 300;// - 512; [Offset]
 	//pr_err("tar_pos = [%d], curr_lens_pos = [%d] \n",tar_pos, curr_lens_pos);
 
 	//pr_err("KSY macro_dac: %d, macro_mech: %d, infinity: %d, curr_lens_pos: %d, tar_pos: %d, a_ctrl->total_steps = %d\n", a_ctrl->region_params[0].macro_dac,
 		//a_ctrl->region_params[0].macro_mecha_end, a_ctrl->region_params[0].infinity_dac, curr_lens_pos, tar_pos, a_ctrl->total_steps);
 
-
-#ifdef CONFIG_IMX234
-	lgit_imx234_rohm_write_vcm(tar_pos);
+#ifdef CONFIG_MACH_MSM8996_LUCYE
+	if(eeprom_slave_id == LGIT_EEPROM_SLAVE_ID){
+	    if(map_ver == 0x01 && cal_ver == 0x02){ // LGIT OLAF Module
+			lgit_imx258_rohm_write_vcm(tar_pos);// + 512); // for bu24235gwl unsigned 10bit
+		}else{ // LGIT CLAF Module
+	        lgit_imx258_claf_rohm_write_vcm(tar_pos);// + 512); // for bu24235gwl unsigned 10bit
+		}
+	}else{
+	    imt_imx258_rohm_write_vcm(tar_pos);// + 512); // IMT CLAF Module
+	}
 #endif
-#if defined(CONFIG_MACH_MSM8996_ELSA) && !defined(CONFIG_IMX234)
-    lgit_imx298_rohm_write_vcm(tar_pos);
-#endif
-
 	if (rc < 0) {
 		pr_err("i2c write error:%d\n", rc);
 		return rc;
@@ -1588,11 +1478,16 @@ static int32_t msm_actuator_claf_set_position(
 
 		//pr_err("macro_dac: %d, infinity: %d, tar_pos: %d, a_ctrl->total_steps = %d\n", a_ctrl->region_params[0].macro_dac,
 		//	a_ctrl->region_params[0].infinity_dac, tar_pos, a_ctrl->total_steps);
-#ifdef CONFIG_IMX234
-	lgit_imx234_rohm_write_vcm(tar_pos);
-#endif
-#ifdef CONFIG_MACH_MSM8996_ELSA
-    lgit_imx298_rohm_write_vcm(tar_pos);
+#ifdef CONFIG_MACH_MSM8996_LUCYE
+	if(eeprom_slave_id == LGIT_EEPROM_SLAVE_ID){
+	    if(map_ver == 0x01 && cal_ver == 0x02){ // LGIT OLAF Module
+			lgit_imx258_rohm_write_vcm(tar_pos);// + 512); // for bu24235gwl unsigned 10bit
+		}else{ // LGIT CLAF Module
+	        lgit_imx258_claf_rohm_write_vcm(tar_pos);// + 512); // for bu24235gwl unsigned 10bit
+		}
+	}else{
+	    imt_imx258_rohm_write_vcm(tar_pos);// + 512); // IMT CLAF Module
+	}
 #endif
 	}
 	CDBG("%s exit %d\n", __func__, __LINE__);
@@ -2155,13 +2050,6 @@ static int32_t msm_actuator_power_up(struct msm_actuator_ctrl_t *a_ctrl)
 	return rc;
 }
 
-#ifdef CONFIG_LG_OIS
-static struct msm_cam_clk_info cam_8974_clk_info[] = {
-	[SENSOR_CAM_MCLK] = {"cam_src_clk", 19200000},
-	[SENSOR_CAM_CLK] = {"cam_clk", 0},
-};
-#endif
-
 static struct v4l2_subdev_core_ops msm_actuator_subdev_core_ops = {
 	.ioctl = msm_actuator_subdev_ioctl,
 };
@@ -2270,15 +2158,7 @@ static int32_t msm_actuator_platform_probe(struct platform_device *pdev)
 {
 	int32_t rc = 0;
 	struct msm_camera_cci_client *cci_client = NULL;
-#ifdef CONFIG_LG_OIS
-	struct msm_camera_cci_client *cci_eeprom_client = NULL;
-	struct msm_camera_power_ctrl_t *power_info = NULL;
-	struct msm_eeprom_board_info *eb_info = NULL;
-	uint16_t vcm_ver = -1;
 	struct msm_actuator_vreg *vreg_cfg;
-#else
-	struct msm_actuator_vreg *vreg_cfg;
-#endif
 	struct msm_actuator_ctrl_t *msm_actuator_t = NULL;
 
 	CDBG("Enter\n");
@@ -2374,79 +2254,6 @@ static int32_t msm_actuator_platform_probe(struct platform_device *pdev)
 	cci_client->cci_subdev = msm_cci_get_subdev();
 	cci_client->cci_i2c_master = msm_actuator_t->cci_master;
 
-#ifdef CONFIG_LG_OIS
-	msm_actuator_t->i2c_eeprom_client.i2c_func_tbl = &msm_sensor_cci_func_tbl;
-	msm_actuator_t->i2c_eeprom_client.cci_client = kzalloc(sizeof(
-		struct msm_camera_cci_client), GFP_KERNEL);
-	if (!msm_actuator_t->i2c_eeprom_client.cci_client) {
-		kfree(msm_actuator_t->vreg_cfg.cam_vreg);
-		kfree(msm_actuator_t);
-		pr_err("failed no memory\n");
-		return -ENOMEM;
-	}
-
-	///
-	msm_actuator_t->eboard_info = kzalloc(sizeof(
-		struct msm_eeprom_board_info), GFP_KERNEL);
-	if (!msm_actuator_t->eboard_info) {
-		pr_err("%s failed line %d\n", __func__, __LINE__);
-		rc = -ENOMEM;
-		goto cciclient_free;
-	}
-
-	eb_info = msm_actuator_t->eboard_info;
-	power_info = &eb_info->power_info;
-	eb_info->i2c_slaveaddr = EEPROM_SLAVE_ID;
-
-	power_info->clk_info = cam_8974_clk_info;
-	power_info->clk_info_size = ARRAY_SIZE(cam_8974_clk_info);
-	power_info->dev = &pdev->dev;
-	///
-
-	CDBG("qcom,slave-addr = 0x%X\n", eb_info->i2c_slaveaddr);
-
-	cci_eeprom_client = msm_actuator_t->i2c_eeprom_client.cci_client;
-	cci_eeprom_client->cci_subdev = msm_cci_get_subdev();
-	cci_eeprom_client->cci_i2c_master = msm_actuator_t->cci_master;
-	cci_eeprom_client->sid = eb_info->i2c_slaveaddr >> 1;
-	cci_eeprom_client->retries = 3;
-	cci_eeprom_client->id_map = 0;
-
-	///
-	rc = msm_actuator_get_dt_data(msm_actuator_t);
-	if (rc) {
-		pr_err("msm_actuator_get_dt_data failed, rc %d\n", rc);
-		goto board_free;
-	}
-
-	if(power_info->power_setting_size > 0) {
-		rc = msm_camera_power_up(power_info, msm_actuator_t->act_device_type,
-			&msm_actuator_t->i2c_eeprom_client);
-		if (rc) {
-			pr_err("msm_camera_power_up failed, rc %d\n", rc);
-			goto board_free;
-		}
-
-		rc = msm_actuator_get_vcm_version(msm_actuator_t, &vcm_ver);
-		if (rc) {
-			pr_err("msm_actuator_get_vcm_version failed, rc: %d\n", rc);
-			goto power_down;
-		}
-		else if (vcm_ver != 0x01 && vcm_ver != 0x02 && vcm_ver != 0x1D && vcm_ver != 0x16
-					&& vcm_ver != 0x34 && vcm_ver != 0x40 && vcm_ver != 0x41) {
-			pr_err("msm_actuator_get_vcm_version failed : return ENODEV\n");
-			pdev->id = -1;
-		}
-
-		rc = msm_camera_power_down(power_info, msm_actuator_t->act_device_type,
-			&msm_actuator_t->i2c_eeprom_client);
-		if (rc) {
-			pr_err("msm_camera_power_down failed, rc %d\n", rc);
-			goto board_free;
-		}
-	}
-#endif
-
 	v4l2_subdev_init(&msm_actuator_t->msm_sd.sd,
 		msm_actuator_t->act_v4l2_subdev_ops);
 	v4l2_set_subdevdata(&msm_actuator_t->msm_sd.sd, msm_actuator_t);
@@ -2470,18 +2277,6 @@ static int32_t msm_actuator_platform_probe(struct platform_device *pdev)
 
 	CDBG("Exit\n");
 	return rc;
-#ifdef CONFIG_LG_OIS
-	power_down:
-		msm_camera_power_down(power_info,
-				msm_actuator_t->act_device_type,
-				&msm_actuator_t->i2c_eeprom_client);
-	board_free:
-		kfree(msm_actuator_t->eboard_info);
-	cciclient_free:
-		kfree(msm_actuator_t->i2c_eeprom_client.cci_client);
-		kfree(msm_actuator_t);
-		return rc;
-#endif
 }
 
 static const struct of_device_id msm_actuator_i2c_dt_match[] = {

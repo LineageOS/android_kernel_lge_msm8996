@@ -6,7 +6,7 @@
 
 #include "anx7418.h"
 
-#define ANX7418_OTP_FW_VER	0x12
+#define ANX7418_OTP_FW_VER	0x13
 #define ANX7418_EEPROM_FW_VER	0x08
 
 struct anx7418;

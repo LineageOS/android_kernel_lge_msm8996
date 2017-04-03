@@ -555,7 +555,7 @@ static int sw49407_get_swipe_data(struct device *dev)
 
 	ts->lpwg.code_num = count;
 	ts->lpwg.code[0].x = rdata[1] & 0xffff;
-	ts->lpwg.code[0].x = rdata[1]  >> 16;
+	ts->lpwg.code[0].y = rdata[1]  >> 16;
 
 	ts->lpwg.code[count].x = -1;
 	ts->lpwg.code[count].y = -1;
@@ -975,11 +975,15 @@ int sw49407_tc_driving(struct device *dev, int mode)
 	TOUCH_I("sw49407_tc_driving = %d, %x\n", mode, ctrl);
 	sw49407_reg_read(dev, spr_subdisp_st, (u8 *)&rdata, sizeof(u32));
 	TOUCH_I("DDI Display Mode = %d\n", rdata);
-	sw49407_reg_write(dev, d->reg_info.r_tc_cmd_spi_addr + tc_driving_ctl,
+	if ((mode == LCD_MODE_U0) && (d->prev_lcd_mode == LCD_MODE_U3)) {
+		queue_delayed_work(d->wq_log, &d->u0_set_work, msecs_to_jiffies(30));
+	} else {
+		sw49407_reg_write(dev, d->reg_info.r_tc_cmd_spi_addr + tc_driving_ctl,
 				&ctrl, sizeof(ctrl));
+	}
+
 	sw49407_reg_read(dev, rst_cnt_addr, &rst_cnt, sizeof(u32));
 	TOUCH_I("Reset Cnt : %d\n", rst_cnt);
-	touch_msleep(20);
 
 	return 0;
 }
@@ -1151,6 +1155,7 @@ static int sw49407_lpwg_mode(struct device *dev)
 		/* normal */
 		TOUCH_I("resume ts->lpwg.screen on\n");
 		sw49407_lpwg_control(dev, LPWG_NONE);
+		atomic_set(&d->global_reset, GLOBAL_RESET_DONE);
 		if (ts->lpwg.qcover == HALL_NEAR)
 			sw49407_tc_driving(dev, LCD_MODE_U3_QUICKCOVER);
 		else
@@ -1160,13 +1165,20 @@ static int sw49407_lpwg_mode(struct device *dev)
 		sw49407_deep_sleep(dev);
 	} else {
 		/* partial */
-		TOUCH_I("resume Partial\n");
 		if (ts->lpwg.qcover == HALL_NEAR)
 			sw49407_tci_area_set(dev, QUICKCOVER_CLOSE);
 		else
 			sw49407_tci_area_set(dev, QUICKCOVER_OPEN);
 		sw49407_lpwg_control(dev, ts->lpwg.mode);
-		sw49407_tc_driving(dev, LCD_MODE_U3_PARTIAL);
+
+		if (atomic_read(&d->global_reset) == GLOBAL_RESETING) {
+			TOUCH_I("SKIP resume Partial\n");
+			atomic_set(&d->global_reset, GLOBAL_RESET_DONE);
+			sw49407_tc_driving(dev, d->lcd_mode);
+		} else {
+			TOUCH_I("resume Partial\n");
+			sw49407_tc_driving(dev, LCD_MODE_U3_PARTIAL);
+		}
 	}
 
 	return 0;
@@ -1279,6 +1291,8 @@ static void sw49407_lcd_mode(struct device *dev, u32 mode)
 
 	d->prev_lcd_mode = d->lcd_mode;
 	d->lcd_mode = mode;
+	if (d->lcd_mode == LCD_MODE_U3)
+		atomic_set(&d->global_reset, GLOBAL_RESETING);
 	TOUCH_I("lcd_mode: %d (prev: %d)\n", d->lcd_mode, d->prev_lcd_mode);
 }
 
@@ -1449,6 +1463,19 @@ static int sw49407_debug_option(struct device *dev, u32 *data)
 	return 0;
 }
 
+static void sw49407_u0_set_work_func(struct work_struct *u0_set_work)
+{
+	struct sw49407_data *d =
+			container_of(to_delayed_work(u0_set_work),
+				struct sw49407_data, u0_set_work);
+	u32 ctrl = 0x01;
+
+	TOUCH_I("TC driving : U0\n");
+	sw49407_reg_write(d->dev, d->reg_info.r_tc_cmd_spi_addr + tc_driving_ctl,
+			&ctrl, sizeof(ctrl));
+
+}
+
 static void sw49407_debug_info_work_func(struct work_struct *debug_info_work)
 {
 	struct sw49407_data *d =
@@ -1471,6 +1498,62 @@ static void sw49407_debug_info_work_func(struct work_struct *debug_info_work)
 
 
 
+static void sw49407_te_test_work_func(struct work_struct *te_test_work)
+{
+	struct sw49407_data *d =
+			container_of(to_delayed_work(te_test_work),
+				struct sw49407_data, te_test_work);
+	u32 count = 0;
+	u32 ms = 0;
+	u32 hz = 0;
+	u32 hz_min = 0xFFFFFFFF;
+	int ret = 0;
+	int i = 0;
+
+	memset(d->te_test_log, 0x0, sizeof(d->te_test_log));
+	d->te_ret = 0;
+	d->te_write_log = DO_WRITE_LOG;
+	TOUCH_I("DDIC Test Start\n");
+
+	if (d->lcd_mode != LCD_MODE_U3) {
+		ret = snprintf(d->te_test_log + ret, 63, "not support on u%d\n",
+			d->lcd_mode);
+		d->te_ret = 1;
+		return ;
+	}
+
+	for (i = 0; i < 100; i++) {
+		sw49407_reg_read(d->dev, d->reg_info.r_tc_sts_spi_addr +
+			tc_rtc_te_interval_cnt, (u8 *)&count, sizeof(u32));
+		if (count == 0) {
+			ret = snprintf(d->te_test_log + ret, 63,
+				"[%d] : 0, 0 ms, 0 hz\n", i + 1);
+			d->te_ret = 1;
+			hz_min = 0;
+			TOUCH_I("%s\n", d->te_test_log);
+			break;
+		}
+
+		ms = (count * 100 * 1000) / 32764;
+		hz = (32764 * 100) / count;
+
+		if (hz < hz_min)
+			hz_min = hz;
+
+		if ((hz / 100 < 57) || (hz / 100 > 63)) {
+			ret = snprintf(d->te_test_log + ret, 63,
+				"[%d] : %d, %d.%02d ms, %d.%02d hz\n", i + 1, count,
+				ms / 100, ms % 100, hz / 100, hz % 100);
+			d->te_ret = 1;
+			TOUCH_I("[%d] %s\n", i + 1, d->te_test_log);
+			break;
+		}
+		touch_msleep(15);
+	}
+
+	TOUCH_I("DDIC Test END : [%s] %d.%02d hz\n", d->te_ret ? "Fail" : "Pass",
+		hz_min / 100, hz_min % 100);
+}
 static int sw49407_notify(struct device *dev, ulong event, void *data)
 {
 	struct touch_core_data *ts = to_touch_core(dev);
@@ -1484,6 +1567,8 @@ static int sw49407_notify(struct device *dev, ulong event, void *data)
 		TOUCH_I("NOTIFY_TOUCH_RESET! return = %d\n", ret);
 		atomic_set(&d->init, IC_INIT_NEED);
 		atomic_set(&d->watch.state.rtc_status, RTC_CLEAR);
+		if (d->lcd_mode == LCD_MODE_U2)
+			atomic_set(&d->global_reset, GLOBAL_RESET_START);
 		ext_watch_get_current_time(dev, NULL, NULL);
 		break;
 	case LCD_EVENT_LCD_MODE:
@@ -1565,7 +1650,9 @@ static void sw49407_init_works(struct sw49407_data *d)
 		INIT_DELAYED_WORK(&d->debug_info_work,
 					sw49407_debug_info_work_func);
 
+	INIT_DELAYED_WORK(&d->u0_set_work, sw49407_u0_set_work_func);
 	INIT_DELAYED_WORK(&d->font_download_work, sw49407_font_download);
+	INIT_DELAYED_WORK(&d->te_test_work, sw49407_te_test_work_func);
 }
 
 static void sw49407_init_locks(struct sw49407_data *d)
@@ -1620,7 +1707,8 @@ static int sw49407_probe(struct device *dev)
 
 	d->lcd_mode = LCD_MODE_U3;
 	d->tci_debug_type = 1;
-	d->code_cfg_crc_err_cnt = 0;
+	d->cfg_crc_err_cnt = 0;
+	d->code_crc_err_cnt = 0;
 	sw49407_sic_abt_probe();
 //[BringUp]	sw49407_asc_init(dev);	/* ASC */
 
@@ -1664,23 +1752,29 @@ static int sw49407_fw_compare(struct device *dev, const struct firmware *fw)
 
 	if (ts->force_fwup) {
 		update = 1;
-	} else if (binary->major && device->major) {
+		goto finish;
+	}
+
+	if (!ts->role.use_upgrade) {
+		update = 0;
+		goto finish;
+	}
+
+	if (binary->major != device->major) {
+		update = 1;
+	} else {
 		if (binary->minor != device->minor)
 			update = 1;
 		else if (binary->build > device->build)
 			update = 1;
-	} else if (binary->major ^ device->major) {
-		update = 0;
-	} else if (!binary->major && !device->major) {
-		if (binary->minor > device->minor)
-			update = 1;
 	}
 
+finish:
 	TOUCH_I("%s : binary[%d.%02d.%d] device[%d.%02d.%d]" \
-		" -> update: %d, force: %d\n", __func__,
+		" -> update: %d, force: %d, use_upgrade: %d\n", __func__,
 		binary->major, binary->minor, binary->build,
 		device->major, device->minor, device->build,
-		update, ts->force_fwup);
+		update, ts->force_fwup, ts->role.use_upgrade);
 
 	return update;
 }
@@ -1843,6 +1937,34 @@ static int sw49407_img_binary_verify(unsigned char *imgBuf)
 	return E_FW_CODE_AND_CFG_VALID;
 }
 
+void sw49407_default_reg_map(struct device* dev){
+	struct sw49407_data *d = to_sw49407_data(dev);
+	d->reg_info.r_info_ptr_spi_addr     = 0x043;
+	d->reg_info.r_tc_cmd_spi_addr       = 0xC00;
+	d->reg_info.r_watch_cmd_spi_addr    = 0xC10;
+	d->reg_info.r_test_cmd_spi_addr     = 0xC20;
+	d->reg_info.r_abt_cmd_spi_addr      = 0xC30;
+	d->reg_info.r_cfg_c_sram_oft        = 0x960;
+	d->reg_info.r_cfg_s_sram_oft        = 0x9E0;
+	d->reg_info.r_sys_buf_sram_oft      = 0xAE0;
+	d->reg_info.r_abt_buf_sram_oft      = 0xD67;
+	d->reg_info.r_dbg_buf_sram_oft      = 0x1187;
+	d->reg_info.r_ic_status_spi_addr    = 0x200;
+	d->reg_info.r_tc_status_spi_addr    = 0x201;
+	d->reg_info.r_abt_report_spi_addr   = 0x202;
+	d->reg_info.r_reserv_spi_addr       = 0x242;
+	d->reg_info.r_chip_info_spi_addr    = 0x25c;
+	d->reg_info.r_reg_info_spi_addr     = 0x264;
+	d->reg_info.r_pt_info_spi_addr      = 0x270;
+	d->reg_info.r_tc_sts_spi_addr       = 0x27F;
+	d->reg_info.r_abt_sts_spi_addr      = 0x2BF;
+	d->reg_info.r_tune_code_spi_addr    = 0x30F;
+	d->reg_info.r_aod_spi_addr          = 0x3E3;
+	TOUCH_I("================================================\n");
+	TOUCH_I("sw49407 default register map loaded!!\n");
+	TOUCH_I("================================================\n");
+}
+
 int sw49407_chip_info_load(struct device* dev)
 {
 	struct sw49407_data *d = to_sw49407_data(dev);
@@ -1854,21 +1976,21 @@ int sw49407_chip_info_load(struct device* dev)
 	if (sw49407_reg_read(dev, info_ptr_addr,
 			(u8 *)&info_ptr_val, sizeof(u32)) < 0) {
 		TOUCH_E("Info ptr addr read error\n");
-		return -1;
+		goto error;
 	}
 	TOUCH_I("info ptr addr read : %8.8X\n", info_ptr_val);
 
 	if (sw49407_reg_read(dev, tc_status,
 			(u32 *)&tc_status_val, sizeof(tc_status_val)) < 0) {
 		TOUCH_E("tc status addr read error\n");
-		return -1;
+		goto error;
 	}
 	TOUCH_I("tc status read : %8.8X\n", tc_status_val);
 
 	if (info_ptr_val == 0 || ((info_ptr_val >> 24) != 0)) {
 
 		TOUCH_E("info_ptr_addr invalid!\n");
-		return -1;
+		goto error;
 	}
 
 	chip_info_addr = (info_ptr_val & 0xFFF);
@@ -1894,16 +2016,21 @@ int sw49407_chip_info_load(struct device* dev)
 	if (sw49407_reg_read(dev, chip_info_addr, (u8 *)&d->chip_info,
 				sizeof(struct sw49407_chip_info)) < 0) {
 		TOUCH_E("Chip info Read Error\n");
-		return -1;
+		goto error;
 	}
 
 	if (sw49407_reg_read(dev, reg_info_addr, (u8 *)&d->reg_info,
 				sizeof(struct sw49407_reg_info)) < 0) {
 		TOUCH_E("Reg info Read Error\n");
-		return -1;
+		goto error;
 	}
 
 	return 0;
+
+error:
+	// ic default register map loading
+	sw49407_default_reg_map(dev);
+	return -1;
 }
 
 static int sw49407_fw_upgrade(struct device *dev,
@@ -2082,7 +2209,8 @@ static int sw49407_upgrade(struct device *dev)
 		TOUCH_I("get fwpath from test_fwpath:%s\n",
 			&ts->test_fwpath[0]);
 	} else if (ts->def_fwcnt) {
-		if (!strcmp(d->ic_info.product_id, "L1L57P1")) {
+		if (!strcmp(d->ic_info.product_id, "L1L57P1") ||
+				!strcmp(d->ic_info.product_id, "L1L52P1")) {
 			memcpy(fwpath, ts->def_fwpath[0], sizeof(fwpath));
 			TOUCH_I("get fwpath from def_fwpath : rev:%d\n",
 			d->ic_info.revision);
@@ -2331,32 +2459,33 @@ int sw49407_check_status(struct device *dev)
 				"[5]Device_ctl not Set");
 		}
 		if (!(status & (1 << 6))) {
-			if (d->code_cfg_crc_err_cnt >= 3) {
+			if (d->code_crc_err_cnt >= 3) {
 				ret = -ERANGE;
 			} else {
-				d->code_cfg_crc_err_cnt++;
+				d->code_crc_err_cnt++;
 			}
 
 			checking_log_flag = 1;
 			length += snprintf(checking_log + length,
 				checking_log_size - length,
 				"[6]Code CRC Invalid err_cnt = %d %s\n",
-                                d->code_cfg_crc_err_cnt,
-                                d->code_cfg_crc_err_cnt>=3 ? " skip reset":"");
+                                d->code_crc_err_cnt,
+                                d->code_crc_err_cnt>=3 ? " skip reset":"");
 		}
 		if (!(status & (1 << 7))) {
-			if (d->code_cfg_crc_err_cnt >= 3) {
+			if (d->cfg_crc_err_cnt >= 3) {
 				ret = -ERANGE;
 			} else {
-				d->code_cfg_crc_err_cnt++;
+				d->cfg_crc_err_cnt++;
+				ret = -EUPGRADE;
 			}
 
 			checking_log_flag = 1;
 			length += snprintf(checking_log + length,
 				checking_log_size - length,
 				"[7]CFG CRC Invalid err_cnt = %d %s\n",
-                                d->code_cfg_crc_err_cnt,
-                                d->code_cfg_crc_err_cnt>=3 ? " skip reset":"");
+                                d->cfg_crc_err_cnt,
+                                d->cfg_crc_err_cnt>=3 ? " skip upgrade":"");
 		}
 		if (status & (1 << 9)) {
 			checking_log_flag = 1;
@@ -2414,9 +2543,10 @@ int sw49407_check_status(struct device *dev)
 
 	debugging_mask = ((status >> 16) & 0xF);
 	if (debugging_mask == 0x2) {
-		if (ret != -ERESTART) {
+		if ((ret != -ERESTART) && (ret != -EUPGRADE)) {
 			TOUCH_I("TC_Driving OK\n");
-			d->code_cfg_crc_err_cnt = 0;
+			d->code_crc_err_cnt = 0;
+			d->cfg_crc_err_cnt = 0;
 			ret = -ERANGE;
 		} else {
 			return ret;
@@ -2949,12 +3079,75 @@ static ssize_t show_te(struct device *dev, char *buf)
 	return sw49407_te_info(dev, buf);
 }
 
+static ssize_t show_te_test(struct device *dev, char *buf)
+{
+	struct sw49407_data *d = to_sw49407_data(dev);
+
+	queue_delayed_work(d->wq_log, &d->te_test_work, 0);
+
+	return 0;
+}
+
+static ssize_t show_te_result(struct device *dev, char *buf)
+{
+	struct sw49407_data *d = to_sw49407_data(dev);
+	int ret = 0;
+
+	TOUCH_I("DDIC Test result : %s\n", d->te_ret ? "Fail" : "Pass");
+	ret = snprintf(buf + ret, PAGE_SIZE, "DDIC Test result : %s\n",
+			d->te_ret ? "Fail" : "Pass");
+
+	if (d->te_write_log == DO_WRITE_LOG) {
+		sw49407_te_test_logging(d->dev, buf);
+		d->te_write_log = LOG_WRITE_DONE;
+	}
+
+	return ret;
+}
+
+static ssize_t show_lcd_block_result(struct device *dev, char *buf)
+{
+	struct sw49407_data *d = to_sw49407_data(dev);
+
+	int ret = 0;
+	u32 status = 0;
+	u32 lcd_block = 0;
+
+	if (d->lcd_mode != LCD_MODE_U3) {
+		ret = snprintf(buf + ret, 63, "not support on u%d\n",
+				d->lcd_mode);
+		return ret;
+	}
+
+	TOUCH_I("lcd block check Start\n");
+
+	if (sw49407_reg_read(dev, tc_status,
+				(u32 *)&status, sizeof(status)) < 0) {
+		ret = snprintf(buf + ret, PAGE_SIZE,
+				"lcd block ocurred addr read error\n");
+		TOUCH_E("lcd block ocurred addr read error\n");
+		return ret;
+	}
+	if(status & (1 << 31))
+		lcd_block = 1;
+
+	ret = snprintf(buf + ret, PAGE_SIZE, "%x\n", lcd_block);
+	TOUCH_I("tc status : %x, lcd block status : %x\n",
+			status, lcd_block);
+	TOUCH_I("lcd block check End\n");
+
+	return ret;
+}
+
+static TOUCH_ATTR(te_test, show_te_test, NULL);
+static TOUCH_ATTR(te_result, show_te_result, NULL);
 static TOUCH_ATTR(reg_ctrl, NULL, store_reg_ctrl);
 static TOUCH_ATTR(tci_debug, show_tci_debug, store_tci_debug);
 static TOUCH_ATTR(swipe_debug, show_swipe_debug, store_swipe_debug);
 static TOUCH_ATTR(reset_ctrl, NULL, store_reset_ctrl);
 static TOUCH_ATTR(q_sensitivity, NULL, store_q_sensitivity);
 static TOUCH_ATTR(te, show_te, NULL);
+static TOUCH_ATTR(lcd_block_result, show_lcd_block_result, NULL);
 
 static struct attribute *sw49407_attribute_list[] = {
 	&touch_attr_reg_ctrl.attr,
@@ -2963,6 +3156,9 @@ static struct attribute *sw49407_attribute_list[] = {
 	&touch_attr_reset_ctrl.attr,
 	&touch_attr_q_sensitivity.attr,
 	&touch_attr_te.attr,
+	&touch_attr_te_test.attr,
+	&touch_attr_te_result.attr,
+	&touch_attr_lcd_block_result.attr,
 	NULL,
 };
 

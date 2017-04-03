@@ -420,6 +420,8 @@ struct device_node *of_batterydata_get_best_profile(
 					best_delta = delta;
 					best_id_kohm = batt_ids.kohm[i];
 				}
+				pr_info("batt_ids.kohm[i] = %d, batt_id_kohm = %d\n",
+						batt_ids.kohm[i], batt_id_kohm);
 			}
 		}
 	}

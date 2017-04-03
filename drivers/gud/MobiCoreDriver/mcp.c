@@ -1173,6 +1173,7 @@ int mcp_start(void)
 	size_t q_len = ALIGN(2 * (sizeof(struct notification_queue_header) +
 		NQ_NUM_ELEMS * sizeof(struct notification)), 4);
 	int ret;
+	struct irq_data *irq_d;
 
 	/* Make sure we have an interrupt number before going on */
 #if defined(CONFIG_OF)
@@ -1202,6 +1203,9 @@ int mcp_start(void)
 	mcp_ctx.mcp_buffer->message.init_values.irq = MC_INTR_SSIQ_SWD;
 #endif
 	mcp_ctx.mcp_buffer->message.init_values.flags |= MC_IV_FLAG_TIME;
+	irq_d = irq_get_irq_data(mcp_ctx.irq);
+	if (irq_d)
+		mcp_ctx.mcp_buffer->message.init_values.irq = irq_d->hwirq;
 	mcp_ctx.mcp_buffer->message.init_values.time_ofs =
 		(u32)((uintptr_t)mcp_ctx.time - (uintptr_t)mcp_ctx.base);
 	mcp_ctx.mcp_buffer->message.init_values.time_len =

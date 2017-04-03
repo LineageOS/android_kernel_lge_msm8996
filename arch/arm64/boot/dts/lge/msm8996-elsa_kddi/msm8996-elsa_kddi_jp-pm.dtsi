@@ -45,6 +45,7 @@
 	qcom,charging-timeout-mins = <768>;
 	qcom,skip-usb-suspend-for-fake-battery;
 	qcom,aicl-rerun-period-s = <45>;
+	qcom,bmd-algo-disabled;
 
 	qcom,usb_id-vadc = <&pm8994_vadc>;
 	qcom,usbin-vadc = <&pmi8994_vadc>;
@@ -92,8 +93,8 @@
 	qcom,thermal-coefficients = [D2 85 0E 4A A5 35];
 	qcom,ext-sense-type;
 	qcom,capacity-learning-feedback;
-	qcom,resume-soc = <99>;
-	qcom,resume-soc-raw = <253>;
+	qcom,resume-soc = <97>;
+	qcom,resume-soc-raw = <247>;
 	qcom,fg-iterm-ma = <200>;
 	qcom,fg-chg-iterm-ma = <100>;
 	qcom,lge_batt_profile;
@@ -388,24 +389,26 @@
 			"testmode", "battexit", "/sys/class/power_supply/battery/present",
 			"testmode", "hardreset_mode", "/sys/module/qpnp_power_on/parameters/hardreset_mode";
 	};
-	/* vts, 0.5*XO + 0.27*Bd2 + 7.07 */
+
+	/* vts, 0.19 * XO + 0.66 * Bd2 + 3.86 */
 	virtual_temp_sensor: lge,vts {
 		compatible = "lge,vts";
 		lge,index = <101>;
 		qcom,vts-vadc = <&pm8994_vadc>;
 		lge,scaling-factor = <10>;
-		lge,constant-milli = <7070>;
+		lge,constant-milli = <3860>;
 		composite_sensor_0: lge,sensor0 {
 			label = "xo_therm";
 			channel = <0x72>;
-			weight-milli = <500>;
+			weight-milli = <190>;
 		};
 		composite_sensor_1: lge,sensor1 {
 			label = "bd_therm_2";
 			channel = <0x74>;
-			weight-milli = <270>;
+			weight-milli = <660>;
 		};
 	};
+
 	virtual_temp_sensor_led: lge,vts_led {
 		compatible = "lge,vts";
 		lge,name = "led_sensor";

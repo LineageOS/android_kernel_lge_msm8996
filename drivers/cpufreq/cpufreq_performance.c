@@ -16,7 +16,7 @@
 #include <linux/init.h>
 #include <linux/module.h>
 
-#ifdef CONFIG_LGE_PM
+#if defined(CONFIG_LGE_PM) && !defined(CONFIG_MACH_MSM8996_LUCYE)
 bool minfreq_enabled = false;
 EXPORT_SYMBOL(minfreq_enabled);
 #endif
@@ -29,7 +29,7 @@ static int cpufreq_governor_performance(struct cpufreq_policy *policy,
 	case CPUFREQ_GOV_LIMITS:
 		pr_debug("setting to %u kHz because of event %u\n",
 						policy->max, event);
-#ifdef CONFIG_LGE_PM
+#if defined(CONFIG_LGE_PM) && !defined(CONFIG_MACH_MSM8996_LUCYE)
 		if (minfreq_enabled) {
 			__cpufreq_driver_target(policy, policy->min,
 						CPUFREQ_RELATION_H);

@@ -53,6 +53,7 @@ int touch_get_dts_base(struct touch_core_data *ts)
 	/* Role */
 	PROPERTY_BOOL(np, "use_lpwg", ts->role.use_lpwg);
 	PROPERTY_U32(np, "use_lpwg_test", ts->role.use_lpwg_test);
+	PROPERTY_BOOL(np, "use_upgrade", ts->role.use_upgrade);
 	PROPERTY_BOOL(np, "hide_coordinate", ts->role.hide_coordinate);
 
 	/* Power */

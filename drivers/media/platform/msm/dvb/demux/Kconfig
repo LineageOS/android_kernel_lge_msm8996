@@ -18,7 +18,7 @@ config DVB_MPQ_NUM_DMX_DEVICES
 
 config LGE_BROADCAST_ISDBT_JAPAN
 	bool "Japan full-seg Broadcast service"
-	depends on (MACH_MSM8992_P1_KDDI_JP || MACH_MSM8996_H1_KDDI_JP || MACH_MSM8996_ELSA_KDDI_JP)
+	depends on (MACH_MSM8992_P1_KDDI_JP || MACH_MSM8996_H1_KDDI_JP || MACH_MSM8996_ELSA_KDDI_JP || MACH_MSM8996_ELSA_DCM_JP)
 	default y
 	help
 	  Select this if you want to use Japanese FullSeg mobile broadcast service

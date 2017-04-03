@@ -517,6 +517,42 @@ static int lge_power_get_cable_type_boot(void)
 }
 #endif
 
+#if defined(CONFIG_LGE_USB_EMBEDDED_BATTERY) && defined(CONFIG_LGE_USB_TYPE_C)
+static bool lge_get_cc_type_debug_accessory(void)
+{
+	struct power_supply *typec_psy;
+	union power_supply_propval val;
+	int rc;
+
+	switch (lge_get_boot_mode()) {
+	case LGE_BOOT_MODE_QEM_56K:
+	case LGE_BOOT_MODE_QEM_130K:
+	case LGE_BOOT_MODE_QEM_910K:
+		return true;
+	default:
+		break;
+	}
+
+	typec_psy = power_supply_get_by_name("usb_pd");
+	if (!typec_psy) {
+		pr_err("%s: typec psy doesn't prepared\n", __func__);
+		return true;
+	}
+
+	rc = typec_psy->get_property(typec_psy, POWER_SUPPLY_PROP_TYPEC_MODE, &val);
+	if (rc) {
+		pr_err("%s: typec psy doesn't support reading PROP_TYPEC_MODE rc=%d\n",
+		       __func__, rc);
+		return true;
+	}
+
+	if (val.intval == POWER_SUPPLY_TYPE_CTYPE_DEBUG_ACCESSORY)
+		return true;
+
+	return false;
+}
+#endif
+
 static void android_work(struct work_struct *data)
 {
 	struct android_dev *dev = container_of(data, struct android_dev, work);
@@ -648,15 +684,22 @@ static void android_work(struct work_struct *data)
 	*/
 	if (uevent_envp == connected) {
 		if (lge_power_get_cable_type() == CABLE_ADC_56K &&
-			lge_get_boot_mode() == LGE_BOOT_MODE_NORMAL) {
+#ifdef CONFIG_LGE_USB_TYPE_C
+		    lge_get_cc_type_debug_accessory() &&
+#endif
+		    lge_get_boot_mode() == LGE_BOOT_MODE_NORMAL) {
 			usb_gadget_disconnect(cdev->gadget);
 			usb_ep_dequeue(cdev->gadget->ep0, cdev->req);
 			pr_info("[FACTORY] PIF_56K detected in NORMAL BOOT, reboot!!\n");
 			msleep(50); /*wait for usb gadget disconnect*/
 			kernel_restart(NULL);
 		} else if (lge_power_get_cable_type() == CABLE_ADC_910K &&
-					(lge_power_get_cable_type_boot() != LT_CABLE_910K || !firstboot_check) &&
-				!lge_get_laf_mode()) {
+#ifdef CONFIG_LGE_USB_TYPE_C
+			   lge_get_cc_type_debug_accessory() &&
+#endif
+			   (lge_power_get_cable_type_boot() != LT_CABLE_910K ||
+			    !firstboot_check) &&
+			   !lge_get_laf_mode()) {
 			usb_gadget_disconnect(cdev->gadget);
 			usb_ep_dequeue(cdev->gadget->ep0, cdev->req);
 			pr_info("[FACTORY] reset due to 910K cable, pm:%d, xbl:%d, firstboot_check:%d\n",

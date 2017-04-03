@@ -26,9 +26,7 @@
 #define LGE_ERR_LAF               0x0500
 #define LGE_ERR_LK                0x0600
 
-#if defined(CONFIG_MACH_MSM8996_ELSA) && defined(CONFIG_LGE_HANDLE_PANIC)
 #define LGE_ERR_KEY               0x004B
-#endif
 
 #define LGE_SUB_ADSP              0x1000
 #define LGE_SUB_MBA               0x2000
@@ -77,9 +75,7 @@ struct panic_handler_data {
 	unsigned long	fb_size;
 };
 
-#ifdef CONFIG_MACH_MSM8996_ELSA
 void lge_gen_key_panic(int key);
-#endif
 #ifdef CONFIG_POWER_RESET_MSM
 extern int lge_get_download_mode(void);
 #else

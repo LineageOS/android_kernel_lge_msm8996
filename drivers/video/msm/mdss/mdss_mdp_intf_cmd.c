@@ -1932,11 +1932,13 @@ static int mdss_mdp_cmd_wait4pingpong(struct mdss_mdp_ctl *ctl, void *arg)
 #else
 	if (rc <= 0) {
 #endif
-
 		pr_err("%s:wait4pingpong timed out ctl=%d rc=%d cnt=%d koff_cnt=%d\n",
 				__func__,
 				ctl->num, rc, ctx->pp_timeout_report_cnt,
 				atomic_read(&ctx->koff_cnt));
+#if 0 // defined(CONFIG_LGE_DISPLAY_COMMON)
+		mdss_fb_report_panel_dead(ctl->mfd);
+#else
 		if (ctx->pp_timeout_report_cnt == 0) {
 			WARN(1, "mdss_mdp_cmd_wait4pingpong timed out: rc=%d, ctl=%d\n", rc, ctl->num);
 			MDSS_XLOG(0xbad);
@@ -1951,6 +1953,7 @@ static int mdss_mdp_cmd_wait4pingpong(struct mdss_mdp_ctl *ctl, void *arg)
 			mdss_fb_report_panel_dead(ctl->mfd);
 		}
 		ctx->pp_timeout_report_cnt++;
+#endif
 		rc = -EPERM;
 
 		mdss_mdp_irq_disable_nosync(MDSS_MDP_IRQ_TYPE_PING_PONG_COMP,

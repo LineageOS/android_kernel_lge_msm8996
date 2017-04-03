@@ -89,6 +89,10 @@ struct regmap;
 #define REGULATOR_MODE_SPARE_ON			0x20
 #define REGULATOR_MODE_TTW_ON			0x40
 #define REGULATOR_MODE_TTW_OFF			0x80
+#if defined(CONFIG_LGE_DISPLAY_LUCYE_COMMON)
+#define REGULATOR_MODE_ENABLE_PULLDOWN		0xA0
+#define REGULATOR_MODE_DISABLE_PULLDOWN		0xB0
+#endif
 #endif
 /*
  * Regulator notifier events.

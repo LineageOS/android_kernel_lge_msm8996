@@ -425,7 +425,7 @@ static int lg4945_get_swipe_data(struct device *dev)
 
 	ts->lpwg.code_num = count;
 	ts->lpwg.code[0].x = rdata[1] & 0xffff;
-	ts->lpwg.code[0].x = rdata[1]  >> 16;
+	ts->lpwg.code[0].y = rdata[1]  >> 16;
 
 	ts->lpwg.code[count].x = -1;
 	ts->lpwg.code[count].y = -1;

@@ -104,6 +104,9 @@
  *	in /proc for a task before it execs a suid executable.
  */
 
+#ifdef CONFIG_HSWAP
+struct timespec ts;
+#endif
 struct pid_entry {
 	const char *name;
 	int len;
@@ -989,7 +992,24 @@ static ssize_t oom_score_adj_write(struct file *file, const char __user *buf,
 		goto err_sighand;
 	}
 
+#ifdef CONFIG_HSWAP
+	if (!task->signal->oom_score_adj) {
+		ts = current_kernel_time();
+		task->signal->top_time += ts.tv_sec - task->signal->before_time;
+		if (task->signal->reclaimed)
+			task->signal->reclaimed = 0;
+	}
+#endif
+
 	task->signal->oom_score_adj = (short)oom_score_adj;
+
+#ifdef CONFIG_HSWAP
+	if (!task->signal->oom_score_adj) {
+		ts = current_kernel_time();
+		task->signal->before_time = ts.tv_sec;
+	}
+#endif
+
 	if (has_capability_noaudit(current, CAP_SYS_RESOURCE))
 		task->signal->oom_score_adj_min = (short)oom_score_adj;
 	trace_oom_score_adj_update(task);

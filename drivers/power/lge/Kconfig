@@ -1,0 +1,6 @@
+config LGE_PM_BATTERY_VENEER
+	bool "Apply LGE battery veneer"
+	depends on LGE_PM
+	default n
+	help
+	  Say Y here enable support lge battery veneer

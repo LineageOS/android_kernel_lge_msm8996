@@ -190,6 +190,12 @@ static int create_fixed_stream_quirk(struct snd_usb_audio *chip,
 	snd_usb_init_pitch(chip, fp->iface, alts, fp);
 	snd_usb_init_sample_rate(chip, fp->iface, alts, fp, fp->rate_max);
 	return 0;
+
+ error:
+	list_del(&fp->list); /* unlink for avoiding double-free */
+	kfree(fp);
+	kfree(rate_table);
+	return err;
 }
 
 static int create_auto_pcm_quirk(struct snd_usb_audio *chip,
@@ -399,7 +405,7 @@ static int create_autodetect_quirks(struct snd_usb_audio *chip,
 }
 
 /*
- * Create a stream for an Edirol UA-700/UA-25/UA-4FX interface.  
+ * Create a stream for an Edirol UA-700/UA-25/UA-4FX interface.
  * The only way to detect the sample rate is by looking at wMaxPacketSize.
  */
 static int create_uaxx_quirk(struct snd_usb_audio *chip,

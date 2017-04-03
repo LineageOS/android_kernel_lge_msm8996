@@ -38,13 +38,17 @@ static void diag_notify_md_client(uint8_t peripheral, int data);
 static void diag_mask_update_work_fn(struct work_struct *work)
 {
 	uint8_t peripheral;
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS, "1 \n");
 
 	for (peripheral = 0; peripheral <= NUM_PERIPHERALS; peripheral++) {
 		if (!(driver->mask_update & PERIPHERAL_MASK(peripheral)))
 			continue;
+		DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:cntl_lock to obtain ", __LINE__);	
 		mutex_lock(&driver->cntl_lock);
+		DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:cntl_lock obtained ", __LINE__);	
 		driver->mask_update ^= PERIPHERAL_MASK(peripheral);
 		mutex_unlock(&driver->cntl_lock);
+		DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:cntl_lock released ", __LINE__);	
 		diag_send_updates_peripheral(peripheral);
 	}
 }
@@ -64,6 +68,7 @@ void diag_cntl_channel_close(struct diagfwd_info *p_info)
 
 	if (!p_info)
 		return;
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS, "1 \n");
 
 	peripheral = p_info->peripheral;
 	if (peripheral >= NUM_PERIPHERALS)
@@ -71,7 +76,9 @@ void diag_cntl_channel_close(struct diagfwd_info *p_info)
 
 	driver->feature[peripheral].sent_feature_mask = 0;
 	driver->feature[peripheral].rcvd_feature_mask = 0;
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS, "2 \n");
 	flush_workqueue(driver->cntl_wq);
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS, "3 \n");
 	reg_dirty |= PERIPHERAL_MASK(peripheral);
 	diag_cmd_remove_reg_by_proc(peripheral);
 	driver->feature[peripheral].stm_support = DISABLE_STM;
@@ -79,6 +86,7 @@ void diag_cntl_channel_close(struct diagfwd_info *p_info)
 	driver->stm_state[peripheral] = DISABLE_STM;
 	driver->stm_state_requested[peripheral] = DISABLE_STM;
 	reg_dirty ^= PERIPHERAL_MASK(peripheral);
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS, "4\n");
 	diag_notify_md_client(peripheral, DIAG_STATUS_CLOSED);
 }
 
@@ -87,11 +95,15 @@ static void diag_stm_update_work_fn(struct work_struct *work)
 	uint8_t i;
 	uint16_t peripheral_mask = 0;
 	int err = 0;
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS, "1 \n");
 
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:cntl_lock to obtain ", __LINE__);	
 	mutex_lock(&driver->cntl_lock);
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:cntl_lock obtained ", __LINE__);	
 	peripheral_mask = driver->stm_peripheral;
 	driver->stm_peripheral = 0;
 	mutex_unlock(&driver->cntl_lock);
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:cntl_lock released ", __LINE__);	
 
 	if (peripheral_mask == 0)
 		return;
@@ -121,7 +133,9 @@ void diag_notify_md_client(uint8_t peripheral, int data)
 	if (driver->logging_mode != DIAG_MEMORY_DEVICE_MODE)
 		return;
 
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:md_session_lock to obtain ", __LINE__);
 	mutex_lock(&driver->md_session_lock);
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:md_session_lock obtained ", __LINE__);
 	memset(&info, 0, sizeof(struct siginfo));
 	info.si_code = SI_QUEUE;
 	info.si_int = (PERIPHERAL_MASK(peripheral) | data);
@@ -146,6 +160,7 @@ void diag_notify_md_client(uint8_t peripheral, int data)
 				peripheral, info.si_int, stat);
 	}
 	mutex_unlock(&driver->md_session_lock);
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:md_session_lock released ", __LINE__);
 }
 
 static void process_pd_status(uint8_t *buf, uint32_t len,
@@ -169,10 +184,13 @@ static void enable_stm_feature(uint8_t peripheral)
 	if (peripheral >= NUM_PERIPHERALS)
 		return;
 
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:cntl_lock to obtain ", __LINE__);	
 	mutex_lock(&driver->cntl_lock);
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:cntl_lock obtained ", __LINE__);	
 	driver->feature[peripheral].stm_support = ENABLE_STM;
 	driver->stm_peripheral |= PERIPHERAL_MASK(peripheral);
 	mutex_unlock(&driver->cntl_lock);
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:cntl_lock released ", __LINE__);	
 
 	queue_work(driver->cntl_wq, &(driver->stm_update_work));
 }
@@ -297,8 +315,11 @@ static void diag_close_transport_work_fn(struct work_struct *work)
 {
 	uint8_t transport;
 	uint8_t peripheral;
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS, "1 \n");
 
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:cntl_lock to obtain ", __LINE__);	
 	mutex_lock(&driver->cntl_lock);
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:cntl_lock obtained ", __LINE__);
 	for (peripheral = 0; peripheral <= NUM_PERIPHERALS; peripheral++) {
 		if (!(driver->close_transport & PERIPHERAL_MASK(peripheral)))
 			continue;
@@ -308,6 +329,7 @@ static void diag_close_transport_work_fn(struct work_struct *work)
 		diagfwd_close_transport(transport, peripheral);
 	}
 	mutex_unlock(&driver->cntl_lock);
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:cntl_lock released ", __LINE__);
 }
 
 static void process_socket_feature(uint8_t peripheral)
@@ -315,10 +337,13 @@ static void process_socket_feature(uint8_t peripheral)
 	if (peripheral >= NUM_PERIPHERALS)
 		return;
 
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:cntl_lock to obtain ", __LINE__);	
 	mutex_lock(&driver->cntl_lock);
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:cntl_lock obtained ", __LINE__);
 	driver->close_transport |= PERIPHERAL_MASK(peripheral);
 	queue_work(driver->cntl_wq, &driver->close_transport_work);
 	mutex_unlock(&driver->cntl_lock);
+	DIAG_LOG(DIAG_DEBUG_PERIPHERALS," %d:cntl_lock released ", __LINE__);	
 }
 
 static void process_log_on_demand_feature(uint8_t peripheral)

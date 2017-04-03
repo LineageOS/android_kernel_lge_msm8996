@@ -23,6 +23,9 @@
 
 #include "mdss_panel.h"
 #include "mdss_mdp_splash_logo.h"
+#if defined(CONFIG_LGE_DISPLAY_AOD_WITH_MIPI)
+#include "lge/lge_mdss_watch.h"
+#endif
 
 #define MDSS_LPAE_CHECK(phys)	\
 	((sizeof(phys) > sizeof(unsigned long)) ? ((phys >> 32) & 0xFF) : (0))
@@ -342,6 +345,12 @@ struct msm_fb_data_type {
 #endif
 #if defined(CONFIG_LGE_DISPLAY_COMMON)
 	bool recovery;
+#if defined(CONFIG_LGE_PANEL_RECOVERY)
+	u32 recovery_bl_level;
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_BL_EXTENDED)
+	u32 recovery_bl_level_ex;
+#endif
+#endif
 #endif
 	struct platform_device *pdev;
 
@@ -398,9 +407,19 @@ struct msm_fb_data_type {
 	#if defined(CONFIG_LGE_PP_AD_SUPPORTED)
 	struct msm_fb_ad_info ad_info;
 	#endif
+#if defined(CONFIG_LGE_DISPLAY_DYN_DSI_MODE_SWITCH)
+	struct mutex mode_switch_lock;
+#endif
 #if defined(CONFIG_LGE_PM_THERMAL_VTS)
 	struct value_sensor *vs;
 	struct value_sensor *vs_clone;
+#endif
+#if defined(CONFIG_LGE_DISPLAY_AOD_WITH_MIPI)
+	bool  font_download_start;
+	bool font_download_sent;
+	bool watch_need_init;
+	struct mutex watch_lock;
+	struct watch_data watch;
 #endif
 };
 

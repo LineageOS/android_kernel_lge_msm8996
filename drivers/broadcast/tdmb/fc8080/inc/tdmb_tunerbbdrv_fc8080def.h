@@ -84,6 +84,20 @@ typedef enum
     UNKNOWN_PROTECTION_LEVEL
 } TDMB_BB_PROTECTION_LEVEL;
 
+typedef enum TDMB_ANT_TABLE_RAW
+{
+    INDEX_LV4,
+    INDEX_LV3,
+    INDEX_LV2,
+    INDEX_LV1,
+} TDMB_ANT_TABLE_RAW;
+
+typedef enum TDMB_ANT_TABLE_COLUMN
+{
+    ANT_LEVEL,
+    MSC_BER,
+    VA_PER,
+} TDMB_ANT_TABLE_COLUMN;
 
 /*============================================================
 **    2.   External Variables

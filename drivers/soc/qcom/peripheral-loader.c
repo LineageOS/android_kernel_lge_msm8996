@@ -817,6 +817,7 @@ int pil_boot(struct pil_desc *desc)
 		 * This is not true after cold boot since linux already owns it.
 		 * Also for secure boot devices, modem memory has to be released
 		 * after MBA is booted. */
+		pil_info(desc, "%s pil assign mem to linux", fw_name);
 		if (desc->modem_ssr) {
 			ret = pil_assign_mem_to_linux(desc, priv->region_start,
 				(priv->region_end - priv->region_start));
@@ -824,6 +825,7 @@ int pil_boot(struct pil_desc *desc)
 				pil_err(desc, "Failed to assign to linux, ret- %d\n",
 								ret);
 		}
+		pil_info(desc, "%s pil assign mem to subsys and linux", fw_name);
 		ret = pil_assign_mem_to_subsys_and_linux(desc,
 				priv->region_start,
 				(priv->region_end - priv->region_start));

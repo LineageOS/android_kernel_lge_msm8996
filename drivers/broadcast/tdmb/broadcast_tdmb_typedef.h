@@ -195,13 +195,10 @@ typedef unsigned char        BOOLEAN;
 typedef unsigned int        Bool;
 #endif
 
-#if defined (CONFIG_ARCH_MSM8994)
+#if defined(CONFIG_ARCH_MSM8994) || defined(CONFIG_ARCH_MSM8996) || defined(CONFIG_ARCH_MSM8917)
 typedef ULONG        UDynamic_32_64;
 typedef int32        Dynamic_32_64;
-#elif defined (CONFIG_ARCH_MSM8996)
-typedef ULONG        UDynamic_32_64;
-typedef int32        Dynamic_32_64;
-#elif defined (CONFIG_ARCH_MSM8226)
+#elif defined (CONFIG_ARCH_MSM8226) || defined(CONFIG_ARCH_MSM8916)
 typedef uint32        UDynamic_32_64;
 typedef ssize_t        Dynamic_32_64;
 #endif

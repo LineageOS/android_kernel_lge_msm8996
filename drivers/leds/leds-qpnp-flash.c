@@ -1206,10 +1206,16 @@ static void qpnp_flash_led_work(struct work_struct *work)
 	if (!brightness)
 		goto turn_off;
 
+#ifndef CONFIG_MACH_MSM8996_ELSA
 	if (led->open_fault) {
 		dev_err(&led->spmi_dev->dev, "Open fault detected\n");
 		goto unlock_mutex;
 	}
+#else
+	if (led->open_fault) {
+		dev_err(&led->spmi_dev->dev, "Open fault detected\n");
+	}
+#endif
 
 	if (!flash_node->flash_on && flash_node->num_regulators > 0) {
 #ifdef CONFIG_MACH_LGE
@@ -1729,6 +1735,11 @@ turn_off:
 		}
 
 		led->open_fault |= (val & FLASH_LED_OPEN_FAULT_DETECTED);
+
+#ifdef CONFIG_MACH_LGE
+		if(val)
+			dev_err(&led->spmi_dev->dev, "Fault detected (0x%x)\n", val);
+#endif
 	}
 
 	rc = qpnp_led_masked_write(led->spmi_dev,
@@ -2302,7 +2313,7 @@ static int qpnp_flash_led_parse_common_dt(
 
 	led->pdata->hdrm_sns_ch1_en = of_property_read_bool(node,
 						"qcom,headroom-sense-ch1-enabled");
-#ifdef CONFIG_LGE_CAMERA_DRIVER
+#ifdef CONFIG_MACH_LGE
 	//Disable Current change by power detect enable (G4 deliver)
 	led->pdata->power_detect_en = false;
 #else

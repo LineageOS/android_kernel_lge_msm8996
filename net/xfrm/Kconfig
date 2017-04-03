@@ -86,3 +86,8 @@ config NET_KEY_MIGRATE
 
 	  If unsure, say N.
 
+config XFRM_FRAG_ESP_BEFORE_TUNNEL_ENC
+  bool "Fragment ipv6 ESP(transport) before tunnel mode encryption."
+  ---help---
+    This will fragment ipv6 transport mode encrypted packet
+    before processing tunnel mode encryption.

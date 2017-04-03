@@ -76,7 +76,7 @@ static void lge_vzw_set_vzw_chg_work(struct work_struct *work)
 		vzw_req->vzw_chg_mode = VZW_NO_CHARGER;
 
 	if (vzw_req->current_settled > 0) {
-		if (vzw_req->input_current_trim < vzw_req->under_chg_current) {
+		if (vzw_req->input_current_trim/1000 < vzw_req->under_chg_current) {
 			vzw_req->vzw_chg_mode = VZW_UNDER_CURRENT_CHARGING;
 		}
 	}
@@ -138,10 +138,10 @@ static void lge_vzw_external_power_changed(struct lge_power *lpc)
 	if (!vzw_req->batt_psy) {
 		pr_err("battery is not yet ready\n");
 	} else {
-		if ((before_cur_settled != vzw_req->current_settled) &&
+		rc = vzw_req->batt_psy->get_property(vzw_req->batt_psy,
+				POWER_SUPPLY_PROP_INPUT_CURRENT_SETTLED, &ret);
+		if ((before_cur_settled != ret.intval) &&
 					vzw_req->current_settled >= 0) {
-			rc = vzw_req->batt_psy->get_property(vzw_req->batt_psy,
-					POWER_SUPPLY_PROP_INPUT_CURRENT_SETTLED, &ret);
 			if (rc) {
 				pr_info ("don't support AICL!\n");
 				vzw_req->current_settled = -1;

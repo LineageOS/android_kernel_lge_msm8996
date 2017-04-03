@@ -1802,6 +1802,9 @@ fail_unlock:
 }
 EXPORT_SYMBOL(qpnp_vadc_conv_seq_request);
 
+#ifdef CONFIG_LGE_USB_TUSB422
+struct mutex lock_for_usb_id;
+#endif
 int32_t qpnp_vadc_read(struct qpnp_vadc_chip *vadc,
 				enum qpnp_vadc_channels channel,
 				struct qpnp_vadc_result *result)
@@ -1879,10 +1882,14 @@ int32_t qpnp_vadc_read(struct qpnp_vadc_chip *vadc,
 		return 0;
 	}
 #ifdef CONFIG_LGE_PM
-#if defined(CONFIG_MACH_MSM8996_H1)
+#if defined(CONFIG_MACH_MSM8996_H1) || defined(CONFIG_MACH_MSM8996_LUCYE)
 	else if (channel == LR_MUX10_PU1_AMUX_USB_ID_LV || channel == LR_MUX10_USB_ID_LV) {
 		u8 data, gpio3_mode, gpio3_out;
 		struct spmi_device *spmi = vadc->adc->spmi;
+
+#ifdef CONFIG_LGE_USB_TUSB422
+		mutex_lock(&lock_for_usb_id);
+#endif
 
 		spmi_ext_register_readl(spmi->ctrl, spmi->sid, 0xc240, &gpio3_mode, 1);
 		spmi_ext_register_readl(spmi->ctrl, spmi->sid, 0xc245, &gpio3_out, 1);
@@ -1897,6 +1904,10 @@ int32_t qpnp_vadc_read(struct qpnp_vadc_chip *vadc,
 
 		spmi_ext_register_writel(spmi->ctrl, spmi->sid, 0xc240, &gpio3_mode, 1);
 		spmi_ext_register_writel(spmi->ctrl, spmi->sid, 0xc245, &gpio3_out, 1);
+
+#ifdef CONFIG_LGE_USB_TUSB422
+		mutex_unlock(&lock_for_usb_id);
+#endif
 
 		return rc;
 	}
@@ -2694,6 +2705,9 @@ static int qpnp_vadc_probe(struct spmi_device *spmi)
 		return rc;
 	}
 	mutex_init(&vadc->adc->adc_lock);
+#ifdef CONFIG_LGE_USB_TUSB422
+	mutex_init(&lock_for_usb_id);
+#endif
 
 	rc = qpnp_vadc_init_hwmon(vadc, spmi);
 	if (rc) {

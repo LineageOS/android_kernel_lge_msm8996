@@ -2523,7 +2523,7 @@ static ssize_t fps_ratio_show(struct device *dev,
 }
 
 int fps_cnt_before = 0;
-extern struct fb_info *msm_fb_get_cmd_pan_fb(void);
+extern struct fb_info *msm_fb_get_pan_fb(void);
 
 static ssize_t fps_fcnt_show(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -2533,7 +2533,11 @@ static ssize_t fps_fcnt_show(struct device *dev,
 	struct mdss_mdp_ctl *ctl;
 	struct fb_info *cmd_pn_info;
 
-	cmd_pn_info = msm_fb_get_cmd_pan_fb();
+	cmd_pn_info = msm_fb_get_pan_fb();
+
+	if ( cmd_pn_info == NULL )
+		goto read_fail;
+
 	if ( cmd_pn_info->par == NULL )
 		goto read_fail;
 

@@ -56,6 +56,13 @@ config MACH_MSM8996_H1_GLOBAL_COM
 	help
 	  Support for the Qualcomm MSM8996 H1_GLOBAL device.
 
+config MACH_MSM8996_H1_GLOBAL_ESA
+	bool "MSM8996 H1_GLOBAL_ESA"
+	depends on MACH_MSM8996_H1
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8996 H1_GLOBAL_ESA device.
+
 config MACH_MSM8996_H1_CNO_CN
 	bool "MSM8996 H1_CNO_CN"
 	depends on MACH_MSM8996_H1
@@ -175,7 +182,6 @@ config MACH_MSM8996_ELSA_LGU_KR
 	select MACH_LGE
 	help
 	  Support for the Qualcomm MSM8996 ELSA_LGU_KR device.
-endmenu
 
 config MACH_MSM8996_ELSA_SKT_KR
      bool "MSM8996 ELSA_SKT_KR"
@@ -282,6 +288,106 @@ config MACH_MSM8996_ELSA_DCM_JP
 	help
 	  Support for the Qualcomm MSM8996 ELSA_DCM_JP device.
 
+config MACH_MSM8996_LUCYE
+	bool "MSM8996 LUCYE"
+	depends on ARCH_MSM8996
+	select MACH_LGE
+	select LGE_DDR_SECTION_SIZE_CHANGE
+	help
+	  Support for the Qualcomm MSM8996 LUCYE device.
+
+config MACH_MSM8996_LUCYE_KR
+	bool "MSM8996 LUCYE"
+	depends on ARCH_MSM8996
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8996 LUCYE device.
+
+config MACH_MSM8996_LUCYE_LGU_KR
+	bool "MSM8996 LUCYE_LGU_KR"
+	depends on MACH_MSM8996_LUCYE_KR
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8996 LUCYE_LGU_KR device.
+
+config MACH_MSM8996_LUCYE_SKT_KR
+	bool "MSM8996 LUCYE_SKT_KR"
+	depends on MACH_MSM8996_LUCYE_KR
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8996 LUCYE_SKT_KR device.
+
+config MACH_MSM8996_LUCYE_KT_KR
+	bool "MSM8996 LUCYE_KT_KR"
+	depends on MACH_MSM8996_LUCYE_KR
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8996 LUCYE_KT_KR device.
+
+config MACH_MSM8996_LUCYE_GLOBAL_COM
+	bool "MSM8996 LUCYE_GLOBAL COM"
+	depends on ARCH_MSM8996
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8996 LUCYE_GLOBAL_COM device.
+
+config MACH_MSM8996_LUCYE_GLOBAL_CA
+	bool "MSM8996 LUCYE_GLOBAL CA"
+	depends on ARCH_MSM8996
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8996 LUCYE_GLOBAL_CA device.
+
+config MACH_MSM8996_LUCYE_VZW
+	bool "MSM8996 LUCYE_VZW"
+	depends on ARCH_MSM8996
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8996 LUCYE_VZW device.
+
+config MACH_MSM8996_LUCYE_SPR_US
+	bool "MSM8996 LUCYE_SPR_US"
+	depends on ARCH_MSM8996
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8996 LUCYE_SPR_US device.
+
+config MACH_MSM8996_LUCYE_NAO_US
+	bool "MSM8996 LUCYE_NAO_US"
+	depends on ARCH_MSM8996
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8996 LUCYE_NAO_US device.
+
+config MACH_MSM8996_LUCYE_ATT_US
+	bool "MSM8996 LUCYE_ATT_US"
+	depends on ARCH_MSM8996
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8996 LUCYE_ATT_US device.
+
+config MACH_MSM8996_LUCYE_TMO_US
+	bool "MSM8996 LUCYE_TMO_US"
+	depends on ARCH_MSM8996
+	select MACH_LGE
+	help
+	  Support for the Qualcomm MSM8996 LUCYE_TMO_US device.
+
+config MACH_MSM8996_LUCYE_GLOBAL_LDU
+        bool "MSM8996 LUCYE_GLOBAL LDU"
+        depends on ARCH_MSM8996
+        select MACH_LGE
+        help
+          Support for the Qualcomm MSM8996 LUCYE_GLOBAL_LDU device.
+
+config MACH_MSM8996_LUCYE_LGU_LDU
+        bool "MSM8996 LUCYE_LGU LDU"
+        depends on ARCH_MSM8996
+        select MACH_LGE
+        help
+          Support for the Qualcomm MSM8996 LUCYE_LGU_LDU device.
+endmenu
+
 menu "LGE Specific Patches"
 
 config LGE_HANDLE_PANIC
@@ -290,6 +396,15 @@ config LGE_HANDLE_PANIC
 	depends on MACH_LGE
 	help
 	  LGE Crash Handler
+
+config LGE_BOOT_LOCKUP_DETECT
+	bool "Support to detect lockup during powering on"
+	default n
+	depends on LGE_HANDLE_PANIC
+	help
+	  For detecting lockup in boot , use simple detector which
+	  raise crash when expired some period after boot.
+
 
 config LGE_REBOOT_LOCKUP_DETECT
 	bool "Support to detect lockup during powering off"
@@ -313,6 +428,13 @@ config LGE_EARJACK_DEBUGGER
 	depends on MACH_LGE
 	help
 	  Support earjack type UART debugger cable
+
+config LGE_USB_DEBUGGER
+	bool "USB UART debugger support"
+	default n
+	depends on LGE_PM_LGE_POWER_CLASS_CABLE_DETECT
+	help
+	  Support USB type UART debugger cable
 
 config LGE_BOOTLOADER_TIME_CHECKER
     tristate "Supprt bootloader(LK, SBL) time"
@@ -373,6 +495,14 @@ config LGE_PM_PSEUDO_BATTERY
 	help
 	  Say Y here to enable pseudo mode setting
 
+config LGE_DEFAULT_HARD_RESET
+	bool "LGE default hard reset"
+	default n
+	depends on MACH_LGE
+	help
+		This make hard reset when rebooting. reboot reason is
+		deliveried by QPNP_PON_SOFT_RB_SPARE[2:7] register.
+
 config LGE_ACC_NT
 	tristate "Support NT accessory"
 	depends on MACH_LGE
@@ -380,13 +510,20 @@ config LGE_ACC_NT
 	help
 	  Say Y here to enable pseudo mode setting
 
+config LGE_PAY_MME
+    tristate "Support MME driver with QSEE"
+    depends on MACH_LGE
+    default n
+    help
+      Say Y here to enable Mobile Magnetic Emualtor driver for LG pay
+
 config PRE_SELF_DIAGNOSIS
 	tristate "Support LGE self diagnosis for factory"
 	default n
 	depends on MACH_LGE
 	help
 	  LGE self diagnosis
-	  
+
 config LGE_PANEL_MAKER_ID_SUPPORT
 	tristate "Support pseudo battery mode"
 	depends on MACH_LGE

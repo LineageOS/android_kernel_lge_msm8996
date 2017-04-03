@@ -79,10 +79,18 @@
 #ifdef CONFIG_LGE_PM
 #include <linux/wakelock.h>
 #define CONFIG_LGE_PM_DIS_AICL_IRQ_WAKE
+#define CONFIG_LGE_PM_VFLOAT_TRIM_RESTORE
 #endif
 
 #ifdef CONFIG_LGE_ALICE_FRIENDS
 #define CHARGING_REDUCE_FOR_CM 400
+#endif
+
+#ifdef CONFIG_LGE_PM_CHARGING_CONTROLLER
+#define RP_56K     56
+#define RP_22K     22
+#define RP_10K     10
+#define RP_NONE    0
 #endif
 
 /* Mask/Bit helpers */
@@ -346,6 +354,9 @@ struct smbchg_chip {
 	struct delayed_work     hvdcp_check_work;
 	struct delayed_work		rerun_hvdcp_work;
 #endif
+#ifdef CONFIG_LGE_PM_MAXIM_EVP_CONTROL
+	struct delayed_work             evp_check_work;
+#endif
 	spinlock_t			sec_access_lock;
 	struct mutex			therm_lvl_lock;
 	struct mutex			usb_set_online_lock;
@@ -379,6 +390,11 @@ struct smbchg_chip {
 #ifdef CONFIG_LGE_PM_CHARGING_CONTROLLER
 	/* usbin uv irq workaround */
 	int				uv_irq_count;
+#endif
+#ifdef CONFIG_LGE_PM_VFLOAT_TRIM_RESTORE
+	u8                              initial_vfloat_trim_reg;;
+	bool                            vfloat_trim_restore_status;
+	struct delayed_work             vfloat_trim_check_work;
 #endif
 };
 
@@ -430,6 +446,10 @@ enum wake_reason {
 	PM_ESR_PULSE = BIT(2),
 	PM_PARALLEL_TAPER = BIT(3),
 	PM_DETECT_HVDCP = BIT(4),
+#ifdef CONFIG_LGE_PM_VFLOAT_TRIM_RESTORE
+	PM_VFLOAT_TRIM_RESTORE = BIT(5),
+	PM_VFLOAT_TRIM_RECHARGE = BIT(6),
+#endif
 };
 
 enum fcc_voters {
@@ -504,6 +524,9 @@ enum battchg_enable_voters {
 	BATTCHG_UNKNOWN_BATTERY_EN_VOTER,
 #ifdef CONFIG_LGE_PM_LLK_MODE
 	BATTCHG_LLK_MODE_EN_VOTER,
+#endif
+#ifdef CONFIG_LGE_PM_VFLOAT_TRIM_RESTORE
+	BATTCHG_VFLT_TRIM_EN_VOTER,
 #endif
 	NUM_BATTCHG_EN_VOTERS,
 };
@@ -2365,11 +2388,6 @@ static bool is_hvdcp_present(struct  smbchg_chip *chip)
 {
 	int rc;
 	u8 reg, hvdcp_sel;
-#ifdef CONFIG_LGE_PM_MAXIM_EVP_CONTROL
-	int type = 0;
-	union power_supply_propval pval = {0, };
-	enum power_supply_type usb_type;
-#endif
 
 	rc = smbchg_read(chip, &reg,
 			chip->usb_chgpth_base + USBIN_HVDCP_STS, 1);
@@ -2388,39 +2406,8 @@ static bool is_hvdcp_present(struct  smbchg_chip *chip)
 	else
 		hvdcp_sel = USBIN_HVDCP_SEL_BIT;
 
-#ifdef CONFIG_LGE_PM_MAXIM_EVP_CONTROL
-	if ((reg & hvdcp_sel) && is_usb_present(chip)) {
-		pval.intval = 0;
-		chip->usb_psy->set_property(chip->usb_psy,
-				POWER_SUPPLY_PROP_EVP_DETECT_START, &pval);
-		return true;
-	}
-#else
 	if ((reg & hvdcp_sel) && is_usb_present(chip))
 		return true;
-#endif
-#ifdef CONFIG_LGE_PM_MAXIM_EVP_CONTROL
-	else {
-		rc = smbchg_read(chip, &reg, chip->misc_base + IDEV_STS, 1);
-		if (rc < 0) {
-			dev_err(chip->dev, "Couldn't read status 5 rc = %d\n", rc);
-			return false;
-		}
-
-		type = get_type(reg);
-		usb_type = get_usb_supply_type(type);
-
-		if (usb_type == POWER_SUPPLY_TYPE_USB_DCP) {
-			pr_smb(PR_LGE, "usb type is DCP. Start EVP detection\n");
-			pval.intval = 1;
-		}
-		else {
-			pr_smb(PR_LGE, "usb type is %d\n", usb_type);
-		}
-	}
-	chip->usb_psy->set_property(chip->usb_psy,
-			POWER_SUPPLY_PROP_EVP_DETECT_START, &pval);
-#endif
 
 	return false;
 }
@@ -5755,6 +5742,138 @@ static int force_9v_hvdcp(struct smbchg_chip *chip)
 	return rc;
 }
 
+#ifdef CONFIG_LGE_PM_VFLOAT_TRIM_RESTORE
+#define VFLOAT_TRIM_RECHECK_DELAY_MS     1000
+#define FULL_CHARGED_CAPACITY            100
+#define FULL_BATTERY_MIN_VOLTAGE         4350
+static void smbchg_vfloat_trim_check_ok(struct smbchg_chip *chip)
+{
+	if (!chip->usb_present)
+		return;
+
+#ifdef CONFIG_LGE_PM_FACTORY_CABLE
+	if (lge_is_factory_cable())
+		return;
+#endif
+
+	if (chip->vfloat_trim_restore_status) {
+		pr_smb(PR_STATUS, "VFLOAT_TRIM restored recharge finish. \n");
+		chip->vfloat_trim_restore_status = false;
+		smbchg_relax(chip, PM_VFLOAT_TRIM_RECHARGE);
+		return;
+	}
+
+	smbchg_stay_awake(chip, PM_VFLOAT_TRIM_RESTORE);
+	schedule_delayed_work(&chip->vfloat_trim_check_work, 0);
+}
+
+static void smbchg_vfloat_trim_check_work(struct work_struct *work)
+{
+	struct smbchg_chip *chip = container_of(work,
+			struct smbchg_chip,
+			vfloat_trim_check_work.work);
+	int vbat_uv, vbat_mv, capacity, rc;
+	u8 vfloat_trim_reg;
+
+	rc = get_property_from_fg(chip,
+			POWER_SUPPLY_PROP_CAPACITY, &capacity);
+	if (rc) {
+		pr_smb(PR_STATUS,
+			"bms psy does not support capacity rc = %d\n", rc);
+		goto reschedule;
+	}
+
+	if (capacity == FULL_CHARGED_CAPACITY ) {
+		pr_smb(PR_STATUS, "Skip, SOC (%d) is Full. \n", capacity);
+		goto out;
+	}
+
+	rc = get_property_from_fg(chip,
+			POWER_SUPPLY_PROP_VOLTAGE_NOW, &vbat_uv);
+	if (rc) {
+		pr_smb(PR_STATUS,
+			"bms psy does not support voltage rc = %d\n", rc);
+		goto reschedule;
+	}
+	vbat_mv = vbat_uv / 1000;
+
+	/* compare with initail VFLOAT_TRIM register */
+	rc = smbchg_read(chip, &vfloat_trim_reg, chip->misc_base + TRIM_14, 1);
+	if (rc < 0) {
+		dev_err(chip->dev, "Unable to read trim 14: %d\n", rc);
+		goto reschedule;
+	}
+
+	if( (capacity < FULL_CHARGED_CAPACITY) &&
+			(vbat_mv < FULL_BATTERY_MIN_VOLTAGE ) &&
+			(vfloat_trim_reg != chip->initial_vfloat_trim_reg) ) {
+		pr_smb(PR_STATUS, "Restore VFLOAT_TRIM register.\n");
+		pr_smb(PR_STATUS, "SOC = %d VBAT = %d mV vfloat_trim_reg %x\n",
+				capacity, vbat_mv, vfloat_trim_reg);
+		goto restore;
+	} else {
+		pr_smb(PR_STATUS, "Not restored. SOC %d VBAT %d trim_reg %x\n",
+				capacity, vbat_mv, vfloat_trim_reg);
+		goto out;
+	}
+
+restore:
+	pr_smb(PR_STATUS, "start recover VFLOAT_TRIM & recharging \n");
+
+	rc = vote(chip->battchg_suspend_votable, BATTCHG_VFLT_TRIM_EN_VOTER, true, 0);
+	if (rc < 0) {
+		pr_smb(PR_STATUS, "error during suspend charging.\n");
+		goto reschedule;
+	}
+
+	rc = smbchg_sec_masked_write(chip, chip->misc_base + TRIM_14,
+			VF_TRIM_MASK, chip->initial_vfloat_trim_reg);
+	if (rc < 0) {
+		dev_err(chip->dev,
+				"Couldn't change vfloat trim rc=%d\n", rc);
+		goto reschedule;
+	}
+	pr_smb(PR_STATUS, "VFlt trim restored. 0x%02x \n",
+			chip->initial_vfloat_trim_reg);
+
+	msleep(200);
+
+	rc = vote(chip->battchg_suspend_votable, BATTCHG_VFLT_TRIM_EN_VOTER, false, 0);
+	if (rc < 0) {
+		pr_smb(PR_STATUS, "error during restart charging.\n");
+		goto reschedule;
+	}
+
+	smbchg_stay_awake(chip, PM_VFLOAT_TRIM_RECHARGE);
+	chip->vfloat_trim_restore_status = true;
+
+	if (chip->psy_registered) {
+		if (!chip->enable_aicl_wake) {
+			pr_smb(PR_STATUS, "enable aicl_done_irq\n");
+			enable_irq_wake(chip->aicl_done_irq);
+			chip->enable_aicl_wake = true;
+		}
+	} else {
+		pr_smb(PR_STATUS, "smbchg irqs are not registered\n");
+	}
+
+	smbchg_parallel_usb_check_ok(chip);
+	if (chip->psy_registered)
+		power_supply_changed(&chip->batt_psy);
+	smbchg_charging_status_change(chip);
+
+out:
+	pr_smb(PR_STATUS, "End of vfloat trim check. \n");
+	smbchg_relax(chip, PM_VFLOAT_TRIM_RESTORE);
+	return;
+
+reschedule:
+	pr_smb(PR_STATUS, "Rescheduled vfloat trim check. \n");
+	schedule_delayed_work(&chip->vfloat_trim_check_work,
+			msecs_to_jiffies(VFLOAT_TRIM_RECHECK_DELAY_MS));
+}
+#endif
+
 static void smbchg_hvdcp_det_work(struct work_struct *work)
 {
 	struct smbchg_chip *chip = container_of(work,
@@ -5799,6 +5918,27 @@ static void smbchg_hvdcp_check_work(struct work_struct *work)
 
 		if (rc < 0)
 			dev_err(chip->dev, "could not set non drive mode:%d\n", rc);
+	}
+}
+#endif
+
+#ifdef CONFIG_LGE_PM_MAXIM_EVP_CONTROL
+#define EVP_CHECK_MS         6000
+static void smbchg_evp_check_work(struct work_struct *work)
+{
+	struct smbchg_chip *chip = container_of(work, struct smbchg_chip,
+			evp_check_work.work);
+	union power_supply_propval pval = {0, };
+
+	if (chip->hvdcp_mode == RP_NONE || chip->hvdcp_mode == RP_10K) {
+		return;
+	}
+
+	if (!is_hvdcp_present(chip)) {
+		pr_smb(PR_LGE, "usb type is DCP. Start EVP detection\n");
+		pval.intval = 1;
+		chip->usb_psy->set_property(chip->usb_psy,
+				POWER_SUPPLY_PROP_EVP_DETECT_START, &pval);
 	}
 }
 #endif
@@ -6051,11 +6191,19 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 	cancel_delayed_work(&chip->rerun_hvdcp_work);
 #endif
 #ifdef CONFIG_LGE_PM_MAXIM_EVP_CONTROL
+	cancel_delayed_work(&chip->evp_check_work);
 	chip->is_evp_ta = 0;
 #endif
 #ifdef CONFIG_LGE_PM_WEAK_BATT_PACK
 		schedule_delayed_work(&chip->batt_pack_check_work,
 				msecs_to_jiffies(800));
+#endif
+#ifdef CONFIG_LGE_PM_VFLOAT_TRIM_RESTORE
+	if (chip->vfloat_trim_restore_status) {
+		pr_smb(PR_STATUS, "VFLOAT_TRIM wakelock released. \n");
+		chip->vfloat_trim_restore_status = false;
+		smbchg_relax(chip, PM_VFLOAT_TRIM_RECHARGE);
+	}
 #endif
 	rc = smbchg_masked_write(chip, chip->usb_chgpth_base + CMD_IL,
 			ICL_OVERRIDE_BIT, 0);
@@ -6188,7 +6336,7 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 }
 
 #ifdef CONFIG_LGE_PM_CHARGING_CONTROLLER
-#define LGCC_WORK_ENABLE_DELAY     15000
+#define LGCC_WORK_ENABLE_DELAY     30000
 static void lgcc_work_enable_check(struct work_struct *work)
 {
 	struct smbchg_chip *chip = container_of(work,
@@ -7134,12 +7282,7 @@ static int smbchg_dp_dm(struct smbchg_chip *chip, int val)
 }
 
 #ifdef CONFIG_LGE_PM_CHARGING_CONTROLLER
-#define RP_56K		56
-#define RP_22K		22
-#define RP_10K		10
-#define RP_NONE		0
 #define RERUN_HVDCP_MS	1000
-
 static void smbchg_rerun_hvdcp_work(struct work_struct *work)
 {
 	struct smbchg_chip *chip = container_of(work, struct smbchg_chip,
@@ -7202,6 +7345,13 @@ static void smbchg_rerun_hvdcp_work(struct work_struct *work)
 				msecs_to_jiffies(HVDCP_NOTIFY_MS));
 		pr_err("hvdcp_det_work start\n");
 
+#ifdef CONFIG_LGE_PM_MAXIM_EVP_CONTROL
+		cancel_delayed_work_sync(&chip->evp_check_work);
+		schedule_delayed_work(&chip->evp_check_work,
+				msecs_to_jiffies(EVP_CHECK_MS));
+		pr_smb(PR_LGE, "evp_check_work start\n");
+#endif
+
 		cancel_delayed_work_sync(&chip->hvdcp_check_work);
 		schedule_delayed_work(&chip->hvdcp_check_work,
 				msecs_to_jiffies(HVDCP_CHECK_MS));
@@ -7209,6 +7359,7 @@ static void smbchg_rerun_hvdcp_work(struct work_struct *work)
 	}
 }
 #endif
+
 static enum power_supply_property smbchg_battery_properties[] = {
 	POWER_SUPPLY_PROP_STATUS,
 	POWER_SUPPLY_PROP_PRESENT,
@@ -7808,6 +7959,10 @@ static irqreturn_t chg_term_handler(int irq, void *_chip)
 	if (terminated) {
 		smbchg_parallel_usb_disable(chip);
 	}
+#endif
+#ifdef CONFIG_LGE_PM_VFLOAT_TRIM_RESTORE
+	if (terminated)
+		smbchg_vfloat_trim_check_ok(chip);
 #endif
 	if (terminated) {
 		smbchg_parallel_usb_check_ok(chip);
@@ -8917,7 +9072,18 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 			dev_err(chip->dev, "Couldn't set DCD Timeout Delay rc = %d\n", rc);
 	}
 #endif
-
+#ifdef CONFIG_LGE_PM_VFLOAT_TRIM_RESTORE
+	/* save initial VFLOAT_TRIM register */
+	rc = smbchg_read(chip, &reg, chip->misc_base + TRIM_14, 1);
+	if (rc < 0) {
+		dev_err(chip->dev, "Unable to read trim 14: %d\n", rc);
+		chip->initial_vfloat_trim_reg = 0xE1; // default TRIM_14 value
+	}
+	chip->initial_vfloat_trim_reg = reg;
+	chip->vfloat_trim_restore_status = false;
+	pr_smb(PR_STATUS, "VFLOAT_TRIM reg during booting = 0x%x\n",
+			chip->initial_vfloat_trim_reg);
+#endif
 	rc = configure_icl_control(chip, ICL_BUF_SYSON_LDO_VAL);
 	if (rc)
 		dev_err(chip->dev, "Couldn't switch to Syson LDO, rc=%d\n",
@@ -9858,10 +10024,15 @@ static int smbchg_probe(struct spmi_device *spmi)
 	INIT_DELAYED_WORK(&chip->rerun_hvdcp_work, smbchg_rerun_hvdcp_work);
 #endif
 #ifdef CONFIG_LGE_PM_MAXIM_EVP_CONTROL
+	INIT_DELAYED_WORK(&chip->evp_check_work, smbchg_evp_check_work);
 	INIT_DELAYED_WORK(&chip->enable_evp_chg_work, enable_evp_chg_work);
 #endif
 #ifdef CONFIG_LGE_PM_WEAK_BATT_PACK
 	INIT_DELAYED_WORK(&chip->batt_pack_check_work, weak_batt_pack_check_work);
+#endif
+#ifdef CONFIG_LGE_PM_VFLOAT_TRIM_RESTORE
+	INIT_DELAYED_WORK(&chip->vfloat_trim_check_work,
+			smbchg_vfloat_trim_check_work);
 #endif
 	chip->vadc_dev = vadc_dev;
 	chip->spmi = spmi;
@@ -10094,6 +10265,9 @@ static int smbchg_remove(struct spmi_device *spmi)
 #endif
 #ifdef CONFIG_LGE_PM_WEAK_BATT_PACK
 	cancel_delayed_work(&chip->batt_pack_check_work);
+#endif
+#ifdef CONFIG_LGE_PM_VFLOAT_TRIM_RESTORE
+	cancel_delayed_work(&chip->vfloat_trim_check_work);
 #endif
 #ifdef CONFIG_LGE_PM_WAKE_LOCK_FOR_CHG_LOGO
 	wake_lock_destroy(&chip->chg_logo_wake_lock);

@@ -4189,3 +4189,4 @@ int msm_venc_ctrl_init(struct msm_vidc_inst *inst)
 	return msm_comm_ctrl_init(inst, msm_venc_ctrls,
 			ARRAY_SIZE(msm_venc_ctrls), &msm_venc_ctrl_ops);
 }
+

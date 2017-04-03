@@ -45,6 +45,7 @@
 	qcom,charging-timeout-mins = <768>;
 	qcom,skip-usb-suspend-for-fake-battery;
 	qcom,aicl-rerun-period-s = <45>;
+	qcom,bmd-algo-disabled;
 
 	qcom,usb_id-vadc = <&pm8994_vadc>;
 	qcom,usbin-vadc = <&pmi8994_vadc>;
@@ -92,8 +93,8 @@
 	qcom,thermal-coefficients = [D2 85 0E 4A A5 35];
 	qcom,ext-sense-type;
 	qcom,capacity-learning-feedback;
-	qcom,resume-soc = <99>;
-	qcom,resume-soc-raw = <253>;
+	qcom,resume-soc = <97>;
+	qcom,resume-soc-raw = <247>;
 	qcom,fg-iterm-ma = <200>;
 	qcom,fg-chg-iterm-ma = <100>;
 	qcom,lge_batt_profile;
@@ -181,7 +182,7 @@
 		lge,cable-330k 		= <1050001 1150000 1800  500 1500 3100>;
 		lge,cable-620k 		= <1150001 1380000 1800  500 1500 3100>;
 		lge,cable-910k 		= <1380001 1630000 1500 1500  500  500>;
-		lge,cable-none 		= <1630001 1900000 1800  500 1500 3100>;
+		lge,cable-none 		= <1630001 1900000 1800  500 1800 3100>;
 	};
 
 	lge,adc-qct {
@@ -220,6 +221,16 @@
 		compatible = "lge,store_mode";
 		lge,llk_max = <50>;
 		lge,llk_min = <45>;
+	};
+	
+	lge,pseudo_battery {
+		compatible = "lge,pseudo_battery";
+		lge,id = <1>;
+		lge,therm = <100>;
+		lge,temp = <40>;
+		lge,volt = <4100000>;
+		lge,capacity = <80>;
+		lge,charging = <1>;
 	};
 
 	lge,gpio-debug@fd510000 {
@@ -359,6 +370,7 @@
 			"charger", "usb_parallel_chg_status", "/sys/class/power_supply/usb-parallel/status",
 			"charger", "usb_parallel_charging_enabled", "/sys/class/power_supply/usb-parallel/charging_enabled",
 			"charger", "quick_charging_state", "/sys/module/lge_power_class_charging_controller/parameters/quick_charging_state",
+			"charger", "ibat_max_current", "/sys/class/power_supply/battery/constant_charge_current_max",
 			/* LCD Backlight */
 			"lcd", "brightness", "/sys/class/leds/lcd-backlight/brightness",
 			"lcd", "max_brightness", "/sys/class/leds/lcd-backlight/max_brightness",
@@ -388,24 +400,26 @@
 			"testmode", "battexit", "/sys/class/power_supply/battery/present",
 			"testmode", "hardreset_mode", "/sys/module/qpnp_power_on/parameters/hardreset_mode";
 	};
-	/* vts, 0.5*XO + 0.27*Bd2 + 7.07 */
+
+	/* vts, 0.19 * XO + 0.66 * Bd2 + 3.86 */
 	virtual_temp_sensor: lge,vts {
 		compatible = "lge,vts";
 		lge,index = <101>;
 		qcom,vts-vadc = <&pm8994_vadc>;
 		lge,scaling-factor = <10>;
-		lge,constant-milli = <7070>;
+		lge,constant-milli = <3860>;
 		composite_sensor_0: lge,sensor0 {
 			label = "xo_therm";
 			channel = <0x72>;
-			weight-milli = <500>;
+			weight-milli = <190>;
 		};
 		composite_sensor_1: lge,sensor1 {
 			label = "bd_therm_2";
 			channel = <0x74>;
-			weight-milli = <270>;
+			weight-milli = <660>;
 		};
 	};
+
 	virtual_temp_sensor_led: lge,vts_led {
 		compatible = "lge,vts";
 		lge,name = "led_sensor";

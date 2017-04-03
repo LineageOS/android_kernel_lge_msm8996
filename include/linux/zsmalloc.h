@@ -35,16 +35,18 @@ enum zs_mapmode {
 };
 
 struct zs_pool_stats {
-	/* How many pages were migrated (freed) */
-	u64		pages_compacted;
+	/* How many pages were migrated (freed) by object compaction */
+	atomic64_t pages_compacted;
+	/* How many pages were migrated by VM compaction */
+	atomic64_t pages_migrated;
 };
 
 struct zs_pool;
 
-struct zs_pool *zs_create_pool(char *name, gfp_t flags);
+struct zs_pool *zs_create_pool(const char *name);
 void zs_destroy_pool(struct zs_pool *pool);
 
-unsigned long zs_malloc(struct zs_pool *pool, size_t size);
+unsigned long zs_malloc(struct zs_pool *pool, size_t size, gfp_t flags);
 void zs_free(struct zs_pool *pool, unsigned long obj);
 
 void *zs_map_object(struct zs_pool *pool, unsigned long handle,
@@ -52,7 +54,7 @@ void *zs_map_object(struct zs_pool *pool, unsigned long handle,
 void zs_unmap_object(struct zs_pool *pool, unsigned long handle);
 
 unsigned long zs_get_total_pages(struct zs_pool *pool);
-unsigned long zs_compact(struct zs_pool *pool);
+u64 zs_compact(struct zs_pool *pool);
 
 void zs_pool_stats(struct zs_pool *pool, struct zs_pool_stats *stats);
 #endif

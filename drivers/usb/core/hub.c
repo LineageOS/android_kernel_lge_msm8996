@@ -1019,6 +1019,9 @@ int usb_remove_device(struct usb_device *udev)
 	set_bit(udev->portnum, hub->removed_bits);
 	hub_port_logical_disconnect(hub, udev->portnum);
 	usb_autopm_put_interface(intf);
+#ifdef CONFIG_LGE_DP_ANX7688
+	det_vendor_id = det_product_id = 0x0000;
+#endif
 	return 0;
 }
 
@@ -2501,8 +2504,10 @@ int usb_new_device(struct usb_device *udev)
 	/* Tell the world! */
 	announce_device(udev);
 #ifdef CONFIG_LGE_DP_ANX7688
-	det_vendor_id = le16_to_cpu(udev->descriptor.idVendor);
-	det_product_id = le16_to_cpu(udev->descriptor.idProduct);
+	if (udev->speed == USB_SPEED_SUPER) {
+		det_vendor_id = le16_to_cpu(udev->descriptor.idVendor);
+		det_product_id = le16_to_cpu(udev->descriptor.idProduct);
+	}
 #endif
 	if (udev->serial)
 		add_device_randomness(udev->serial, strlen(udev->serial));

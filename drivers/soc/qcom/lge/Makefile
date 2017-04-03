@@ -13,6 +13,7 @@ obj-$(CONFIG_LGE_PM_PSEUDO_BATTERY) += lge_pseudo_batt.o
 obj-$(CONFIG_LGE_QSDL_SUPPORT) += lge_qsdl.o
 obj-$(CONFIG_MACH_LGE) += lge_gpio_debug.o lge_boost_bypass.o
 obj-$(CONFIG_LGE_ACC_NT) += lge_acc_nt.o
+obj-$(CONFIG_LGE_PAY_MME) += lge_mme_drv.o
 obj-$(CONFIG_LGE_LCD_TUNING) += lge_lcd_misc_ctrl.o
 obj-$(CONFIG_LGE_QFPROM_INTERFACE) += lge_qfprom_access.o
 obj-$(CONFIG_PRE_SELF_DIAGNOSIS) += lge_pre_selfd.o

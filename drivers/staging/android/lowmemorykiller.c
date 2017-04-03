@@ -47,6 +47,7 @@
 #include <linux/cpuset.h>
 #include <linux/vmpressure.h>
 #include <linux/zcache.h>
+#include <linux/sched/rt.h>
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/almk.h>
@@ -57,8 +58,29 @@
 #define _ZONE ZONE_NORMAL
 #endif
 
+#ifdef CONFIG_HSWAP
+#include <linux/delay.h>
+#include <linux/kthread.h>
+#include "../../block/zram/zram_drv.h"
+#endif
+
 #define CREATE_TRACE_POINTS
 #include "trace/lowmemorykiller.h"
+
+/*
+ * It's reasonable to grant the dying task an even higher priority to
+ * be sure it will be scheduled sooner and free the desired pmem.
+ * It was suggested using SCHED_RR:1 (the lowest RT priority),
+ * so that this task won't interfere with any running RT task.
+ */
+static void boost_dying_task_prio(struct task_struct *p)
+{
+	if (!rt_task(p)) {
+		struct sched_param param;
+		param.sched_priority = 1;
+		sched_setscheduler_nocheck(p, SCHED_RR, &param);
+	}
+}
 
 static uint32_t lowmem_debug_level = 1;
 static short lowmem_adj[6] = {
@@ -76,6 +98,11 @@ static int lowmem_minfree[6] = {
 };
 static int lowmem_minfree_size = 4;
 static int lmk_fast_run = 0;
+
+static int lmk_kill_cnt = 0;
+#ifdef CONFIG_HSWAP
+static int lmk_reclaim_cnt = 0;
+#endif
 
 static unsigned long lowmem_deathpending_timeout;
 
@@ -382,6 +409,170 @@ void tune_lmk_param(int *other_free, int *other_file, struct shrink_control *sc)
 	}
 }
 
+#ifdef CONFIG_HSWAP
+static bool reclaim_task_is_ok(int selected_task_anon_size)
+{
+	int free_size = zram0_free_size() - get_lowest_prio_swapper_space_nrpages();
+
+	if (selected_task_anon_size < free_size)
+		return true;
+
+	return false;
+}
+
+#define OOM_SCORE_SERVICE_B_ADJ 800
+#define OOM_SCORE_CACHED_APP_MIN_ADJ 900
+
+static DEFINE_MUTEX(reclaim_mutex);
+
+static struct completion reclaim_completion;
+static struct task_struct *selected_task;
+
+#define RESET_TIME 3600000 /* activity top time reset time(msec) */
+static int reset_task_time_thread(void *p)
+{
+	struct task_struct *tsk;
+
+	while (1) {
+		struct task_struct *p;
+
+		rcu_read_lock();
+		for_each_process(tsk) {
+			if (tsk->flags & PF_KTHREAD)
+				continue;
+
+			/* if task no longer has any memory ignore it */
+			if (test_task_flag(tsk, TIF_MEMDIE))
+				continue;
+
+			if (tsk->exit_state || !tsk->mm)
+				continue;
+
+			p = find_lock_task_mm(tsk);
+			if (!p)
+				continue;
+
+			if (p->signal->top_time)
+				p->signal->top_time =
+					(p->signal->top_time * 3) / 4;
+
+			task_unlock(p);
+		}
+		rcu_read_unlock();
+		msleep(RESET_TIME);
+	}
+	return 0;
+}
+
+static int reclaim_task_thread(void *p)
+{
+	int selected_tasksize;
+	struct reclaim_param rp;
+
+	init_completion(&reclaim_completion);
+
+	while (1) {
+		wait_for_completion(&reclaim_completion);
+
+		mutex_lock(&reclaim_mutex);
+		if (!selected_task)
+			goto reclaim_end;
+
+		lowmem_print(3, "hswap: scheduled reclaim task '%s'(%d), adj%hd\n",
+				selected_task->comm, selected_task->pid,
+				selected_task->signal->oom_score_adj);
+
+		task_lock(selected_task);
+		if (selected_task->exit_state || !selected_task->mm) {
+			task_unlock(selected_task);
+			put_task_struct(selected_task);
+			goto reclaim_end;
+		}
+
+		selected_tasksize = get_mm_rss(selected_task->mm);
+		if (!selected_tasksize) {
+			task_unlock(selected_task);
+			put_task_struct(selected_task);
+			goto reclaim_end;
+		}
+
+		task_unlock(selected_task);
+
+		rp = reclaim_task_file_anon(selected_task, selected_tasksize);
+		lowmem_print(3, "Reclaimed '%s' (%d), adj %hd,\n" \
+				"   nr_reclaimed %d\n",
+			     selected_task->comm, selected_task->pid,
+			     selected_task->signal->oom_score_adj,
+			     rp.nr_reclaimed);
+#ifdef CONFIG_HSWAP
+		++lmk_reclaim_cnt;
+#endif
+
+		put_task_struct(selected_task);
+
+reclaim_end:
+		init_completion(&reclaim_completion);
+		mutex_unlock(&reclaim_mutex);
+	}
+
+	return 0;
+}
+
+#define RECLAIM_TASK_CNT 100
+struct task_struct* reclaim_task[RECLAIM_TASK_CNT];
+
+static struct task_struct *find_suitable_reclaim(int reclaim_cnt,
+		int *rss_size)
+{
+	struct task_struct *selected = NULL;
+	int selected_tasksize = 0;
+	int tasksize, anonsize;
+	long selected_top_time = -1;
+	int i = 0;
+
+	for (i = 0; i < reclaim_cnt; i++) {
+		struct task_struct *p;
+
+		p = reclaim_task[i];
+
+		task_lock(p);
+		if (p->exit_state || !p->mm) {
+			task_unlock(p);
+			continue;
+		}
+
+		tasksize = get_mm_rss(p->mm);
+		anonsize = get_mm_counter(p->mm, MM_ANONPAGES);
+		task_unlock(p);
+
+		if (!tasksize)
+			continue;
+
+		if (!reclaim_task_is_ok(anonsize))
+			continue;
+
+		if (selected_tasksize > tasksize)
+			continue;
+
+		selected_top_time = p->signal->top_time;
+		selected_tasksize = tasksize;
+		selected = p;
+	}
+
+	*rss_size = selected_tasksize;
+
+	return selected;
+}
+
+void reclaim_arr_free(int reclaim_cnt)
+{
+	int i;
+
+	for (i = 0; i < reclaim_cnt; i++)
+		reclaim_task[i] = NULL;
+}
+#endif
+
 static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 {
 	struct task_struct *tsk;
@@ -397,11 +588,29 @@ static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 	int array_size = ARRAY_SIZE(lowmem_adj);
 	int other_free;
 	int other_file;
+#ifdef CONFIG_HSWAP
+	long selected_top_time = -1, cur_top_time;
+	int reclaimed_cnt = 0, reclaim_cnt = 0;
+	int hswap_tasksize = 0;
+	int swapsize = 0, selected_swapsize = 0;
+#endif
 
 	if (mutex_lock_interruptible(&scan_mutex) < 0)
 		return 0;
 
+#ifdef CONFIG_HSWAP
+	if (!mutex_trylock(&reclaim_mutex)) {
+		mutex_unlock(&scan_mutex);
+		return 0;
+	}
+	mutex_unlock(&reclaim_mutex);
+#endif
+
 	other_free = global_page_state(NR_FREE_PAGES);
+
+#ifdef CONFIG_MIGRATE_HIGHORDER
+	other_free -= global_page_state(NR_FREE_HIGHORDER_PAGES);
+#endif
 
 	if (global_page_state(NR_SHMEM) + total_swapcache_pages() <
 		global_page_state(NR_FILE_PAGES) + zcache_pages())
@@ -458,6 +667,9 @@ static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 				rcu_read_unlock();
 				/* give the system time to free up the memory */
 				msleep_interruptible(20);
+#ifdef CONFIG_HSWAP
+				goto end_lmk;
+#endif
 				mutex_unlock(&scan_mutex);
 				return 0;
 			}
@@ -468,23 +680,70 @@ static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 			continue;
 
 		oom_score_adj = p->signal->oom_score_adj;
-		if (oom_score_adj < min_score_adj) {
-			task_unlock(p);
-			continue;
+#ifdef CONFIG_HSWAP
+		cur_top_time = p->signal->top_time;
+
+		if (p->signal->reclaimed)
+			reclaimed_cnt++;
+
+		if (oom_score_adj >= OOM_SCORE_SERVICE_B_ADJ &&
+				!p->signal->reclaimed) {
+			if (reclaim_cnt < RECLAIM_TASK_CNT)
+				reclaim_task[reclaim_cnt++] = p;
 		}
+
+		if (min_score_adj > OOM_SCORE_SERVICE_B_ADJ) {
+			if (oom_score_adj <= OOM_SCORE_SERVICE_B_ADJ) {
+				task_unlock(p);
+				continue;
+			}
+		} else {
+#endif
+			if (oom_score_adj < min_score_adj) {
+				task_unlock(p);
+				continue;
+			}
+#ifdef CONFIG_HSWAP
+		}
+#endif
 		tasksize = get_mm_rss(p->mm);
+#ifdef CONFIG_HSWAP
+		swapsize = get_mm_counter(p->mm, MM_SWAPENTS);
+#endif
 		task_unlock(p);
 		if (tasksize <= 0)
 			continue;
 		if (selected) {
+#ifdef CONFIG_HSWAP
+			if (min_score_adj <= OOM_SCORE_SERVICE_B_ADJ) {
+				if (oom_score_adj < selected_oom_score_adj)
+					continue;
+				if (oom_score_adj == selected_oom_score_adj &&
+						tasksize <= selected_tasksize)
+					continue;
+			} else {
+				if (selected_top_time >= 0  &&
+						selected_top_time < cur_top_time)
+					continue;
+				if (selected_top_time == cur_top_time) {
+					if (tasksize <= selected_tasksize)
+						continue;
+				}
+			}
+#else
 			if (oom_score_adj < selected_oom_score_adj)
 				continue;
 			if (oom_score_adj == selected_oom_score_adj &&
 			    tasksize <= selected_tasksize)
 				continue;
+#endif
 		}
 		selected = p;
 		selected_tasksize = tasksize;
+#ifdef CONFIG_HSWAP
+		selected_swapsize = swapsize;
+		selected_top_time = cur_top_time;
+#endif
 		selected_oom_score_adj = oom_score_adj;
 		lowmem_print(3, "select '%s' (%d), adj %hd, size %d, to kill\n",
 			     p->comm, p->pid, oom_score_adj, tasksize);
@@ -494,7 +753,56 @@ static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 		long cache_limit = minfree * (long)(PAGE_SIZE / 1024);
 		long free = other_free * (long)(PAGE_SIZE / 1024);
 		trace_lowmemory_kill(selected, cache_size, cache_limit, free);
-		lowmem_print(1, "Killing '%s' (%d), adj %hd,\n" \
+#ifdef CONFIG_HSWAP
+		if (min_score_adj < OOM_SCORE_SERVICE_B_ADJ)
+			goto kill;
+		else if (!reclaim_cnt && (min_score_adj > OOM_SCORE_CACHED_APP_MIN_ADJ)) {
+			rcu_read_unlock();
+			goto end_lmk;
+		}
+
+		if (reclaim_cnt && mutex_trylock(&reclaim_mutex)) {
+			selected_task = find_suitable_reclaim(reclaim_cnt, &hswap_tasksize);
+			if (selected_task) {
+				unsigned long flags;
+
+				if (lock_task_sighand(selected_task, &flags)) {
+					selected_task->signal->reclaimed = 1;
+					unlock_task_sighand(selected_task, &flags);
+				}
+				get_task_struct(selected_task);
+				complete(&reclaim_completion);
+				mutex_unlock(&reclaim_mutex);
+				rem += hswap_tasksize;
+				lowmem_print(1, "Reclaiming '%s' (%d), adj %hd, top time = %ld\n" \
+						"   to free %ldkB on behalf of '%s' (%d) because\n" \
+						"   cache %ldkB is below limit %ldkB for oom_score_adj %hd\n" \
+						"   Free memory is %ldkB above reserved.\n",
+						selected_task->comm, selected_task->pid,
+						selected_task->signal->oom_score_adj, selected_task->signal->top_time,
+						hswap_tasksize * (long)(PAGE_SIZE / 1024),
+						current->comm, current->pid,
+						other_file * (long)(PAGE_SIZE / 1024),
+						minfree * (long)(PAGE_SIZE / 1024),
+						min_score_adj,
+						other_free * (long)(PAGE_SIZE / 1024));
+				lowmem_print(3, "reclaimed cnt = %d, reclaim cont = %d, min oom score= %hd\n",
+						reclaimed_cnt, reclaim_cnt, min_score_adj);
+				lowmem_deathpending_timeout = jiffies + HZ;
+				rcu_read_unlock();
+				goto end_lmk;
+			} else {
+				mutex_unlock(&reclaim_mutex);
+			}
+		}
+		selected_tasksize += selected_swapsize;
+kill:
+#endif
+#ifndef CONFIG_HSWAP
+		lowmem_print(1, "Killing '%s' (%d), adj %hd,\n"
+#else
+		lowmem_print(1, "Killing '%s' (%d), adj %hd, reclaimable cnt %d\n"
+#endif
 				"   to free %ldkB on behalf of '%s' (%d) because\n" \
 				"   cache %ldkB is below limit %ldkB for oom_score_adj %hd\n" \
 				"   Free memory is %ldkB above reserved.\n" \
@@ -506,6 +814,9 @@ static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 				"   GFP mask is 0x%x\n",
 			     selected->comm, selected->pid,
 			     selected_oom_score_adj,
+#ifdef CONFIG_HSWAP
+				 reclaim_cnt,
+#endif
 			     selected_tasksize * (long)(PAGE_SIZE / 1024),
 			     current->comm, current->pid,
 			     cache_size, cache_limit,
@@ -528,13 +839,21 @@ static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 
 		lowmem_deathpending_timeout = jiffies + HZ;
 		set_tsk_thread_flag(selected, TIF_MEMDIE);
+		//Improve the priority of killed process can accelerate the process to die,
+		//and the process memory would be released quickly
+		boost_dying_task_prio(selected);
 		send_sig(SIGKILL, selected, 0);
 		rem += selected_tasksize;
+#ifdef CONFIG_HSWAP
+		lowmem_print(3, "reclaimed cnt = %d, reclaim cont = %d, min oom score= %hd\n",
+				reclaimed_cnt, reclaim_cnt, min_score_adj);
+#endif
 		rcu_read_unlock();
 		/* give the system time to free up the memory */
 		msleep_interruptible(20);
 		trace_almk_shrink(selected_tasksize, ret,
 			other_free, other_file, selected_oom_score_adj);
+		++lmk_kill_cnt;
 	} else {
 		trace_almk_shrink(1, ret, other_free, other_file, 0);
 		rcu_read_unlock();
@@ -542,6 +861,10 @@ static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 
 	lowmem_print(4, "lowmem_scan %lu, %x, return %lu\n",
 		     sc->nr_to_scan, sc->gfp_mask, rem);
+#ifdef CONFIG_HSWAP
+end_lmk:
+	reclaim_arr_free(reclaim_cnt);
+#endif
 	mutex_unlock(&scan_mutex);
 	return rem;
 }
@@ -554,6 +877,13 @@ static struct shrinker lowmem_shrinker = {
 
 static int __init lowmem_init(void)
 {
+#ifdef CONFIG_HSWAP
+	struct task_struct *reclaim_tsk;
+	struct task_struct *reset_top_time_tsk;
+
+	reclaim_tsk = kthread_run(reclaim_task_thread, NULL, "reclaim_task");
+	reset_top_time_tsk = kthread_run(reset_task_time_thread, NULL, "reset_task");
+#endif
 	register_shrinker(&lowmem_shrinker);
 	vmpressure_notifier_register(&lmk_vmpr_nb);
 	return 0;
@@ -654,6 +984,11 @@ module_param_array_named(minfree, lowmem_minfree, uint, &lowmem_minfree_size,
 			 S_IRUGO | S_IWUSR);
 module_param_named(debug_level, lowmem_debug_level, uint, S_IRUGO | S_IWUSR);
 module_param_named(lmk_fast_run, lmk_fast_run, int, S_IRUGO | S_IWUSR);
+
+module_param_named(lmk_kill_cnt, lmk_kill_cnt, int, S_IRUGO);
+#ifdef CONFIG_HSWAP
+module_param_named(lmk_reclaim_cnt, lmk_reclaim_cnt, int, S_IRUGO);
+#endif
 
 module_init(lowmem_init);
 module_exit(lowmem_exit);

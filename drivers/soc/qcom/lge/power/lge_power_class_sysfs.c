@@ -25,7 +25,7 @@
 	.store = lge_power_store_property,				\
 }
 
-#ifdef CONFIG_LGE_PM_PSEUDO_BATTERY
+#if defined (CONFIG_LGE_PM_PSEUDO_BATTERY) || defined (CONFIG_LGE_PM_LGE_POWER_CLASS_PSEUDO_BATTERY)
 #define LGE_PSEUDO_BATT_ATTR(_name)					\
 {		\
 	.attr = { .name = #_name, .mode = 0644},		\
@@ -131,7 +131,7 @@ static ssize_t lge_power_store_property(struct device *dev,
 	return count;
 }
 
-#ifdef CONFIG_LGE_PM_PSEUDO_BATTERY
+#if defined (CONFIG_LGE_PM_PSEUDO_BATTERY)
 static ssize_t lge_pseudo_batt_show_property(struct device *dev,
 		struct device_attribute *attr,
 		char *buf)
@@ -186,6 +186,60 @@ static ssize_t lge_pseudo_batt_store_property(struct device *dev,
 out:
 	return ret;
 }
+#elif defined (CONFIG_LGE_PM_LGE_POWER_CLASS_PSEUDO_BATTERY)
+static ssize_t lge_pseudo_batt_show_property(struct device *dev,
+		struct device_attribute *attr,
+		char *buf)
+{
+	ssize_t ret;
+	struct lge_power *lpc = lge_power_get_by_name("pseudo_battery");
+	union lge_power_propval value;
+	const ptrdiff_t off = attr - lge_power_attrs;
+
+	static char *pseudo_batt[] = {
+		"NORMAL", "PSEUDO",
+	};
+
+	ret = lpc->get_property(lpc, off, &value);
+
+	if (ret < 0) {
+		if (ret != -ENODEV)
+			dev_err(dev, "driver failed to report `%s' property\n",
+					attr->attr.name);
+		return ret;
+	}
+
+	if (off == LGE_POWER_PROP_PSEUDO_BATT)
+		return sprintf(buf, "[%s]\n", pseudo_batt[value.intval]);
+	return sprintf(buf, "%d\n", value.intval);
+}
+
+static ssize_t lge_pseudo_batt_store_property(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	ssize_t ret = -EINVAL;
+	union lge_power_propval value;
+	long long_val;
+	const ptrdiff_t off = attr - lge_power_attrs;
+	struct lge_power *lpc = lge_power_get_by_name("pseudo_battery");
+
+	ret = kstrtol(buf, 10, &long_val);
+	if (ret < 0)
+		return ret;
+
+	value.intval = long_val;
+	if (long_val == 0 || long_val == 1) {
+		ret = lpc->set_property(lpc, off, &value);
+	} else {
+		return -EINVAL;
+	}
+
+	if (ret < 0)
+		return ret;
+
+	return count;
+}
 #endif
 
 /* Must be in the same order as POWER_SUPPLY_PROP_* */
@@ -199,7 +253,7 @@ static struct device_attribute lge_power_attrs[] = {
 	LGE_POWER_ATTR(input_current_max),
 	LGE_POWER_ATTR(temp),
 	LGE_POWER_ATTR(type),
-#ifdef CONFIG_LGE_PM_PSEUDO_BATTERY
+#if defined (CONFIG_LGE_PM_PSEUDO_BATTERY) || defined (CONFIG_LGE_PM_LGE_POWER_CLASS_PSEUDO_BATTERY)
 	LGE_PSEUDO_BATT_ATTR(pseudo_batt),
 	LGE_POWER_ATTR(pseudo_batt_mode),
 	LGE_POWER_ATTR(pseudo_batt_id),
@@ -300,6 +354,7 @@ static struct device_attribute lge_power_attrs[] = {
 #ifdef CONFIG_LGE_PM_USB_CURRENT_MAX_MODE
 	LGE_POWER_ATTR(usb_current_max_mode),
 #endif
+	LGE_POWER_ATTR(check_only_usb_id),
 	LGE_POWER_ATTR(qc_ibat_current),
 #ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_TDMB_MODE
 	LGE_POWER_ATTR(tdmb_mode_on),

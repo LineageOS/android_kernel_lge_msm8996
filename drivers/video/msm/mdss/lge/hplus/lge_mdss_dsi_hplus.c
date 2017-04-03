@@ -31,7 +31,8 @@ void mdss_dsi_ctrl_shutdown(struct platform_device *pdev)
 	}
 
 	if ((pinfo->panel_type == LGD_SIC_LG4945_INCELL_CMD_PANEL) ||
-		(pinfo->panel_type == LGD_SIC_LG49407_INCELL_CMD_PANEL)) {
+	    (pinfo->panel_type == LGD_SIC_LG49407_INCELL_CMD_PANEL) ||
+	    (pinfo->panel_type == LGD_SIC_LG49407_INCELL_VIDEO_PANEL)) {
 		/* TODO: check power sequence for hplus */
 		/* Shutdown sequence for LG4946
 		 * LABIBB HiZ - 5ms - Reset L - VPNL off - VDDIO off
@@ -200,18 +201,6 @@ int lge_panel_power_on(struct mdss_panel_data *pdata)
 
 	usleep_range(3000,3000);
 
-	ret = msm_dss_enable_vreg(
-			ctrl_pdata->panel_power_data.vreg_config,
-			ctrl_pdata->panel_power_data.num_vreg, 1);
-	if (ret) {
-		pr_err("%s: failed to enable vregs for %s\n",
-				__func__, __mdss_dsi_pm_name(DSI_PANEL_PM));
-	}else
-		pr_info("%s: enable vregs for %s\n",
-				__func__, __mdss_dsi_pm_name(DSI_PANEL_PM));
-
-	usleep_range(3000,3000);
-
 	/*
 	 * If continuous splash screen feature is enabled, then we need to
 	 * request all the GPIOs that have already been configured in the
@@ -220,6 +209,19 @@ int lge_panel_power_on(struct mdss_panel_data *pdata)
 	 */
 	if (pdata->panel_info.cont_splash_enabled ||
 		!pdata->panel_info.mipi.lp11_init) {
+
+		ret = msm_dss_enable_vreg(
+				ctrl_pdata->panel_power_data.vreg_config,
+				ctrl_pdata->panel_power_data.num_vreg, 1);
+		if (ret) {
+			pr_err("%s: failed to enable vregs for %s\n",
+					__func__, __mdss_dsi_pm_name(DSI_PANEL_PM));
+		} else
+			pr_info("%s: enable vregs for %s\n",
+					__func__, __mdss_dsi_pm_name(DSI_PANEL_PM));
+
+		usleep_range(3000,3000);
+
 		if (mdss_dsi_pinctrl_set_state(ctrl_pdata, true))
 			pr_debug("reset enable: pinctrl not enabled\n");
 

@@ -102,6 +102,7 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_TAS2552 if I2C
 	select SND_SOC_TAS5086 if I2C
 	select SND_SOC_ES9018 if I2C
+	select SND_SOC_ES9218P if I2C
 	select SND_SOC_TLV320AIC23_I2C if I2C
 	select SND_SOC_TLV320AIC23_SPI if SPI_MASTER
 	select SND_SOC_TLV320AIC26 if SPI_MASTER
@@ -575,6 +576,11 @@ config SND_SOC_ES9018
 	depends on MACH_LGE
 	default n
 
+config SND_SOC_ES9218P
+	tristate "es9218P Hi-Fi headphones amp"
+	depends on MACH_LGE
+	default n
+
 config SND_SOC_TAS2552
 	tristate "Texas Instruments TAS2552 Mono Audio amplifier"
 	depends on I2C
@@ -868,6 +874,16 @@ config SND_SOC_TPA6130A2
 config SND_SOC_MSM_STUB
 	tristate
 
+config SND_USE_KNOWLES_DMIC_DELAY
+	tristate "KNOWLES DMIC DELAY"
+	depends on MACH_LGE
+        default y
+
+config SND_USE_MBHC_EXTN_CABLE
+        tristate "MBHC EXTN CABLE USECASE"
+        depends on MACH_LGE
+        default n
+
 config SND_SOC_MSM_HDMI_CODEC_RX
 	bool "HDMI Audio Playback"
 	depends on FB_MSM_MDSS_HDMI_PANEL && (SND_SOC_APQ8084 || SND_SOC_MSM8994 || SND_SOC_MSM8996)
@@ -878,4 +894,8 @@ config SND_SOC_MSM_HDMI_CODEC_RX
 config SND_SOC_MSM_HDMI_DBA_CODEC_RX
 	bool "HDMI DBA Audio Playback"
 	depends on MSM_DBA
+
+config LGE_ENABLE_HDSET_FACTORY
+	bool "disable detect_extn_cable feature on factory mode"
+	default n
 endmenu

@@ -508,6 +508,10 @@ static int __configure_pipe_params(struct msm_fb_data_type *mfd,
 		pipe->flags |= MDP_BWC_EN;
 	if (layer->flags & MDP_LAYER_PP)
 		pipe->flags |= MDP_OVERLAY_PP_CFG_EN;
+#if defined(CONFIG_LGE_DISPLAY_AOD_WITH_MIPI)
+	if (layer->flags & MDP_LAYER_AOD_FONT_DOWNLOAD_SESSION)
+		pipe->aod_font_download = true;
+#endif
 
 	pipe->is_fg = layer->flags & MDP_LAYER_FORGROUND;
 	pipe->img_width = layer->buffer.width & 0x3fff;

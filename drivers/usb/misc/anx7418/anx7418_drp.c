@@ -53,6 +53,7 @@ static bool try_src(struct anx7418 *anx, unsigned long timeout)
 	anx7418_write_reg(client, RESET_CTRL_0, 0);
 	mdelay(50);
 	anx7418_reg_init(anx);
+	anx7418_pd_src_cap_init(anx);
 
 	dev_dbg(cdev, "Try source swap success\n");
 	return true;
@@ -145,7 +146,7 @@ try_snk_fail:
 
 	anx7418_write_reg(client, 0x47, anx7418_read_reg(client, 0x47) | 1);
 	anx7418_reg_init(anx);
-	anx7418_pd_init(anx);
+	anx7418_pd_src_cap_init(anx);
 
 	return false;
 }

@@ -163,6 +163,10 @@ static int lge_power_lge_sm_set_property(struct lge_power *lpc,
 	switch (lpp) {
 	case LGE_POWER_PROP_STORE_DEMO_ENABLED:
 		chip->store_demo_enabled = val->intval;
+#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_SIMPLE
+		if (chip->store_demo_enabled == 0)
+			chip->charging_enable = 1;
+#endif
 		break;
 
 	default:
@@ -170,6 +174,9 @@ static int lge_power_lge_sm_set_property(struct lge_power *lpc,
 		ret_val = -EINVAL;
 		break;
 	}
+#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_SIMPLE
+	lge_power_changed(&chip->lge_sm_lpc);
+#endif
 	return ret_val;
 }
 

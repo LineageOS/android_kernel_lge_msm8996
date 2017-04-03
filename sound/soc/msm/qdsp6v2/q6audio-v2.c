@@ -18,6 +18,7 @@
 #include <linux/atomic.h>
 #include <sound/q6afe-v2.h>
 #include <sound/q6audio-v2.h>
+#include "msm-pcm-routing-v2.h"
 
 int q6audio_get_port_index(u16 port_id)
 {
@@ -682,4 +683,344 @@ int q6audio_validate_port(u16 port_id)
 	}
 
 	return ret;
+}
+
+int msm_get_be_id_from_port_id(int port)
+{
+	int be_id = -1;
+
+	switch (port) {
+	case PRIMARY_I2S_RX:
+		be_id = MSM_BACKEND_DAI_PRI_I2S_RX;
+		break;
+	case PRIMARY_I2S_TX:
+		be_id = MSM_BACKEND_DAI_PRI_I2S_TX;
+		break;
+	case HDMI_RX:
+		be_id = MSM_BACKEND_DAI_HDMI_RX;
+		break;
+	case INT_BT_SCO_RX:
+		be_id = MSM_BACKEND_DAI_INT_BT_SCO_RX;
+		break;
+	case INT_BT_SCO_TX:
+		be_id = MSM_BACKEND_DAI_INT_BT_SCO_TX;
+		break;
+	case INT_FM_RX:
+		be_id = MSM_BACKEND_DAI_INT_FM_RX;
+		break;
+	case INT_FM_TX:
+		be_id = MSM_BACKEND_DAI_INT_FM_TX;
+		break;
+	case RT_PROXY_DAI_001_RX:
+		be_id = MSM_BACKEND_DAI_AFE_PCM_RX;
+		break;
+	case RT_PROXY_DAI_002_TX:
+		be_id = MSM_BACKEND_DAI_AFE_PCM_TX;
+		break;
+	case AFE_PORT_ID_PRIMARY_PCM_RX:
+		be_id = MSM_BACKEND_DAI_AUXPCM_RX;
+		break;
+	case AFE_PORT_ID_PRIMARY_PCM_TX:
+		be_id = MSM_BACKEND_DAI_AUXPCM_TX;
+		break;
+	case VOICE_PLAYBACK_TX:
+		be_id = MSM_BACKEND_DAI_VOICE_PLAYBACK_TX;
+		break;
+	case VOICE2_PLAYBACK_TX:
+		be_id = MSM_BACKEND_DAI_VOICE2_PLAYBACK_TX;
+		break;
+	case VOICE_RECORD_RX:
+		be_id = MSM_BACKEND_DAI_INCALL_RECORD_RX;
+		break;
+	case VOICE_RECORD_TX:
+		be_id = MSM_BACKEND_DAI_INCALL_RECORD_TX;
+		break;
+	case MI2S_RX:
+		be_id = MSM_BACKEND_DAI_MI2S_RX;
+		break;
+	case MI2S_TX:
+		be_id = MSM_BACKEND_DAI_MI2S_TX;
+		break;
+	case SECONDARY_I2S_RX:
+		be_id = MSM_BACKEND_DAI_SEC_I2S_RX;
+		break;
+	case SLIMBUS_0_RX:
+		be_id = MSM_BACKEND_DAI_SLIMBUS_0_RX;
+		break;
+	case SLIMBUS_0_TX:
+		be_id = MSM_BACKEND_DAI_SLIMBUS_0_TX;
+		break;
+	case SLIMBUS_1_RX:
+		be_id = MSM_BACKEND_DAI_SLIMBUS_1_RX;
+		break;
+	case SLIMBUS_1_TX:
+		be_id = MSM_BACKEND_DAI_SLIMBUS_1_TX;
+		break;
+	case SLIMBUS_3_RX:
+		be_id = MSM_BACKEND_DAI_SLIMBUS_3_RX;
+		break;
+	case SLIMBUS_3_TX:
+		be_id = MSM_BACKEND_DAI_SLIMBUS_3_TX;
+		break;
+	case SLIMBUS_4_RX:
+		be_id = MSM_BACKEND_DAI_SLIMBUS_4_RX;
+		break;
+	case SLIMBUS_4_TX:
+		be_id = MSM_BACKEND_DAI_SLIMBUS_4_TX;
+		break;
+	case SLIMBUS_5_RX:
+		be_id = MSM_BACKEND_DAI_SLIMBUS_5_RX;
+		break;
+	case SLIMBUS_5_TX:
+		be_id = MSM_BACKEND_DAI_SLIMBUS_5_TX;
+		break;
+	case SLIMBUS_6_RX:
+		be_id = MSM_BACKEND_DAI_SLIMBUS_6_RX;
+		break;
+	case SLIMBUS_6_TX:
+		be_id = MSM_BACKEND_DAI_SLIMBUS_6_TX;
+		break;
+	case AFE_PORT_ID_QUATERNARY_MI2S_RX:
+		be_id = MSM_BACKEND_DAI_QUATERNARY_MI2S_RX;
+		break;
+	case AFE_PORT_ID_QUATERNARY_MI2S_TX:
+		be_id = MSM_BACKEND_DAI_QUATERNARY_MI2S_TX;
+		break;
+	case AFE_PORT_ID_SECONDARY_MI2S_RX:
+		be_id = MSM_BACKEND_DAI_SECONDARY_MI2S_RX;
+		break;
+	case AFE_PORT_ID_SECONDARY_MI2S_TX:
+		be_id = MSM_BACKEND_DAI_SECONDARY_MI2S_TX;
+		break;
+	case AFE_PORT_ID_PRIMARY_MI2S_RX:
+		be_id = MSM_BACKEND_DAI_PRI_MI2S_RX;
+		break;
+	case AFE_PORT_ID_PRIMARY_MI2S_TX:
+		be_id = MSM_BACKEND_DAI_PRI_MI2S_TX;
+		break;
+	case AFE_PORT_ID_TERTIARY_MI2S_RX:
+		be_id = MSM_BACKEND_DAI_TERTIARY_MI2S_RX;
+		break;
+	case AFE_PORT_ID_TERTIARY_MI2S_TX:
+		be_id = MSM_BACKEND_DAI_TERTIARY_MI2S_TX;
+		break;
+	case AUDIO_PORT_ID_I2S_RX:
+		be_id = MSM_BACKEND_DAI_AUDIO_I2S_RX;
+		break;
+	case AFE_PORT_ID_SECONDARY_PCM_RX:
+		be_id = MSM_BACKEND_DAI_SEC_AUXPCM_RX;
+		break;
+	case AFE_PORT_ID_SECONDARY_PCM_TX:
+		be_id = MSM_BACKEND_DAI_SEC_AUXPCM_TX;
+		break;
+	case AFE_PORT_ID_SPDIF_RX:
+		be_id = MSM_BACKEND_DAI_SPDIF_RX;
+		break;
+	case AFE_PORT_ID_SECONDARY_MI2S_RX_SD1:
+		be_id = MSM_BACKEND_DAI_SECONDARY_MI2S_RX_SD1;
+		break;
+	case AFE_PORT_ID_QUINARY_MI2S_RX:
+		be_id = MSM_BACKEND_DAI_QUINARY_MI2S_RX;
+		break;
+	case AFE_PORT_ID_QUINARY_MI2S_TX:
+		be_id = MSM_BACKEND_DAI_QUINARY_MI2S_TX;
+		break;
+	case AFE_PORT_ID_PRIMARY_TDM_RX:
+		be_id = MSM_BACKEND_DAI_PRI_TDM_RX_0;
+		break;
+	case AFE_PORT_ID_PRIMARY_TDM_TX:
+		be_id = MSM_BACKEND_DAI_PRI_TDM_TX_0;
+		break;
+	case AFE_PORT_ID_PRIMARY_TDM_RX_1:
+		be_id = MSM_BACKEND_DAI_PRI_TDM_RX_1;
+		break;
+	case AFE_PORT_ID_PRIMARY_TDM_TX_1:
+		be_id = MSM_BACKEND_DAI_PRI_TDM_TX_1;
+		break;
+	case AFE_PORT_ID_PRIMARY_TDM_RX_2:
+		be_id = MSM_BACKEND_DAI_PRI_TDM_RX_2;
+		break;
+	case AFE_PORT_ID_PRIMARY_TDM_TX_2:
+		be_id = MSM_BACKEND_DAI_PRI_TDM_TX_2;
+		break;
+	case AFE_PORT_ID_PRIMARY_TDM_RX_3:
+		be_id = MSM_BACKEND_DAI_PRI_TDM_RX_3;
+		break;
+	case AFE_PORT_ID_PRIMARY_TDM_TX_3:
+		be_id = MSM_BACKEND_DAI_PRI_TDM_TX_3;
+		break;
+	case AFE_PORT_ID_PRIMARY_TDM_RX_4:
+		be_id = MSM_BACKEND_DAI_PRI_TDM_RX_4;
+		break;
+	case AFE_PORT_ID_PRIMARY_TDM_TX_4:
+		be_id = MSM_BACKEND_DAI_PRI_TDM_TX_4;
+		break;
+	case AFE_PORT_ID_PRIMARY_TDM_RX_5:
+		be_id = MSM_BACKEND_DAI_PRI_TDM_RX_5;
+		break;
+	case AFE_PORT_ID_PRIMARY_TDM_TX_5:
+		be_id = MSM_BACKEND_DAI_PRI_TDM_TX_5;
+		break;
+	case AFE_PORT_ID_PRIMARY_TDM_RX_6:
+		be_id = MSM_BACKEND_DAI_PRI_TDM_RX_6;
+		break;
+	case AFE_PORT_ID_PRIMARY_TDM_TX_6:
+		be_id = MSM_BACKEND_DAI_PRI_TDM_TX_6;
+		break;
+	case AFE_PORT_ID_PRIMARY_TDM_RX_7:
+		be_id = MSM_BACKEND_DAI_PRI_TDM_RX_7;
+		break;
+	case AFE_PORT_ID_PRIMARY_TDM_TX_7:
+		be_id = MSM_BACKEND_DAI_PRI_TDM_TX_7;
+		break;
+	case AFE_PORT_ID_SECONDARY_TDM_RX:
+		be_id = MSM_BACKEND_DAI_SEC_TDM_RX_0;
+		break;
+	case AFE_PORT_ID_SECONDARY_TDM_TX:
+		be_id = MSM_BACKEND_DAI_SEC_TDM_TX_0;
+		break;
+	case AFE_PORT_ID_SECONDARY_TDM_RX_1:
+		be_id = MSM_BACKEND_DAI_SEC_TDM_RX_1;
+		break;
+	case AFE_PORT_ID_SECONDARY_TDM_TX_1:
+		be_id = MSM_BACKEND_DAI_SEC_TDM_TX_1;
+		break;
+	case AFE_PORT_ID_SECONDARY_TDM_RX_2:
+		be_id = MSM_BACKEND_DAI_SEC_TDM_RX_2;
+		break;
+	case AFE_PORT_ID_SECONDARY_TDM_TX_2:
+		be_id = MSM_BACKEND_DAI_SEC_TDM_TX_2;
+		break;
+	case AFE_PORT_ID_SECONDARY_TDM_RX_3:
+		be_id = MSM_BACKEND_DAI_SEC_TDM_RX_3;
+		break;
+	case AFE_PORT_ID_SECONDARY_TDM_TX_3:
+		be_id = MSM_BACKEND_DAI_SEC_TDM_TX_3;
+		break;
+	case AFE_PORT_ID_SECONDARY_TDM_RX_4:
+		be_id = MSM_BACKEND_DAI_SEC_TDM_RX_4;
+		break;
+	case AFE_PORT_ID_SECONDARY_TDM_TX_4:
+		be_id = MSM_BACKEND_DAI_SEC_TDM_TX_4;
+		break;
+	case AFE_PORT_ID_SECONDARY_TDM_RX_5:
+		be_id = MSM_BACKEND_DAI_SEC_TDM_RX_5;
+		break;
+	case AFE_PORT_ID_SECONDARY_TDM_TX_5:
+		be_id = MSM_BACKEND_DAI_SEC_TDM_TX_5;
+		break;
+	case AFE_PORT_ID_SECONDARY_TDM_RX_6:
+		be_id = MSM_BACKEND_DAI_SEC_TDM_RX_6;
+		break;
+	case AFE_PORT_ID_SECONDARY_TDM_TX_6:
+		be_id = MSM_BACKEND_DAI_SEC_TDM_TX_6;
+		break;
+	case AFE_PORT_ID_SECONDARY_TDM_RX_7:
+		be_id = MSM_BACKEND_DAI_SEC_TDM_RX_7;
+		break;
+	case AFE_PORT_ID_SECONDARY_TDM_TX_7:
+		be_id = MSM_BACKEND_DAI_SEC_TDM_TX_7;
+		break;
+	case AFE_PORT_ID_TERTIARY_TDM_RX:
+		be_id = MSM_BACKEND_DAI_TERT_TDM_RX_0;
+		break;
+	case AFE_PORT_ID_TERTIARY_TDM_TX:
+		be_id = MSM_BACKEND_DAI_TERT_TDM_TX_0;
+		break;
+	case AFE_PORT_ID_TERTIARY_TDM_RX_1:
+		be_id = MSM_BACKEND_DAI_TERT_TDM_RX_1;
+		break;
+	case AFE_PORT_ID_TERTIARY_TDM_TX_1:
+		be_id = MSM_BACKEND_DAI_TERT_TDM_TX_1;
+		break;
+	case AFE_PORT_ID_TERTIARY_TDM_RX_2:
+		be_id = MSM_BACKEND_DAI_TERT_TDM_RX_2;
+		break;
+	case AFE_PORT_ID_TERTIARY_TDM_TX_2:
+		be_id = MSM_BACKEND_DAI_TERT_TDM_TX_2;
+		break;
+	case AFE_PORT_ID_TERTIARY_TDM_RX_3:
+		be_id = MSM_BACKEND_DAI_TERT_TDM_RX_3;
+		break;
+	case AFE_PORT_ID_TERTIARY_TDM_TX_3:
+		be_id = MSM_BACKEND_DAI_TERT_TDM_TX_3;
+		break;
+	case AFE_PORT_ID_TERTIARY_TDM_RX_4:
+		be_id = MSM_BACKEND_DAI_TERT_TDM_RX_4;
+		break;
+	case AFE_PORT_ID_TERTIARY_TDM_TX_4:
+		be_id = MSM_BACKEND_DAI_TERT_TDM_TX_4;
+		break;
+	case AFE_PORT_ID_TERTIARY_TDM_RX_5:
+		be_id = MSM_BACKEND_DAI_TERT_TDM_RX_5;
+		break;
+	case AFE_PORT_ID_TERTIARY_TDM_TX_5:
+		be_id = MSM_BACKEND_DAI_TERT_TDM_TX_5;
+		break;
+	case AFE_PORT_ID_TERTIARY_TDM_RX_6:
+		be_id = MSM_BACKEND_DAI_TERT_TDM_RX_6;
+		break;
+	case AFE_PORT_ID_TERTIARY_TDM_TX_6:
+		be_id = MSM_BACKEND_DAI_TERT_TDM_TX_6;
+		break;
+	case AFE_PORT_ID_TERTIARY_TDM_RX_7:
+		be_id = MSM_BACKEND_DAI_TERT_TDM_RX_7;
+		break;
+	case AFE_PORT_ID_TERTIARY_TDM_TX_7:
+		be_id = MSM_BACKEND_DAI_TERT_TDM_TX_7;
+		break;
+	case AFE_PORT_ID_QUATERNARY_TDM_RX:
+		be_id = MSM_BACKEND_DAI_QUAT_TDM_RX_0;
+		break;
+	case AFE_PORT_ID_QUATERNARY_TDM_TX:
+		be_id = MSM_BACKEND_DAI_QUAT_TDM_TX_0;
+		break;
+	case AFE_PORT_ID_QUATERNARY_TDM_RX_1:
+		be_id = MSM_BACKEND_DAI_QUAT_TDM_RX_1;
+		break;
+	case AFE_PORT_ID_QUATERNARY_TDM_TX_1:
+		be_id = MSM_BACKEND_DAI_QUAT_TDM_TX_1;
+		break;
+	case AFE_PORT_ID_QUATERNARY_TDM_RX_2:
+		be_id = MSM_BACKEND_DAI_QUAT_TDM_RX_2;
+		break;
+	case AFE_PORT_ID_QUATERNARY_TDM_TX_2:
+		be_id = MSM_BACKEND_DAI_QUAT_TDM_TX_2;
+		break;
+	case AFE_PORT_ID_QUATERNARY_TDM_RX_3:
+		be_id = MSM_BACKEND_DAI_QUAT_TDM_RX_3;
+		break;
+	case AFE_PORT_ID_QUATERNARY_TDM_TX_3:
+		be_id = MSM_BACKEND_DAI_QUAT_TDM_TX_3;
+		break;
+	case AFE_PORT_ID_QUATERNARY_TDM_RX_4:
+		be_id = MSM_BACKEND_DAI_QUAT_TDM_RX_4;
+		break;
+	case AFE_PORT_ID_QUATERNARY_TDM_TX_4:
+		be_id = MSM_BACKEND_DAI_QUAT_TDM_TX_4;
+		break;
+	case AFE_PORT_ID_QUATERNARY_TDM_RX_5:
+		be_id = MSM_BACKEND_DAI_QUAT_TDM_RX_5;
+		break;
+	case AFE_PORT_ID_QUATERNARY_TDM_TX_5:
+		be_id = MSM_BACKEND_DAI_QUAT_TDM_TX_5;
+		break;
+	case AFE_PORT_ID_QUATERNARY_TDM_RX_6:
+		be_id = MSM_BACKEND_DAI_QUAT_TDM_RX_6;
+		break;
+	case AFE_PORT_ID_QUATERNARY_TDM_TX_6:
+		be_id = MSM_BACKEND_DAI_QUAT_TDM_TX_6;
+		break;
+	case AFE_PORT_ID_QUATERNARY_TDM_RX_7:
+		be_id = MSM_BACKEND_DAI_QUAT_TDM_RX_7;
+		break;
+	case AFE_PORT_ID_QUATERNARY_TDM_TX_7:
+		be_id = MSM_BACKEND_DAI_QUAT_TDM_TX_7;
+		break;
+	default:
+		pr_info("%s: invalid port id 0x%x\n", __func__, port);
+		break;
+	}
+	pr_debug("%s: port id 0x%x, be_id %d\n", __func__, port, be_id);
+	return be_id;
 }

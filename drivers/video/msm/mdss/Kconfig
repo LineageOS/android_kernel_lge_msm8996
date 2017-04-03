@@ -165,7 +165,7 @@ config LGE_LCD_POWER_CTRL
 	if you say yes here you get support for lcd power on/off control.
 
 config LGE_PANEL_RECOVERY
-	depends on  LGE_MIPI_H1_INCELL_QHD_CMD_PANEL
+	depends on  LGE_DISPLAY_COMMON
 	bool "Panel recovery support"
 	default y
 	---help---
@@ -202,6 +202,47 @@ config LGE_DISPLAY_READER_MODE
 	---help---
 	The reader mode provides support to change color temperature
 	by sending proper cmds to panel.
+
+config LGE_DISPLAY_READER_MONO_MODE
+	depends on FB_MSM_MDSS
+	bool "LGE reader mono mode"
+	---help---
+	The reader mode provides support to change mono color
+	by sending proper cmds to panel.
+
+config LGE_DISPLAY_SRE_MODE
+	depends on FB_MSM_MDSS
+	bool "LGE sre mode"
+	---help---
+	The sre mode provides support to improve outdoor visibility
+	by sending proper cmds to panel.
+
+config LGE_DISPLAY_HDR_MODE
+	depends on FB_MSM_MDSS
+	bool "LGE HDR mode"
+	---help---
+	The HDR mode provides support to ensure high definition for playing movies
+	by sending proper cmds to panel.
+
+config LGE_DISPLAY_DOLBY_MODE
+	depends on FB_MSM_MDSS
+	bool "LGE Dolby mode"
+	---help---
+	The Dolby mode provides support to ensure high definition for playing movies
+	by sending proper cmds to panel.
+
+config LGE_DISPLAY_LINEAR_GAMMA
+	depends on FB_MSM_MDSS
+	bool "LGE linear gamma"
+	---help---
+	The linear gamma mode provides support to change linear gamma
+	by sending proper cmds to panel.
+
+config LGE_DISPLAY_SW49408
+	depends on FB_MSM_MDSS
+	bool "LGE sw49408"
+	---help---
+	The SW49408 provides support for SW49408 features made by LGE.
 
 config LGE_DISPLAY_COMMON
 	depends on FB_MSM_MDSS
@@ -275,3 +316,26 @@ config LGE_EXTERNAL_DISPLAY_BLOCK
 	---help---
 	Support EXTERNAL DISPLAY block
 
+config LGE_DISPLAY_DYN_DSI_MODE_SWITCH
+	bool "LG DYNAMIC DSI MODE SWITCH"
+	default n
+	---help---
+	Support Dynamic DSI mode switch
+
+config LGE_DISPLAY_LUCYE_COMMON
+	depends on LGE_DISPLAY_COMMON
+	bool "Use LGE DISPLAY LUCYE COMMON"
+	---help---
+	The LUCYE COMMON provides support for 49407 1440X2880 panel
+
+config LGE_DISPLAY_SIW49407_1440_2880_VIDEO_LCD
+	bool "Support siw49407 1440 X 2880 resolution"
+	default n
+	---help---
+	Support SIW 49407 1440 X 2880 VIDEO mode
+
+config LGE_DISPLAY_AOD_WITH_MIPI
+	bool "Enable AOD_WITH_MIPI"
+	default n
+	---help---
+	Feature for AOD_WITH_MIPI scenario.

@@ -747,3 +747,12 @@ int anx7418_pd_init(struct anx7418 *anx)
 	return 0;
 }
 EXPORT_SYMBOL(anx7418_pd_init);
+
+int anx7418_pd_src_cap_init(struct anx7418 *anx)
+{
+	struct i2c_client *client = anx->client;
+	return anx7418_send_pd_msg(client, PD_TYPE_PWR_SRC_CAP,
+			(u8 *)pwr_src_cap, sizeof(pwr_src_cap),
+			PD_SEND_TIMEOUT);
+}
+EXPORT_SYMBOL(anx7418_pd_src_cap_init);

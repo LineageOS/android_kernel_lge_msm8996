@@ -3,7 +3,27 @@
 
 #ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_BOARD_REVISION
 #else
-#if defined(CONFIG_MACH_MSM8996_ELSA)
+#if defined(CONFIG_MACH_MSM8996_LUCYE)
+enum hw_rev_type {
+	HW_REV_EVB1 = 0,
+	HW_REV_EVB2,
+	HW_REV_EVB3,
+	HW_REV_0,
+	HW_REV_0_1,
+	HW_REV_0_2,
+	HW_REV_0_3,
+	HW_REV_0_4,
+	HW_REV_A,
+	HW_REV_B,
+	HW_REV_C,
+	HW_REV_D,
+	HW_REV_1_0,
+	HW_REV_1_1,
+	HW_REV_1_2,
+	HW_REV_1_3,
+	HW_REV_MAX
+};
+#elif defined(CONFIG_MACH_MSM8996_ELSA)
 enum hw_rev_type {
 	HW_REV_EVB1 = 0,
 	HW_REV_EVB2,
@@ -99,7 +119,10 @@ extern int lge_get_bootreason(void);
 extern int lge_get_bootreason_with_lcd_dimming(void);
 #endif
 
-#ifdef CONFIG_LGE_EARJACK_DEBUGGER
+extern int lge_get_fota_mode(void);
+extern char* lge_get_boot_partition(void);
+
+#if defined(CONFIG_LGE_EARJACK_DEBUGGER) || defined(CONFIG_LGE_USB_DEBUGGER)
 /* config */
 #define UART_CONSOLE_ENABLE_ON_EARJACK		BIT(0)
 #define UART_CONSOLE_ENABLE_ON_EARJACK_DEBUGGER	BIT(1)

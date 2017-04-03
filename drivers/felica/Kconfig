@@ -1,0 +1,9 @@
+#platform.team@lge.com	2011.01
+
+comment "LGE Felica selection"
+
+config CXD224X_FELICA_F3
+	bool "Felica driver"
+	default n
+	---help---
+	LGE Felica related change

@@ -5,9 +5,9 @@
 GUD_ROOT_FOLDER := drivers/gud/
 
 # add our modules to kernel.
-obj-$(CONFIG_TRUSTONIC_TRUSTED_UI) += TlcTui.o
+obj-$(CONFIG_TRUSTONIC_TRUSTED_UI) += t-base-tui.o
 
-TlcTui-y := main.o tlcTui.o trustedui.o tui-hal.o
+t-base-tui-y := main.o tlcTui.o tui-hal.o
 
 # Release mode by default
 ccflags-y += -DNDEBUG

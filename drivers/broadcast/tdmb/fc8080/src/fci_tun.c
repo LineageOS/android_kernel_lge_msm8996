@@ -32,6 +32,7 @@
 #include "../inc/fc8080_tun.h"
 #include "../inc/fc8080_regs.h"
 
+#if 0
 #if (FC8080_FREQ_XTAL == 16000)
 #define CLOCK_RATIO 34359738 /* 33554432 * ((float) 1.024) */
 #elif (FC8080_FREQ_XTAL == 16384)
@@ -53,6 +54,10 @@
 #elif (FC8080_FREQ_XTAL == 38400)
 #define CLOCK_RATIO 28631996 /* 33554432 * ((float) 0.8533) */
 #endif
+#endif
+
+unsigned int clk_ratio;
+extern unsigned int freq_xtal;
 
 struct tuner_i2c_driver {
     fci_s32 (*init)(HANDLE handle, fci_s32 speed, fci_s32 slaveaddr);
@@ -137,8 +142,45 @@ fci_s32 tuner_set_freq(HANDLE handle, fci_u32 freq)
     bbm_word_write(handle, BBM_BUF_ENABLE, buf_en & 0x0ff);
 #endif
 
+    switch(freq_xtal)
+    {
+        case 16000:
+            clk_ratio = 34359738; /* 33554432 * ((float) 1.024) */
+            break;
+        case 16384:
+            clk_ratio = 33554432; /* 33554432 * ((float) 1.) */
+            break;
+        case 19200:
+            clk_ratio = 28631996; /* 33554432 * ((float) 0.8533) */
+            break;
+        case 24000:
+            clk_ratio = 22347251; /* 33554432 * ((float) 0.666) */
+            break;
+        case 24576:
+            clk_ratio = 33554432; /* 33554432 * ((float) 1.) */
+            break;
+        case 26000:
+            clk_ratio = 31715649; /* 33554432 * ((float) 0.9452) */
+            break;
+        case 27000:
+            clk_ratio = 30541244; /* 33554432 * ((float) 0.9102) */
+            break;
+        case 27120:
+            clk_ratio = 30403670; /* 33554432 * ((float) 0.9061) */
+            break;
+        case 32000:
+            clk_ratio = 22347251; /* 33554432 * ((float) 0.666) */
+            break;
+        case 38400:
+            clk_ratio = 28631996; /* 33554432 * ((float) 0.8533) */
+            break;
+        default: //19200
+            clk_ratio = 28631996; /* 33554432 * ((float) 0.8533) */
+            break;
+    }
+
     res = tuner->set_freq(handle, tuner_band, freq);
-    tmp = (fci_u8) (CLOCK_RATIO / freq);
+    tmp = (fci_u8) (clk_ratio / freq);
     bbm_write(handle, BBM_INV_CARRIER_FREQ, tmp);
 
     fc8080_reset(handle);

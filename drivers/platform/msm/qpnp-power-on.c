@@ -41,7 +41,7 @@
 #include <soc/qcom/lge/board_lge.h>
 #endif
 #endif
-#if defined(CONFIG_MACH_MSM8996_ELSA) && defined(CONFIG_LGE_HANDLE_PANIC)
+#if defined(CONFIG_LGE_HANDLE_PANIC)
 #include <soc/qcom/lge/lge_handle_panic.h>
 #endif
 
@@ -882,11 +882,6 @@ qpnp_pon_input_dispatch(struct qpnp_pon *pon, u32 pon_type)
 	}
 #endif
 
-#if defined(CONFIG_MACH_MSM8996_ELSA) && defined(CONFIG_LGE_HANDLE_PANIC)
-	if(key_status)
-		lge_gen_key_panic(cfg->key_code);
-#endif
-
 	/* simulate press event in case release event occured
 	 * without a press event
 	 */
@@ -897,6 +892,11 @@ qpnp_pon_input_dispatch(struct qpnp_pon *pon, u32 pon_type)
 
 	input_report_key(pon->pon_input, cfg->key_code, key_status);
 	input_sync(pon->pon_input);
+
+#if defined(CONFIG_LGE_HANDLE_PANIC)
+	if(!!key_status)
+		lge_gen_key_panic(cfg->key_code);
+#endif
 
 	cfg->old_state = !!key_status;
 

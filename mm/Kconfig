@@ -699,6 +699,17 @@ config PROCESS_RECLAIM
 
 	 Any other vaule is ignored.
 
+config HSWAP
+	bool "Enable Hybrid SWAP"
+	depends on SWAP && ZRAM && PROCESS_RECLAIM
+	default n
+	help
+	 This config supports multiple swap files which are based on different
+	 block devices such as eMMC, UFS, or ZRAM.
+	 kswapd use high priority swap file.
+	 lowmemorykiller and direct reclaim module use low priority swap file.
+	 lowmemorykiller reclaims pages of victim process instead kill the process.
+
 config LGE_DDR_SECTION_SIZE_CHANGE
 	bool "Enable section size change"
 	depends on MACH_MSM8996_H1
@@ -713,6 +724,17 @@ config LGE_DDR_SECTION_SIZE_CHANGE
 config LGE_DDR_SECTION_SIZE_CHANGE
 	bool "Enable section size change"
 	depends on MACH_MSM8996_ELSA
+	default n
+	help
+	  This change decreases sparse memory model granuality
+	  from 1GiB to 512MiB which in turn can increase
+	  the amount of wasted memory in memmap when the memory
+	  sections aren't aligned. The amount of wastage can be a few
+	  MiB per unaligned section
+
+config LGE_DDR_SECTION_SIZE_CHANGE
+	bool "Enable section size change"
+	depends on MACH_MSM8996_LUCYE
 	default n
 	help
 	  This change decreases sparse memory model granuality
@@ -748,3 +770,28 @@ config LGE_ADAPTIVE_READAHEAD
 	help
 	  lge adaptive readahead set enable
 
+config CMA_PINPAGE_MIGRATION
+	bool "CMA pinned page migration (EXPERIMENTAL)"
+	default n
+	help
+	  Turns on cma page migration for pinned page.
+
+config MIGRATE_HIGHORDER
+	bool "Enable migrate highorder"
+	default n
+	help
+	  This option enables migratetype highorder.
+	  It creates the specific reserved pool for 4 and more order allocation.
+	  This is helpful fragmentation and allocation success rate
+	  that system has too much high order allocation.
+
+config HIGHORDER_PAGES
+	int "Set migrate highorder pool size (pages)"
+	depends on MIGRATE_HIGHORDER
+	default 0
+	help
+	  Set the reserved size for migrate highorder.
+	  Normally, android system needs about 10% of total memory.
+	  (Thus, reserve 10% of memory if set to 0)
+	  Please check ION memory usage in your system.
+	  And, set this size about minimum (ION + extra) some memory.

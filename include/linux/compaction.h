@@ -137,6 +137,7 @@ static inline bool compaction_deferred(struct zone *zone, int order)
 #endif /* CONFIG_COMPACTION */
 
 #if defined(CONFIG_COMPACTION) && defined(CONFIG_SYSFS) && defined(CONFIG_NUMA)
+struct node;
 extern int compaction_register_node(struct node *node);
 extern void compaction_unregister_node(struct node *node);
 

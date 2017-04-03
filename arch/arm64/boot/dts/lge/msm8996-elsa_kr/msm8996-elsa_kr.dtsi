@@ -36,8 +36,11 @@
 			label = "crash_fb_mem";
 		};
 
-		cont_splash_mem: cont_splash_mem@83401000 {
-			status = "disabled";
+		/delete-node/ cont_splash_mem@83401000;
+
+		cont_splash_mem: cont_splash_mem@84201000 {
+			reg = <0 0x84201000 0 0x15FF000>;
+			label = "cont_splash_mem";
 		};
 
 		/delete-node/ dfps_data_mem@83400000;

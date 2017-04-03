@@ -7,6 +7,8 @@
 #define FLAG_FORCE_LIMIT_TLS_CIPHER_SUITES 0x08
 #define FLAG_FORCE_LIMIT_TLS_ECC_ALG 0x10
 #define FLAG_FORCE_USE_RANDOM_DEV 0x20
+#define FLAG_SDP_SERVICE 0x40   // SDP [lge-disa-certification@lge.com]
+
 #ifdef CONFIG_CRYPTO_CCMODE
 extern int cc_mode;
 extern int cc_mode_flag;

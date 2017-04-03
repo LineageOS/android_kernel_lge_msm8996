@@ -34,6 +34,9 @@ extern int migrate_page(struct address_space *,
 extern int migrate_pages(struct list_head *l, new_page_t new, free_page_t free,
 		unsigned long private, enum migrate_mode mode, int reason);
 
+extern bool isolate_movable_page(struct page *page, isolate_mode_t mode);
+extern void putback_movable_page(struct page *page);
+
 extern int migrate_prep(void);
 extern int migrate_prep_local(void);
 extern int migrate_vmas(struct mm_struct *mm,
@@ -74,6 +77,21 @@ static inline int migrate_huge_page_move_mapping(struct address_space *mapping,
 }
 
 #endif /* CONFIG_MIGRATION */
+
+#ifdef CONFIG_COMPACTION
+extern int PageMovable(struct page *page);
+extern void __SetPageMovable(struct page *page, struct address_space *mapping);
+extern void __ClearPageMovable(struct page *page);
+#else
+static inline int PageMovable(struct page *page) { return 0; };
+static inline void __SetPageMovable(struct page *page,
+				struct address_space *mapping)
+{
+}
+static inline void __ClearPageMovable(struct page *page)
+{
+}
+#endif
 
 #ifdef CONFIG_NUMA_BALANCING
 extern bool pmd_trans_migrating(pmd_t pmd);

@@ -54,6 +54,12 @@
 #include "ufs-reset-gpio.h"
 #endif
 
+#ifdef LGE_UFS_THERM_TWEAK
+#include <soc/qcom/lge/power/lge_power_class.h>
+#define LGE_UFS_THERM_TWEAK_BORDER  (-5)
+static void ufs_qcom_ctrl_clk_scaling_by_therm(struct work_struct *work);
+#endif
+
 #ifdef CONFIG_DEBUG_FS
 
 static int ufshcd_tag_req_type(struct request *rq)
@@ -4026,7 +4032,6 @@ static int ufshcd_link_recovery(struct ufs_hba *hba)
 		flush_work(&hba->eh_work);
 	} while (1);
 
-
 	/*
 	 * we don't know if previous reset had really reset the host controller
 	 * or not. So let's force reset here to be sure.
@@ -4065,7 +4070,8 @@ static int __ufshcd_uic_hibern8_enter(struct ufs_hba *hba)
 	trace_ufshcd_profile_hibern8(dev_name(hba->dev), "enter",
 			     ktime_to_us(ktime_sub(ktime_get(), start)), ret);
 
-	if (ret) {
+	if (ret || hba->do_full_init) {
+		hba->do_full_init = false;
 		ufshcd_update_error_stats(hba, UFS_ERR_HIBERN8_ENTER);
 		dev_err(hba->dev, "%s: hibern8 enter failed. ret = %d",
 			__func__, ret);
@@ -4106,7 +4112,8 @@ static int ufshcd_uic_hibern8_exit(struct ufs_hba *hba)
 	trace_ufshcd_profile_hibern8(dev_name(hba->dev), "exit",
 			     ktime_to_us(ktime_sub(ktime_get(), start)), ret);
 
-	if (ret) {
+	if (ret || hba->do_full_init) {
+		hba->do_full_init = false;
 		ufshcd_update_error_stats(hba, UFS_ERR_HIBERN8_EXIT);
 		dev_err(hba->dev, "%s: hibern8 exit failed. ret = %d",
 			__func__, ret);
@@ -5769,7 +5776,7 @@ static void ufshcd_update_uic_error(struct ufs_hba *hba)
 	reg = ufshcd_readl(hba, REG_UIC_ERROR_CODE_PHY_ADAPTER_LAYER);
 	/* Ignore LINERESET indication, as this is not an error */
 	if ((reg & UIC_PHY_ADAPTER_LAYER_ERROR) &&
-			(reg & UIC_PHY_ADAPTER_LAYER_LANE_ERR_MASK)) {
+			(reg & UIC_PHY_ADAPTER_LAYER_ERROR_CODE_MASK)) {
 		/*
 		 * To know whether this error is fatal or not, DB timeout
 		 * must be checked but this error is handled separately.
@@ -5777,6 +5784,16 @@ static void ufshcd_update_uic_error(struct ufs_hba *hba)
 		dev_dbg(hba->dev, "%s: UIC Lane error reported, reg 0x%x\n",
 				__func__, reg);
 		ufshcd_update_uic_reg_hist(&hba->ufs_stats.pa_err, reg);
+
+		if (reg & 0x10) {
+			if (hba->active_uic_cmd &&
+			((hba->active_uic_cmd->command == UIC_CMD_DME_HIBER_ENTER)
+			 || (hba->active_uic_cmd->command == UIC_CMD_DME_HIBER_EXIT))) {
+				dev_err(hba->dev, "%s: UIC Line-reset reported during hibern8 operation, reg 0x%x\n",
+				__func__, reg);
+				hba->do_full_init = true;
+			}
+		}
 	}
 
 	/* PA_INIT_ERROR is fatal and needs UIC reset */
@@ -6368,7 +6385,10 @@ static int ufshcd_reset_and_restore(struct ufs_hba *hba)
 
 		err = ufshcd_host_reset_and_restore(hba);
 	} while (err && --retries);
-
+#ifdef CONFIG_MACH_LGE
+	if(err && retries <=0)
+		BUG_ON(1);
+#endif
 	/*
 	 * After reset the door-bell might be cleared, complete
 	 * outstanding requests in s/w here.
@@ -8177,6 +8197,7 @@ static int ufshcd_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 	enum uic_link_state old_link_state;
 #ifdef CONFIG_MACH_LGE
 	unsigned int retry_count = 1;
+	int err_bkops_check_status = 0;
 #endif
 
 	hba->pm_op_in_progress = 1;
@@ -8250,7 +8271,15 @@ resume_retry:
 		 * If BKOPs operations are urgently needed at this moment then
 		 * keep auto-bkops enabled or else disable it.
 		 */
+#ifdef CONFIG_MACH_LGE
+		err_bkops_check_status =
+#endif
 		ufshcd_urgent_bkops(hba);
+
+#ifdef CONFIG_MACH_LGE
+		if (err_bkops_check_status && retry_count==0)
+			BUG();
+#endif
 
 	hba->clk_gating.is_suspended = false;
 	hba->hibern8_on_idle.is_suspended = false;
@@ -8429,6 +8458,7 @@ int ufshcd_runtime_resume(struct ufs_hba *hba)
 		goto out;
 	else
 		ret = ufshcd_resume(hba, UFS_RUNTIME_PM);
+
 out:
 	trace_ufshcd_runtime_resume(dev_name(hba->dev), ret,
 		ktime_to_us(ktime_sub(ktime_get(), start)),
@@ -8937,6 +8967,86 @@ out:
 	return count;
 }
 
+#ifdef LGE_UFS_THERM_TWEAK
+static void ufshcd_clkscale_enable(struct ufs_hba *hba, int enable)
+{
+	int err;
+
+	if (enable == hba->clk_scaling.is_allowed)
+		return;
+
+	pm_runtime_get_sync(hba->dev);
+	ufshcd_hold(hba, false);
+
+	cancel_work_sync(&hba->clk_scaling.suspend_work);
+	cancel_work_sync(&hba->clk_scaling.resume_work);
+
+	hba->clk_scaling.is_allowed = enable;
+
+	if (enable) {
+		ufshcd_resume_clkscaling(hba);
+	} else {
+		ufshcd_suspend_clkscaling(hba);
+		err = ufshcd_devfreq_scale(hba, true);
+		if (err)
+			dev_err(hba->dev, "%s: failed to scale clocks up %d\n",
+					__func__, err);
+	}
+
+	ufshcd_release(hba, false);
+	pm_runtime_put_sync(hba->dev);
+}
+
+static void ufshcd_set_clk_scaling(struct ufs_hba *hba, int is_normal_temp)
+{
+	static enum lge_ufs_tweak_status cur_status;
+
+	if((!is_normal_temp && cur_status == UFS_LOW_THERM_DISABLE_CLK_SCALING) ||
+			(is_normal_temp && cur_status == UFS_NORMAL_THERM_ENABLE_CLK_SCALING)) {
+		dev_dbg(hba->dev, "[UFS_TWEAK] %s: no need to change current setting - %d => 0:normal, 1:low temp)\n", __func__, cur_status);
+		return;
+	}
+
+	ufshcd_clkscale_enable(hba, is_normal_temp);
+	if(!is_normal_temp) {
+		cur_status = UFS_LOW_THERM_DISABLE_CLK_SCALING;
+		dev_dbg(hba->dev, "[UFS_TWEAK] %s: change setting to LOW_TEMP_MODE(%d)\n", __func__, cur_status);
+	} else {
+		cur_status = UFS_NORMAL_THERM_ENABLE_CLK_SCALING;
+		dev_dbg(hba->dev, "[UFS_TWEAK] %s: change setting to NORMAL_TEMP_MODE(%d)\n", __func__, cur_status);
+	}
+}
+
+static void ufs_qcom_ctrl_clk_scaling_by_therm(struct work_struct *work)
+{
+	static struct lge_power *lge_adc_lpc;
+	int therm;
+	union lge_power_propval lge_val = {0,};
+	struct ufs_hba *hba = container_of(work, struct ufs_hba, therm_clk_ctrl_work.work);
+
+	if(!lge_adc_lpc) {
+		dev_dbg(hba->dev, "[UFS_TWEAK] %s: get lge_adc_lpc\n", __func__);
+		lge_adc_lpc = lge_power_get_by_name("lge_adc");
+	}
+
+	if(!lge_adc_lpc) {
+		dev_dbg(hba->dev, "[UFS_TWEAK] %s: can not get lge_adc_lpc\n", __func__);
+		therm = 0;
+	} else {
+		lge_adc_lpc->get_property(lge_adc_lpc, LGE_POWER_PROP_BD2_THERM_PHY, &lge_val);
+		therm = lge_val.intval;
+		dev_dbg(hba->dev, "[UFS_TWEAK] %s: board thermal : %d\n", __func__, therm);
+	}
+
+	ufshcd_set_clk_scaling(hba, therm > LGE_UFS_THERM_TWEAK_BORDER);
+
+	ufshcd_print_pwr_info(hba);
+
+	schedule_delayed_work(&hba->therm_clk_ctrl_work,
+			round_jiffies_relative(msecs_to_jiffies(CHECK_THERMAL_TIME)));
+}
+#endif
+
 static void ufshcd_clk_scaling_suspend_work(struct work_struct *work)
 {
 	struct ufs_hba *hba = container_of(work, struct ufs_hba,
@@ -9023,8 +9133,14 @@ static int ufshcd_devfreq_get_dev_status(struct device *dev,
 		struct devfreq_dev_status *stat)
 {
 	struct ufs_hba *hba = dev_get_drvdata(dev);
-	struct ufs_clk_scaling *scaling = &hba->clk_scaling;
+	struct ufs_clk_scaling *scaling;
 	unsigned long flags;
+
+#ifdef CONFIG_MACH_LGE
+	if (!hba)
+		return -EINVAL;
+#endif
+	scaling = &hba->clk_scaling;
 
 	if (!ufshcd_is_clkscaling_supported(hba))
 		return -EINVAL;
@@ -9179,6 +9295,13 @@ int ufshcd_init(struct ufs_hba *hba, void __iomem *mmio_base, unsigned int irq)
 
 	ufshcd_init_clk_gating(hba);
 	ufshcd_init_hibern8_on_idle(hba);
+
+#ifdef LGE_UFS_THERM_TWEAK
+	dev_dbg(hba->dev, "[UFS_TWEAK] init therm_clk_ctrl_work\n");
+	INIT_DELAYED_WORK(&hba->therm_clk_ctrl_work, ufs_qcom_ctrl_clk_scaling_by_therm);
+	schedule_delayed_work(&hba->therm_clk_ctrl_work,
+			round_jiffies_relative(msecs_to_jiffies(CHECK_THERMAL_TIME)));
+#endif
 
 	/*
 	 * In order to avoid any spurious interrupt immediately after

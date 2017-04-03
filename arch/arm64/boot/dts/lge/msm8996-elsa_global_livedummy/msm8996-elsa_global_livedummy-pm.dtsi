@@ -214,8 +214,8 @@
 
 	lge,global_store_mode {
 		compatible = "lge,store_mode";
-		lge,llk_max = <80>;
-		lge,llk_min = <75>;
+		lge,llk_max = <50>;
+		lge,llk_min = <45>;
 	};
 
 	lge,gpio-debug@fd510000 {

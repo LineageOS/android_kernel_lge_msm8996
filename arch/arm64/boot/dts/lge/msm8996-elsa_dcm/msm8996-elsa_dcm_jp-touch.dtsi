@@ -23,8 +23,8 @@
 				compatible = "lge,sw49407";
 
 				/* firmware */
-				fw_image = "touch/elsa/L1L52P1_1_04.img",
-						"touch/elsa/L1L52P1_1_04.img";
+				fw_image = "touch/elsa/L1L52P1_1_08.img",
+						"touch/elsa/L1L52P1_1_08.img";
 
 				panel_spec = "touch/elsa/elsa_limit.txt";
 				panel_spec_mfts_folder = "touch/elsa/elsa_limit_mfts.txt";

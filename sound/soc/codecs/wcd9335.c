@@ -834,6 +834,10 @@ static const struct tasha_reg_mask_val tasha_spkr_mode1[] = {
 	{WCD9335_CDC_BOOST1_BOOST_CTL, 0x7C, 0x44},
 };
 
+#if defined(CONFIG_SND_SOC_ES9018)|| defined(CONFIG_SND_SOC_ES9218P)
+extern bool enable_es9218p;
+#endif
+
 /**
  * tasha_set_spkr_gain_offset - offset the speaker path
  * gain with the given offset value.
@@ -1303,9 +1307,11 @@ static void tasha_mbhc_hph_l_pull_up_control(struct snd_soc_codec *codec,
 
 	if (TASHA_IS_2_0(tasha->wcd9xxx->version))
 	{
-#ifdef CONFIG_SND_SOC_ES9018
-		snd_soc_update_bits(codec, WCD9335_MBHC_PLUG_DETECT_CTL,
-			    0xC0, 0xC0);
+#if defined(CONFIG_SND_SOC_ES9018)||defined(CONFIG_SND_SOC_ES9218P)
+		if(enable_es9218p)
+			snd_soc_update_bits(codec, WCD9335_MBHC_PLUG_DETECT_CTL, 0xC0, 0xC0);
+		else
+			snd_soc_update_bits(codec, WCD9335_MBHC_PLUG_DETECT_CTL, 0xC0, pull_up_cur << 6);
 #else
 		snd_soc_update_bits(codec, WCD9335_MBHC_PLUG_DETECT_CTL,
 			    0xC0, pull_up_cur << 6);
@@ -1770,22 +1776,7 @@ static void tasha_wcd_mbhc_calc_impedance(struct wcd_mbhc *mbhc, uint32_t *zl,
 	int zMono, z_diff1, z_diff2;
 	bool is_fsm_disable = false;
 	bool is_change = false;
-
-#ifdef CONFIG_SND_SOC_ES9018
-    struct tasha_mbhc_zdet_param zdet_param[] = {
-        {4, 0, 4, 0x08, 0x14, 0x18}, /* < 32ohm */
-        {2, 0, 3, 0x18, 0x7C, 0x90}, /* 32ohm < Z < 400ohm */
-        {2, 0, 3, 0x18, 0x7C, 0x90}, /* 400ohm < Z < 1200ohm */
-        {2, 0, 3, 0x18, 0x7C, 0x90}, /* >1200ohm */
-    };
-    struct tasha_mbhc_zdet_param *zdet_param_ptr = NULL;
-    s16 d1_a[][4] = {
-        {0, 30, 90, 30},
-        {0, 30, 30, 5},
-        {0, 30, 30, 5},
-        {0, 30, 30, 5},
-    };
-#else
+	
 	struct tasha_mbhc_zdet_param zdet_param[] = {
 		{4, 0, 4, 0x08, 0x14, 0x18}, /* < 32ohm */
 		{2, 0, 3, 0x18, 0x7C, 0x90}, /* 32ohm < Z < 400ohm */
@@ -1799,8 +1790,21 @@ static void tasha_wcd_mbhc_calc_impedance(struct wcd_mbhc *mbhc, uint32_t *zl,
 		{0, 30, 30, 5},
 		{0, 30, 30, 5},
 	};
+#if defined(CONFIG_SND_SOC_ES9218P)
+	struct tasha_mbhc_zdet_param zdet_param_ess[] = {
+		{4, 0, 4, 0x08, 0x14, 0x18}, /* < 32ohm */
+		{2, 0, 3, 0x18, 0x7C, 0x90}, /* 32ohm < Z < 400ohm */
+		{2, 0, 3, 0x18, 0x7C, 0x90}, /* 400ohm < Z < 1200ohm */
+		{2, 0, 3, 0x18, 0x7C, 0x90}, /* >1200ohm */
+	};
 #endif
 	s16 *d1 = NULL;
+#if defined(CONFIG_SND_SOC_ES9218P)
+	if (enable_es9218p) {
+		pr_debug("%s: copy zdet_param_ess to zdet_param\n", __func__);
+		memcpy(zdet_param,zdet_param_ess,sizeof(zdet_param));
+	}
+#endif
 
 	if (!TASHA_IS_2_0(wcd9xxx->version)) {
 		dev_dbg(codec->dev, "%s: Z-det is not supported for this codec version\n",
@@ -5826,6 +5830,10 @@ static int tasha_codec_enable_dmic(struct snd_soc_dapm_widget *w,
 				dmic_rate_val << dmic_rate_shift);
 			snd_soc_update_bits(codec, dmic_clk_reg,
 					dmic_clk_en, dmic_clk_en);
+#ifdef CONFIG_SND_USE_KNOWLES_DMIC_DELAY
+			dev_info(codec->dev, "%s: DMIC 70ms delay\n",__func__);
+			usleep_range(70000, 70100);
+#endif
 		}
 
 		break;
@@ -12087,7 +12095,11 @@ static const struct tasha_reg_mask_val tasha_codec_reg_init_common_val[] = {
 	{WCD9335_CDC_CLSH_K2_MSB, 0x0F, 0x00},
 	{WCD9335_CDC_CLSH_K2_LSB, 0xFF, 0x60},
 	{WCD9335_CPE_SS_DMIC_CFG, 0x80, 0x00},
+#ifdef CONFIG_MACH_LGE
+	{WCD9335_CDC_BOOST0_BOOST_CTL, 0x7C, 0x58},
+#else
 	{WCD9335_CDC_BOOST0_BOOST_CTL, 0x70, 0x50},
+#endif
 	{WCD9335_CDC_BOOST1_BOOST_CTL, 0x70, 0x50},
 	{WCD9335_CDC_RX7_RX_PATH_CFG1, 0x08, 0x08},
 	{WCD9335_CDC_RX8_RX_PATH_CFG1, 0x08, 0x08},
@@ -13319,6 +13331,12 @@ static int tasha_codec_probe(struct snd_soc_codec *codec)
 	mutex_unlock(&codec->mutex);
 	snd_soc_dapm_sync(dapm);
 
+#ifdef CONFIG_SND_SOC_ES9218P
+		if (enable_es9218p)
+			pr_info("%s: Enable enable_es9218p\n", __func__);
+		else
+			pr_info("%s: Disable enable_es9218p\n", __func__);
+#endif
 	return ret;
 
 err_pdata:

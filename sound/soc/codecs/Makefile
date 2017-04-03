@@ -190,6 +190,9 @@ snd-soc-max9877-objs := max9877.o
 snd-soc-tpa6130a2-objs := tpa6130a2.o
 snd-soc-tas2552-objs := tas2552.o
 snd-soc-es9018-objs := es9218.o
+obj-$(CONFIG_SND_SOC_ES9018)	+= snd-soc-es9018.o
+snd-soc-es9218p-objs := es9218p.o
+obj-$(CONFIG_SND_SOC_ES9218P)	+= snd-soc-es9218p.o
 
 obj-$(CONFIG_SND_SOC_88PM860X)	+= snd-soc-88pm860x.o
 obj-$(CONFIG_SND_SOC_AB8500_CODEC)	+= snd-soc-ab8500-codec.o
@@ -377,4 +380,3 @@ obj-$(CONFIG_SND_SOC_MSM_STUB)  += snd-soc-msm-stub.o
 # Amp
 obj-$(CONFIG_SND_SOC_MAX9877)	+= snd-soc-max9877.o
 obj-$(CONFIG_SND_SOC_TPA6130A2)	+= snd-soc-tpa6130a2.o
-obj-$(CONFIG_SND_SOC_ES9018)	+= snd-soc-es9018.o

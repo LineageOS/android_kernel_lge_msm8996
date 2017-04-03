@@ -259,3 +259,4 @@ config USB_LINK_LAYER_TEST
 source "drivers/usb/misc/anx7418/Kconfig"
 source "drivers/usb/misc/anx7688/Kconfig"
 source "drivers/usb/misc/alice_friends/Kconfig"
+source "drivers/usb/misc/tusb422/Kconfig"

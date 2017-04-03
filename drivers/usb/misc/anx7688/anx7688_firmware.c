@@ -22,6 +22,9 @@
 #include "anx_i2c_intf.h"
 
 #define FW_LENGTH 16
+#define FWVER_ADDR_EEPROM 0x0800
+
+int anx7688_fw_delay_ms = 4;
 
 static bool is_factory_cable(void)
 {
@@ -118,7 +121,7 @@ static ssize_t eeprom_write(struct anx7688_firmware *fw, u16 addr,
 		data[7], data[8], data[9], data[10], data[11], data[12], data[13],
 		data[14], data[15]);
 
-	msleep(4);
+	msleep(anx7688_fw_delay_ms++);
 
 	memset(data, 0, count);
 	OhioWriteBlockReg(USBC_ADDR, EEPROM_WR_DATA0, count, data);
@@ -178,6 +181,7 @@ static int eeprom_update(struct anx7688_firmware *fw)
 	int retry1 = 0;
 	int retry2 = 0;
 	int rc;
+	bool need_finalize = false;;
 
 	while(size > 0) {
 retry:
@@ -201,21 +205,42 @@ retry:
 			} else {
 				dev_err(cdev, "%s: max retired read\n",
 						__func__);
+				rc = -1;
+				goto err;
 			}
 		}
 
-		offset += FW_LENGTH;
+		if (!((offset == FWVER_ADDR_EEPROM) && need_finalize))
+			offset += FW_LENGTH;
 
 		if (!(offset % 1024))
-			dev_err(cdev, "size:%d, offet:%d\n", size, offset);
+			dev_info(cdev, "size:%d, offet:%d\n", size, offset);
+
+		if (offset == FWVER_ADDR_EEPROM) {
+			if (need_finalize) {
+				offset = size;
+				need_finalize = false;
+			} else {
+				dev_info(cdev, "offet:%d skipped\n", offset);
+				offset += FW_LENGTH;
+				need_finalize = true;
+			}
+		}
 
 		if ((size - offset) < FW_LENGTH)
 			offset = size;
 
-		if (offset >= size)
-			goto complete;
+		if (offset >= size) {
+			if (need_finalize) {
+				offset = FWVER_ADDR_EEPROM;
+				dev_info(cdev, "fw version offet:%d write\n", offset);
+			} else {
+				goto complete;
+			}
+		}
 
 		retry1 = retry2 = 0;
+		anx7688_fw_delay_ms = 4;
 	}
 
 complete:

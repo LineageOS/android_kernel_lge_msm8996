@@ -64,6 +64,7 @@
 #define CMD_TUI_HAL_QUEUE_DEQUEUE_BUFFER    2
 #define CMD_TUI_HAL_CLEAR_TOUCH_INTERRUPT   3
 #define CMD_TUI_HAL_HIDE_SURFACE            4
+#define CMD_TUI_HAL_GET_RESOLUTION          5
 
 /**
  * Maximum data length.

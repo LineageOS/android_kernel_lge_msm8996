@@ -1561,7 +1561,7 @@ u32 limit_supported_video_format(u32 video_format)
 				video_format = HDMI_VFRMT_1280x720p60_16_9;
 			break;
 		case 0x0a:
-			if ((video_format = HDMI_VFRMT_1920x1080p60_16_9) ||
+			if ((video_format == HDMI_VFRMT_1920x1080p60_16_9) ||
 				(video_format == HDMI_VFRMT_1920x1080p100_64_27) ||
 				(video_format == HDMI_VFRMT_1920x1080p120_64_27) ||
 				((video_format >= HDMI_VFRMT_1680x720p100_64_27) &&
@@ -1586,6 +1586,15 @@ u32 limit_supported_video_format(u32 video_format)
 				(video_format == HDMI_VFRMT_3840x2160p50_64_27) ||
 				(video_format == HDMI_VFRMT_3840x2160p60_64_27))
 				video_format = HDMI_VFRMT_3840x2160p30_16_9;
+			else {
+				ret = msm_hdmi_get_timing_info(pinfo, video_format);
+				if (!ret && pinfo->pixel_freq > 297000) {
+					DEV_DBG("%s: info->pixel_freq = %d is over clk with 0x14 BW dongle.\n",
+									__func__, pinfo->pixel_freq);
+					video_format = HDMI_VFRMT_3840x2160p30_16_9;
+				}
+			}
+			break;
 		}
 	}
 	else {

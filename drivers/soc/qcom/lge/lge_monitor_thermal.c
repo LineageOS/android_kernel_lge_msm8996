@@ -31,13 +31,9 @@
 #include <linux/qpnp/qpnp-adc.h>
 #include <soc/qcom/lge/board_lge.h>
 #include <linux/thermal.h>
+#include <soc/qcom/lge/lge_monitor_thermal.h>
 
 #define MODULE_NAME "monitor-thermal"
-
-#define VTS_WEIGHT_XO_TEMP      (58)
-#define VTS_WEIGHT_BD2_TEMP     (40)
-#define VTS_WEIGHT_BY_PERCENT   (100)
-#define VTS_UNIT_DECIDEGREE     (10)
 
 static struct workqueue_struct *monitor_wq;
 
@@ -154,18 +150,27 @@ static void _poll_monitor(struct lge_monitor_thermal_data *monitor_dd)
 		get_vts(monitor_dd);
 		if (monitor_dd->tz_vts)
 			thermal_zone_get_temp(monitor_dd->tz_vts, &monitor_dd->last_vts_temp);
-		else
+		else {
+#ifdef CONFIG_MACH_MSM8996_LUCYE
+			monitor_dd->last_vts_temp =
+				((VTS_WEIGHT_XO_TEMP * monitor_dd->last_xo_temp
+				  + VTS_WEIGHT_BD2_TEMP * monitor_dd->last_bd2_temp)
+				 + VTS_CONST_1) / VTS_WEIGHT_BY_PERCENT;
+#else
 		monitor_dd->last_vts_temp =
 			(VTS_WEIGHT_XO_TEMP * monitor_dd->last_xo_temp +
 			VTS_WEIGHT_BD2_TEMP * monitor_dd->last_bd2_temp)
 			* VTS_UNIT_DECIDEGREE
 			/ VTS_WEIGHT_BY_PERCENT;
+#endif
+		}
 
-		pr_info("[TM][I] XO,%3d,PA0,%3d,BD2,%3d,VTS,%lu\n",
+		pr_info("[TM][I] XO,%3d,PA0,%3d,BD2,%3d,VTS,%lu,%s\n",
 					monitor_dd->last_xo_temp,
 					monitor_dd->last_pa_temp,
 					monitor_dd->last_bd2_temp,
-					monitor_dd->last_vts_temp);
+					monitor_dd->last_vts_temp,
+					monitor_dd->tz_vts ? "S" : "M");
 	}
 }
 

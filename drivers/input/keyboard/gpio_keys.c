@@ -34,7 +34,7 @@
 #include <linux/pinctrl/consumer.h>
 #include <linux/syscore_ops.h>
 
-#if defined(CONFIG_MACH_MSM8996_ELSA) && defined(CONFIG_LGE_HANDLE_PANIC)
+#if defined(CONFIG_LGE_HANDLE_PANIC)
 #include <soc/qcom/lge/lge_handle_panic.h>
 #endif
 
@@ -384,8 +384,8 @@ static void gpio_keys_gpio_report_event(struct gpio_button_data *bdata)
 
 		pr_err("%s: code(%d) state(%d)\n", __func__, button->code, !!state);
 
-#if defined(CONFIG_MACH_MSM8996_ELSA) && defined(CONFIG_LGE_HANDLE_PANIC)
-		if(state)
+#if defined(CONFIG_LGE_HANDLE_PANIC)
+		if(!!state)
 			lge_gen_key_panic(button->code);
 #endif
 

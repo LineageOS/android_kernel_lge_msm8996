@@ -794,12 +794,7 @@ static int synaptics_rmi4_i2c_write(struct synaptics_rmi4_data *rmi4_data,
 	unsigned char recover = 1;
 	unsigned char msg_length;
 	struct i2c_client *i2c = to_i2c_client(rmi4_data->pdev->dev.parent);
-	struct i2c_msg msg[] = {
-		{
-			.addr = i2c->addr,
-			.flags = 0,
-		}
-	};
+	struct i2c_msg msg[1];
 
 	if ((length + 10) < (hid_dd.output_report_max_length + 2))
 		msg_length = hid_dd.output_report_max_length + 2;
@@ -810,6 +805,8 @@ recover:
 	mutex_lock(&rmi4_data->rmi4_io_ctrl_mutex);
 
 	check_buffer(&buffer.write, &buffer.write_size, msg_length);
+	msg[0].addr = i2c->addr;
+	msg[0].flags = 0;
 	msg[0].len = msg_length;
 	msg[0].buf = buffer.write;
 	buffer.write[0] = hid_dd.output_register_index & MASK_8BIT;

@@ -1,0 +1,56 @@
+
+menu "Broadcom Shared transport driver"
+	depends on BT
+
+config BRCM_V4L2
+	tristate "Enable Broadcom Shared Transport based solution"
+	help
+	  Enable Broadcom Shared transport driver based solution.
+
+	  Say Y here to compile support for Broadcom shared transport based
+	  solution or say N to exclude.
+
+config SH_V4L2
+	tristate "Shared transport driver"
+	help
+	  Shared transport driver for UART.
+          This driver is required if you want to use BT/FM/Ant via
+          shared UART. These could be enabled using below flags.
+
+	  Say Y here to compile support for Broadcom shared transport driver
+	  or say M to compile is as a module (brcm_ldisc).
+
+config BT_V4L2
+	tristate "Bluetooth protocol driver"
+	depends on SH_V4L2
+	help
+	  Bluetooth protocol driver.
+	  This driver is required if you want to use Bluetooth via
+	  the shared transport driver over UART.
+
+	  Say Y here to compile support for Bluetooth protocol driver into the
+	  kernel or say M to compile it as module (btdrv).
+
+config FM_V4L2
+	tristate "FM protocol driver"
+	depends on SH_V4L2
+	help
+	  FM Radio protocol driver.
+	  This driver is required if you want to use FM via
+	  the shared transport driver over UART.
+
+	  Say Y here to compile support for FM Radio into the
+	  kernel or say M to compile it as module (fmdrv).
+
+config ANT_V4L2
+	tristate "FM protocol driver"
+	depends on SH_V4L2
+	help
+	  ANT protocol driver.
+	  This driver is required if you want to use ANT via
+	  the shared transport driver over UART.
+
+	  Say Y here to compile support for ANT into the
+	  kernel or say M to compile it as module (antdrv).
+
+endmenu

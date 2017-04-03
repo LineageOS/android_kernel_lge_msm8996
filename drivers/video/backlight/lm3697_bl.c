@@ -581,6 +581,8 @@ static int lm3697_probe(struct i2c_client *i2c_dev,
 	dev->max_current = pdata->max_current;
 	dev->min_brightness = pdata->min_brightness;
 	dev->default_brightness = pdata->default_brightness;
+	cur_main_lcd_level = dev->default_brightness;
+	bl_dev->props.brightness = cur_main_lcd_level;
 	dev->max_brightness = pdata->max_brightness;
 	dev->output_config = pdata->output_config;
 	dev->brightness_config = pdata->brightness_config;

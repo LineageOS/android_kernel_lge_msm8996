@@ -583,6 +583,16 @@ uint32_t hal_tui_process_cmd(struct tui_hal_cmd_t *cmd,
 			pr_info("INFO %s:%d\n", __func__, __LINE__);
 			break;
 
+		case CMD_TUI_HAL_GET_RESOLUTION:
+			ret = send_cmd_to_user(TLC_TUI_CMD_GET_RESOLUTION,
+					       0,
+					       0);
+			if (TUI_DCI_OK == ret) {
+				rsp->data[0] = g_user_rsp.screen_metrics[0];
+				rsp->data[1] = g_user_rsp.screen_metrics[1];
+			}
+			break;
+
 		case CMD_TUI_HAL_HIDE_SURFACE:
 			send_cmd_to_user(TLC_TUI_CMD_HIDE_SURFACE,
 					 0,

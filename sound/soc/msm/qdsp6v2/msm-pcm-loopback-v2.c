@@ -559,6 +559,7 @@ static int msm_pcm_playback_app_type_cfg_ctl_put(struct snd_kcontrol *kcontrol,
 	int app_type;
 	int acdb_dev_id;
 	int sample_rate = 48000;
+	int device_index = 0;
 
 	pr_debug("%s: fe_id- %llu\n", __func__, fe_id);
 	if (fe_id >= MSM_FRONTEND_DAI_MAX) {
@@ -571,10 +572,14 @@ static int msm_pcm_playback_app_type_cfg_ctl_put(struct snd_kcontrol *kcontrol,
 	acdb_dev_id = ucontrol->value.integer.value[1];
 	if (0 != ucontrol->value.integer.value[2])
 		sample_rate = ucontrol->value.integer.value[2];
-	pr_debug("%s: app_type- %d acdb_dev_id- %d sample_rate- %d session_type- %d\n",
-		__func__, app_type, acdb_dev_id, sample_rate, SESSION_TYPE_RX);
+
+	device_index = ucontrol->value.integer.value[3];
+	pr_debug("%s: app_type- %d acdb_dev_id- %d sample_rate- %d session_type- %d index- %d\n",
+		__func__, app_type, acdb_dev_id, sample_rate, SESSION_TYPE_RX,
+		device_index);
 	msm_pcm_routing_reg_stream_app_type_cfg(fe_id, app_type,
-			acdb_dev_id, sample_rate, SESSION_TYPE_RX);
+			acdb_dev_id, sample_rate, SESSION_TYPE_RX,
+			device_index);
 
 	return 0;
 }
@@ -621,6 +626,7 @@ static int msm_pcm_capture_app_type_cfg_ctl_put(struct snd_kcontrol *kcontrol,
 	int app_type;
 	int acdb_dev_id;
 	int sample_rate = 48000;
+	int device_index = 0;
 
 	pr_debug("%s: fe_id- %llu\n", __func__, fe_id);
 	if (fe_id >= MSM_FRONTEND_DAI_MAX) {
@@ -633,10 +639,14 @@ static int msm_pcm_capture_app_type_cfg_ctl_put(struct snd_kcontrol *kcontrol,
 	acdb_dev_id = ucontrol->value.integer.value[1];
 	if (0 != ucontrol->value.integer.value[2])
 		sample_rate = ucontrol->value.integer.value[2];
-	pr_debug("%s: app_type- %d acdb_dev_id- %d sample_rate- %d session_type- %d\n",
-		__func__, app_type, acdb_dev_id, sample_rate, SESSION_TYPE_TX);
+
+	device_index = ucontrol->value.integer.value[3];
+	pr_debug("%s: app_type- %d acdb_dev_id- %d sample_rate- %d session_type- %d index- %d\n",
+		__func__, app_type, acdb_dev_id, sample_rate, SESSION_TYPE_TX,
+		device_index);
 	msm_pcm_routing_reg_stream_app_type_cfg(fe_id, app_type,
-			acdb_dev_id, sample_rate, SESSION_TYPE_TX);
+			acdb_dev_id, sample_rate, SESSION_TYPE_TX,
+			device_index);
 
 	return 0;
 }

@@ -47,6 +47,9 @@ struct page;
 #define RFC2440_CIPHER_AES_XTS_256 0x0c
 
 #define RFC2440_CIPHER_RSA 0x01
+#ifdef CONFIG_SDP
+#define CIPHER_ECDH 0xf0
+#endif
 
 /**
  * For convenience, we may need to pass around the encrypted session

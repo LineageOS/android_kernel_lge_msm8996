@@ -135,13 +135,7 @@ static int synaptics_rmi4_i2c_write(struct synaptics_rmi4_data *rmi4_data,
 	int retval;
 	unsigned char retry;
 	struct i2c_client *i2c = to_i2c_client(rmi4_data->pdev->dev.parent);
-	struct i2c_msg msg[] = {
-		{
-			.addr = i2c->addr,
-			.flags = 0,
-			.len = length + 1,
-		}
-	};
+	struct i2c_msg msg[1];
 
 	mutex_lock(&rmi4_data->rmi4_io_ctrl_mutex);
 	/*
@@ -160,6 +154,9 @@ static int synaptics_rmi4_i2c_write(struct synaptics_rmi4_data *rmi4_data,
 	}
 
 	/* Assign the write_buf of driver stucture to i2c_msg buf */
+	msg[0].addr = i2c->addr;
+	msg[0].flags = 0;
+	msg[0].len = length + 1;	
 	msg[0].buf = rmi4_data->write_buf;
 
 	retval = synaptics_rmi4_i2c_set_page(rmi4_data, addr);

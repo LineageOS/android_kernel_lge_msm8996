@@ -27,7 +27,11 @@
 static enum hw_rev_no lge_bd_rev = HW_REV_MAX;
 
 /* CAUTION: These strings are come from LK. */
-#ifdef CONFIG_MACH_MSM8996_ELSA
+#if defined(CONFIG_MACH_MSM8996_LUCYE)
+char *rev_str[] = {"evb1", "evb2", "evb3", "rev_0", "rev_01", "rev_02", "rev_03", "rev_04",
+	"rev_a", "rev_b", "rev_c", "rev_d", "rev_10", "rev_11", "rev_12", "rev_13",
+	"reserved"};
+#elif defined(CONFIG_MACH_MSM8996_ELSA)
 char *rev_str[] = {"evb1", "evb2", "evb3", "rev_0", "rev_01", "rev_02", "rev_a", "rev_b",
 	"rev_c", "rev_d", "rev_e", "rev_f", "rev_10", "rev_11", "rev_12", "rev_13",
 	"reserved"};

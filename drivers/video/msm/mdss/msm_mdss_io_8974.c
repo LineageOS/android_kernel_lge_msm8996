@@ -1042,7 +1042,11 @@ static void mdss_dsi_8996_phy_config(struct mdss_dsi_ctrl_pdata *ctrl)
 		}
 
 		/* test str */
-		MIPI_OUTP(base + 0x14, 0x0088);	/* fixed */
+#ifdef CONFIG_LGE_DISPLAY_BL_EXTENDED
+		MIPI_OUTP(base + 0x14, 0x00ff);    /* fixed */
+#else
+		MIPI_OUTP(base + 0x14, 0x0088);    /* fixed */
+#endif
 
 		/* phy timing, 8 * 5 */
 		cnt = 8;

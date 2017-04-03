@@ -283,10 +283,6 @@ static int ext_watch_set_mode(struct device *dev, char log)
 	u32 wdata;
 	int ret = 0;
 
-
-	ret = sw49407_reg_write(dev, EXT_WATCH_DISPLAY_ON,
-			&d->watch.ext_wdata.time.disp_waton, sizeof(u32));
-
 	sw49407_xfer_msg_ready(dev, 2);
 
 	ts->xfer->data[0].tx.addr = EXT_WATCH_DCST_OFFSET;
@@ -787,9 +783,12 @@ static ssize_t store_extwatch_fontonoff
 	d->watch.ext_wdata.time.disp_waton = value;
 
 	if ((d->lcd_mode == LCD_MODE_U2_UNBLANK && value)
-		|| (d->lcd_mode == LCD_MODE_U0 && value)) {
+		|| (d->lcd_mode == LCD_MODE_U0 && value)
+		|| (atomic_read(&d->global_reset) == GLOBAL_RESET_START)) {
 		TOUCH_I("%s : Ignore HW Clock On in %s\n", __func__,
-			d->lcd_mode == LCD_MODE_U0 ? "U0" : "U2 Unblank");
+			atomic_read(&d->global_reset) == GLOBAL_RESET_START
+			? "GLOBAL Reset" : d->lcd_mode == LCD_MODE_U0
+			? "U0" : "U2 Unblank");
 		goto Exit;
 	}
 
