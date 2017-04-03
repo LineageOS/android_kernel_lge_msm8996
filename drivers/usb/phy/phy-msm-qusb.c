@@ -1129,7 +1129,6 @@ static int qusb_phy_set_suspend(struct usb_phy *phy, int suspend)
 			wmb();
 
 			qusb_phy_enable_clocks(qphy, false);
-			qusb_phy_enable_power(qphy, false);
 		}
 		qphy->suspended = true;
 	} else {
@@ -1141,7 +1140,6 @@ static int qusb_phy_set_suspend(struct usb_phy *phy, int suspend)
 			writel_relaxed(0x00,
 				qphy->base + QUSB2PHY_PORT_INTR_CTRL);
 		} else {
-			qusb_phy_enable_power(qphy, true);
 			qusb_phy_enable_clocks(qphy, true);
 		}
 

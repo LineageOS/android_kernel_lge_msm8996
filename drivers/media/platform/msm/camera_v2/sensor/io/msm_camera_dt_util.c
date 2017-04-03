@@ -303,7 +303,7 @@ int msm_sensor_get_sub_module_index(struct device_node *of_node,
 		src_node = NULL;
 	}
 
-#ifdef CONFIG_MACH_LGE
+#ifdef CONFIG_LG_TCS
 	src_node = of_parse_phandle(of_node, "qcom,tcs-src", 0);
 	if (!src_node) {
 		pr_err("%s:%d src_node NULL\n", __func__, __LINE__);
@@ -319,7 +319,9 @@ int msm_sensor_get_sub_module_index(struct device_node *of_node,
 		of_node_put(src_node);
 		src_node = NULL;
 	}
+#endif
 
+#ifdef CONFIG_LG_PROXY
 	src_node = of_parse_phandle(of_node, "qcom,proxy-src", 0);
 	if (!src_node) {
 		CDBG("%s:%d src_node NULL\n", __func__, __LINE__);
@@ -1990,4 +1992,3 @@ int msm_camera_power_down(struct msm_camera_power_ctrl_t *ctrl,
 	CDBG("%s exit\n", __func__);
 	return 0;
 }
-
