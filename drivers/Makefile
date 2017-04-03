@@ -182,6 +182,3 @@ obj-$(CONFIG_TRUSTONIC_TEE)	+= gud/
 
 #FeliCa
 obj-$(CONFIG_CXD224X_FELICA_F3)	+= felica/
-# Broadcom V4L2 solution
-#obj-$(CONFIG_BRCM_V4L2)         += brcm_v4l2/
-obj-y                           += brcm_v4l2/
