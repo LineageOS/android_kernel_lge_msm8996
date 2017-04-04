@@ -721,6 +721,7 @@ end:
 	return 0;
 }
 
+#ifdef CONFIG_LGE_DISPLAY_LUCYE_COMMON
 #if defined(CONFIG_LGE_DISPLAY_SRE_MODE)
 static ssize_t sre_get(struct device *dev,
 	struct device_attribute *attr, char *buf)
@@ -1140,7 +1141,7 @@ static ssize_t HDR_mode_set(struct device *dev,
 }
 static DEVICE_ATTR(hdr_mode, S_IWUSR|S_IRUGO, HDR_mode_get, HDR_mode_set);
 #endif
-
+#endif
 
 #if defined(CONFIG_LGE_LCD_TUNING)
 int find_lcd_cmd(void)
@@ -3478,6 +3479,7 @@ int mdss_dsi_panel_init(struct device_node *node,
 			pr_err("%s: Failed to create dev(panel_sysfs_dev)!", __func__);
 		}
 		else{
+#ifdef CONFIG_LGE_DISPLAY_LUCYE_COMMON
 #if defined(CONFIG_LGE_ENHANCE_GALLERY_SHARPNESS)
 			if (device_create_file(panel_sysfs_dev, &dev_attr_sharpness) < 0)
 				pr_err("%s: add sharpness tuning node fail!", __func__);
@@ -3505,6 +3507,7 @@ int mdss_dsi_panel_init(struct device_node *node,
 #if defined(CONFIG_LGE_DISPLAY_HDR_MODE)
 			if (device_create_file(panel_sysfs_dev, &dev_attr_hdr_mode) < 0)
 				pr_err("%s: add hdr node fail!", __func__);
+#endif
 #endif
 		}
 	}
