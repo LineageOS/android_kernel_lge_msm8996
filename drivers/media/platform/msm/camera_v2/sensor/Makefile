@@ -9,8 +9,5 @@ ccflags-y += -Idrivers/media/platform/msm/camera_v2/sensor/ois
 ccflags-y += -Idrivers/media/platform/msm/camera_v2/sensor/proxy
 ccflags-y += -Idrivers/media/platform/msm/camera_v2/sensor/iris
 obj-$(CONFIG_MSMB_CAMERA) += cci/ io/ csiphy/ csid/ actuator/ eeprom/ ois/ proxy/ flash/ iris/
-ifneq ($(CONFIG_LGE_CAMERA_DRIVER),y)
-obj-$(CONFIG_MSMB_CAMERA) += ir_led/ ir_cut/
-endif
 obj-$(CONFIG_LG_TCS) += tcs/
 obj-$(CONFIG_MSM_CAMERA_SENSOR) += msm_sensor_init.o msm_sensor_driver.o msm_sensor.o
