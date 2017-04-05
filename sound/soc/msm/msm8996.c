@@ -94,7 +94,7 @@ static int msm_tert_mi2s_tx_ch = 2;
 #ifdef CONFIG_SND_USE_QUAT_MI2S
 static int msm_quat_mi2s_tx_ch = 2;
 #endif
-#if defined(CONFIG_SND_SOC_ES9218P)
+#if defined(CONFIG_SND_SOC_ES9018) || defined(CONFIG_SND_SOC_ES9218P)
 bool enable_es9218p = false;
 #endif
 
