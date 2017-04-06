@@ -235,7 +235,9 @@ struct msm_ois_set_info_t32 {
 
 struct msm_ois_cfg_data32 {
 	int cfgtype;
+#ifdef CONFIG_MACH_MSM8996_LUCYE
 	uint16_t eeprom_slave_addr;
+#endif
 	union {
 		struct msm_ois_set_info_t32 set_info;
 		compat_uptr_t settings;

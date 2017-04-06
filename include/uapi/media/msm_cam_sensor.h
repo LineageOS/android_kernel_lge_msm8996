@@ -645,7 +645,9 @@ struct msm_ois_slave_info {
 };
 struct msm_ois_cfg_data {
 	int cfgtype;
+#ifdef CONFIG_MACH_MSM8996_LUCYE
 	uint16_t eeprom_slave_addr;
+#endif
 	union {
 		struct msm_ois_set_info_t set_info;
 		struct msm_camera_i2c_seq_reg_setting *settings;
