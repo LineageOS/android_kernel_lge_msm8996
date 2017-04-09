@@ -153,9 +153,11 @@ static unsigned long flags;
 /** Tasklet to respond to change in hostwake line */
 static struct tasklet_struct hostwake_task;
 
+#if defined(CONFIG_LINE_DISCIPLINE_DRIVER)
 /** Transmission timer */
 static void bluesleep_tx_timer_expire(unsigned long data);
 static DEFINE_TIMER(tx_timer, bluesleep_tx_timer_expire, 0, 0);
+#endif
 
 /** Lock for state transitions */
 static spinlock_t rw_lock;
@@ -307,8 +309,10 @@ void bluesleep_outgoing_data(void)
 
 	spin_lock_irqsave(&rw_lock, irq_flags);
 
+#if defined(CONFIG_LINE_DISCIPLINE_DRIVER)
 	mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL * HZ));
 	set_bit(BT_TXDATA, &flags);
+#endif
 
 	/* if the tx side is sleeping... */
 	if (test_bit(BT_EXT_WAKE, &flags)) {
@@ -351,13 +355,22 @@ void bluesleep_tx_allow_sleep(void)
 
 	spin_lock_irqsave(&rw_lock, irq_flags);
 
+#ifdef CONFIG_LINE_DISCIPLINE_DRIVER
 	mod_timer(&tx_timer, jiffies + (TX_TIMER_INTERVAL*HZ));
 	clear_bit(BT_TXDATA, &flags);
+#else
+	if (bsi->has_ext_wake == 1)
+		gpio_set_value(bsi->ext_wake, 0);
+	set_bit(BT_EXT_WAKE, &flags);
+
+	bluesleep_tx_idle();
+#endif
 
 	spin_unlock_irqrestore(&rw_lock, irq_flags);
 }
 EXPORT_SYMBOL(bluesleep_tx_allow_sleep);
 
+#if defined(CONFIG_LINE_DISCIPLINE_DRIVER)
 /**
  * Handles reception timer expiration.
  * @param data Not used.
@@ -390,6 +403,7 @@ static void bluesleep_tx_timer_expire(unsigned long data)
 
 	spin_unlock_irqrestore(&rw_lock, irq_flags);
 }
+#endif
 
 /**
  * Schedules a tasklet to run when receiving an interrupt on the
@@ -432,7 +446,9 @@ int bluesleep_start(bool is_clock_enabled)
 		gpio_set_value(bsi->ext_wake, 1);
 	clear_bit(BT_EXT_WAKE, &flags);
 
+#if defined(CONFIG_LINE_DISCIPLINE_DRIVER)
 	clear_bit(BT_TXDATA, &flags);
+#endif
 
 	clear_bit(BT_ASLEEP, &flags);
 
@@ -475,7 +491,9 @@ void bluesleep_stop(void)
 	set_bit(BT_EXT_WAKE, &flags);
 	clear_bit(BT_PROTO, &flags);
 
+#if defined(CONFIG_LINE_DISCIPLINE_DRIVER)
 	del_timer(&tx_timer);
+#endif
 
 	if (!test_bit(BT_ASLEEP, &flags)) {
 		set_bit(BT_ASLEEP, &flags);
@@ -485,7 +503,9 @@ void bluesleep_stop(void)
 		spin_unlock_irqrestore(&rw_lock, irq_flags);
 	}
 
+#if defined(CONFIG_LINE_DISCIPLINE_DRIVER)
 	atomic_set(&uart_is_on, 0);
+#endif
 
 	atomic_dec(&open_count);
 
@@ -857,11 +877,13 @@ static int __init bluesleep_init(void)
 
 	/* Initialize spinlock. */
 	spin_lock_init(&rw_lock);
+#if defined(CONFIG_LINE_DISCIPLINE_DRIVER)
 	/* Initialize timer */
 	init_timer(&tx_timer);
 	tx_timer.function = bluesleep_tx_timer_expire;
 	tx_timer.data = 0;
 	clear_bit(BT_TXDATA, &flags);
+#endif
 	/* initialize host wake tasklet */
 	tasklet_init(&hostwake_task, bluesleep_hostwake_task, 0);
 
@@ -887,7 +909,9 @@ static void __exit bluesleep_exit(void)
 		if (disable_irq_wake(bsi->host_wake_irq))
 			pr_err("Couldn't disable hostwake IRQ wakeup mode");
 		free_irq(bsi->host_wake_irq, NULL);
+#if defined(CONFIG_LINE_DISCIPLINE_DRIVER)
 		del_timer(&tx_timer);
+#endif
 		if (!test_bit(BT_ASLEEP, &flags))
 			hsuart_power(HS_UART_OFF);
 	}
