@@ -21,6 +21,7 @@
 #define BM_MONITOR_WORK_TIME 10000
 #define BM_PARAM_MONITOR_NORMAL 10000
 #define BM_PARAM_MONITOR_FAST 2000
+#define OCV_COUNT 101
 #define FAULT_VOLTAGE 4500000
 #define FAULT_AGE 70
 #define FAULT_FACTOR 1100
@@ -75,6 +76,8 @@ enum print_reason {
 };
 
 static int bm_debug_mask = PR_INFO|PR_ERR;
+
+static int ocv_table[OCV_COUNT + 1];
 
 #define pr_bm(reason, fmt, ...)                 \
 	do {                                        \
@@ -786,6 +789,16 @@ static void batt_mngr_monitor_work(struct work_struct *work)
 	} else {
 		work_started = false;
 	}
+}
+
+void batt_mngr_ocv_table(int *ocv_tab, int size)
+{
+	int i;
+
+	for(i = 0; i < size; i++) {
+		ocv_table[i] = *(ocv_tab + i);
+	}
+	ocv_table[OCV_COUNT] = -1;
 }
 
 static int batt_mngr_set_property(struct power_supply *psy,
