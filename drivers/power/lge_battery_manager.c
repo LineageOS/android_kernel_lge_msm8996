@@ -788,6 +788,16 @@ static void batt_mngr_monitor_work(struct work_struct *work)
 	}
 }
 
+void batt_mngr_ocv_table(int *ocv_tab, int size)
+{
+	int i;
+
+	for(i = 0; i < size; i++) {
+		ocv_table[i] = *(ocv_tab + i);
+	}
+	ocv_table[OCV_COUNT] = -1;
+}
+
 static int batt_mngr_set_property(struct power_supply *psy,
 	enum power_supply_property psp, const union power_supply_propval *val)
 {
