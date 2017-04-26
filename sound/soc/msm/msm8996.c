@@ -911,6 +911,9 @@ static int slim0_rx_sample_rate_put(struct snd_kcontrol *kcontrol,
 	default:
 		slim0_rx_sample_rate = SAMPLING_RATE_48KHZ;
 	}
+#ifdef CONFIG_SND_USE_SEC_MI2S
+	sec_mi2s_sample_rate = slim0_rx_sample_rate;
+#endif
 	pr_debug("%s: slim0_rx_sample_rate = %d\n", __func__,
 		 slim0_rx_sample_rate);
 
@@ -1102,6 +1105,9 @@ static int slim0_rx_bit_format_put(struct snd_kcontrol *kcontrol,
 		slim0_rx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
 		break;
 	}
+#ifdef CONFIG_SND_USE_SEC_MI2S
+	sec_mi2s_bit_format = slim0_rx_bit_format;
+#endif
 	return 0;
 }
 
