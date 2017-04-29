@@ -1071,7 +1071,6 @@ static int armv8pmu_request_irq(struct arm_pmu *cpu_pmu, irq_handler_t handler)
 			return err;
 		}
 
-		cpu_pmu->percpu_irq = irq;
 		on_each_cpu(armpmu_enable_percpu_irq, &irq, 1);
 	} else {
 		for (i = 0; i < irqs; ++i) {
@@ -1301,7 +1300,7 @@ static void armv8pmu_reset(void *info)
 		armv8pmu_disable_event(NULL, idx);
 
 	/* Initialize & Reset PMNC: C and P bits. */
-	armv8pmu_pmcr_write(ARMV8_PMCR_P | ARMV8_PMCR_C);
+	armv8pmu_pmcr_write(armv8pmu_pmcr_read() | ARMV8_PMCR_P | ARMV8_PMCR_C);
 
 	armv8pmu_init_usermode();
 }
@@ -1520,7 +1519,7 @@ static int __cpuinit cpu_pmu_notify(struct notifier_block *b,
 				smp_call_function_single(cpu,
 					armpmu_hotplug_disable, cpu_pmu, 1);
 			/* Disarm the PMU IRQ before disappearing. */
-			if (cpu_pmu->percpu_irq) {
+			if (cpu_pmu->plat_device) {
 				irq = cpu_pmu->percpu_irq;
 				smp_call_function_single(cpu,
 					    armpmu_disable_percpu_irq, &irq, 1);
@@ -1537,7 +1536,7 @@ static int __cpuinit cpu_pmu_notify(struct notifier_block *b,
 			cpu_pmu->restore_pm_registers(hcpu);
 		if (cpu_pmu->pmu_state == ARM_PMU_STATE_RUNNING) {
 			/* Arm the PMU IRQ before appearing. */
-			if (cpu_pmu->percpu_irq) {
+			if (cpu_pmu->plat_device) {
 				irq = cpu_pmu->percpu_irq;
 				armpmu_enable_percpu_irq(&irq);
 			}
@@ -1926,7 +1925,9 @@ static __ref void reset_pmu_force(void)
 	for_each_possible_cpu(cpu) {
 		if (!cpu_online(cpu)) {
 			save_online_mask |= BIT(cpu);
-			ret = cpu_up(cpu);
+			lock_device_hotplug();
+			ret = device_online(get_cpu_device(cpu));
+			unlock_device_hotplug();
 			if (ret)
 				pr_err("Failed to bring up CPU: %d, ret: %d\n",
 				       cpu, ret);
@@ -1938,7 +1939,9 @@ static __ref void reset_pmu_force(void)
 		armpmu_release_hardware(cpu_pmu);
 	for_each_possible_cpu(cpu) {
 		if ((save_online_mask & BIT(cpu)) && cpu_online(cpu)) {
-			ret = cpu_down(cpu);
+			lock_device_hotplug();
+			ret = device_offline(get_cpu_device(cpu));
+			unlock_device_hotplug();
 			if (ret)
 				pr_err("Failed to bring down CPU: %d, ret: %d\n",
 						cpu, ret);
