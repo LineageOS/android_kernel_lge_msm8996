@@ -2565,7 +2565,6 @@ static int dwc3_msm_suspend(struct dwc3_msm *mdwc)
 	can_suspend_ssphy = !(mdwc->in_host_mode &&
 				dwc3_msm_is_host_superspeed(mdwc));
 
-	tasklet_kill(&dwc->bh);
 	/* Disable core irq */
 	if (dwc->irq)
 		disable_irq(dwc->irq);
@@ -2656,8 +2655,10 @@ static int dwc3_msm_suspend(struct dwc3_msm *mdwc)
 		dev_dbg(mdwc->dev, "defer suspend with %d(msecs)\n",
 					mdwc->lpm_to_suspend_delay);
 		pm_wakeup_event(mdwc->dev, mdwc->lpm_to_suspend_delay);
+#ifndef CONFIG_MACH_MSM8996_H1
 	} else {
 		pm_relax(mdwc->dev);
+#endif
 	}
 
 	atomic_set(&dwc->in_lpm, 1);
@@ -2711,12 +2712,16 @@ static int dwc3_msm_resume(struct dwc3_msm *mdwc)
 		unsigned long flags;
 
 		spin_lock_irqsave(&dwc->lock, flags);
+#ifndef CONFIG_MACH_MSM8996_H1
 		pm_stay_awake(mdwc->dev);
+#endif
 		atomic_set(&mdwc->pm_relaxed, 0);
 		spin_unlock_irqrestore(&dwc->lock, flags);
 	}
 #else
+#ifndef CONFIG_MACH_MSM8996_H1
 	pm_stay_awake(mdwc->dev);
+#endif
 #endif
 
 	/* Enable bus voting */
@@ -4130,7 +4135,9 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 		register_cpu_notifier(&mdwc->dwc3_cpu_notifier);
 
 	device_init_wakeup(mdwc->dev, 1);
+#ifndef CONFIG_MACH_MSM8996_H1
 	pm_stay_awake(mdwc->dev);
+#endif
 
 	if (of_property_read_bool(node, "qcom,disable-dev-mode-pm"))
 		pm_runtime_get_noresume(mdwc->dev);
@@ -4814,7 +4821,9 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 				dwc3_msm_gadget_vbus_draw(mdwc,
 						dcp_max_current);
 				atomic_set(&dwc->in_lpm, 1);
+#ifndef CONFIG_MACH_MSM8996_H1
 				pm_relax(mdwc->dev);
+#endif
 				break;
 			case DWC3_CDP_CHARGER:
 			case DWC3_SDP_CHARGER:
@@ -4973,7 +4982,8 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 			dwc->evp_usbctrl_err_cnt = 0;
 #endif
 			mdwc->typec_current_max = 0;
-			dwc3_msm_gadget_vbus_draw(mdwc, 0);
+			if (mdwc->chg_type != DWC3_INVALID_CHARGER)
+				dwc3_msm_gadget_vbus_draw(mdwc, 0);
 			dev_dbg(mdwc->dev, "No device, allowing suspend\n");
 		}
 		break;
