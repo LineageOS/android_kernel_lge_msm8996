@@ -3900,6 +3900,7 @@ CONFIG_MSM_SPMI_PMIC_ARB=y
 CONFIG_MSM_QPNP_INT=y
 # CONFIG_MSM_SPMI_DEBUGFS_RO is not set
 # CONFIG_LGE_QPNP_HAPTIC_OV_RB is not set
+# CONFIG_DIRTYSANTA_FIXUP is not set
 
 #
 # SOC (System On Chip) specific Drivers
