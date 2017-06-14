@@ -3,13 +3,13 @@
  * Prefered Network Offload code and Wi-Fi Location Service(WLS) code.
  *
  * Copyright (C) 1999-2017, Broadcom Corporation
- * 
+ *
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
  * under the terms of the GNU General Public License version 2 (the "GPL"),
  * available at http://www.broadcom.com/licenses/GPLv2.php, with the
  * following added to such license:
- * 
+ *
  *      As a special exception, the copyright holders of this software give you
  * permission to link this software with independent modules, and to copy and
  * distribute the resulting executable under terms of your choice, provided that
@@ -17,7 +17,7 @@
  * the license of that module.  An independent module is a module which is not
  * derived from this software.  The special exception does not apply to any
  * modifications of the software.
- * 
+ *
  *      Notwithstanding the above, under no circumstances may you combine this
  * software in any way with any other Broadcom software provided under a license
  * other than the GPL, without Broadcom's express prior written consent.
@@ -513,7 +513,7 @@ int dhd_retreive_batch_scan_results(dhd_pub_t *dhd);
 extern void * dhd_dev_hotlist_scan_event(struct net_device *dev,
             const void  *data, int *send_evt_bytes, hotlist_type_t type);
 void * dhd_dev_process_full_gscan_result(struct net_device *dev,
-            const void  *data, int *send_evt_bytes);
+            const void  *data, uint32 len, int *send_evt_bytes);
 extern int dhd_dev_gscan_batch_cache_cleanup(struct net_device *dev);
 extern void dhd_dev_gscan_hotlist_cache_cleanup(struct net_device *dev, hotlist_type_t type);
 extern int dhd_dev_wait_batch_results_complete(struct net_device *dev);
@@ -566,8 +566,9 @@ extern int dhd_dev_retrieve_batch_scan(struct net_device *dev);
 extern void *dhd_handle_swc_evt(dhd_pub_t *dhd, const void *event_data, int *send_evt_bytes);
 extern void *dhd_handle_hotlist_scan_evt(dhd_pub_t *dhd, const void *event_data,
                        int *send_evt_bytes, hotlist_type_t type);
-extern void *dhd_process_full_gscan_result(dhd_pub_t *dhd, const void *event_data,
-                       int *send_evt_bytes);
+extern void *
+dhd_process_full_gscan_result(dhd_pub_t *dhd, const void *event_data,
+			      uint32 len, int *send_evt_bytes);
 extern int dhd_gscan_batch_cache_cleanup(dhd_pub_t *dhd);
 extern void dhd_gscan_hotlist_cache_cleanup(dhd_pub_t *dhd, hotlist_type_t type);
 extern int dhd_wait_batch_results_complete(dhd_pub_t *dhd);
@@ -580,6 +581,6 @@ extern int dhd_pno_set_epno(dhd_pub_t *dhd);
 extern int dhd_pno_flush_fw_epno(dhd_pub_t *dhd);
 extern void dhd_pno_set_epno_auth_flag(uint32 *wpa_auth);
 #endif /* GSCAN_SUPPORT */
-#endif 
+#endif
 
 #endif /* __DHD_PNO_H__ */
