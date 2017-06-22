@@ -9698,7 +9698,6 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 #ifdef GSCAN_SUPPORT
 		setbit(eventmask_msg->mask, WLC_E_PFN_GSCAN_FULL_RESULT);
 		setbit(eventmask_msg->mask, WLC_E_PFN_SCAN_COMPLETE);
-		setbit(eventmask_msg->mask, WLC_E_PFN_SWC);
 		setbit(eventmask_msg->mask, WLC_E_PFN_SSID_EXT);
 		setbit(eventmask_msg->mask, WLC_E_ROAM_EXP_EVENT);
 #endif /* GSCAN_SUPPORT */
@@ -13522,6 +13521,7 @@ static void dhd_net_if_lock_local(dhd_info_t *dhd)
 #endif
 }
 
+<<<<<<< HEAD
 static void dhd_net_if_unlock_local(dhd_info_t *dhd)
 {
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25))
@@ -13531,6 +13531,11 @@ static void dhd_net_if_unlock_local(dhd_info_t *dhd)
 }
 
 static void dhd_suspend_lock(dhd_pub_t *pub)
+=======
+/* Linux wrapper to call common dhd_handle_hotlist_scan_evt */
+void * dhd_dev_hotlist_scan_event(struct net_device *dev,
+      const void  *data, int *send_evt_bytes, hotlist_type_t type)
+>>>>>>> 58168423faa3... net: wireless: bcmdhd: Remove "dhd_handle_swc_evt" from dhd.
 {
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 25))
 	dhd_info_t *dhd = (dhd_info_t *)(pub->info);
