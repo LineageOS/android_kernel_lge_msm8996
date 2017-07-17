@@ -90,6 +90,7 @@ struct sw49408_touch_info {
 	struct sw49408_touch_debug debug;
 } __packed;
 
+#define WATER_ID			14
 #define PALM_ID				15
 
 #define info_ptr_addr			(0x43)
@@ -156,6 +157,8 @@ struct sw49408_touch_info {
 #define SWIPE_HORIZONTAL_ACT_AREA_X2_W		(0x19)	/* @AP: 0xC49 */
 #define SWIPE_HORIZONTAL_ACT_AREA_Y2_W		(0x1a)	/* @AP: 0xC4A */
 #define SWIPE_WRONG_DIRECTION_W			(0x1b)	/* @AP: 0xC4B */
+#define SWIPE_INITIAL_RATIO_CHECK_DIST_W	(0x1c)	/* @AP: 0xC4C */
+#define SWIPE_INITIAL_RATIO_THRES_W		(0x1e)	/* @AP: 0xC4E */
 #define SWIPE_HORIZONTAL_START_AREA_X1_W	(0x40)	/* @AP: 0xC66 */
 #define SWIPE_HORIZONTAL_START_AREA_Y1_W	(0x41)	/* @AP: 0xC67 */
 #define SWIPE_HORIZONTAL_START_AREA_X2_W	(0x42)	/* @AP: 0xC68 */
@@ -429,6 +432,8 @@ struct swipe_info {
 	struct active_area area;
 	struct swipe_start_area start_area;
 	u8	wrong_direction_thres;
+	u8	initial_ratio_dist;
+	u8	initial_ratio_thres;
 };
 
 struct swipe_ctrl {
@@ -613,4 +618,5 @@ static inline int sw49408_write_value(struct device *dev,
 	return sw49408_reg_write(dev, addr, &value, sizeof(value));
 }
 
+extern bool lge_panel_recovery_mode(void);
 #endif /* LGE_TOUCH_SW49408_H */

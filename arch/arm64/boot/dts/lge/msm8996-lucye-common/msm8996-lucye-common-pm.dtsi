@@ -48,7 +48,7 @@
 	qcom,bms-psy-name = "bms";
 	qcom,jeita-temp-hard-limit = <0>;
 	/delete-property/ qcom,charge-unknown-battery;
-	/delete-property/ qcom,chg-inhibit-fg;
+	qcom,chg-inhibit-fg;
 	qcom,parallel-usb-min-current-ma = <1400>;
 	qcom,parallel-usb-9v-min-current-ma = <900>;
 	qcom,parallel-main-chg-fcc-percent = <40>;
@@ -65,6 +65,8 @@
 	qcom,maximum-icl-ma = <3000>;
 	qcom,acc-detect-gpio = <&tlmm 132 0>;
 	qcom,enable-booster-gpio = <&pmi8994_gpios 9 0>;
+	qcom,batt-life-cycle-fcc-ma = <3200 3000 2900 2700>;
+	qcom,batt-life-cycle-vfloat = <4350 4340 4320 4300>;
 
 	/* lge,cable-adc-maxset : size of each cable prop        */
 	/* lge,cable-adc-useset : actual cable adc using set     */
@@ -106,8 +108,8 @@
 	qcom,thermal-coefficients = [D2 85 0E 4A A5 35];
 	qcom,ext-sense-type;
 	qcom,capacity-learning-feedback;
-	qcom,resume-soc = <98>;
-	qcom,resume-soc-raw = <250>;
+	qcom,resume-soc = <97>;
+	qcom,resume-soc-raw = <247>;
 	qcom,fg-iterm-ma = <200>;
 	qcom,fg-chg-iterm-ma = <100>;
 	qcom,lge_batt_profile;
@@ -129,13 +131,16 @@
 	qcom,fg-rconn-mohm = <30>;
 	qcom,cl-max-limit-deciperc= <50>;
 	qcom,cl-min-limit-deciperc= <200>;
+	qcom,fg-batt-life-cycle-set = <0 200 300 400>;
+	qcom,fg-batt-life-cycle-offset = <0 2 7 11>;
+	qcom,fg-batt-life-cycle-vfloat = <4350 4340 4320 4300>;
 };
 
 &pmi8994_haptics {
 	status = "okay";
 	qcom,actuator-type = "erm";
 	qcom,wave-shape = "square";
-	qcom,vmax-mv = <2400>;
+	qcom,vmax-mv = <3248>;
 	qcom,ilim-ma = <150>;
 	qcom,brake-pattern = [03 03 03 03];
 };
@@ -489,7 +494,7 @@
 &soc {
 	lge-battemp-prot {
 		compatible = "lge,battemp-prot";
-		status = "ok";
+		status = "disabled";
 
 		lge,threashold-degc-upto-normal = <0xFFFFFFCE>; /* -50 */
 		lge,threashold-degc-upto-warm = <450>;
@@ -513,7 +518,7 @@
 		status = "ok";
 
 		lge,unified-sysfs =
-			/* group , user_node, kernel node */
+			/* group , symlink, source */
 			/* ADC/MPP */
 			"adc", "thermal", "/sys/class/thermal/",
 			"adc", "xo_therm", "/sys/class/hwmon/hwmon2/device/xo_therm",
@@ -580,7 +585,15 @@
 			"testmode", "rtc_time", "/dev/rtc0",
 			"testmode", "pmrst", "/sys/class/power_supply/charger_controller/device/at_pmrst",
 			"testmode", "battexit", "/sys/class/power_supply/battery/present",
-			"testmode", "hardreset_mode", "/sys/module/qpnp_power_on/parameters/hardreset_mode";
+			"testmode", "hardreset_mode", "/sys/module/qpnp_power_on/parameters/hardreset_mode",
+
+		/* Additional nodes below */
+			/* mitigation */
+			"mitigation", "iusb", "/sys/devices/platform/lge-chg-mitigation/thermald_iusb",
+			"mitigation", "ibat", "/sys/devices/platform/lge-chg-mitigation/thermald_ibat",
+			"mitigation", "idc", "/sys/devices/platform/lge-chg-mitigation/thermald_idc",
+			"mitigation", "call", "/sys/devices/platform/lge-chg-mitigation/scenario_call",
+			"mitigation", "tdmb", "/sys/devices/platform/lge-chg-mitigation/scenario_tdmb";
 	};
 
 	lge-cable-detection {
@@ -772,75 +785,6 @@
 	lge,power-sysfs {
 		status = "disabled";
 		compatible = "lge,power-sysfs";
-
-		sysfs,node =
-			/* group , user_node, kernel node */
-			/* ADC/MPP */
-			"adc", "thermal", "/sys/class/thermal/",
-			"adc", "xo_therm", "/sys/class/hwmon/hwmon2/device/xo_therm",
-			"adc", "batt_therm", "/sys/class/power_supply/battery/temp",
-			"adc", "batt_id", "/sys/class/lge_power/lge_batt_id/valid_batt_id",
-			"adc", "pa_therm0", "NULL",
-			"adc", "pa_therm1", "/sys/class/hwmon/hwmon2/device/pa_therm1",
-			"adc", "usb_in", "/sys/class/hwmon/hwmon3/device/usbin",
-			"adc", "vcoin", "/sys/class/hwmon/hwmon2/device/vcoin",
-			"adc", "vph_pwr", "/sys/class/hwmon/hwmon2/device/vph_pwr",
-			"adc", "usb_id", "/sys/class/hwmon/hwmon2/device/usb_id_lv",
-			"adc", "vts", "/sys/class/thermal/thermal_zone39/temp",
-			"adc", "pmic", "/sys/class/thermal/thermal_zone23/temp",
-			/* Battery */
-			"battery", "capacity", "/sys/class/power_supply/battery/capacity",
-			"battery", "health", "/sys/class/power_supply/battery/health",
-			"battery", "present", "/sys/class/power_supply/battery/present",
-			"battery", "pseudo_batt", "/sys/class/lge_power/lge_cc/pseudo_batt",
-			"battery", "status", "/sys/class/power_supply/battery/status",
-			"battery", "temp", "/sys/class/power_supply/battery/temp",
-			"battery", "valid_batt_id", "/sys/class/lge_power/lge_batt_id/valid_batt_id",
-			"battery", "voltage_now", "/sys/class/power_supply/battery/voltage_now",
-			/* Charger */
-			"charger", "ac_online", "NULL",
-			"charger", "usb_online", "/sys/class/power_supply/usb/online",
-			"charger", "present", "/sys/class/power_supply/usb/present",
-			"charger", "wlc_online", "/sys/class/power_supply/dc-wireless/online",
-			"charger", "type", "/sys/class/power_supply/usb/type",
-			"charger", "time_out", "/sys/class/power_supply/battery/safety_timer_enabled",
-			"charger", "charging_enabled", "/sys/class/power_supply/battery/charging_enabled",
-			"charger", "ibat_current", "/sys/class/power_supply/battery/current_now",
-			"charger", "ichg_current", "/sys/class/power_supply/usb/current_max",
-			"charger", "iusb_control", "NULL",
-			"charger", "thermal_mitigation", "/sys/class/power_supply/battery/system_temp_level",
-			"charger", "wlc_thermal_mitigation", "NULL",
-			"charger", "usb_parallel_chg_status", "/sys/class/power_supply/usb-parallel/status",
-			"charger", "usb_parallel_charging_enabled", "/sys/class/power_supply/usb-parallel/charging_enabled",
-			"charger", "quick_charging_state", "/sys/module/lge_power_class_charging_controller/parameters/quick_charging_state",
-			/* LCD Backlight */
-			"lcd", "brightness", "/sys/class/leds/lcd-backlight/brightness",
-			"lcd", "max_brightness", "/sys/class/leds/lcd-backlight/max_brightness",
-			"lcd_ex", "brightness", "/sys/class/leds/lcd-backlight-ex/brightness",
-			"lcd_ex", "max_brightness", "/sys/class/leds/lcd-backlight-ex/max_brightness",
-			/* KEY LED */
-			"key_led", "red_brightness", "/sys/class/leds/red/brightness",
-			"key_led", "green_brightness", "/sys/class/leds/green/brightness",
-			"key_led", "blue_brightness", "/sys/class/leds/blue/brightness",
-			/* CPU */
-			"cpu", "cpu_idle_modes", "/sys/module/lpm_levels/system/",
-			/* GPU */
-			"gpu", "busy", "/sys/class/kgsl/kgsl-3d0/gpubusy",
-			/* PLATFORM */
-			"platform", "speed_bin", "NULL",
-			"platform", "pvs_bin", "NULL",
-			"platform", "power_state", "/sys/power/autosleep",
-			"platform", "poweron_alarm", "/sys/module/qpnp_rtc/parameters/poweron_alarm",
-			"platform", "pcb_rev", "/sys/class/hwmon/hwmon2/device/pcb_rev",
-			/* testmode */
-			"testmode", "charge", "/sys/class/power_supply/battery/device/at_charge",
-			"testmode", "chcomp", "/sys/class/power_supply/battery/device/at_chcomp",
-			"testmode", "chgmodeoff", "/sys/class/power_supply/battery/charging_enabled",
-			"testmode", "fuelrst", "/sys/bus/i2c/drivers/max17048/6-0036/fuelrst",
-			"testmode", "rtc_time", "/dev/rtc0",
-			"testmode", "pmrst", "/sys/class/power_supply/charger_controller/device/at_pmrst",
-			"testmode", "battexit", "/sys/class/power_supply/battery/present",
-			"testmode", "hardreset_mode", "/sys/module/qpnp_power_on/parameters/hardreset_mode";
 	};
 
 	/* vts, 0.26*XO + 0.38*Bd2 + 13.94 */

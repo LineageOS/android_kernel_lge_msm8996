@@ -361,6 +361,7 @@ static struct device_attribute lge_power_attrs[] = {
 #endif
 	LGE_POWER_ATTR(charge_done),
 	LGE_POWER_ATTR(voltage_now),
+	LGE_POWER_ATTR(usb_chg_enabled),
 };
 
 static struct attribute *

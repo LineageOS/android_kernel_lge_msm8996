@@ -705,9 +705,6 @@ int si470x_fops_open(struct file *file)
 
 	si470x_enable_irq(radio);
 
-	/* set initial frequency */
-	si470x_set_freq(radio, 107.7 * FREQ_MUL); /* available in all regions */
-
 	/* reset last channel */
 	retval = si470x_set_chan(radio,
 		radio->registers[CHANNEL] & CHANNEL_CHAN);

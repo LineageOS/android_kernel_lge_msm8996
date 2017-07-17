@@ -90,6 +90,24 @@ static bool charging_wakelock_release(struct battery_veneer* veneer_me) {
 	return false;
 }
 
+static void charging_wakelock_control(struct battery_veneer* veneer_me,
+	bool input_present, bool charge_done, int soc) {
+
+	if (input_present) {
+		if (charge_done) {
+			charging_wakelock_release(veneer_me);
+		}
+		else if (soc < 100) {
+			charging_wakelock_acquire(veneer_me);
+		}
+		else {
+			; /* Do noting */
+		}
+	}
+	else
+		charging_wakelock_release(veneer_me);
+}
+
 static char* psy_external_suppliers [] = { "battery", "bms", "ac", "usb",
 		"usb-parallel", "usb-pd", "usb_pd", "dc", "dc-wireless", };
 static void psy_external_changed(struct power_supply *external_supplier);
@@ -295,43 +313,23 @@ static void psy_external_changed(struct power_supply *psy_me) {
 
 	/* Update from battery */
 	if (psy_batt && psy_batt->get_property) {
-
-	/* Update wake lock */
-		bool present_input;
-		bool charge_done;
-
-		if (!psy_batt->get_property(psy_batt, POWER_SUPPLY_PROP_CHARGE_DONE, &buffer)) {
-			present_input = veneer_me->presence_usb || veneer_me->presence_dc;
-			charge_done = !!buffer.intval;
-
-			pr_veneer("present_input = %d, charge_done = %d\n", present_input, charge_done);
-			if (present_input && !charge_done)
-				charging_wakelock_acquire(veneer_me);
-			else
-				charging_wakelock_release(veneer_me);
-		}
-		else
-			charging_wakelock_release(veneer_me);
-
-	/* Update Temperature */
+		/* Update Temperature/Voltage/SoC */
 		if (!psy_batt->get_property(psy_batt, POWER_SUPPLY_PROP_TEMP, &buffer)) {
 			veneer_me->battery_temperature = buffer.intval;
-			pr_veneer("veneer_me->battery_temperature = %d\n",
-				veneer_me->battery_temperature);
 		}
-
-	/* Update Voltage */
 		if (!psy_batt->get_property(psy_batt, POWER_SUPPLY_PROP_VOLTAGE_NOW, &buffer)) {
 			veneer_me->battery_uvoltage = buffer.intval;
-			pr_veneer("veneer_me->battery_uvoltage = %d\n",
-				veneer_me->battery_uvoltage);
 		}
-
-	/* Update soc */
 		if (!psy_batt->get_property(psy_batt, POWER_SUPPLY_PROP_CAPACITY, &buffer)) {
 			veneer_me->battery_soc = buffer.intval;
-			pr_veneer("veneer_me->battery_soc = %d\n",
-				veneer_me->battery_soc);
+		}
+
+		/* Update wake lock */
+		if (!psy_batt->get_property(psy_batt, POWER_SUPPLY_PROP_CHARGE_DONE, &buffer)) {
+			bool input_present = veneer_me->presence_usb || veneer_me->presence_dc;
+			bool charge_done = !!buffer.intval;
+			charging_wakelock_control(veneer_me,
+				input_present, charge_done, veneer_me->battery_soc);
 		}
 	}
 	else {

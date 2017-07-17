@@ -1884,16 +1884,12 @@ int32_t qpnp_vadc_read(struct qpnp_vadc_chip *vadc,
 #ifdef CONFIG_LGE_PM
 #if defined(CONFIG_MACH_MSM8996_H1) || defined(CONFIG_MACH_MSM8996_LUCYE)
 	else if (channel == LR_MUX10_PU1_AMUX_USB_ID_LV || channel == LR_MUX10_USB_ID_LV) {
-		u8 data, gpio3_mode, gpio3_out;
+		u8 data;
 		struct spmi_device *spmi = vadc->adc->spmi;
 
 #ifdef CONFIG_LGE_USB_TUSB422
 		mutex_lock(&lock_for_usb_id);
 #endif
-
-		spmi_ext_register_readl(spmi->ctrl, spmi->sid, 0xc240, &gpio3_mode, 1);
-		spmi_ext_register_readl(spmi->ctrl, spmi->sid, 0xc245, &gpio3_out, 1);
-
 		data = 0x11;
 		spmi_ext_register_writel(spmi->ctrl, spmi->sid, 0xc240, &data, 1);
 		data = 0x03;
@@ -1902,8 +1898,10 @@ int32_t qpnp_vadc_read(struct qpnp_vadc_chip *vadc,
 		rc = qpnp_vadc_conv_seq_request(vadc, ADC_SEQ_NONE,
 				channel, result);
 
-		spmi_ext_register_writel(spmi->ctrl, spmi->sid, 0xc240, &gpio3_mode, 1);
-		spmi_ext_register_writel(spmi->ctrl, spmi->sid, 0xc245, &gpio3_out, 1);
+		data = 0x10;
+		spmi_ext_register_writel(spmi->ctrl, spmi->sid, 0xc240, &data, 1);
+		data = 0x01;
+		spmi_ext_register_writel(spmi->ctrl, spmi->sid, 0xc245, &data, 1);
 
 #ifdef CONFIG_LGE_USB_TUSB422
 		mutex_unlock(&lock_for_usb_id);

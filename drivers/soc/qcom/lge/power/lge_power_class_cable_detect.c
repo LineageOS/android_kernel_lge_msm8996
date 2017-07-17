@@ -823,7 +823,11 @@ static void lge_cable_detect_external_power_changed(struct lge_power *lpc)
 	if (!cd->lge_cc_lpc)
 		cd->lge_cc_lpc = lge_power_get_by_name("lge_cc");
 	if (cd->lge_cc_lpc) {
+#ifdef CONFIG_LGE_USB_TYPE_C
 		if ((cd->is_hvdcp_present || cd->ctype_present)
+#else
+		if ((cd->is_hvdcp_present)
+#endif
 				&& cd->lge_cc_lpc) {
 			lge_val.intval = cd->chg_type;
 			cd->lge_cc_lpc->set_property(cd->lge_cc_lpc,

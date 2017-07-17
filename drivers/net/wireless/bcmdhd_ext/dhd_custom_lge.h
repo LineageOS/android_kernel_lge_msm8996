@@ -1,6 +1,6 @@
 /*
 * Customer HW 10 dependant file
-* Copyright (C) 1999-2016, Broadcom Corporation
+* Copyright (C) 1999-2017, Broadcom Corporation
 * 
 *      Unless you and Broadcom execute a separate written software license
 * agreement governing use of this software, this software is licensed to you
@@ -25,6 +25,8 @@
 #ifdef SOFTAP_TPUT_ENHANCE
 extern int set_softap_params(dhd_pub_t *dhd);
 #endif /* SOFTAP_TPUT_ENHANCE */
+
+extern int set_parallelscan(dhd_pub_t *dhd);
 
 #if defined(DHD_TCP_WINSIZE_ADJUST)
 extern int dhd_adjust_tcp_winsize(int index, int pk_type, int op_mode, struct sk_buff *skb);

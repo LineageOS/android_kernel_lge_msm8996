@@ -74,6 +74,11 @@
 		qcom,mdss-dsi-tx-eot-append;
 		qcom,mdss-mdp-transfer-time-us = <15200>;
 
+		qcom,mdss-dsi-panel-hdr-enabled;
+		qcom,mdss-dsi-panel-hdr-color-primaries = <15050 15900 33500 15250 13500 31500 7500 2750>;
+		qcom,mdss-dsi-panel-peak-brightness = <5000000>;	/* max. 500nits */
+		qcom,mdss-dsi-panel-blackness-level = <3333>;
+
 		qcom,mdss-dsi-on-command = [
 			/* Manufacturer Command Protection */
 			15 01 00 00 00 00 02 B0 AC
@@ -100,7 +105,7 @@
 			/* Display Control 2 */
 			39 01 00 00 00 00 0E B4 91 08 00 0C 0C 0C 0C 0A 0A 0A 0A 0A 0A
 			/* Display Control 3 */
-			39 01 00 00 00 00 0F B5 28 14 2A C8 36 08 00 0A 00 C0 93 13 31 31
+			39 01 00 00 00 00 0F B5 28 14 2A C8 3E 00 00 00 00 C0 93 13 31 31
 			/* Display Control 4 */
 			39 01 00 00 00 00 09 B6 26 0F 10 C0 00 2C C2 00
 			/* Panel Setting */
@@ -121,10 +126,6 @@
 			39 01 00 00 00 00 05 C4 0A 02 9E A4
 			/* Power Control 5 */
 			39 01 00 00 00 00 07 C5 A2 38 28 94 D4 0F
-			/* U2 Vcom offset */
-			39 01 00 00 00 00 03 CE 03 00
-			/* U3 Ave Vcom */
-			39 01 00 00 00 00 03 C6 16 01
 			/* Power Sequence Option Configuration */
 			39 01 00 00 00 00 06 C9 05 5D 03 04 01
 			/* APO Control */
@@ -135,28 +136,30 @@
 			39 01 00 00 00 00 06 CC 14 50 50 90 41
 			/* U2 Control */
 			39 01 00 00 00 00 04 CD 67 86 C0
+			/* U2 Vcom offset */
+			39 01 00 00 00 00 03 CE 03 00
 			/* Positive Gamma Curve for Red */
-			39 01 00 00 00 00 0E D0 00 10 20 2F 3B 43 4E 44 37 28 15 00 03
+			39 01 00 00 00 00 0E D0 00 10 20 2F 3B 43 4E 44 37 28 17 00 03
 			/* Negative Gamma Curve for Red */
-			39 01 00 00 00 00 0E D1 00 10 20 2B 38 41 4C 44 37 28 15 00 03
+			39 01 00 00 00 00 0E D1 00 10 20 2B 38 41 4C 44 37 28 17 00 03
 			/* Positive Gamma Curve for Green */
-			39 01 00 00 00 00 0E D2 00 10 20 2F 3B 43 4E 44 37 28 15 00 03
+			39 01 00 00 00 00 0E D2 00 10 20 2F 3B 42 4F 44 37 28 17 00 03
 			/* Negative Gamma Curve for Green */
-			39 01 00 00 00 00 0E D3 00 10 20 2B 38 41 4C 44 37 28 15 00 03
+			39 01 00 00 00 00 0E D3 00 10 20 2B 38 40 4D 44 37 28 17 00 03
 			/* Positive Gamma Curve for Blue */
-			39 01 00 00 00 00 0E D4 00 10 20 2F 3B 43 4E 44 37 28 15 00 03
+			39 01 00 00 00 00 0E D4 00 10 20 2F 3B 43 4E 44 37 28 17 00 03
 			/* Negative Gamma Curve for Blue */
-			39 01 00 00 00 00 0E D5 00 10 20 2B 38 41 4C 44 37 28 15 00 03
+			39 01 00 00 00 00 0E D5 00 10 20 2B 38 41 4C 44 37 28 17 00 03
 			/* Test1 */
-			39 01 00 00 00 00 07 ED 41 68 00 90 00 00
+			39 01 00 00 00 00 07 ED 61 68 00 90 00 00
 			/* Write Content Adaptive Brightness Control */
 			15 01 00 00 00 00 02 55 81
 			/* IE Setting1 */
-			15 01 00 00 00 00 02 F0 82
+			15 01 00 00 00 00 02 F0 C2
 			/* IE Setting2 */
 			39 01 00 00 00 00 05 F2 01 00 04 00
 			/* IE Setting3 */
-			39 01 00 00 00 00 0D F3 00 43 83 C0 00 01 00 00 00 00 00 00
+			39 01 00 00 00 00 0D F3 00 43 8B C0 00 01 13 00 00 00 00 00
 			/* CABC Control 1*/
 			39 01 00 00 00 00 18 FA 20 40 60 80 A0 C0 E0 10 1C 20 20 1F 16 18 00 B4 C0 CD DA E8 F0 F7 FF
 			/* CABC Control 2*/
@@ -185,7 +188,108 @@
 		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
 		qcom,cont-splash-enabled;
 
-		qcom,mode-control-dsi-state = "dsi_lp_mode";
+		qcom,mode-control-dsi-state = "dsi_hs_mode";
+
+		lge,mode-change-cmds-u0-to-u2 = [
+			/* Manufacturer Command Protection */
+			15 01 00 00 00 00 02 B0 AC
+			/*Left Side GIP pad setting*/
+			39 01 00 00 00 00 0E E5 1A 0D 0C 0E 1A 1A 01 05 07 09 0B 1A 11
+			/*Right Side GIP pad setting*/
+			39 01 00 00 00 00 0E E6 1A 0D 0C 0E 1A 1A 00 04 06 08 0A 1A 11
+			/*Left Side Mux Pad Setting*/
+			39 01 00 00 00 00 07 E7 18 17 16 15 14 13
+			/*Right Side Mux Pad Setting*/
+			39 01 00 00 00 00 07 E8 18 17 16 15 14 13
+			/* Page Address Set */
+			39 01 00 00 00 00 05 2B 00 00 0B 3F
+			/* Partial Area Set */
+			39 01 00 00 00 00 05 30 00 00 03 1F
+			/* Tearing Effect Line on */
+			15 01 00 00 00 00 02 35 00
+			/* Write Display Brightness */
+			15 01 00 00 00 00 02 51 FF
+			/* Write Control Display */
+			15 01 00 00 00 00 02 53 2C
+			/* Display Control 1 */
+			39 01 00 00 00 00 08 B3 08 07 28 C8 1A 94 02
+			/* Display Control 2 */
+			39 01 00 00 00 00 0E B4 91 08 00 0C 0C 0C 0C 0A 0A 0A 0A 0A 0A
+			/* Display Control 3 */
+			39 01 00 00 00 00 0F B5 28 14 2A C8 3E 00 00 00 00 C0 93 13 31 31
+			/* Display Control 4 */
+			39 01 00 00 00 00 09 B6 26 0F 10 C0 00 2C C2 00
+			/* Panel Setting */
+			39 01 00 00 00 00 05 B7 61 F5 EC B3
+			/* Touch Timing Control */
+			39 01 00 00 00 00 20 B8 17 02 90 40 CA A0 0C 00 00 18 33 04 01 90 01 45 16 C2 21 00 00 10 01 15 01 0A 00 50 0A 40 9C
+			/* Touch Source Setting */
+			39 01 00 00 00 00 06 B9 64 64 2A 3F EE
+			/* Internal Oscillator Setting */
+			39 01 00 00 00 00 04 C0 9C 08 10
+			/* Power Control 1 */
+			39 01 00 00 00 00 07 C1 01 00 F0 C2 CF 0C
+			/* Power Control 2 */
+			39 01 00 00 00 00 05 C2 CC 44 44 00
+			/* Power Control 3 */
+			39 01 00 00 00 00 09 C3 35 44 22 26 21 00 15 DD
+			/* Power Control 4 */
+			39 01 00 00 00 00 05 C4 0A 02 9E A4
+			/* Power Control 5 */
+			39 01 00 00 00 00 07 C5 A2 38 28 94 D4 14
+			/* Power Sequence Option Configuration */
+			39 01 00 00 00 00 06 C9 05 5D 03 04 00
+			/* APO Control */
+			39 01 00 00 00 00 03 CA 9F 10
+			/* LFD Control */
+			39 01 00 00 00 00 06 CB 73 90 3D 3D 8C
+			/* Tail TFT Setting */
+			39 01 00 00 00 00 06 CC 14 50 50 90 41
+			/* U2 Control */
+			39 01 00 00 00 00 04 CD 67 86 C0
+			/* U2 Vcom offset */
+			39 01 00 00 00 00 03 CE 03 00
+			/* Positive Gamma Curve for Red */
+			39 01 00 00 00 00 0E D0 00 10 20 2F 3D 44 4C 42 35 26 15 00 03
+			/* Negative Gamma Curve for Red */
+			39 01 00 00 00 00 0E D1 00 10 20 2F 3D 44 4C 44 38 2A 1B 08 03
+			/* Positive Gamma Curve for Green */
+			39 01 00 00 00 00 0E D2 00 10 20 2F 3D 44 4C 42 35 26 15 00 03
+			/* Negative Gamma Curve for Green */
+			39 01 00 00 00 00 0E D3 00 10 20 2F 3D 44 4C 44 38 2A 1B 08 03
+			/* Positive Gamma Curve for Blue */
+			39 01 00 00 00 00 0E D4 00 10 20 2F 3D 44 4C 42 35 26 15 00 03
+			/* Negative Gamma Curve for Blue */
+			39 01 00 00 00 00 0E D5 00 10 20 2F 3D 44 4C 44 38 2A 1B 08 03
+			/* Test1 */
+			39 01 00 00 00 00 07 ED 61 68 00 90 00 00
+			/* Write Content Adaptive Brightness Control */
+			15 01 00 00 00 00 02 55 81
+			/* IE Setting1 */
+			15 01 00 00 00 00 02 F0 C2
+			/* IE Setting2 */
+			39 01 00 00 00 00 05 F2 01 00 04 00
+			/* IE Setting3 */
+			39 01 00 00 00 00 0D F3 00 43 8B C0 00 01 13 00 00 00 00 00
+			/* CABC Control 1*/
+			39 01 00 00 00 00 18 FA 20 40 60 80 A0 C0 E0 10 1C 20 20 1F 16 18 00 B4 C0 CD DA E8 F0 F7 FF
+			/* CABC Control 2*/
+			39 01 00 00 00 00 0E FB B1 80 D0 06 40 7B 02 FF 12 22 22 12 22
+			/* SRE Control 1*/
+			15 01 00 00 00 00 02 F7 07
+			/* SRE Control 2*/
+			39 01 00 00 00 00 19 F8 00 2A 55 78 98 B6 D0 E7 00 3A 65 88 A7 C1 DA E8 00 41 6C 91 AE C8 DF EF
+			/* Scroll to 320 */
+			39 01 00 00 00 00 07 98 A1 81 07 A4 01 14
+			/* Normal Display mode on */
+			05 01 00 00 00 00 01 12
+			/* Write Control Display (Backlight Off) + 55ms  */
+			15 01 00 00 00 00 02 53 28
+			/* Display On */
+			05 01 00 00 00 00 01 29
+			/* Sleep Out + min 125ms */
+			05 01 00 00 7D 00 01 11
+		];
 
 		lge,mode-change-cmds-u3-to-u2 = [
 			/* Power Control 5 */
@@ -204,6 +308,8 @@
 			39 01 00 00 00 00 0E D5 00 10 20 2F 3D 44 4C 44 38 2A 1B 08 03
 			/* Power Sequence Option Configuration */
 			39 01 00 00 00 00 06 C9 05 5D 03 04 00
+			/* Scroll to 320 */
+			39 01 00 00 00 00 07 98 A1 81 07 A4 01 14
 			/* Partial Mode On*/
 			05 01 00 00 00 00 01 12
 			/* Write Control Display (Backlight Off) + 55ms  */
@@ -214,17 +320,17 @@
 			/* Power Control 5 */
 			39 01 00 00 00 00 07 C5 A2 38 28 94 D4 0F
 			/* Positive Gamma Curve for Red */
-			39 01 00 00 00 00 0E D0 00 10 20 2F 3B 43 4E 44 37 28 15 00 03
+			39 01 00 00 00 00 0E D0 00 10 20 2F 3B 43 4E 44 37 28 17 00 03
 			/* Negative Gamma Curve for Red */
-			39 01 00 00 00 00 0E D1 00 10 20 2B 38 41 4C 44 37 28 15 00 03
+			39 01 00 00 00 00 0E D1 00 10 20 2B 38 41 4C 44 37 28 17 00 03
 			/* Positive Gamma Curve for Green */
-			39 01 00 00 00 00 0E D2 00 10 20 2F 3B 43 4E 44 37 28 15 00 03
+			39 01 00 00 00 00 0E D2 00 10 20 2F 3B 42 4F 44 37 28 17 00 03
 			/* Negative Gamma Curve for Green */
-			39 01 00 00 00 00 0E D3 00 10 20 2B 38 41 4C 44 37 28 15 00 03
+			39 01 00 00 00 00 0E D3 00 10 20 2B 38 40 4D 44 37 28 17 00 03
 			/* Positive Gamma Curve for Blue */
-			39 01 00 00 00 00 0E D4 00 10 20 2F 3B 43 4E 44 37 28 15 00 03
+			39 01 00 00 00 00 0E D4 00 10 20 2F 3B 43 4E 44 37 28 17 00 03
 			/* Negative Gamma Curve for Blue */
-			39 01 00 00 00 00 0E D5 00 10 20 2B 38 41 4C 44 37 28 15 00 03
+			39 01 00 00 00 00 0E D5 00 10 20 2B 38 41 4C 44 37 28 17 00 03
 			/* Power Sequence Option Configuration */
 			39 01 00 00 00 00 06 C9 05 5D 03 04 01
 			/* Normmal DisplayMode On */
@@ -232,7 +338,7 @@
 			/* Write Display Brightness */
 			15 01 00 00 00 00 02 51 FF
 			/* Write Control Display (Backlight On) + 90ms  */
-			15 01 00 00 5A 00 02 53 2C
+			15 01 00 00 28 00 02 53 2C
 		];
 
 		lge,mdss-dsi-55h-command = [
@@ -285,17 +391,17 @@
 
 		qcom,panel-linear-gamma-default-command = [
 			/* Positive Gamma Curve for Red */
-			39 01 00 00 00 00 0E D0 00 10 20 2F 3B 43 4E 44 37 28 15 00 03
+			39 01 00 00 00 00 0E D0 00 10 20 2F 3B 43 4E 44 37 28 17 00 03
 			/* Negative Gamma Curve for Red */
-			39 01 00 00 00 00 0E D1 00 10 20 2B 38 41 4C 44 37 28 15 00 03
+			39 01 00 00 00 00 0E D1 00 10 20 2B 38 41 4C 44 37 28 17 00 03
 			/* Positive Gamma Curve for Green */
-			39 01 00 00 00 00 0E D2 00 10 20 2F 3B 43 4E 44 37 28 15 00 03
+			39 01 00 00 00 00 0E D2 00 10 20 2F 3B 42 4F 44 37 28 17 00 03
 			/* Negative Gamma Curve for Green */
-			39 01 00 00 00 00 0E D3 00 10 20 2B 38 41 4C 44 37 28 15 00 03
+			39 01 00 00 00 00 0E D3 00 10 20 2B 38 40 4D 44 37 28 17 00 03
 			/* Positive Gamma Curve for Blue */
-			39 01 00 00 00 00 0E D4 00 10 20 2F 3B 43 4E 44 37 28 15 00 03
+			39 01 00 00 00 00 0E D4 00 10 20 2F 3B 43 4E 44 37 28 17 00 03
 			/* Negative Gamma Curve for Blue */
-			39 01 00 00 00 00 0E D5 00 10 20 2B 38 41 4C 44 37 28 15 00 03
+			39 01 00 00 00 00 0E D5 00 10 20 2B 38 41 4C 44 37 28 17 00 03
 		];
 		qcom,panel-linear-gamma-tuning-command = [
 			/* Positive Gamma Curve for Red */

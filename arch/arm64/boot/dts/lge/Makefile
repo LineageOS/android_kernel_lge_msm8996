@@ -142,12 +142,20 @@ ifeq ($(CONFIG_MACH_MSM8996_LUCYE_TMO_US),y)
 DTS_TARGET := msm8996-lucye_tmo_us
 endif
 
+ifeq ($(CONFIG_MACH_MSM8996_LUCYE_CLR_PR),y)
+DTS_TARGET := msm8996-lucye_tmo_us
+endif
+
 ifeq ($(CONFIG_MACH_MSM8996_LUCYE_GLOBAL_LDU),y)
 DTS_TARGET := msm8996-lucye_global_ldu
 endif
 
 ifeq ($(CONFIG_MACH_MSM8996_LUCYE_LGU_LDU),y)
 DTS_TARGET := msm8996-lucye_lgu_ldu
+endif
+
+ifeq ($(CONFIG_MACH_MSM8996_LUCYE_ACG_US),y)
+DTS_TARGET := msm8996-lucye_acg_us
 endif
 
 ALL_DTS := $(notdir $(wildcard echo $(srctree)/$(src)/$(DTS_TARGET)/*.dts))

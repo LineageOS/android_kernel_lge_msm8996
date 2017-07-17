@@ -44,6 +44,7 @@
 #include <linux/input/lge_touch_notify.h>
 int panel_not_connected;
 int skip_lcd_error_check;
+int laf_mode_check;
 #endif
 
 #ifdef CONFIG_LGE_DISPLAY_COMMON
@@ -308,22 +309,6 @@ int detect_factory_cable(void)
 	}
 
 	return factory_cable;
-}
-
-int detect_download_cable(void)
-{
-	int download_cable = 0;
-
-	switch (lge_get_boot_mode()) {
-		case LGE_BOOT_MODE_QEM_910K:
-		case LGE_BOOT_MODE_PIF_910K:
-			download_cable = 1;
-			break;
-		default:
-			break;
-	}
-
-	return download_cable;
 }
 #endif
 
@@ -2909,8 +2894,9 @@ static struct device_node *mdss_dsi_find_panel_of_node(
 		}
 #if defined(CONFIG_LGE_DISPLAY_LUCYE_COMMON)
 		panel_not_connected = lge_get_lk_panel_status();
-		if ((panel_not_connected && detect_download_cable() && !lge_get_mfts_mode())) {
-			pr_err("%s: 910K download cable detected panel init skip[%d]\n",
+		laf_mode_check = strcmp(lge_get_boot_partition(), "laf");
+		if ((panel_not_connected && !laf_mode_check  && !lge_get_mfts_mode())) {
+			pr_err("%s: laf mode detected panel init skip[%d]\n",
 				__func__, panel_not_connected);
 			goto exit;
 		}

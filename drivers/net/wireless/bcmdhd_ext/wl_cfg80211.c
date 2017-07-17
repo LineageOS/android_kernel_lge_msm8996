@@ -1,7 +1,7 @@
 /*
  * Linux cfg80211 driver
  *
- * Copyright (C) 1999-2016, Broadcom Corporation
+ * Copyright (C) 1999-2017, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_cfg80211.c 672368 2016-11-28 06:56:07Z $
+ * $Id: wl_cfg80211.c 678621 2017-01-10 09:21:09Z $
  */
 /* */
 #include <typedefs.h>
@@ -83,6 +83,10 @@
 #ifdef BCMPCIE
 #include <dhd_flowring.h>
 #endif
+
+#ifdef CUSTOMER_HW10
+#include "dhd_custom_lge.h"
+#endif /* CUSTOMER_HW10 */
 
 #ifdef WL11U
 #if !defined(WL_ENABLE_P2P_IF) && !defined(WL_CFG80211_P2P_DEV_IF)
@@ -4860,9 +4864,9 @@ wl_cfg80211_connect(struct wiphy *wiphy, struct net_device *dev,
 	maxrxpktglom = 0;
 #endif
 	bzero(&bssid, sizeof(bssid));
-	if (!wl_get_drv_status(cfg, CONNECTED, dev)&&
-		(ret = wldev_ioctl(dev, WLC_GET_BSSID, &bssid, ETHER_ADDR_LEN, false)) == 0) {
-		if (!ETHER_ISNULLADDR(&bssid)) {
+	if ((ret = wldev_ioctl(dev, WLC_GET_BSSID, &bssid, ETHER_ADDR_LEN, false)) == 0) {
+		if ((!wl_get_drv_status(cfg, CONNECTED, dev) && !ETHER_ISNULLADDR(&bssid)) ||
+				wl_get_drv_status(cfg, CONNECTED, dev)) {
 			scb_val_t scbval;
 			wl_set_drv_status(cfg, DISCONNECTING, dev);
 			scbval.val = DOT11_RC_DISASSOC_LEAVING;
@@ -4872,7 +4876,7 @@ wl_cfg80211_connect(struct wiphy *wiphy, struct net_device *dev,
 			WL_DBG(("drv status CONNECTED is not set, but connected in FW!" MACDBG "/n",
 				MAC2STRDBG(bssid.octet)));
 			err = wldev_ioctl(dev, WLC_DISASSOC, &scbval,
-				sizeof(scb_val_t), true);
+					sizeof(scb_val_t), true);
 			if (unlikely(err)) {
 				wl_clr_drv_status(cfg, DISCONNECTING, dev);
 				WL_ERR(("error (%d)\n", err));
@@ -4889,7 +4893,11 @@ wl_cfg80211_connect(struct wiphy *wiphy, struct net_device *dev,
 			WL_DBG(("Currently not associated!\n"));
 	} else {
 		/* if status is DISCONNECTING, wait for disconnection terminated max 500 ms */
+#ifdef CUSTOMER_WH10
+		wait_cnt = 500/10;
+#else
 		wait_cnt = 200/10;
+#endif
 		while (wl_get_drv_status(cfg, DISCONNECTING, dev) && wait_cnt) {
 			WL_DBG(("Waiting for disconnection terminated, wait_cnt: %d\n", wait_cnt));
 			wait_cnt--;
@@ -5221,6 +5229,23 @@ exit:
 	return err;
 }
 
+#ifdef CUSTOMER_HW10
+#define WAIT_FOR_DISCONNECT_MAX 10
+void wl_cfg80211_wait_for_disconnection(struct bcm_cfg80211 *cfg, struct net_device *dev)
+{
+	uint8 wait_cnt;
+
+	wait_cnt = WAIT_FOR_DISCONNECT_MAX;
+	while (wl_get_drv_status(cfg, DISCONNECTING, dev) && wait_cnt) {
+		WL_DBG(("Waiting for disconnection, wait_cnt: %d\n", wait_cnt));
+		wait_cnt--;
+		OSL_SLEEP(50);
+	}
+
+	return;
+}
+#endif
+
 static s32
 wl_cfg80211_disconnect(struct wiphy *wiphy, struct net_device *dev,
 	u16 reason_code)
@@ -5269,10 +5294,8 @@ wl_cfg80211_disconnect(struct wiphy *wiphy, struct net_device *dev,
 					WL_ERR(("error (%d)\n", err));
 					return err;
 				}
-#if defined(BCM4358_CHIP)
-				WL_ERR(("Wait for complete of disconnecting \n"));
-				OSL_SLEEP(200);
-#endif /* BCM4358_CHIP */
+
+				wl_cfg80211_wait_for_disconnection(cfg, dev);
 		}
 	}
 
@@ -18801,9 +18824,16 @@ wl_ap_channel_ind(struct bcm_cfg80211 *cfg,
 {
 	u32 channel = LCHSPEC_CHANNEL(chanspec);
 
+#ifdef CUSTOMER_HW10
+	u32 ctrl_channel = wf_chspec_ctlchan(chanspec);
+	WL_DBG(("(%s) AP channel :%d chspec:0x%x \n",
+		ndev->name, ctrl_channel, chanspec));
+	if (cfg->ap_oper_channel && (cfg->ap_oper_channel != ctrl_channel)) {
+#else
 	WL_DBG(("(%s) AP channel:%d chspec:0x%x \n",
 		ndev->name, channel, chanspec));
 	if (cfg->ap_oper_channel && (cfg->ap_oper_channel != channel)) {
+#endif /* CUSTOMER_HW10 */
 		/*
 		 * If cached channel is different from the channel indicated
 		 * by the event, notify user space about the channel switch.

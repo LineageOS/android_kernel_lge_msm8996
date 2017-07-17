@@ -364,7 +364,7 @@ int get_factory_cable(void)
 
 	return res;
 }
-
+EXPORT_SYMBOL(get_factory_cable);
 struct lge_android_usb_platform_data lge_android_usb_pdata = {
 	.vendor_id = 0x1004,
 	.factory_pid = 0x6000,

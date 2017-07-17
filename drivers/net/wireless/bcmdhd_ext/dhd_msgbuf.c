@@ -3,7 +3,7 @@
  * Provides type definitions and function prototypes used to link the
  * DHD OS, bus, and protocol modules.
  *
- * Copyright (C) 1999-2016, Broadcom Corporation
+ * Copyright (C) 1999-2017, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -26,7 +26,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_msgbuf.c 668461 2016-11-03 11:37:01Z $
+ * $Id: dhd_msgbuf.c 678414 2017-01-09 12:15:00Z $
  */
 
 
@@ -3795,7 +3795,7 @@ dhd_prot_txstatus_process(dhd_pub_t *dhd, void *msg)
 		prot->active_tx_count--;
 
 		/* Release the Lock when no more tx packets are pending */
-		if (dhd->op_mode == DHD_FLAG_HOSTAP_MODE && prot->active_tx_count == 0)
+		if (prot->active_tx_count == 0)
 			 DHD_TXFL_WAKE_UNLOCK(dhd);
 
 	} else {
@@ -4268,7 +4268,7 @@ dhd_prot_txdata(dhd_pub_t *dhd, void *PKTBUF, uint8 ifidx)
 	 * Take a wake lock, do not sleep if we have atleast one packet
 	 * to finish.
 	 */
-	if (dhd->op_mode == DHD_FLAG_HOSTAP_MODE && prot->active_tx_count == 1)
+	if (prot->active_tx_count == 1)
 		DHD_TXFL_WAKE_LOCK(dhd);
 
 	DHD_GENERAL_UNLOCK(dhd, flags);
@@ -4665,20 +4665,33 @@ static int
 dhd_msgbuf_query_ioctl(dhd_pub_t *dhd, int ifidx, uint cmd, void *buf, uint len, uint8 action)
 {
 	int ret = 0;
+	uint copylen = 0;
 
 	DHD_TRACE(("%s: Enter\n", __FUNCTION__));
 
-	/* Respond "bcmerror" and "bcmerrorstr" with local cache */
 	if (cmd == WLC_GET_VAR && buf)
 	{
-		if (!strcmp((char *)buf, "bcmerrorstr"))
-		{
-			strncpy((char *)buf, bcmerrorstr(dhd->dongle_error), BCME_STRLEN);
+		if (!len || !*(uint8 *)buf) {
+			DHD_ERROR(("%s(): Zero length bailing\n", __FUNCTION__));
+			ret = BCME_BADARG;
 			goto done;
 		}
-		else if (!strcmp((char *)buf, "bcmerror"))
-		{
-			*(int *)buf = dhd->dongle_error;
+
+		/* Respond "bcmerror" and "bcmerrorstr" with local cache */
+		copylen = MIN(len, BCME_STRLEN);
+
+		if ((len >= strlen("bcmerrorstr")) &&
+			(!strcmp((char *)buf, "bcmerrorstr"))) {
+
+			strncpy((char *)buf, bcmerrorstr(dhd->dongle_error), copylen);
+			*(uint8 *)((uint8 *)buf + (copylen - 1)) = '\0';
+
+			goto done;
+		} else if ((len >= strlen("bcmerror")) &&
+			!strcmp((char *)buf, "bcmerror")) {
+
+			*(uint32 *)(uint32 *)buf = dhd->dongle_error;
+
 			goto done;
 		}
 	}

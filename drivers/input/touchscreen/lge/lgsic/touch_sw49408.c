@@ -72,7 +72,7 @@ static const char const *swipe_debug_str[SWIPE_FAIL_NUM] = {
 	"OUT_OF_START_AREA",
 	"DEBUG8",
 	"ABNORMAL_TOUCH",
-	"DEBUG10",
+	"INITIAL_DIRECTION_RATIO_FAIL",
 	"PALM",
 	"WRONG_DIRECTION",
 	"DEBUG13",
@@ -361,6 +361,8 @@ static void sw49408_get_swipe_info(struct device *dev)
 	d->swipe.info[SWIPE_R].start_area.x2 = 1359;
 	d->swipe.info[SWIPE_R].start_area.y2 = 2780;
 	d->swipe.info[SWIPE_R].wrong_direction_thres = 0;
+	d->swipe.info[SWIPE_R].initial_ratio_dist = 0;
+	d->swipe.info[SWIPE_R].initial_ratio_thres = 0;
 
 	d->swipe.info[SWIPE_D].distance = 5;
 	d->swipe.info[SWIPE_D].ratio_thres = 100;
@@ -377,6 +379,8 @@ static void sw49408_get_swipe_info(struct device *dev)
 	d->swipe.info[SWIPE_D].start_area.x2 = 1359;
 	d->swipe.info[SWIPE_D].start_area.y2 = 2780;
 	d->swipe.info[SWIPE_D].wrong_direction_thres = 0;
+	d->swipe.info[SWIPE_D].initial_ratio_dist = 0;
+	d->swipe.info[SWIPE_D].initial_ratio_thres = 0;
 
 	d->swipe.info[SWIPE_L].distance = 5;
 	d->swipe.info[SWIPE_L].ratio_thres = 100;
@@ -393,22 +397,26 @@ static void sw49408_get_swipe_info(struct device *dev)
 	d->swipe.info[SWIPE_L].start_area.x2 = 1359;
 	d->swipe.info[SWIPE_L].start_area.y2 = 2780;
 	d->swipe.info[SWIPE_L].wrong_direction_thres = 0;
+	d->swipe.info[SWIPE_L].initial_ratio_dist = 0;
+	d->swipe.info[SWIPE_L].initial_ratio_thres = 0;
 
-	d->swipe.info[SWIPE_U].distance = 15;
+	d->swipe.info[SWIPE_U].distance = 20;
 	d->swipe.info[SWIPE_U].ratio_thres = 150;
 	d->swipe.info[SWIPE_U].ratio_distance = 2;
 	d->swipe.info[SWIPE_U].ratio_period = 0;
-	d->swipe.info[SWIPE_U].min_time = 0;
+	d->swipe.info[SWIPE_U].min_time = 4;
 	d->swipe.info[SWIPE_U].max_time = 150;
 	d->swipe.info[SWIPE_U].area.x1 = 80;//401;
 	d->swipe.info[SWIPE_U].area.y1 = 0;
 	d->swipe.info[SWIPE_U].area.x2 = 1359;
 	d->swipe.info[SWIPE_U].area.y2 = 2780;
-	d->swipe.info[SWIPE_U].start_area.x1 = 80;//401;
-	d->swipe.info[SWIPE_U].start_area.y1 = 2400;
-	d->swipe.info[SWIPE_U].start_area.x2 = 1359;
+	d->swipe.info[SWIPE_U].start_area.x1 = 439;//401;
+	d->swipe.info[SWIPE_U].start_area.y1 = 2557;
+	d->swipe.info[SWIPE_U].start_area.x2 = 1000;
 	d->swipe.info[SWIPE_U].start_area.y2 = 2780;
 	d->swipe.info[SWIPE_U].wrong_direction_thres = 5;
+	d->swipe.info[SWIPE_U].initial_ratio_dist = 4;
+	d->swipe.info[SWIPE_U].initial_ratio_thres = 41;
 
 	d->swipe.mode = 0;
 		/*SWIPE_RIGHT_BIT | SWIPE_DOWN_BIT |
@@ -465,7 +473,6 @@ int sw49408_ic_info(struct device *dev)
 	d->ic_info.version.build = ((version >> 12) & 0xF);
 	d->ic_info.version.major = ((version >> 8) & 0xF);
 	d->ic_info.version.minor = version & 0xFF;
-	d->ic_info.chip_revision = d->ic_info.chip_revision & 0xF;
 	memcpy(&d->ic_info.product_id[0], &product[0], sizeof(product));
 
 	if (d->ic_info.version.build) {
@@ -480,7 +487,7 @@ int sw49408_ic_info(struct device *dev)
 	TOUCH_I("==Print PT info Data==\n");
 	TOUCH_I("version : %s, chip : %d, protocol : %d\n",
 		ver_str, (version >> 16) & 0xFF, (version >> 24) & 0xFF);
-	TOUCH_I("chip_rev : %d, fpc : %d, lcm : %d, lot : %d\n",
+	TOUCH_I("chip_rev : %x, fpc : %d, lcm : %d, lot : %d\n",
 		d->ic_info.chip_revision, d->ic_info.fpc, d->ic_info.lcm, d->ic_info.lot);
 	TOUCH_I("product id : %s\n", d->ic_info.product_id);
 	TOUCH_I("flash boot : %s, %s, crc : %s\n",
@@ -933,7 +940,7 @@ static int sw49408_swipe_mode(struct device *dev, u8 lcd_mode)
 	struct swipe_info *down = &d->swipe.info[SWIPE_D];
 	struct swipe_info *left = &d->swipe.info[SWIPE_L];
 	struct swipe_info *up = &d->swipe.info[SWIPE_U];
-	u32 swipe_data[12] = {0x0, };
+	u32 swipe_data[13] = {0x0, };
 	int ret = 0;
 	int i = 0;
 	u32 start_addr = 0x0;
@@ -962,15 +969,22 @@ static int sw49408_swipe_mode(struct device *dev, u8 lcd_mode)
 		swipe_data[10] = (right->area.y2) | (left->area.y2 << 16);
 		swipe_data[11] = (right->wrong_direction_thres) | (down->wrong_direction_thres << 8) |
 			(left->wrong_direction_thres << 16) | (up->wrong_direction_thres << 24);
+		swipe_data[12] = (right->initial_ratio_dist) | (down->initial_ratio_dist << 8) |
+			(left->initial_ratio_dist << 16) | (up->initial_ratio_dist << 24);
 
-		sw49408_xfer_msg_ready(dev, 12);
+		sw49408_xfer_msg_ready(dev, 13);
 		start_addr = d->reg_info.r_abt_cmd_spi_addr + SWIPE_ENABLE_W;
-		for (i = 0; i < 12; i++) {
+		for (i = 0; i < 13; i++) {
 			ts->xfer->data[i].tx.addr = start_addr + i;
 			ts->xfer->data[i].tx.buf = (u8 *)&swipe_data[i];
 			ts->xfer->data[i].tx.size = sizeof(u32);
 		}
 		ret = sw49408_xfer_msg(dev, ts->xfer);
+
+		swipe_data[0] = (right->initial_ratio_thres) | (down->initial_ratio_thres << 8) |
+			(left->initial_ratio_thres << 16) | (up->initial_ratio_thres << 24);
+		sw49408_reg_write(dev, d->reg_info.r_abt_cmd_spi_addr + SWIPE_INITIAL_RATIO_THRES_W,
+				&swipe_data[0], sizeof(swipe_data[0]));
 
 		swipe_data[0] = (down->min_time) | (up->min_time << 16);
 		swipe_data[1] = (down->max_time) | (up->max_time << 16);
@@ -1751,7 +1765,6 @@ static int sw49408_probe(struct device *dev)
 	d->swipe_debug_type = 0;
 	d->tc_status_rst_cnt = 0;
 	d->tc_status_fwup_cnt = 0;
-	atomic_set(&ts->state.debug_option_mask, DEBUG_OPTION_2);
 	sw49408_sic_abt_probe();
 
 	return 0;
@@ -2078,6 +2091,12 @@ static int sw49408_fw_upgrade(struct device *dev,
 	t_cfg_info_def *head;
 	int ret;
 	int img_check_result;
+
+	if (d->tc_status_fwup_cnt) {
+		sw49408_power(dev, POWER_OFF);
+		sw49408_power(dev, POWER_ON);
+		touch_msleep(ts->caps.hw_reset_delay);
+	}
 
 	TOUCH_I("%s - START\n", __func__);
 
@@ -2446,8 +2465,8 @@ static int sw49408_init(struct device *dev)
 	return 0;
 }
 
-/* (1 << 5)|(1 << 6)|(1 << 7)|(1 << 9)|(1 << 10) */
-#define INT_RESET_CLR_BIT	0x6E0
+/* (1 << 5)|(1 << 6)|(1 << 7)|(1 << 9)|(1 << 10)|(1 << 31) */
+#define INT_RESET_CLR_BIT	0x800006E0
 /* (1 << 13)|(1 << 15)|(1 << 20)|(1 << 22) */
 #define INT_LOGGING_CLR_BIT	0x50A000
 /* (1 << 5) |(1 << 6) |(1 << 7)|(0 << 9)|(0 << 10)|(0 << 13)|(1 << 15)|(1 << 20)|(1 << 22) */
@@ -2569,6 +2588,14 @@ int sw49408_check_status(struct device *dev)
 				checking_log_size - length,
 				"[22]TC driving Invalid");
 		}
+		if (status & (1 << 31)) {
+			checking_log_flag = 1;
+			length += snprintf(checking_log + length,
+				checking_log_size - length,
+				"[31]ESD(Stripe) error detected");
+			lge_panel_recovery_mode();
+			ret = -ERANGE;
+		}
 
 		if (checking_log_flag) {
 			TOUCH_E("%s, status = %x, ic_status = %x\n",
@@ -2647,14 +2674,25 @@ int sw49408_irq_abs_data(struct device *dev)
 	touch_count = d->info.touch_cnt;
 	ts->new_mask = 0;
 
+	/* check q cover status */
+	if (d->driving_mode == LCD_MODE_U3_QUICKCOVER && !d->q_sensitivity) {
+		TOUCH_I("Interrupt in Qcover closed\n");
+		ts->is_cancel = 1;
+		ts->tcount = 0;
+		ts->intr_status = TOUCH_IRQ_FINGER;
+		return ret;
+	}
+
 	/* check if palm detected */
-	if (data[0].track_id == PALM_ID) {
+	if (data[0].track_id >= WATER_ID) {
 		if (data[0].event == TOUCHSTS_DOWN) {
 			ts->is_cancel = 1;
-			TOUCH_I("Palm Detected\n");
+			TOUCH_I("%s Detected\n", data[0].track_id == WATER_ID ?
+					"Water" : "Palm");
 		} else if (data[0].event == TOUCHSTS_UP) {
 			ts->is_cancel = 0;
-			TOUCH_I("Palm Released\n");
+			TOUCH_I("%s Released\n", data[0].track_id == WATER_ID ?
+					"Water" : "Palm");
 		}
 		ts->tcount = 0;
 		ts->intr_status = TOUCH_IRQ_FINGER;
@@ -3250,7 +3288,7 @@ static int sw49408_get_cmd_version(struct device *dev, char *buf)
 	}
 
 	offset += snprintf(buf + offset, PAGE_SIZE - offset,
-		"chip_rev : %d, fpc : %d, lcm : %d, lot : %d\n",
+		"chip_rev : %x, fpc : %d, lcm : %d, lot : %d\n",
 			d->ic_info.chip_revision, d->ic_info.fpc, d->ic_info.lcm, d->ic_info.lot);
 
 	offset += snprintf(buf + offset, PAGE_SIZE - offset,

@@ -1,7 +1,7 @@
 #ifndef __MACH_QFPROM_ADDR_8996_H__
 #define __MACH_QFPROM_ADDR_8996_H__
 
-#define SEC_PATH "/dev/block/platform/soc/624000.ufshc/by-name/sec"
+#define SEC_PATH "/dev/block/bootdevice/by-name/sec"
 /* QFPROM address to blow */
 #define QFPROM_CTRL_BASE        (0x00070000)
 

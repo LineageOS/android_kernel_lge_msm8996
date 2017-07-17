@@ -565,6 +565,7 @@ struct debugfs_files {
     struct dentry *dump_inter_desc;
     struct dentry *dump_power_desc;
     struct dentry *dump_string_desc;
+    struct dentry *dump_health_desc;
 #endif
 	bool is_sys_suspended;
 };
@@ -1084,6 +1085,7 @@ int ufshcd_read_config_desc(struct ufs_hba *hba, u8 *buf, u32 size);
 int ufshcd_read_unit_desc(struct ufs_hba *hba, int u_index, u8 *buf, u32 size);
 int ufshcd_read_inter_desc(struct ufs_hba *hba, u8 *buf, u32 size);
 int ufshcd_read_power_desc(struct ufs_hba *hba, u8 *buf, u32 size);
+int ufshcd_read_health_desc(struct ufs_hba *hba, u8 *buf, u32 size);
 #endif
 
 static inline bool ufshcd_is_hs_mode(struct ufs_pa_layer_attr *pwr_info)

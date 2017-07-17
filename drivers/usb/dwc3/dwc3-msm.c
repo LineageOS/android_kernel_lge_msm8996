@@ -472,8 +472,7 @@ static void dwc3_floated_chg_check(struct dwc3_msm *mdwc)
 	struct power_supply *typec_psy;
 #endif
 
-	if (mdwc->chg_type == DWC3_DCP_CHARGER ||
-			mdwc->chg_type == DWC3_CDP_CHARGER) {
+	if (mdwc->chg_type == DWC3_DCP_CHARGER) {
 		mdwc->after_apsd_rerun = false;
 		mdwc->usb_psy.is_floated_charger = 0;
 		return;
@@ -489,7 +488,8 @@ static void dwc3_floated_chg_check(struct dwc3_msm *mdwc)
 					msecs_to_jiffies(1200));
 		}
 		return;
-	} else if (mdwc->chg_type == DWC3_SDP_CHARGER) {
+	} else if (mdwc->chg_type == DWC3_SDP_CHARGER ||
+		   mdwc->chg_type == DWC3_CDP_CHARGER) {
 		cancel_delayed_work(&mdwc->apsd_timer_work);
 	}
 
@@ -3349,13 +3349,13 @@ static int dwc3_msm_power_set_property_usb(struct power_supply *psy,
 		if (mdwc->vbus_active_pending &&
 		    mdwc->chg_type != DWC3_INVALID_CHARGER)
 			power_supply_set_present(psy, true);
-#endif
 
 #ifdef CONFIG_LGE_USB_FLOATED_CHARGER_DETECT
 		if (!mdwc->vbus_active_pending &&
 		    mdwc->chg_type != DWC3_INVALID_CHARGER)
 			queue_delayed_work(mdwc->dwc3_wq,
 					   &mdwc->resume_work, 12);
+#endif
 #endif
 		break;
 	case POWER_SUPPLY_PROP_HEALTH:
@@ -4636,6 +4636,10 @@ static void dwc3_check_float_lines(struct dwc3_msm *mdwc)
 	struct power_supply *typec_psy;
 #endif
 
+#ifdef USB_COMPLIANCE_TEST
+	return;
+#endif
+
 #ifdef CONFIG_LGE_USB_FLOATED_CHARGER_DETECT
 	if (dwc3_check_factory_cable(mdwc))
 		return;
@@ -4824,14 +4828,14 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 				pm_runtime_get_noresume(mdwc->dev);
 				dwc3_initialize(mdwc);
 				/* check dp/dm for SDP & runtime_put if !SDP */
-#ifdef CONFIG_LGE_USB_G_ANDROID
-				if (mdwc->detect_dpdm_floating &&
-				    mdwc->chg_type == DWC3_SDP_CHARGER) {
-#else
 				if (mdwc->detect_dpdm_floating) {
-#endif
 					dwc3_check_float_lines(mdwc);
+#ifdef CONFIG_LGE_USB_G_ANDROID
+					if (mdwc->chg_type != DWC3_SDP_CHARGER &&
+					    mdwc->chg_type != DWC3_CDP_CHARGER)
+#else
 					if (mdwc->chg_type != DWC3_SDP_CHARGER)
+#endif
 						break;
 				}
 				dwc3_otg_start_peripheral(mdwc, 1);
@@ -4949,10 +4953,19 @@ static void dwc3_otg_sm_work(struct work_struct *w)
 					atomic_read(
 						&mdwc->dev->power.usage_count));
 				/* check dp/dm for SDP & runtime_put if !SDP */
+#ifdef CONFIG_LGE_USB_G_ANDROID
+				if (mdwc->detect_dpdm_floating) {
+#else
 				if (mdwc->detect_dpdm_floating &&
 				    mdwc->chg_type == DWC3_SDP_CHARGER) {
+#endif
 					dwc3_check_float_lines(mdwc);
+#ifdef CONFIG_LGE_USB_G_ANDROID
+					if (mdwc->chg_type != DWC3_SDP_CHARGER &&
+					    mdwc->chg_type != DWC3_CDP_CHARGER)
+#else
 					if (mdwc->chg_type != DWC3_SDP_CHARGER)
+#endif
 						break;
 				}
 				dwc3_otg_start_peripheral(mdwc, 1);

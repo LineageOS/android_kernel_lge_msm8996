@@ -3881,20 +3881,22 @@ static int msm_pcie_config_link_state(struct msm_pcie_dev_t *dev)
 				dev->rc_idx, ep_l1sub_ctrl1_offset);
 
 		val &= 0xf;
+
 #ifdef CONFIG_BCMDHD_PCIE
 		if (dev->rc_idx == 0) {
-			/* Disable ASPM */
-			msm_pcie_write_mask(dev->conf + ep_link_ctrlstts_offset,
-				BIT(1)|BIT(0), 0);
-			msm_pcie_write_mask(dev->dm_core + PCIE20_CAP_LINKCTRLSTATUS,
-				BIT(1)|BIT(0), 0);
-
-			/* EP: TPOWERON : 130us */
+			/* EP: TPOWERON : 120us */
 			msm_pcie_write_reg_field(dev->conf, ep_l1sub_ctrl2_offset,
-				0xff, BIT(6)|BIT(5)|BIT(3)|BIT(0));
-			/* RC: TPOWERON : 130us */
+				0xff, BIT(6)|BIT(5)|BIT(0));
+			/* RC: TPOWERON : 120us */
 			msm_pcie_write_reg_field(dev->dm_core, PCIE20_L1SUB_CONTROL2,
-				0xff, BIT(6)|BIT(5)|BIT(3)|BIT(0));
+				0xff, BIT(6)|BIT(5)|BIT(0));
+
+			/* EP: L12Threshold : 164 us */
+			msm_pcie_write_mask(dev->conf + ep_l1sub_ctrl1_offset, 0,
+				BIT(30)|BIT(23)|BIT(21));
+			/* RC: L12Threshold : 164 us */
+			msm_pcie_write_mask(dev->dm_core + PCIE20_L1SUB_CONTROL1, 0,
+				BIT(30)|BIT(23)|BIT(21));
 
 			/* EP: Set LTR Latency (0x1B4) */
 			msm_pcie_write_mask(dev->conf + PCIE20_LTR_MAX_SNOOP_LATENCY_BRCM, 0,
@@ -3954,25 +3956,6 @@ static int msm_pcie_config_link_state(struct msm_pcie_dev_t *dev)
 		PCIE_DBG2(dev, "EP's DEVICE_CONTROL2_STATUS2:0x%x\n",
 			readl_relaxed(dev->conf +
 			ep_dev_ctrl2stts2_offset));
-
-#ifdef CONFIG_BCMDHD_PCIE
-		if (dev->rc_idx == 0) {
-			/* Enable ASPM */
-			if (dev->l0s_supported) {
-				msm_pcie_write_mask(dev->dm_core + PCIE20_CAP_LINKCTRLSTATUS,
-					0, BIT(0));
-				msm_pcie_write_mask(dev->conf + ep_link_ctrlstts_offset,
-					0, BIT(0));
-			}
-			if (dev->l1_supported) {
-				msm_pcie_write_mask(dev->dm_core + PCIE20_CAP_LINKCTRLSTATUS,
-					0, BIT(1));
-				msm_pcie_write_mask(dev->conf + ep_link_ctrlstts_offset,
-					0, BIT(1));
-			}
-		}
-#endif /* CONFIG_BCMDHD_PCIE */
-
 	}
 #ifdef CONFIG_BCMDHD_PCIE
 	return 0;

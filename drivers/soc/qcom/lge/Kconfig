@@ -373,6 +373,13 @@ config MACH_MSM8996_LUCYE_TMO_US
 	help
 	  Support for the Qualcomm MSM8996 LUCYE_TMO_US device.
 
+config MACH_MSM8996_LUCYE_CLR_PR
+        bool "MSM8996 LUCYE_CLR_PR"
+        depends on ARCH_MSM8996
+        select MACH_LGE
+        help
+          Support for the Qualcomm MSM8996 LUCYE_CLR_PR device.
+
 config MACH_MSM8996_LUCYE_GLOBAL_LDU
         bool "MSM8996 LUCYE_GLOBAL LDU"
         depends on ARCH_MSM8996
@@ -386,6 +393,13 @@ config MACH_MSM8996_LUCYE_LGU_LDU
         select MACH_LGE
         help
           Support for the Qualcomm MSM8996 LUCYE_LGU_LDU device.
+
+config MACH_MSM8996_LUCYE_ACG_US
+        bool "MSM8996 LUCYE_ACG_US"
+        depends on ARCH_MSM8996
+        select MACH_LGE
+        help
+          Support for the Qualcomm MSM8996 LUCYE_ACG_US device.
 endmenu
 
 menu "LGE Specific Patches"

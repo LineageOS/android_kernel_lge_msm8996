@@ -339,3 +339,10 @@ config LGE_DISPLAY_AOD_WITH_MIPI
 	default n
 	---help---
 	Feature for AOD_WITH_MIPI scenario.
+
+config LGE_DP_UNSUPPORT_NOTIFY
+	bool "Enable DP UNSUPPORT NOTIFY FEATURE"
+	default n
+	---help---
+	This config is for notification to framework unsupported
+	Displayport

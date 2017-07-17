@@ -400,6 +400,7 @@ struct dsi_panel_timing {
 #endif
 #if defined(CONFIG_LGE_DISPLAY_SRE_MODE)
 	struct dsi_panel_cmds display_on_cmds;
+	struct dsi_panel_cmds display_on_and_aod_comds;
 	struct dsi_panel_cmds reg_55h_cmds;
 	struct dsi_panel_cmds reg_f0h_cmds;
 	struct dsi_panel_cmds reg_f2h_cmds;
@@ -576,6 +577,7 @@ struct mdss_dsi_ctrl_pdata {
 #endif
 #if defined(CONFIG_LGE_DISPLAY_SRE_MODE)
 	struct dsi_panel_cmds display_on_cmds;
+	struct dsi_panel_cmds display_on_and_aod_comds;
 	struct dsi_panel_cmds reg_55h_cmds;
 	struct dsi_panel_cmds reg_f0h_cmds;
 	struct dsi_panel_cmds reg_f2h_cmds;
