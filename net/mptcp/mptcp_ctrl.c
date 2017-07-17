@@ -936,6 +936,11 @@ static void mptcp_sub_inherit_sockopts(const struct sock *meta_sk, struct sock *
 		inet_csk_delete_keepalive_timer(sub_sk);
 	}
 
+	/* 2016-12-30 minkeun.kwon@lge.com, LGP_DATA_TCPIP_MPTCP [START] */
+	/* sub flow packet should not use redsockd */
+	sub_sk -> sk_mark |= 0x100000;
+	/* 2016-12-30 minkeun.kwon@lge.com, LGP_DATA_TCPIP_MPTCP [END] */
+
 	/* Do not propagate subflow-errors up to the MPTCP-layer */
 	inet_sk(sub_sk)->recverr = 0;
 }

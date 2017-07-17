@@ -66,6 +66,8 @@ static int color_convert_enabled = 0;
 
 #if defined(CONFIG_LGE_DISPLAY_AOD_WITH_MIPI)
 extern int lcd_watch_set_fd_ctl(struct msm_fb_data_type *mfd, int enable);
+extern void lcd_watch_set_reg_after_fd(struct  msm_fb_data_type *mfd);
+extern void lcd_watch_font_crc_check(struct msm_fb_data_type * mfd);
 #endif
 static int mdss_mdp_overlay_free_fb_pipe(struct msm_fb_data_type *mfd);
 static int mdss_mdp_overlay_fb_parse_dt(struct msm_fb_data_type *mfd);
@@ -2033,6 +2035,9 @@ set_roi:
 			(mfd->index == 0 && mfd->panel_info->aod_cur_mode == AOD_PANEL_MODE_U2_BLANK) ||
 			(mfd->index == 0 && mfd->panel_info->aod_cur_mode == AOD_PANEL_MODE_U2_UNBLANK) ||
 			is_black_frame) {
+#elif defined (CONFIG_LGE_DISPLAY_AOD_WITH_MIPI)
+		if ((mfd->index == 0 && mfd->panel_info->aod_cur_mode == AOD_PANEL_MODE_U2_BLANK) ||
+			(mfd->index == 0 && mfd->panel_info->aod_cur_mode == AOD_PANEL_MODE_U2_UNBLANK) ) {
 #else
 		if ((mfd->index == 0 && mfd->panel_info->aod_cur_mode == AOD_PANEL_MODE_U2_BLANK) ||
 			(mfd->index == 0 && mfd->panel_info->aod_cur_mode == AOD_PANEL_MODE_U2_UNBLANK) ||
@@ -2049,6 +2054,35 @@ set_roi:
 					ctl->mixer_right->height-SKIP_ROI_SIZE};
 			}
 		}
+#if defined(CONFIG_LGE_DISPLAY_AOD_WITH_MIPI)
+		else if (mfd->index == 0 && mfd->panel_info->aod_cur_mode == AOD_PANEL_MODE_U3_UNBLANK && is_black_frame && mfd->ready_to_u2) {
+			if (mfd->watch.current_font_type) {
+				if (mfd->need_to_init_watch)
+					lcd_watch_set_reg_after_fd(mfd);
+				oem_mdss_aod_cmd_send(mfd, AOD_CMD_ENABLE);
+				l_roi = (struct mdss_rect){0, SKIP_ROI_SIZE,
+				ctl->mixer_left->width,
+				ctl->mixer_left->height-SKIP_ROI_SIZE};
+				if (ctl->mixer_right) {
+					r_roi = (struct mdss_rect) {0, SKIP_ROI_SIZE,
+						ctl->mixer_right->width,
+						ctl->mixer_right->height-SKIP_ROI_SIZE};
+				}
+				pr_info("[Watch] AOD enable in U3 when black frame !!!\n");
+			}
+			else {
+				l_roi = (struct mdss_rect){0, 0,
+					ctl->mixer_left->width,
+					ctl->mixer_left->height};
+				if (ctl->mixer_right) {
+					r_roi = (struct mdss_rect) {0, 0,
+						ctl->mixer_right->width,
+						ctl->mixer_right->height};
+				}
+				pr_info("[Watch] Don't send AOD command if font download is fail!!\n");
+			}
+		}
+#endif
 		else {
 			l_roi = (struct mdss_rect){0, 0,
 					ctl->mixer_left->width,
@@ -2157,6 +2191,26 @@ int mdss_mdp_overlay_kickoff(struct msm_fb_data_type *mfd,
 		return ret;
 	}
 	mutex_lock(&mdp5_data->list_lock);
+
+#if defined(CONFIG_LGE_DISPLAY_AOD_WITH_MIPI)
+	/* If Font download frame
+	    1. Send Font download enable command
+	    2. Send display commit
+	    3. Send Font download disable command when next commit
+	*/
+	if (mfd->index == 0 && mfd->watch.font_download_state == FONT_LAYER_REQUESTED) {
+		pr_info("[Watch] font_download_start\n");
+		lcd_watch_set_fd_ctl(mfd, 1);
+		mfd->watch.font_download_state = FONT_DOWNLOAD_PROCESSING;
+	}
+	else if (mfd->index == 0 && mfd->watch.font_download_state == FONT_DOWNLOAD_PROCESSING) {
+		mdelay(32);
+		lcd_watch_set_fd_ctl(mfd, 0);
+		mdelay(10);
+		lcd_watch_font_crc_check(mfd);
+		pr_info("[Watch] font_download_end\n");
+	}
+#endif
 
 	if (!ctl->shared_lock)
 		mdss_mdp_ctl_notify(ctl, MDP_NOTIFY_FRAME_BEGIN);
@@ -5266,7 +5320,7 @@ static int mdss_mdp_overlay_on(struct msm_fb_data_type *mfd)
 		if (mfd->panel_info->type != WRITEBACK_PANEL) {
 			atomic_inc(&mfd->mdp_sync_pt_data.commit_cnt);
 			rc = mdss_mdp_overlay_kickoff(mfd, NULL);
-#if defined(CONFIG_LGE_DISPLAY_AOD_SUPPORTED) && !defined(CONFIG_LGE_DISPLAY_BL_EXTENDED)
+#if defined(CONFIG_LGE_DISPLAY_AOD_SUPPORTED) && !(defined(CONFIG_LGE_DISPLAY_BL_EXTENDED) || defined(CONFIG_LGE_DISPLAY_AOD_WITH_MIPI))
 			if (!rc && mfd->index == 0 && mfd->panel_info->aod_cur_mode == AOD_PANEL_MODE_U2_UNBLANK &&
 				mfd->panel_info->aod_cmd_mode == ON_AND_AOD) {
 				struct mdss_panel_data *pdata;

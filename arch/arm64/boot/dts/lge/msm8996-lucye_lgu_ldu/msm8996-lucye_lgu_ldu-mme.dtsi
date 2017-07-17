@@ -11,18 +11,6 @@
  */
 
 &soc {
-	lge-mme {
-		compatible = "lge-mme";
-		lge-mme,gpio_sleep_n = <&tlmm 3 0>;
-		lge-mme,gpio_ph = <&tlmm 0 0>;
-		lge-mme,gpio_en = <&tlmm 2 0>;
-
-		pinctrl-0 = <&lge_mme_active>;
-		pinctrl-1 = <&lge_mme_sleep>;
-
-		status = "disabled";
-	};
-
 	lge-mme-drv {
 		compatible = "lge-mme-drv";
 	};

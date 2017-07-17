@@ -777,6 +777,13 @@ config LGE_PM_BATTERY_SWAP
 	help
 	  lge battery swap feature
 
+config LGE_PM_CYCLE_BASED_CHG_VOLTAGE
+	bool "LGE battery cycle based chg voltage change feature"
+	default n
+	depends on LGE_PM
+	help
+	  lge battery extending feature
+
 config LGE_PM_SUPPORT_LG_POWER_CLASS
 	bool "LG power class driver feature"
 	default n
@@ -811,6 +818,13 @@ config LGE_PM_EMBEDDED_BATT_ID_ADC
 	depends on LGE_PM
 	help
 	  For distinguish battery id by adc value
+
+config LGE_PM_WATERPROOF_PROTECTION
+        bool "LGE_PM_WATERPROOF_PROTECTION"
+        default n
+        depends on LGE_PM
+        help
+          Support charging suspending when water is detected
 
 source "drivers/power/reset/Kconfig"
 

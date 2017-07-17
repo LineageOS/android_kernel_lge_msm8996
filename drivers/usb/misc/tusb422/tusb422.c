@@ -125,10 +125,18 @@ void tusb422_init(unsigned int port)
 	tcpc_write8(port, TUSB422_REG_INT_STATUS, TUSB422_INT_MASK_ALL);
 
 	// Unmask LFO timer interrupt.
+#ifdef CONFIG_LGE_USB_TYPE_C
+	tcpc_write8(port, TUSB422_REG_INT_MASK, TUSB422_INT_CC_FAULT | TUSB422_INT_LFO_TIMER);
+#else
 	tcpc_write8(port, TUSB422_REG_INT_MASK, TUSB422_INT_LFO_TIMER);
+#endif
 
 	// Unmask vendor alert.
+#ifdef CONFIG_LGE_USB_TYPE_C
+	tcpc_modify16(port, TCPC_REG_ALERT_MASK, 0, TUSB422_ALERT_IRQ_STATUS | TCPC_ALERT_CC_STATUS);
+#else
 	tcpc_modify16(port, TCPC_REG_ALERT_MASK, 0, TUSB422_ALERT_IRQ_STATUS);
+#endif
 
 	// Set 1ms sampling rate for better force discharge accuracy.
 	tusb422_set_cc_sample_rate(port, CC_SAMPLE_RATE_1MS);

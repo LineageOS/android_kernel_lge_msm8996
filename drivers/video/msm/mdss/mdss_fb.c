@@ -1732,6 +1732,9 @@ static int mdss_fb_probe(struct platform_device *pdev)
 		lcd_watch_wdata_init(mfd);
 		mfd->watch.requested_font_type = FONT_NONE;
 		mfd->watch.current_font_type = FONT_NONE;
+		mfd->watch.font_download_state = FONT_STATE_NONE;
+		mfd->unset_aod_bl = U32_MAX;
+		mfd->block_aod_bl = true;
 	}
 #endif
 
@@ -1739,9 +1742,10 @@ static int mdss_fb_probe(struct platform_device *pdev)
 #if defined(CONFIG_LGE_PM_THERMAL_VTS)
 	if (!rc && mfd->index == 0) {
 		mfd->vs = kzalloc(sizeof(struct value_sensor), GFP_KERNEL);
-		if (IS_ERR(mfd->vs)) {
+		if (IS_ERR_OR_NULL(mfd->vs)) {
 			pr_err("Fail to alloc mfd->vs. err=%d\n", IS_ERR(mfd->vs));
-			return -ENOMEM;
+			rc = -EFAULT;
+			goto err_vs;
 		}
 		mfd->vs->name = "led";
 		mfd->vs->vts_index = 101;
@@ -1752,12 +1756,14 @@ static int mdss_fb_probe(struct platform_device *pdev)
 		if (rc) {
 			kfree(mfd->vs);
 			pr_err("Fail to register value sensor.\n");
-			return -EFAULT;
+			rc = -EFAULT;
+			goto err_vs;
 		}
 		mfd->vs_clone = kzalloc(sizeof(struct value_sensor), GFP_KERNEL);
-		if (IS_ERR(mfd->vs_clone)) {
+		if (IS_ERR_OR_NULL(mfd->vs_clone)) {
 			pr_err("Fail to alloc mfd->vs_clone. err=%d\n.", IS_ERR(mfd->vs_clone));
-			return -ENOMEM;
+			rc = -ENOMEM;
+			goto err_vs_clone;
 		}
 		mfd->vs_clone->name = "led_sensor";
 		mfd->vs_clone->vts_index = 102;
@@ -1768,14 +1774,22 @@ static int mdss_fb_probe(struct platform_device *pdev)
 		if (rc) {
 			kfree(mfd->vs_clone);
 			pr_err("Fail to register value sensor.\n");
-			return -EFAULT;
+			rc = -EFAULT;
+			goto err_vs_clone;
 		}
 
 		pr_info("\"led\" virtual value sensor is registered.\n");
 	}
 #endif
-
 	return rc;
+
+#if defined(CONFIG_LGE_PM_THERMAL_VTS)
+err_vs_clone:
+	kfree(mfd->vs);
+err_vs:
+	pr_err("fail to set lcd vts by %d\n", rc);
+	return rc;
+#endif
 }
 
 static void mdss_fb_set_mdp_sync_pt_threshold(struct msm_fb_data_type *mfd,
@@ -2568,6 +2582,18 @@ static int mdss_fb_blank_sub(int blank_mode, struct fb_info *info,
 #if defined(CONFIG_LGE_DISPLAY_COMMON)
 	if (mfd->recovery && blank_mode == FB_BLANK_UNBLANK) {
 		mfd->recovery= false;
+	}
+#endif
+#if defined(CONFIG_LGE_DISPLAY_AOD_WITH_MIPI)
+	if ((mfd->index == 0 && mfd->panel_info->aod_cur_mode == AOD_PANEL_MODE_U2_BLANK) ||
+		(mfd->index == 0 && mfd->panel_info->aod_cmd_mode == ON_AND_AOD && mfd->panel_info->aod_cur_mode == AOD_PANEL_MODE_U2_UNBLANK)){
+		mfd->block_aod_bl = false;
+		if (mfd->unset_aod_bl != U32_MAX) {
+			mutex_lock(&mfd->bl_lock);
+			mdss_fb_set_bl_brightness_aod_sub(mfd, mfd->unset_aod_bl);
+			mfd->unset_aod_bl = U32_MAX;
+			mutex_unlock(&mfd->bl_lock);
+		}
 	}
 #endif
 	pr_err("%s: -\n",__func__);
@@ -5661,7 +5687,7 @@ void mdss_fb_report_panel_dead(struct msm_fb_data_type *mfd)
 		pr_err("Panel data not available\n");
 		return;
 	}
-#if !defined(CONFIG_LGE_PANEL_RECOVERY) || defined(CONFIG_LGE_DISPLAY_LUCYE_COMMON)
+#if !defined(CONFIG_LGE_PANEL_RECOVERY)
 	return;
 #endif
 #if defined(CONFIG_LGE_DISPLAY_COMMON)
@@ -5684,6 +5710,7 @@ void mdss_fb_report_panel_dead(struct msm_fb_data_type *mfd)
 
 #if defined(CONFIG_LGE_DISPLAY_AOD_SUPPORTED)
 	lge_mdss_fb_aod_recovery(mfd, envp);
+	mfd->watch.current_font_type = 0;
 #endif
 	kobject_uevent_env(&mfd->fbi->dev->kobj,
 		KOBJ_CHANGE, envp);

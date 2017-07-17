@@ -1,7 +1,7 @@
 /*
  * Linux cfg80211 driver - Android related functions
  *
- * Copyright (C) 1999-2016, Broadcom Corporation
+ * Copyright (C) 1999-2017, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wl_android.c 672121 2016-11-24 07:36:53Z $
+ * $Id: wl_android.c 678421 2017-01-09 12:41:19Z $
  */
 
 #include <linux/module.h>
@@ -501,6 +501,7 @@ static struct genl_multicast_group wl_genl_mcast = {
 #ifdef CUSTOMER_HW10
 #define CMD_SET_BCNTIMEOUT "SET_BCNTIMEOUT"
 #define CMD_GET_BCNTIMEOUT "GET_BCNTIMEOUT"
+#define CMD_GET_RSDBMODE "GET_RSDBMODE"
 #endif /* CUSTOMER_HW10 */
 
 /**
@@ -667,11 +668,19 @@ static int wl_android_get_rssi(struct net_device *net, char *command, int total_
 		return -1;
 	if ((ssid.SSID_len == 0) || (ssid.SSID_len > DOT11_MAX_SSID_LEN)) {
 		DHD_ERROR(("%s: wldev_get_ssid failed\n", __FUNCTION__));
+	} else if (total_len <= ssid.SSID_len) {
+		return -ENOMEM;
 	} else {
 		memcpy(command, ssid.SSID, ssid.SSID_len);
 		bytes_written = ssid.SSID_len;
 	}
-	bytes_written += snprintf(&command[bytes_written], total_len, " rssi %d", scbval.val);
+	if ((total_len - bytes_written) < (strlen(" rssi -XXX") + 1))
+		return -ENOMEM;
+
+	bytes_written += scnprintf(&command[bytes_written], total_len - bytes_written,
+		" rssi %d", scbval.val);
+	command[bytes_written] = '\0';
+
 	DHD_TRACE(("%s: command result is %s (%d)\n", __FUNCTION__, command, bytes_written));
 	return bytes_written;
 }
@@ -1249,8 +1258,11 @@ int wl_android_set_roam_prof(
 	rp.roam_prof[0].init_scan_period = roam_scan_period;
 	rp.roam_prof[0].backoff_multiplier = 1;
 	rp.roam_prof[0].max_scan_period = 10;
-	rp.roam_prof[0].channel_usage = 0;
-	rp.roam_prof[0].cu_avg_calc_dur = 10;
+	if (rp.ver >= 1)
+	{
+		rp.roam_prof[0].channel_usage = DISABLE;
+		rp.roam_prof[0].cu_avg_calc_dur = WL_CU_CALC_DURATION_DEFAULT;
+	}
 
 	error = wldev_iovar_setbuf(dev, "roam_prof", &rp, sizeof(rp),
 		smbuf, sizeof(smbuf), NULL);
@@ -3503,9 +3515,9 @@ wl_android_set_sarlimit_txctrl(struct net_device *dev, const char* string_num)
 	/* As Samsung specific and their requirement, '0' means activate sarlimit
 	 * and '-1' means back to normal state (deactivate sarlimit)
 	 */
-	if (mode == 0) {
-		DHD_INFO(("%s: SAR limit control activated\n", __FUNCTION__));
-		setval = 1;
+	if (mode >= 0 && mode < 3) {
+		DHD_INFO(("%s: SAR limit control activated mode = %d\n", __FUNCTION__, mode));
+		setval = mode + 1;
 	} else if (mode == -1) {
 		DHD_INFO(("%s: SAR limit control deactivated\n", __FUNCTION__));
 		setval = 0;
@@ -4472,10 +4484,13 @@ int wl_android_set_allmulti(struct net_device *dev, char *command, int total_len
 int wl_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 {
 #define PRIVATE_COMMAND_MAX_LEN	8192
+#define PRIVATE_COMMAND_DEF_LEN	4096
+
 	int ret = 0;
 	char *command = NULL;
 	int bytes_written = 0;
 	android_wifi_priv_cmd priv_cmd;
+	int buf_size = 0;
 
 	net_os_wake_lock(net);
 
@@ -4510,11 +4525,15 @@ int wl_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 		}
 	}
 	if ((priv_cmd.total_len > PRIVATE_COMMAND_MAX_LEN) || (priv_cmd.total_len < 0)) {
-		DHD_ERROR(("%s: too long priavte command\n", __FUNCTION__));
+		DHD_ERROR(("%s: buf length invalid:%d\n", __FUNCTION__,
+			priv_cmd.total_len));
 		ret = -EINVAL;
 		goto exit;
 	}
-	command = kmalloc((priv_cmd.total_len + 1), GFP_KERNEL);
+
+	buf_size = max(priv_cmd.total_len, PRIVATE_COMMAND_DEF_LEN);
+	command = kmalloc((buf_size + 1), GFP_KERNEL);
+
 	if (!command)
 	{
 		DHD_ERROR(("%s: failed to allocate memory\n", __FUNCTION__));
@@ -5200,6 +5219,19 @@ int wl_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 			bytes_written = snprintf(command, priv_cmd.total_len, "%s %d",
 			CMD_GET_BCNTIMEOUT, bcn_timeout);
 	}
+	else if (strnicmp(command, CMD_GET_RSDBMODE, strlen(CMD_GET_RSDBMODE)) == 0) {
+		uint32 rsdb_mode[2];
+		char smbuf[WLC_IOCTL_SMLEN] = {0x00, };
+		int error = 0;
+		error = wldev_iovar_getbuf(net, "rsdb_mode", NULL, 0, smbuf, sizeof(smbuf), NULL);
+		if (error)
+			bytes_written = -EFAULT;
+		else {
+			memcpy(&rsdb_mode, smbuf, sizeof(rsdb_mode));
+			bytes_written = snprintf(command, priv_cmd.total_len, "%s %d",
+				CMD_GET_RSDBMODE, rsdb_mode[1]);
+		}
+	}
 #endif /* CUSTOMER_HW10 */
 #if (defined(CUSTOMER_HW10) && !defined(PASS_ALL_MCAST_PKTS))
 	else if (strnicmp(command, CMD_SETALLMULTI, strlen(CMD_SETALLMULTI)) == 0) {
@@ -5271,19 +5303,19 @@ int wl_android_priv_cmd(struct net_device *net, struct ifreq *ifr, int cmd)
 #endif
 	else {
 		DHD_ERROR(("Unknown PRIVATE command %s - ignored\n", command));
-		snprintf(command, 3, "OK");
-		bytes_written = strlen("OK");
+		bytes_written = scnprintf(command, sizeof("FAIL"), "FAIL");
 	}
 
 	if (bytes_written >= 0) {
 		if ((bytes_written == 0) && (priv_cmd.total_len > 0))
 			command[0] = '\0';
 		if (bytes_written >= priv_cmd.total_len) {
-			DHD_ERROR(("%s: bytes_written = %d\n", __FUNCTION__, bytes_written));
-			bytes_written = priv_cmd.total_len;
-		} else {
-			bytes_written++;
+			DHD_ERROR(("%s: err. bytes_written:%d >= buf_size:%d \n",
+				__FUNCTION__, bytes_written, buf_size));
+			ret = BCME_BUFTOOSHORT;
+			goto exit;
 		}
+		bytes_written++;
 		priv_cmd.used_len = bytes_written;
 		if (copy_to_user(priv_cmd.buf, command, bytes_written)) {
 			DHD_ERROR(("%s: failed to copy data to user buffer\n", __FUNCTION__));

@@ -20,16 +20,22 @@
 #include "msm_ois.h"
 #include "msm_ois_i2c.h"
 
-#define LAST_UPDATE "16-12-06, 13M LGIT CLAF OIS bu24235"
+#define LAST_UPDATE "17-01-09, 13M LGIT CLAF OIS bu24235"
 
 /*If changed FW, change below FW bin and Checksum information*/
 #define LUCY_1202_LGIT_CLAF_ACTUATOR_FIRMWARE_VER_6S_BIN_1 "bu24235_dl_program_Lucy_LGITAct_ICG1020S_rev6_S_data1.bin"
 #define LUCY_1202_LGIT_CLAF_ACTUATOR_FIRMWARE_VER_6S_BIN_2 "bu24235_dl_program_Lucy_LGITAct_ICG1020S_rev6_S_data2.bin"
 #define LUCY_1206_LGIT_CLAF_ACTUATOR_FIRMWARE_VER_7S_BIN_1 "bu24235_dl_program_Lucy_LGITAct_ICG1020S_rev7_S_data1.bin"
 #define LUCY_1206_LGIT_CLAF_ACTUATOR_FIRMWARE_VER_7S_BIN_2 "bu24235_dl_program_Lucy_LGITAct_ICG1020S_rev7_S_data2.bin"
+#define LUCY_1215_LGIT_CLAF_ACTUATOR_FIRMWARE_VER_8S_BIN_1 "bu24235_dl_program_Lucy_LGITAct_ICG1020S_rev8_S_data1.bin"
+#define LUCY_1215_LGIT_CLAF_ACTUATOR_FIRMWARE_VER_8S_BIN_2 "bu24235_dl_program_Lucy_LGITAct_ICG1020S_rev8_S_data2.bin"
+#define LUCY_0109_LGIT_CLAF_ACTUATOR_FIRMWARE_VER_10S_BIN_1 "bu24235_dl_program_Lucy_LGITAct_ICG1020S_rev10_S_data1.bin"
+#define LUCY_0109_LGIT_CLAF_ACTUATOR_FIRMWARE_VER_10S_BIN_2 "bu24235_dl_program_Lucy_LGITAct_ICG1020S_rev10_S_data2.bin"
 
 #define LUCY_1202_LGIT_CLAF_ACTUATOR_FIRMWARE_VER_6S_CHECKSUM	0x00015674
 #define LUCY_1206_LGIT_CLAF_ACTUATOR_FIRMWARE_VER_7S_CHECKSUM	0x00015656
+#define LUCY_1215_LGIT_CLAF_ACTUATOR_FIRMWARE_VER_8S_CHECKSUM	0x000158C5
+#define LUCY_0109_LGIT_CLAF_ACTUATOR_FIRMWARE_VER_10S_CHECKSUM	0x00015B1C
 
 /*If changed FW, change above FW bin and Checksum information*/
 
@@ -69,7 +75,7 @@ static struct ois_i2c_bin_list LUCY_1202_LGIT_CLAF_ACTUATOR_FIRMWARE_VER_6S_BIN_
 	.entries = {
 		{
 			.filename = LUCY_1202_LGIT_CLAF_ACTUATOR_FIRMWARE_VER_6S_BIN_1,
-			.filesize = 0x03A4,
+			.filesize = 0x03A4, //932byte
 			.blocks = 1,
 			.addrs = {
 				{0x0000, 0x03A3, 0x0000},
@@ -92,7 +98,7 @@ static struct ois_i2c_bin_list LUCY_1206_LGIT_CLAF_ACTUATOR_FIRMWARE_VER_7S_BIN_
 	.entries = {
 		{
 			.filename = LUCY_1206_LGIT_CLAF_ACTUATOR_FIRMWARE_VER_7S_BIN_1,
-			.filesize = 0x03A4,
+			.filesize = 0x03A4, //932byte
 			.blocks = 1,
 			.addrs = {
 				{0x0000, 0x03A3, 0x0000},
@@ -109,8 +115,54 @@ static struct ois_i2c_bin_list LUCY_1206_LGIT_CLAF_ACTUATOR_FIRMWARE_VER_7S_BIN_
 	},
 	.checksum = LUCY_1206_LGIT_CLAF_ACTUATOR_FIRMWARE_VER_7S_CHECKSUM
 };
-/*If changed FW, change above FW bin and Checksum information*/
 
+static struct ois_i2c_bin_list LUCY_1215_LGIT_CLAF_ACTUATOR_FIRMWARE_VER_8S_BIN_DATA = {
+	.files = 2,
+	.entries = {
+		{
+			.filename = LUCY_1215_LGIT_CLAF_ACTUATOR_FIRMWARE_VER_8S_BIN_1,
+			.filesize = 0x03A4, //932byte
+			.blocks = 1,
+			.addrs = {
+				{0x0000, 0x03A3, 0x0000},
+			}
+		},
+		{
+			.filename = LUCY_1215_LGIT_CLAF_ACTUATOR_FIRMWARE_VER_8S_BIN_2,
+			.filesize = 0x01C0,
+			.blocks = 1,
+			.addrs = {
+				{0x0000, 0x01BF, 0x1C00},
+			}
+		},
+	},
+	.checksum = LUCY_1215_LGIT_CLAF_ACTUATOR_FIRMWARE_VER_8S_CHECKSUM
+};
+
+static struct ois_i2c_bin_list LUCY_0109_LGIT_CLAF_ACTUATOR_FIRMWARE_VER_10S_BIN_DATA = {
+	.files = 2,
+	.entries = {
+		{
+			.filename = LUCY_0109_LGIT_CLAF_ACTUATOR_FIRMWARE_VER_10S_BIN_1,
+			.filesize = 0x03AC, //940byte
+			.blocks = 1,
+			.addrs = {
+				{0x0000, 0x03AB, 0x0000},
+			}
+		},
+		{
+			.filename = LUCY_0109_LGIT_CLAF_ACTUATOR_FIRMWARE_VER_10S_BIN_2,
+			.filesize = 0x01C0,
+			.blocks = 1,
+			.addrs = {
+				{0x0000, 0x01BF, 0x1C00},
+			}
+		},
+	},
+	.checksum = LUCY_0109_LGIT_CLAF_ACTUATOR_FIRMWARE_VER_10S_CHECKSUM
+};
+
+/*If changed FW, change above FW bin and Checksum information*/
 
 static int lgit_imx258_claf_rohm_ois_poll_ready(int limit)
 {
@@ -239,7 +291,7 @@ int lgit_imx258_claf_rohm_ois_init_cmd(int limit)
 		return rc;
 	}
 
-	if (cal_ver ==  0x05 || cal_ver ==  0x06) {
+	if (cal_ver ==  0x05 || cal_ver ==  0x06 || cal_ver ==  0x07 || cal_ver ==  0x09) {
 		CDBG("%s 1. 0x6023 0x%x \n", __func__, ois_status);
 		RegWriteA(0x6023, 0x00);
 	}
@@ -353,7 +405,7 @@ int lgit_imx258_claf_rohm_ois_calibration(int ver)
 	}
 
 	/* Gyro On */
-	if (cal_ver == 0x5 || cal_ver == 0x6) {
+	if (cal_ver == 0x05 || cal_ver == 0x06 || cal_ver ==  0x07 || cal_ver ==  0x09) {
 		RegWriteA(0x6023, 0x00);
 	}
 
@@ -452,13 +504,21 @@ int32_t lgit_imx258_claf_init_set_rohm_ois(struct msm_ois_ctrl_t *o_ctrl,
 	CDBG("%s chipid %x, cal_ver %x, map_ver %x, init ver %d\n", __func__, eeprom_slave_id, cal_ver, map_ver, ver);
 
 	switch (cal_ver) {
-		case 0x5:
+		case 0x05:
 			pr_err("[CHECK] %s: LUCY_1202_LGIT_CLAF_ACTUATOR_FIRMWARE_VER_BIN_DATA, 6s\n", __func__);
 			rc = lgit_imx258_claf_rohm_ois_bin_download(LUCY_1202_LGIT_CLAF_ACTUATOR_FIRMWARE_VER_6S_BIN_DATA);
 			break;
-		case 0x6:
+		case 0x06:
 			pr_err("[CHECK] %s: LUCY_1206_LGIT_CLAF_ACTUATOR_FIRMWARE_VER_BIN_DATA, 7s\n", __func__);
 			rc = lgit_imx258_claf_rohm_ois_bin_download(LUCY_1206_LGIT_CLAF_ACTUATOR_FIRMWARE_VER_7S_BIN_DATA);
+			break;
+		case 0x07:
+			pr_err("[CHECK] %s: LUCY_1215_LGIT_CLAF_ACTUATOR_FIRMWARE_VER_BIN_DATA, 8s\n", __func__);
+			rc = lgit_imx258_claf_rohm_ois_bin_download(LUCY_1215_LGIT_CLAF_ACTUATOR_FIRMWARE_VER_8S_BIN_DATA);
+			break;
+		case 0x09:
+			pr_err("[CHECK] %s: LUCY_0109_LGIT_CLAF_ACTUATOR_FIRMWARE_VER_BIN_DATA, 10s\n", __func__);
+			rc = lgit_imx258_claf_rohm_ois_bin_download(LUCY_0109_LGIT_CLAF_ACTUATOR_FIRMWARE_VER_10S_BIN_DATA);
 			break;
 		default:
 			pr_err("[CHECK] %s: Apply Default : No Download BIN_DATA\n", __func__);
@@ -666,6 +726,7 @@ int32_t lgit_imx258_claf_rohm_ois_move_lens(struct msm_ois_ctrl_t *o_ctrl,
 		/* MTM Actuator */
 		case 0x41:
 		case 0x0406:
+		case 0x0507:
 			hallx =  offset[0] * GYRO_GAIN_MTM / HALL_SCALE_FACTOR;
 			hally =  offset[1] * GYRO_GAIN_MTM / HALL_SCALE_FACTOR;
 			break;
@@ -673,6 +734,8 @@ int32_t lgit_imx258_claf_rohm_ois_move_lens(struct msm_ois_ctrl_t *o_ctrl,
 		/* LGIT Actuator */
 		case 0x05:
 		case 0x06:
+		case 0x07:
+		case 0x09:
 			hallx =  offset[0] * GYRO_GAIN_LGIT / HALL_SCALE_FACTOR;
 			hally =  offset[1] * GYRO_GAIN_LGIT / HALL_SCALE_FACTOR;
 			break;

@@ -204,4 +204,6 @@ source "drivers/broadcast/Kconfig"
 
 source "drivers/felica/Kconfig"
 
+source "drivers/tspdrv/Kconfig"
+
 endmenu

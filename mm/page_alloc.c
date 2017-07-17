@@ -218,7 +218,7 @@ int min_free_kbytes = 1024;
 int user_min_free_kbytes = -1;
 int min_free_order_shift = 1;
 #ifdef CONFIG_HSWAP
-int wmark_tune_level = 3;
+int wmark_tune_level = 6;
 #endif
 
 /*

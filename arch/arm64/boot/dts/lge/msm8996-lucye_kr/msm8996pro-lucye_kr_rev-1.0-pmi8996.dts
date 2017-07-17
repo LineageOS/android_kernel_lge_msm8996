@@ -21,6 +21,7 @@
 #include "../msm8996-lucye_storage_type/current_storage_type.dtsi"
 #include "../msm8996-sound/msm8996-lucye-sound_rev-0_0.dtsi"
 #include "msm8996-lucye_kr-sound.dtsi"
+#include "../msm8996pro-tdmb/msm8996pro-lucye_kr-tdmb_rev-b.dtsi"
 
 / {
 	model = "Qualcomm Technologies, Inc. MSM 8996pro v1.1 + PMI8996 MTP";

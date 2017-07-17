@@ -719,10 +719,6 @@ struct mdss_mdp_pipe {
 	u32 flags;
 	u32 bwc_mode;
 
-#if defined(CONFIG_LGE_DISPLAY_AOD_WITH_MIPI)
-	bool aod_font_download;
-#endif
-
 	/* valid only when pipe's output is crossing both layer mixers */
 	bool src_split_req;
 	bool is_right_blend;

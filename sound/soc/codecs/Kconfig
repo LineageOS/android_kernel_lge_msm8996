@@ -581,6 +581,11 @@ config SND_SOC_ES9218P
 	depends on MACH_LGE
 	default n
 
+config LGE_MBHC_DET_WATER_ON_USB
+	tristate "send event to MBHC when detecting water on usb"
+	depends on SND_SOC_ES9218P
+	default n
+
 config SND_SOC_TAS2552
 	tristate "Texas Instruments TAS2552 Mono Audio amplifier"
 	depends on I2C

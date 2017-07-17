@@ -33,5 +33,5 @@ struct timed_output_dev {
 
 int timed_output_dev_register(struct timed_output_dev *dev);
 void timed_output_dev_unregister(struct timed_output_dev *dev);
-
+extern struct timed_output_dev *timed_output_dev_find_by_name(const char *name);
 #endif

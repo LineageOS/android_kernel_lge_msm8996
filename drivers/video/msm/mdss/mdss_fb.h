@@ -415,9 +415,10 @@ struct msm_fb_data_type {
 	struct value_sensor *vs_clone;
 #endif
 #if defined(CONFIG_LGE_DISPLAY_AOD_WITH_MIPI)
-	bool  font_download_start;
-	bool font_download_sent;
-	bool watch_need_init;
+	bool need_to_init_watch;
+	bool block_aod_bl;
+	u32 unset_aod_bl;
+	bool ready_to_u2;
 	struct mutex watch_lock;
 	struct watch_data watch;
 #endif

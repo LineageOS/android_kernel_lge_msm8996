@@ -145,6 +145,14 @@ void usb_pd_pal_notify_connect_state(unsigned int port, tcpc_state_t state, bool
 			pd_dpm_handle_pe_event(PD_DPM_PE_EVT_TYPEC_STATE, (void*)&tc_state);
 			break;
 
+		case TCPC_STATE_CC_FAULT_OV:
+		case TCPC_STATE_CC_FAULT_SWING:
+		case TCPC_STATE_CC_FAULT_TEST:
+			PRINT("%s: TYPEC_CC_FAULT\n", __func__);
+			tc_state.new_state = PD_DPM_TYPEC_CC_FAULT;
+			pd_dpm_handle_pe_event(PD_DPM_PE_EVT_TYPEC_STATE, (void*)&tc_state);
+			break;
+
 		default:
 			break;
 	}

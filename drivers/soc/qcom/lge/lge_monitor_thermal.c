@@ -37,6 +37,13 @@
 
 static struct workqueue_struct *monitor_wq;
 
+#ifdef CONFIG_LGE_PM_CANCUN
+unsigned long cancun_dbot_vts_temp;
+unsigned int cancun_dbot_xo_temp;
+unsigned int cancun_dbot_pa_temp;
+unsigned int cancun_dbot_bd2_temp;
+#endif
+
 struct lge_monitor_thermal_data {
 	struct device *dev;
 	unsigned int polling_time;
@@ -165,6 +172,12 @@ static void _poll_monitor(struct lge_monitor_thermal_data *monitor_dd)
 #endif
 		}
 
+#ifdef CONFIG_LGE_PM_CANCUN
+		cancun_dbot_xo_temp = monitor_dd->last_xo_temp;
+		cancun_dbot_pa_temp = monitor_dd->last_pa_temp;
+		cancun_dbot_bd2_temp = monitor_dd->last_bd2_temp;
+		cancun_dbot_vts_temp = monitor_dd->last_vts_temp;
+#endif
 		pr_info("[TM][I] XO,%3d,PA0,%3d,BD2,%3d,VTS,%lu,%s\n",
 					monitor_dd->last_xo_temp,
 					monitor_dd->last_pa_temp,

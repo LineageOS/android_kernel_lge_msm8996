@@ -665,14 +665,15 @@ static void lge_dm_tty_close(struct tty_struct *tty, struct file *file)
 
     lge_dm_tty_drv = lge_dm_tty;
     tty->driver_data = lge_dm_tty_drv;
-    lge_dm_tty_drv->tty_str = tty;
-
-    clear_bit(TTY_NO_WRITE_SPLIT, &lge_dm_tty_drv->tty_str->flags);
 
     if (!tty) {
         pr_err(DM_TTY_MODULE_NAME ": %s: NULL tty", __func__);
         return;
     }
+
+    lge_dm_tty_drv->tty_str = tty;
+
+    clear_bit(TTY_NO_WRITE_SPLIT, &lge_dm_tty_drv->tty_str->flags);
 
     lge_dm_tty_drv = tty->driver_data;
 

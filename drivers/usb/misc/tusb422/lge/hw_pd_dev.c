@@ -4,12 +4,24 @@
 
 #include <linux/bug.h>
 #include <linux/kernel.h>
+#include <linux/module.h>
 
 #include "charger.c"
 #ifdef CONFIG_LGE_USB_DEBUGGER
 #include <soc/qcom/lge/board_lge.h>
 #include "usb_debugger.c"
 #endif
+
+#ifdef CONFIG_LGE_MBHC_DET_WATER_ON_USB
+struct blocking_notifier_head notifier;
+void detect_water_on_usb(bool det_water);
+void init_for_mbhc(void* data);
+#endif
+
+#ifdef CONFIG_LGE_DP_UNSUPPORT_NOTIFY
+extern void tusb422_set_dp_notify_node(int val);
+#endif
+
 
 static struct hw_pd_dev _hw_pd_dev;
 
@@ -18,6 +30,7 @@ int set_mode(struct hw_pd_dev *dev, int mode)
 	static const char *const strings[] = {
 		[DUAL_ROLE_PROP_MODE_UFP]	= "UFP",
 		[DUAL_ROLE_PROP_MODE_DFP]	= "DFP",
+		[DUAL_ROLE_PROP_MODE_FAULT]	= "FAULT",
 		[DUAL_ROLE_PROP_MODE_NONE]	= "None",
 	};
 
@@ -27,7 +40,12 @@ int set_mode(struct hw_pd_dev *dev, int mode)
 	switch (mode) {
 	case DUAL_ROLE_PROP_MODE_UFP:
 	case DUAL_ROLE_PROP_MODE_DFP:
+	case DUAL_ROLE_PROP_MODE_FAULT:
+		break;
 	case DUAL_ROLE_PROP_MODE_NONE:
+#ifdef CONFIG_LGE_DP_UNSUPPORT_NOTIFY
+		tusb422_set_dp_notify_node(0);
+#endif
 		break;
 
 	default:
@@ -36,6 +54,13 @@ int set_mode(struct hw_pd_dev *dev, int mode)
 	}
 
 	dev->mode = mode;
+
+#ifdef CONFIG_LGE_MBHC_DET_WATER_ON_USB
+    if( mode == DUAL_ROLE_PROP_MODE_FAULT )
+        detect_water_on_usb(true);
+    else
+        detect_water_on_usb(false);
+#endif
 
 	PRINT("%s(%s)\n", __func__, strings[mode]);
 	return 0;
@@ -157,6 +182,11 @@ int pd_dpm_handle_pe_event(enum pd_dpm_pe_evt event, void *state)
 		dev->chg_psy.type = POWER_SUPPLY_TYPE_UNKNOWN;
 		dev->curr_max = 0;
 		dev->volt_max = 0;
+
+		prop.intval = 0;
+		set_property_to_battery(dev,
+					POWER_SUPPLY_PROP_CTYPE_RP,
+					&prop);
 		break;
 
 	case PD_DPM_PE_EVT_SINK_VBUS:
@@ -213,6 +243,13 @@ int pd_dpm_handle_pe_event(enum pd_dpm_pe_evt event, void *state)
 			default:
 				break;
 			}
+
+			prop.intval = (vbus_state->ma == 3000) ? 10 :
+				(vbus_state->ma == 1500) ? 22 :
+				(vbus_state->ma == 500) ? 56 : 0;
+			set_property_to_battery(dev,
+						POWER_SUPPLY_PROP_CTYPE_RP,
+						&prop);
 		}
 
 print_vbus_state:
@@ -256,6 +293,13 @@ print_vbus_state:
 			set_mode(dev, DUAL_ROLE_PROP_MODE_NONE);
 			set_pr(dev, DUAL_ROLE_PROP_PR_NONE);
 			set_dr(dev, DUAL_ROLE_PROP_DR_NONE);
+
+#ifdef CONFIG_LGE_PM_WATERPROOF_PROTECTION
+			prop.intval = 0;
+			set_property_to_battery(dev,
+						POWER_SUPPLY_PROP_INPUT_SUSPEND,
+						&prop);
+#endif
 			break;
 
 		case PD_DPM_TYPEC_ATTACHED_SRC:
@@ -276,6 +320,20 @@ print_vbus_state:
 				set_pr(dev, DUAL_ROLE_PROP_PR_SNK);
 				set_dr(dev, DUAL_ROLE_PROP_DR_DEVICE);
 			}
+			break;
+
+		case PD_DPM_TYPEC_CC_FAULT:
+			gpiod_direction_output(dev->redriver_sel_gpio, 0);
+			set_mode(dev, DUAL_ROLE_PROP_MODE_FAULT);
+			set_pr(dev, DUAL_ROLE_PROP_PR_NONE);
+			set_dr(dev, DUAL_ROLE_PROP_DR_NONE);
+
+#ifdef CONFIG_LGE_PM_WATERPROOF_PROTECTION
+			prop.intval = 1;
+			set_property_to_battery(dev,
+						POWER_SUPPLY_PROP_INPUT_SUSPEND,
+						&prop);
+#endif
 			break;
 		}
 		break;
@@ -356,6 +414,10 @@ int hw_pd_dev_init(struct device *dev)
 
 #ifdef CONFIG_LGE_USB_DEBUGGER
 	usb_debugger_init(&_hw_pd_dev);
+#endif
+#ifdef CONFIG_LGE_MBHC_DET_WATER_ON_USB
+    BLOCKING_INIT_NOTIFIER_HEAD(&notifier);
+    init_for_mbhc(&notifier);
 #endif
 
 	return 0;

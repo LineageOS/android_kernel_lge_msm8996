@@ -17,12 +17,12 @@
 };
 
 &pmi8994_flash0 {
-	qcom,current = <800>;
+	qcom,current = <950>;
 	qcom,duration = <500>;
 };
 
 &pmi8994_flash1 {
-	qcom,current = <800>;
+	qcom,current = <950>;
 	qcom,duration = <500>;
 };
 
