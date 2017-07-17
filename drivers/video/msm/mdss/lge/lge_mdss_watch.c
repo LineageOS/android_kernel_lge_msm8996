@@ -24,32 +24,32 @@ extern void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
 		struct dsi_panel_cmds *pcmds, u32 flags);
 extern void lge_watch_mdss_dsi_panel_cmd_read(struct mdss_dsi_ctrl_pdata *ctrl,
 		char cmd0, int cnt, char* ret_buf);
-
+static struct msm_fb_data_type *mfd_base;
 
 void oem_mdss_watch_reg_print(unsigned int req_cmd, u8 *param, int length)
 {
 	int i;
 	switch(req_cmd){
 		case RTC_SET:
-			printk("[Watch] RTC_SET : ");
+			printk("[Watch] RTC_SET : 90 ");
 			break;
 		case WATCH_CTL:
-			printk("[Watch] WATCH_CTL : ");
+			printk("[Watch] WATCH_CTL : 92 ");
 			break;
 		case WATCH_SET:
-			printk("[Watch] WATCH_SET : ");
+			printk("[Watch] WATCH_SET : 93 ");
 			break;
 		case FD_CTL:
-			printk("[Watch] FD_CTL : ");
+			printk("[Watch] FD_CTL : 94 ");
 			break;
 		case FONT_SET:
-			printk("[Watch] FONT_SET : ");
+			printk("[Watch] FONT_SET : 95 ");
 			break;
 		case U2_SCR_FAD:
-			printk("[Watch] U2_SCR_FAD : ");
+			printk("[Watch] U2_SCR_FAD : 98 ");
 			break;
 		case FONT_CRC:
-			printk("[Watch] FONT_CRC : ");
+			printk("[Watch] FONT_CRC : 99 ");
 			break;
 		case TCH_FIRMWR:
 			break;
@@ -161,31 +161,42 @@ void lcd_watch_rtc_start(struct msm_fb_data_type *mfd, u8 start)
 	oem_mdss_watch_reg_write(mfd, RTC_SET);
 }
 
-void lcd_watch_font_crc_start(struct msm_fb_data_type *mfd, u8 start)
+void lcd_watch_font_crc_check(struct msm_fb_data_type *mfd)
 {
-	if (start == WATCH_FONT_CRC_START) {
-		mfd->watch.wdata.font_crc.crc_en = 1;
-		mfd->watch.wdata.font_crc.crc_clear = 0;
-	}
-	else if (start == WATCH_FONT_CRC_CLEAR){
+	// font crc pre check
+	char rx_buf[7] = {0x0};
+	struct watch_font_crc_cfg crc_read;
+	int i = 0;
+
+	for(i = 0; i < 10; i++){
+		oem_mdss_watch_reg_read(mfd, FONT_CRC, rx_buf, 7);
+		memcpy(&crc_read, (u8 *)rx_buf, sizeof(u8)*7);
+
+		if (crc_read.crc_result == 0xFFFF)
+			break;
+		pr_info("[Watch] %s : crc result code is 0x%x. retry crc clear %d times.\n", __func__, crc_read.crc_result, i+1);
+		//WATCH_FONT_CRC_CLEAR
 		mfd->watch.wdata.font_crc.crc_en = 0;
 		mfd->watch.wdata.font_crc.crc_clear = 1;
+		oem_mdss_watch_reg_write(mfd, FONT_CRC);
+		pr_info("[Watch] %s : font crc register cleared\n", __func__);
+
+		//WATCH_FONT_CRC_ALL
+		mfd->watch.wdata.font_crc.crc_en = 0;
+		mfd->watch.wdata.font_crc.crc_clear = 0;
+		oem_mdss_watch_reg_write(mfd, FONT_CRC);
+		pr_info("[Watch] %s : font crc register clear all\n", __func__);
 	}
 
+	// WATCH_FONT_CRC_START
+	mfd->watch.wdata.font_crc.crc_en = 1;
+	mfd->watch.wdata.font_crc.crc_clear = 0;
 	oem_mdss_watch_reg_write(mfd, FONT_CRC);
+	pr_info("[Watch] %s : font crc check started\n", __func__);
 
-	if (start == WATCH_FONT_CRC_START)
-		pr_info("[Watch] %s : font crc check started\n", __func__);
-	else
-		pr_info("[Watch] %s : font crc register cleared\n", __func__);
-}
+	mdelay(1);
 
-void lcd_watch_font_crc_read(struct msm_fb_data_type *mfd)
-{
-	char rx_buf[7] = {0x0};
-
-	struct watch_font_crc_cfg crc_read;
-
+	//font crc read
 	oem_mdss_watch_reg_read(mfd, FONT_CRC, rx_buf, 7);
 	memcpy(&crc_read, (u8 *)rx_buf, sizeof(u8)*7);
 
@@ -195,12 +206,30 @@ void lcd_watch_font_crc_read(struct msm_fb_data_type *mfd)
 		if (crc_read.crc_fail == 1) {
 			pr_info("[Watch] %s : crc check error. expected code : 0x%x, result code : 0x%x\n",
 						__func__, crc_read.crc_code, crc_read.crc_result);
-			//mfd->watch.current_font_type = FONT_NONE;
+			mfd->watch.current_font_type = FONT_NONE;
+			mfd->watch.font_download_state = FONT_STATE_NONE;
 		}
-		else
+		else {
 			pr_info("[Watch] %s : crc check ok. result code : 0x%x\n",__func__, crc_read.crc_result);
+			mfd->watch.current_font_type = mfd->watch.requested_font_type;
+			mfd->watch.font_download_state = FONT_DOWNLOAD_COMPLETE;
+			mfd->need_to_init_watch = true;
+		}
 	}
+
+	//WATCH_FONT_CRC_CLEAR
+	mfd->watch.wdata.font_crc.crc_en = 0;
+	mfd->watch.wdata.font_crc.crc_clear = 1;
+	oem_mdss_watch_reg_write(mfd, FONT_CRC);
+	pr_info("[Watch] %s : font crc register cleared\n", __func__);
+
+	//WATCH_FONT_CRC_ALL
+	mfd->watch.wdata.font_crc.crc_en = 0;
+	mfd->watch.wdata.font_crc.crc_clear = 0;
+	oem_mdss_watch_reg_write(mfd, FONT_CRC);
+	pr_info("[Watch] %s : font crc register clear all\n", __func__);
 }
+
 
 void lcd_watch_set_fontproperty(struct msm_fb_data_type *mfd)
 {
@@ -233,7 +262,7 @@ void lcd_watch_set_fd_ctl(struct msm_fb_data_type *mfd, int enable)
 	pdata = dev_get_platdata(&mfd->pdev->dev);
 	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata, panel_data);
 
-	pr_info("[Watch]%s : font download control %s\n", __func__, enable ? "enable" : "disable");
+	pr_info("[Watch] %s : font download control %s\n", __func__, enable ? "enable" : "disable");
 	mfd->watch.wdata.font_ctl.aod_fd = enable;
 
 	oem_mdss_watch_reg_write(mfd, FD_CTL);
@@ -252,7 +281,6 @@ void lcd_watch_set_btm_reset(struct msm_fb_data_type *mfd, int enable)
 
 	oem_mdss_watch_reg_write(mfd, WATCH_CTL);
 }
-
 
 static ssize_t store_watch_fontonoff	(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
@@ -285,9 +313,8 @@ static ssize_t store_watch_fontonoff	(struct device *dev,
 	}
 
 	pr_info("[Watch] HW clock user setting : %s\n", mfd->watch.hw_clock_user_state ? "On" : "Off");
-	mutex_unlock(&mfd->watch_lock);
-
 	lcd_watch_display_onoff(mfd, value);
+	mutex_unlock(&mfd->watch_lock);
 
 	return count;
 }
@@ -299,6 +326,7 @@ static ssize_t store_watch_fonteffect_config (struct device *dev, struct device_
 	struct WatchFontEffectConfig cfg;
 	char period[8] = {0};
 
+	mutex_lock(&mfd->watch_lock);
 	memcpy((char *)&cfg, buf, sizeof(struct WatchFontEffectConfig));
 
 	mfd->watch.wdata.mode.dwch_24h = cfg.h24_en;
@@ -327,6 +355,8 @@ static ssize_t store_watch_fonteffect_config (struct device *dev, struct device_
 	}
 
 	lcd_watch_set_fontposition(mfd);
+	lcd_watch_display_onoff(mfd, mfd->watch.hw_clock_user_state ? WATCH_ON : WATCH_OFF);
+	mutex_unlock(&mfd->watch_lock);
 
 	pr_info("[Watch] %s : 24h mode %s, Zero Dispaly %s,%s Type %s mode "
 		"Blink area [%d , %d] Period %s \n", __func__,
@@ -349,6 +379,7 @@ static ssize_t store_watch_fontproperty_config (struct device *dev, struct devic
 	char log[256] = {0};
 	int len = 0;
 
+	mutex_lock(&mfd->watch_lock);
 	memcpy((char *)&cfg, buf, sizeof(struct WatchFontPropertyConfig));
 
 	len += snprintf(log + len, 256 - len, "%s : LUT[%d] ",
@@ -365,6 +396,7 @@ static ssize_t store_watch_fontproperty_config (struct device *dev, struct devic
 	}
 
 	lcd_watch_set_fontproperty(mfd);
+	mutex_unlock(&mfd->watch_lock);
 
 	pr_info("[Watch] %s end %s \n", __func__, log);
 	return count;
@@ -378,6 +410,7 @@ static ssize_t store_watch_fontposition_config(struct device *dev, struct device
 	struct WatchFontAnalogPositionConfig a_cfg;
 
 	if (mfd->watch.requested_font_type == FONT_ANALOG) {
+		mutex_lock(&mfd->watch_lock);
 		memcpy((char *)&a_cfg, buf, sizeof(struct WatchFontAnalogPositionConfig));
 
 		//Set Watch set reg 93h
@@ -392,6 +425,10 @@ static ssize_t store_watch_fontposition_config(struct device *dev, struct device
 		mfd->watch.wdata.font.font_analog_center_x = a_cfg.a_font_centerx;
 		mfd->watch.wdata.font.font_analog_center_y = a_cfg.a_font_centery;
 
+		lcd_watch_set_fontposition(mfd);
+		lcd_watch_set_fontproperty(mfd);
+		mutex_unlock(&mfd->watch_lock);
+
 		pr_info("[Watch] %s, awch_pos.start_x : %d awch_pos.start_y : %d\n", __func__, mfd->watch.wdata.position.awch_pos.start_x,
 			mfd->watch.wdata.position.awch_pos.start_y);
 		pr_info("[Watch] %s, awch_center.start_x : %d awch_center.start_y : %d\n", __func__, mfd->watch.wdata.position.awch_center.start_x,
@@ -404,11 +441,15 @@ static ssize_t store_watch_fontposition_config(struct device *dev, struct device
 			mfd->watch.wdata.font.font_analog_center_y);
 	}
 	else if (mfd->watch.requested_font_type == FONT_DIGITAL || mfd->watch.requested_font_type == FONT_MINI) {
+		mutex_lock(&mfd->watch_lock);
 		memcpy((char *)&cfg, buf, sizeof(struct WatchFontPostionConfig));
 
 		//Set Watch set reg 93h
 		mfd->watch.wdata.position.dwch_pos.start_x = cfg.watstartx - AOD_POS_X;
-		mfd->watch.wdata.position.dwch_size.size_x = cfg.watendx - cfg.watstartx;
+		if (mfd->watch.requested_font_type == FONT_DIGITAL)
+			mfd->watch.wdata.position.dwch_size.size_x = DWATCH_SIZE_X;
+		else if (mfd->watch.requested_font_type == FONT_MINI)
+			mfd->watch.wdata.position.dwch_size.size_x = MWATCH_SIZE_X;
 		mfd->watch.wdata.position.dwch_pos.start_y = cfg.watstarty;
 		mfd->watch.wdata.position.dwch_size.size_y = cfg.watendy - cfg.watstarty;
 		mfd->watch.wdata.position.dwch_h_10_pos_x = cfg.h10x_pos;
@@ -423,8 +464,11 @@ static ssize_t store_watch_fontposition_config(struct device *dev, struct device
 		mfd->watch.wdata.font.font_size_colon_x = cfg.d_fontx;
 
 		lcd_watch_set_btm_reset(mfd, 1);
+		lcd_watch_set_fontposition(mfd);
+		lcd_watch_set_fontproperty(mfd);
 		mdelay(5);
 		lcd_watch_set_btm_reset(mfd, 0);
+		mutex_unlock(&mfd->watch_lock);
 
 		pr_info("[Watch] %s, dwch_pos.start_x : %d dwch_pos.start_y : %d\n", __func__, mfd->watch.wdata.position.dwch_pos.start_x,
 			mfd->watch.wdata.position.dwch_pos.start_y);
@@ -441,8 +485,6 @@ static ssize_t store_watch_fontposition_config(struct device *dev, struct device
 			mfd->watch.wdata.font.font_size_colon_x);
 	}
 
-	lcd_watch_set_fontposition(mfd);
-
 	return count;
 }
 
@@ -455,10 +497,9 @@ static ssize_t store_watch_timesync_config(struct device *dev,
 	struct WatchTimeSyncConfig cfg;
 	u16 rtc_count = 305;
 
-	mutex_lock(&mfd->watch_lock);
-
 	pr_info("[Watch] %s\n", __func__);
 
+	mutex_lock(&mfd->watch_lock);
 	memcpy((char *)&cfg, buf, sizeof(struct WatchTimeSyncConfig));
 
 	mfd->watch.wdata.time.rtc_cur_time.rtc_hour = cfg.rtc_cwhour;
@@ -492,28 +533,6 @@ static ssize_t store_watch_font_download(struct device *dev,
 
 	return count;
 }
-static ssize_t store_watch_font_crc_check(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t count)
-{
-
-	struct fb_info *fbi = dev_get_drvdata(dev);
-	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
-	u8 crc_start = 0;
-
-	if (kstrtou8(buf, 10, &crc_start))
-		return -EINVAL;
-
-	if (crc_start == WATCH_FONT_CRC_START)
-		lcd_watch_font_crc_start(mfd, WATCH_FONT_CRC_START);
-
-	else if (crc_start == WATCH_FONT_CRC_READ)
-		lcd_watch_font_crc_read(mfd);
-
-	else
-		lcd_watch_font_crc_start(mfd, WATCH_FONT_CRC_CLEAR);
-
-	return count;
-}
 
 static ssize_t store_watch_font_type(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
@@ -532,6 +551,13 @@ static ssize_t store_watch_font_type(struct device *dev,
 	else if (cfg.font_type == FONT_DIGITAL || cfg.font_type == FONT_MINI) {
 		mfd->watch.wdata.mode.watch_en = 0x01;
 	}
+	else if (cfg.font_type == FONT_NONE) {
+		mfd->watch.current_font_type = FONT_NONE;
+		mfd->watch.font_download_state = FONT_STATE_NONE;
+		pr_info("[Watch] %s : Request font reset!!\n", __func__);
+		mfd->ready_to_u2 = false;
+		return count;
+	}
 	else {
 		pr_err("[Watch] %s : font type error\n", __func__);
 		return count;
@@ -539,6 +565,10 @@ static ssize_t store_watch_font_type(struct device *dev,
 
 	//Set Font Download reg 94h
 	mfd->watch.requested_font_type = cfg.font_type;
+	if (mfd->watch.current_font_type != mfd->watch.requested_font_type)
+		mfd->watch.font_download_state = FONT_STATE_NONE;
+	else
+		mfd->watch.font_download_state = FONT_DOWNLOAD_COMPLETE;
 	mfd->watch.wdata.font_ctl.fdsidx = cfg.slice_idx;
 	mfd->watch.wdata.font_ctl.fdscnt = cfg.slice_cnt;
 	mfd->watch.wdata.font_crc.crc_code = cfg.font_crc_code;
@@ -558,6 +588,12 @@ static ssize_t show_watch_font_type(struct device *dev, struct device_attribute 
 {
 	struct fb_info *fbi = dev_get_drvdata(dev);
 	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+	if (mfd->panel_info->aod_cur_mode == AOD_PANEL_MODE_U3_UNBLANK) {
+		pr_info("[Watch] Enable ready_to_u2 true!!");
+		mfd->ready_to_u2 = true;
+	}
+	else
+		mfd->ready_to_u2 = false;
 	pr_info("[Watch] %s : current_font_type : %d\n",  __func__, mfd->watch.current_font_type);
 	return sprintf(buf,"%d\n", mfd->watch.current_font_type);
 }
@@ -646,6 +682,7 @@ static ssize_t show_watch_watch_reg_write(struct device *dev,
 			break;
 		default:
 			pr_err("[Watch] Can't match 0x%02X param\n", reg);
+			kfree(param);
 			return count;
 	}
 
@@ -782,11 +819,11 @@ static ssize_t store_watch_watch_reg(struct device *dev,
 	}
 	current_reg = reg;
 	oem_mdss_watch_reg_read(mfd, reg, rx_buf, size);
-	printk("[Watch] 0x%02X : ", reg);
+	printk("[Watch] %02X", reg);
 	if (reg == FD_CTL)
 		size--;
 	for(i=0; i<size; i++) {
-		printk("%02Xh, ",rx_buf[i]);
+		printk(" %02X",rx_buf[i]);
 		reg_value[i] = rx_buf[i];
 	}
 	current_size = size;
@@ -852,6 +889,36 @@ static ssize_t store_watch_fade_in_out(struct device *dev,
 	return count;
 }
 
+#if defined(CONFIG_LGE_LCD_TUNING)
+static ssize_t show_watch_font_type_reset(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+
+	return sprintf(buf, "%d\n", mfd->watch.font_type_reset);
+}
+
+
+static ssize_t store_watch_font_type_reset(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+	unsigned int enable;
+
+	sscanf(buf, "%d", &enable);
+
+	if (enable == 1)
+		mfd->watch.font_type_reset = 1;
+	else
+		mfd->watch.font_type_reset = 0;
+
+	pr_info("[Watch] %s enable : %d\n", __func__, enable);
+	return count;
+}
+#endif
 
 static DEVICE_ATTR(config_fontonoff, S_IWUSR|S_IRUGO, NULL, store_watch_fontonoff);
 static DEVICE_ATTR(config_fonteffect, S_IWUSR|S_IRUGO, NULL, store_watch_fonteffect_config);
@@ -859,12 +926,15 @@ static DEVICE_ATTR(config_fontproperty, S_IWUSR|S_IRUGO, NULL, store_watch_fontp
 static DEVICE_ATTR(config_fontposition, S_IWUSR|S_IRUGO, NULL, store_watch_fontposition_config);
 static DEVICE_ATTR(config_timesync, S_IWUSR|S_IRUGO, NULL, store_watch_timesync_config);
 static DEVICE_ATTR(config_font_download, S_IWUSR|S_IRUGO, NULL, store_watch_font_download);
-static DEVICE_ATTR(config_font_crc_check, S_IWUSR|S_IRUGO, NULL, store_watch_font_crc_check);
 static DEVICE_ATTR(font_type, S_IWUSR|S_IRUGO, show_watch_font_type, store_watch_font_type);
 static DEVICE_ATTR(set_watch, S_IWUSR|S_IRUGO, show_watch_watch_reg_read, show_watch_watch_reg_write);
 static DEVICE_ATTR(get_watch, S_IWUSR|S_IRUGO, show_watch_watch_reg, store_watch_watch_reg);
 static DEVICE_ATTR(scroll, S_IWUSR|S_IRUGO, NULL, store_watch_scroll);
 static DEVICE_ATTR(fade_in_out, S_IWUSR|S_IRUGO, NULL, store_watch_fade_in_out);
+#if defined(CONFIG_LGE_LCD_TUNING)
+static DEVICE_ATTR(font_type_reset, S_IWUSR|S_IRUGO, show_watch_font_type_reset, store_watch_font_type_reset);
+#endif
+
 
 static struct attribute *watch_attribute_list[] = {
 	&dev_attr_config_fontonoff.attr,
@@ -873,12 +943,14 @@ static struct attribute *watch_attribute_list[] = {
 	&dev_attr_config_fontposition.attr,
 	&dev_attr_config_timesync.attr,
 	&dev_attr_config_font_download.attr,
-	&dev_attr_config_font_crc_check.attr,
 	&dev_attr_font_type.attr,
 	&dev_attr_set_watch.attr,
 	&dev_attr_get_watch.attr,
 	&dev_attr_scroll.attr,
 	&dev_attr_fade_in_out.attr,
+#if defined(CONFIG_LGE_LCD_TUNING)
+	&dev_attr_font_type_reset.attr,
+#endif
 	NULL,
 };
 
@@ -904,41 +976,6 @@ int lcd_watch_wdata_init(struct  msm_fb_data_type *mfd)
 	int ret = 0 ;
 
 	memset(&(mfd->watch), 0x0, sizeof(struct watch_data));
-	/*
-	mfd->watch.wdata.mode.dwch_blink_period = 2;
-	mfd->watch.wdata.mode.dwch_24_00 = 1;
-	mfd->watch.wdata.mode.dwch_24h = 1;
-	mfd->watch.wdata.mode.dwch_z_disp_h = 1;
-	mfd->watch.wdata.mode.dwch_z_disp_m = 1;
-
-	mfd->watch.wdata.position.btm_pos.start_x = 0;
-	mfd->watch.wdata.position.btm_pos.start_y = 0;
-	mfd->watch.wdata.position.awch_size.size_x = 600;
-	mfd->watch.wdata.position.awch_size.size_y = 600;
-	mfd->watch.wdata.position.awch_pos.start_x = 0;
-	mfd->watch.wdata.position.awch_pos.start_y = 0;
-	mfd->watch.wdata.position.awch_center.start_x = 300;
-	mfd->watch.wdata.position.awch_center.start_y = 300;
-	mfd->watch.wdata.position.dwch_size.size_x = 512;
-	mfd->watch.wdata.position.dwch_size.size_y = 184;
-	mfd->watch.wdata.position.dwch_pos.start_x = 42;
-	mfd->watch.wdata.position.dwch_pos.start_y = 0;
-	mfd->watch.wdata.position.dwch_blink_start_x = 232;
-	mfd->watch.wdata.position.dwch_blink_size_x = 48;
-	mfd->watch.wdata.position.dwch_h_10_pos_x = 0;
-	mfd->watch.wdata.position.dwch_h_1_pos_x = 116;
-	mfd->watch.wdata.position.dwch_m_10_pos_x = 280;
-	mfd->watch.wdata.position.dwch_m_1_pos_x = 396;
-	mfd->watch.wdata.position.dwch_colon_pos_x = 232;
-
-	mfd->watch.wdata.font.font_size_digit_x = 116;
-	mfd->watch.wdata.font.font_size_digit_y = 184;
-	mfd->watch.wdata.font.font_size_colon_x = 116;
-	mfd->watch.wdata.font.font_size_analog_x = 39;
-	mfd->watch.wdata.font.font_size_analog_y = 330;
-	mfd->watch.wdata.font.font_analog_center_x = 19;
-	mfd->watch.wdata.font.font_analog_center_y = 270;
-	*/
 	mfd->watch.wdata.position.aod_pos_x = AOD_POS_X;
 	mfd->watch.wdata.position.awch_size.size_x = AWATCH_SIZE_X;
 	mfd->watch.wdata.position.awch_size.size_y = AWATCH_SIZE_Y;
@@ -951,57 +988,100 @@ int lcd_watch_wdata_init(struct  msm_fb_data_type *mfd)
 	mfd->watch.wdata.u2_scr_fad.vsmode = 1;
 	mfd->watch.wdata.u2_scr_fad.vsposfix = 1;
 	mfd->watch.wdata.u2_scr_fad.vsub = 320;
-	mfd->watch.wdata.u2_scr_fad.vslb = 420;
-	mfd->watch.wdata.u2_scr_fad.vsfi = 30;
+	mfd->watch.wdata.u2_scr_fad.vslb = 416;
+	mfd->watch.wdata.u2_scr_fad.vsfi = 900;
 	mfd->watch.wdata.u2_scr_fad.vsli = 1;
+#if defined(CONFIG_LGE_LCD_TUNING)
+	mfd->watch.font_type_reset = 0;
+#endif
+	mfd_base = mfd;
 
 	return ret;
 }
 
-
-int lcd_watch_deside_status(struct  msm_fb_data_type *mfd, unsigned int cur_mode, unsigned int next_mode)
+void lcd_watch_set_reg_after_fd(struct  msm_fb_data_type *mfd)
 {
-	int ret = 0;
-	bool hw_clock_on = false;
+	mutex_lock(&mfd->watch_lock);
+	if (mfd->need_to_init_watch) {
+		lcd_watch_set_fontposition(mfd);
+		lcd_watch_set_fontproperty(mfd);
+		lcd_watch_display_onoff(mfd, mfd->watch.hw_clock_user_state);
+		pr_info("[Watch] Init watch register after font download!!\n");
+		mfd->need_to_init_watch = false;
+	}
+	else
+		pr_info("[Watch] Font not downloaded!!\n");
+	mutex_unlock(&mfd->watch_lock);
+}
+
+void lcd_watch_restore_reg_after_panel_reset(void)
+{
+	mutex_lock(&mfd_base->watch_lock);
+	lcd_watch_set_fontposition(mfd_base);
+	lcd_watch_set_fontproperty(mfd_base);
+	lcd_watch_rtc_start(mfd_base, WATCH_RTC_STOP);
+	mdelay(1);
+	lcd_watch_rtc_start(mfd_base, WATCH_RTC_UPDATE);
+	lcd_watch_display_onoff(mfd_base, mfd_base->watch.hw_clock_user_state);
+	mutex_unlock(&mfd_base->watch_lock);
+	pr_info("[Watch] Init watch regster after panel reset!!\n");
+}
+
+void lcd_watch_font_crc_check_after_panel_reset(void)
+{
+	if (mfd_base->watch.current_font_type)
+		lcd_watch_font_crc_check(mfd_base);
+}
+
+void lcd_watch_deside_status(struct  msm_fb_data_type *mfd, unsigned int cur_mode, unsigned int next_mode)
+{
 
 	pr_info("[Watch] Current mode : %d, Next Mode : %d, User Setting %s\n", cur_mode, next_mode, mfd->watch.hw_clock_user_state ? "On" : "Off");
+	mfd->ready_to_u2 = false;
+	/* Next is U3 Case */
+	/* 1. block AOD brightness set */
+	if (next_mode == AOD_PANEL_MODE_U3_UNBLANK) {
+		pr_info("[Watch] Block AOD backlight in U3!!\n");
+		mfd->block_aod_bl = true;
+#if defined(CONFIG_LGE_LCD_TUNING)
+		if (mfd->watch.font_type_reset == 1) {
+			mfd->watch.current_font_type = FONT_NONE;
+			mfd->watch.font_download_state = FONT_STATE_NONE;
+		}
+#endif
+		return;
+	}
 
-	/* HW clock on case */
-	/* 1. U3 -> U2 blank */
-	if( (cur_mode == AOD_PANEL_MODE_U3_UNBLANK && next_mode == AOD_PANEL_MODE_U2_BLANK) ||
-		(cur_mode == AOD_PANEL_MODE_U2_UNBLANK && next_mode == AOD_PANEL_MODE_U2_BLANK)) {
-		hw_clock_on = mfd->watch.hw_clock_user_state;
-		pr_info("[Watch] HW clock %s\n", hw_clock_on ? "On" : "Off");
+	/* Next is U0 Case */
+	/* 1. block AOD brightness set */
+	/* 2. reset current font type */
+	if (next_mode == AOD_PANEL_MODE_U0_BLANK) {
+		pr_info("[Watch] Block AOD backlight in U0 and need to init watch!!\n");
+		mfd->block_aod_bl = true;
+		mfd->need_to_init_watch = true;
+		return;
 	}
 
 	/* HW clock don't control */
 	/* 1. U2 blank -> U2 unblank*/
 	if (cur_mode == AOD_PANEL_MODE_U2_BLANK && next_mode == AOD_PANEL_MODE_U2_UNBLANK) {
 		pr_info("[Watch] Don't control hw clock!!\n");
-		return ret;
+		return;
 	}
 
-	if (mfd->watch_need_init) {
-		lcd_watch_set_fontposition(mfd);
-		lcd_watch_set_fontproperty(mfd);
-		mfd->watch_need_init = false;
-		lcd_watch_font_crc_start(mfd, WATCH_FONT_CRC_START);
-		pr_info("[Watch] New font downloaded. Need to init register\n");
-	}
-
-	if (mfd->watch.wdata.font_crc.crc_en == 1) {
-		mdelay(1);
-		lcd_watch_font_crc_read(mfd);
-		lcd_watch_font_crc_start(mfd, WATCH_FONT_CRC_CLEAR);
-	}
-
-	if (hw_clock_on) {
-		mfd->watch.wdata.u2_scr_fad.vsposfix = 1;
+	/* Next is U2 blank */
+	/* 1. U3 -> U2 blank */
+	/* HW clock on and scroll enable*/
+	if (cur_mode == AOD_PANEL_MODE_U3_UNBLANK && next_mode == AOD_PANEL_MODE_U2_BLANK) {
+		lcd_watch_display_onoff(mfd, mfd->watch.hw_clock_user_state ? WATCH_ON : WATCH_OFF);
+		pr_info("[Watch] HW clock User State :  %s\n", mfd->watch.hw_clock_user_state ? "On" : "Off");
+		mfd->watch.wdata.u2_scr_fad.vsposfix = 0;
 		oem_mdss_watch_reg_write(mfd, U2_SCR_FAD);
-		lcd_watch_display_onoff(mfd, WATCH_ON);
 	}
-
-	return ret;
-
+	/*2. U2 unblank -> U2 blank after far */
+	/* scroll enable */
+	if (cur_mode == AOD_PANEL_MODE_U2_UNBLANK && next_mode == AOD_PANEL_MODE_U2_BLANK) {
+		mfd->watch.wdata.u2_scr_fad.vsposfix = 0;
+		oem_mdss_watch_reg_write(mfd, U2_SCR_FAD);
+	}
 }
-

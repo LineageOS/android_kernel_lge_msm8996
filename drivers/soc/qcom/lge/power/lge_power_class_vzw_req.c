@@ -49,6 +49,7 @@ struct lge_vzw_req {
 	struct lge_power *lge_cd_lpc;
 	struct power_supply *batt_psy;
 	struct power_supply *usb_psy;
+	struct power_supply *dc_psy;
 	int current_settled;
 	int input_current_trim;
 	int floated_chager;
@@ -58,27 +59,83 @@ struct lge_vzw_req {
 	chg_state vzw_chg_mode;
 	int under_chg_current;
 	int chg_present;
+	int dc_present;
 	int usbin_voltage;
+	int iusb_enable;
 	struct work_struct set_vzw_chg_work;
 	struct work_struct llk_work;
 };
+
+static bool lge_vzw_check_slow_charger(struct lge_vzw_req *vzw_req)
+{
+	int rc, icl_client_id;
+	union power_supply_propval prop = {0,};
+
+	icl_client_id = lgcc_get_effective_icl_id();
+	pr_debug("icl_client_id is %d\n", icl_client_id);
+
+	if(!vzw_req->usb_psy) {
+		vzw_req->usb_psy = power_supply_get_by_name("usb");
+	}
+	if(vzw_req->usb_psy) {
+		rc = vzw_req->usb_psy->get_property(vzw_req->usb_psy,
+				POWER_SUPPLY_PROP_PRESENT, &prop);
+		if(rc == 0) {
+			if(prop.intval) {
+				if (vzw_req->current_settled > 0 && (icl_client_id != 2)) {
+					if (vzw_req->input_current_trim/1000 < vzw_req->under_chg_current)
+						return true;
+					else
+						return false;
+				}
+			} else
+				pr_debug("usb is not connected\n");
+		} else
+			pr_err("Failed to get usb property\n");
+	}
+
+	if(!vzw_req->dc_psy)
+		vzw_req->dc_psy = power_supply_get_by_name("dc");
+	if(vzw_req->dc_psy) {
+		rc = vzw_req->dc_psy->get_property(vzw_req->dc_psy,
+				POWER_SUPPLY_PROP_PRESENT, &prop);
+		if(rc == 0) {
+			vzw_req->dc_present = prop.intval;
+			if(prop.intval) {
+				rc = vzw_req->dc_psy->get_property(vzw_req->dc_psy,
+						POWER_SUPPLY_PROP_CURRENT_MAX, &prop);
+				if(rc == 0 && (prop.intval < vzw_req->under_chg_current))
+					return true;
+				else
+					return false;
+			}else
+				pr_debug("dc is not connected\n");
+		} else
+			pr_err("Failed to get dc property\n");
+	}
+
+	return false;
+}
 
 static void lge_vzw_set_vzw_chg_work(struct work_struct *work)
 {
 	struct lge_vzw_req *vzw_req = container_of(work, struct lge_vzw_req,
 							set_vzw_chg_work);
+	bool slow_charger;
 	chg_state pre_vzw_chg_mode = vzw_req->vzw_chg_mode;
+
+	slow_charger = lge_vzw_check_slow_charger(vzw_req);
+
 	if (vzw_req->floated_chager)
 		vzw_req->vzw_chg_mode = VZW_INCOMPATIBLE_CHARGING;
-	else if (vzw_req->chg_present)
+	else if (vzw_req->chg_present || vzw_req->dc_present)
 		vzw_req->vzw_chg_mode = VZW_NORMAL_CHARGING;
 	else
 		vzw_req->vzw_chg_mode = VZW_NO_CHARGER;
 
-	if (vzw_req->current_settled > 0) {
-		if (vzw_req->input_current_trim/1000 < vzw_req->under_chg_current) {
-			vzw_req->vzw_chg_mode = VZW_UNDER_CURRENT_CHARGING;
-		}
+	if(slow_charger) {
+		pr_info("slow charger detected!\n");
+		vzw_req->vzw_chg_mode = VZW_UNDER_CURRENT_CHARGING;
 	}
 
 	if (pre_vzw_chg_mode != vzw_req->vzw_chg_mode)
@@ -92,9 +149,17 @@ static void lge_vzw_llk_work(struct work_struct *work)
 	struct lge_vzw_req *vzw_req = container_of(work, struct lge_vzw_req,
 						llk_work);
 	int prev_chg_enable = vzw_req->charging_enable;
+	int prev_iusb_enable = vzw_req->iusb_enable;
 
 	if (vzw_req->chg_present) {
 		if (vzw_req->capacity > LLK_MAX_THR_SOC) {
+			vzw_req->iusb_enable = 0;
+			pr_info("Disconnect USB current by LLK_mode.\n");
+		} else {
+			vzw_req->iusb_enable = 1;
+			pr_info("Connect USB current by LLK_mode.\n");
+		}
+		if (vzw_req->capacity >= LLK_MAX_THR_SOC) {
 			vzw_req->charging_enable = 0;
 			pr_info("Stop charging by LLK_mode.\n");
 		}
@@ -102,7 +167,8 @@ static void lge_vzw_llk_work(struct work_struct *work)
 			vzw_req->charging_enable = 1;
 			pr_info("Start Charging by LLK_mode.\n");
 		}
-		if (vzw_req->charging_enable != prev_chg_enable) {
+		if ((vzw_req->charging_enable != prev_chg_enable)
+			|| (vzw_req->iusb_enable != prev_iusb_enable)) {
 			pr_info("lge_power_changed in LLK_mode.\n");
 			lge_power_changed(&vzw_req->lge_vzw_lpc);
 		}
@@ -110,7 +176,7 @@ static void lge_vzw_llk_work(struct work_struct *work)
 }
 
 static char *vzw_req_supplied_from[] = {
-	"battery",
+	"battery", "dc",
 };
 
 static char *vzw_req_lge_supplied_from[] = {
@@ -131,12 +197,15 @@ static void lge_vzw_external_power_changed(struct lge_power *lpc)
 					struct lge_vzw_req, lge_vzw_lpc);
 	int prev_input_current_trim = vzw_req->input_current_trim;
 	static int before_cur_settled;
+	static int prev_dc_present = 0;
 
 	if (!vzw_req->batt_psy)
 		vzw_req->batt_psy = power_supply_get_by_name("battery");
+	if (!vzw_req->dc_psy)
+		vzw_req->dc_psy = power_supply_get_by_name("dc");
 
-	if (!vzw_req->batt_psy) {
-		pr_err("battery is not yet ready\n");
+	if (!vzw_req->batt_psy || !vzw_req->dc_psy) {
+		pr_err("battery or dc are not yet ready\n");
 	} else {
 		rc = vzw_req->batt_psy->get_property(vzw_req->batt_psy,
 				POWER_SUPPLY_PROP_INPUT_CURRENT_SETTLED, &ret);
@@ -157,11 +226,24 @@ static void lge_vzw_external_power_changed(struct lge_power *lpc)
 				pr_err ("cannot get input current trim!\n");
 			} else {
 				vzw_req->input_current_trim = ret.intval;
+
+				if (vzw_req->dc_psy->get_property &&
+					!vzw_req->dc_psy->get_property(vzw_req->dc_psy,
+						POWER_SUPPLY_PROP_PRESENT, &ret)) {
+					vzw_req->dc_present = !!ret.intval;
+				}
+				else {
+					pr_info("Failed to get POWER_SUPPLY_PROP_PRESENT of DC\n");
+					vzw_req->dc_present = prev_dc_present;
+				}
+
 				if (vzw_req->input_current_trim
-					!= prev_input_current_trim) {
+					!= prev_input_current_trim ||
+					prev_dc_present != vzw_req->dc_present) {
 					pr_info("input current trim : %d\n",
 								vzw_req->input_current_trim);
 					schedule_work(&vzw_req->set_vzw_chg_work);
+					prev_dc_present = vzw_req->dc_present;
 				}
 			}
 		}
@@ -248,6 +330,7 @@ static enum lge_power_property lge_power_lge_vzw_properties[] = {
 	LGE_POWER_PROP_CHARGING_ENABLED,
 	LGE_POWER_PROP_VOLTAGE_NOW,
 	LGE_POWER_PROP_INPUT_CURRENT_MAX,
+	LGE_POWER_PROP_USB_CHARGING_ENABLED,
 };
 
 static enum lge_power_property
@@ -319,14 +402,18 @@ static int lge_power_lge_vzw_get_property(struct lge_power *lpc,
 		val->intval = vzw_req->charging_enable;
 		break;
 
-	case LGE_POWER_PROP_VOLTAGE_NOW: 
+	case LGE_POWER_PROP_VOLTAGE_NOW:
 		vzw_req->usbin_voltage = lge_vzw_get_input_voltage(vzw_req);
 		val->intval = vzw_req->usbin_voltage;
-		pr_err("usbin voltage %d\n", vzw_req->usbin_voltage); 
+		pr_err("usbin voltage %d\n", vzw_req->usbin_voltage);
 		break;
-		
+
 	case LGE_POWER_PROP_INPUT_CURRENT_MAX :
 		val->intval = vzw_req->input_current_trim;
+		break;
+
+	case LGE_POWER_PROP_USB_CHARGING_ENABLED:
+		val->intval = vzw_req->iusb_enable;
 		break;
 
 	default:
@@ -361,6 +448,7 @@ static int lge_vzw_probe(struct platform_device *pdev)
 
 	vzw_req->charging_enable = 1;
 	vzw_req->store_demo_enabled = 0;
+	vzw_req->iusb_enable = 1;
 
 	lge_power_vzw = &vzw_req->lge_vzw_lpc;
 	lge_power_vzw->name = "lge_vzw";

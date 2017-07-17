@@ -6,7 +6,7 @@
  *
  * Definitions subject to change without notice.
  *
- * Copyright (C) 1999-2016, Broadcom Corporation
+ * Copyright (C) 1999-2017, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -27,7 +27,7 @@
  * other than the GPL, without Broadcom's express prior written consent.
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wlioctl.h 668889 2016-11-07 08:30:26Z $
+ * $Id: wlioctl.h 674934 2016-12-13 09:34:14Z $
  */
 
 #ifndef _wlioctl_h_
@@ -4371,6 +4371,7 @@ typedef struct wl_tcp_keep_set {
 			OFFSETOF(wl_pkt_filter_pattern_listel_t, mask_and_data)
 
 #define WL_APF_INTERNAL_VERSION 1
+#define WL_APF_PROGRAM_MAX_SIZE (2 * 1024)
 #define WL_APF_PROGRAM_FIXED_LEN	OFFSETOF(wl_apf_program_t, instrs)
 #define WL_APF_PROGRAM_LEN(apf_program)	\
 	(apf_program->instr_len * sizeof(apf_program->instrs[0]))
@@ -8184,6 +8185,8 @@ typedef struct wl_roam_prof_band {
 	uint16	len;			/* length in bytes of this structure */
 	wl_roam_prof_t roam_prof[WL_MAX_ROAM_PROF_BRACKETS];
 } wl_roam_prof_band_t;
+
+#define WL_CU_CALC_DURATION_DEFAULT 10 /* seconds */
 
 /* Data structures for Interface Create/Remove  */
 

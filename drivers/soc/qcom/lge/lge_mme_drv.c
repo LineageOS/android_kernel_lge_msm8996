@@ -199,7 +199,7 @@ exit:
 	return ret;
 }
 
-int tramsmit_data(int type)
+int transmit_data(int type)
 {
 	int ret = 0;
 
@@ -215,7 +215,7 @@ int tramsmit_data(int type)
 	}
 	ret = qsc_send_req_command(111, DONT_CARE);
 	if (ret < 0) {
-		pr_err("[MME] Failed to tramsmit the data\n");
+		pr_err("[MME] Failed to transmit the data\n");
 		goto exit;
 	}
 	ret = qsc_send_req_command(17, DONT_CARE);
@@ -259,17 +259,17 @@ static ssize_t lge_store_mme_command (struct device *dev,
 
 		case CMD_MME_SEND_TRACK1_ONCE:
 			pr_err("[MME] CMD_MME_SEND_TRACK1_ONCE\n");
-			ret = tramsmit_data(MME_TRACK_TYPE_1);
+			ret = transmit_data(MME_TRACK_TYPE_1);
 			break;
 
 		case CMD_MME_SEND_TRACK2_ONCE:
 			pr_err("[MME] CMD_MME_SEND_TRACK2_ONCE\n");
-			ret = tramsmit_data(MME_TRACK_TYPE_2);
+			ret = transmit_data(MME_TRACK_TYPE_2);
 			break;
 
 		case CMD_MME_SEND_TRACK3_ONCE:
 			pr_err("[MME] CMD_MME_SEND_TRACK3_ONCE\n");
-			ret = tramsmit_data(MME_TRACK_TYPE_3);
+			ret = transmit_data(MME_TRACK_TYPE_3);
 			break;
 
 		case CMD_MME_TEST_MODE:
@@ -294,7 +294,7 @@ static ssize_t lge_store_mme_command (struct device *dev,
 			mutex_unlock(&repeat_mutex);
 
 			while (is_repeat == 1) {
-				ret = tramsmit_data(MME_TRACK_TYPE_HIGH);
+				ret = transmit_data(MME_TRACK_TYPE_HIGH);
 				if(ret)
 					pr_err("[MME] HIGH_SIGNAL: Failed to transmit card data\n");
 				mdelay(1000);

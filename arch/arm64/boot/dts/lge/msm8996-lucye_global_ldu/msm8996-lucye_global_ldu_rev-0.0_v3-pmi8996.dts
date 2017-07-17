@@ -17,11 +17,10 @@
 #include "../../qcom/msm-pmi8996.dtsi"
 #include "msm8996-lucye_global_ldu.dtsi"
 #include "msm8996-lucye_global_ldu-touch.dtsi"
-#include "msm8996-lucye_global_ldu-mme.dtsi"
 #include "../msm8996-camera/msm8996-lucye-camera_rev-0.0.dtsi"
 #include "../msm8996-lucye_storage_type/current_storage_type.dtsi"
 #include "../msm8996-sound/msm8996-lucye-sound_rev-0_0.dtsi"
-#include "msm8996-lucye_global_ldu-sound.dtsi"
+#include "../msm8996-lucye_sound_type/current_sound_type.dtsi"
 
 / {
 	model = "Qualcomm Technologies, Inc. MSM 8996 v3.x + PMI8996 MTP";

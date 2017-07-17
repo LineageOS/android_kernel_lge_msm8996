@@ -10,15 +10,44 @@
 #include <linux/workqueue.h>
 #include <linux/regulator/consumer.h>
 #include <linux/slab.h>
-#ifdef CONFIG_DUAL_ROLE_USB_INTF
-#include <linux/usb/class-dual-role.h>
-#endif
 #include <linux/of_gpio.h>
 #include <linux/gpio/consumer.h>
 
 #ifdef CONFIG_LGE_USB_DEBUGGER
 #include <soc/qcom/lge/power/lge_power_class.h>
 #include <soc/qcom/lge/power/lge_cable_detect.h>
+#endif
+
+#ifdef CONFIG_DUAL_ROLE_USB_INTF
+#include <linux/usb/class-dual-role.h>
+#else
+enum {
+	DUAL_ROLE_PROP_MODE_UFP = 0,
+	DUAL_ROLE_PROP_MODE_DFP,
+	DUAL_ROLE_PROP_MODE_FAULT,
+	DUAL_ROLE_PROP_MODE_NONE,
+	/*The following should be the last element*/
+	DUAL_ROLE_PROP_MODE_TOTAL,
+};
+
+enum {
+	DUAL_ROLE_PROP_PR_SRC = 0,
+	DUAL_ROLE_PROP_PR_SNK,
+	DUAL_ROLE_PROP_PR_FAULT,
+	DUAL_ROLE_PROP_PR_NONE,
+	/*The following should be the last element*/
+	DUAL_ROLE_PROP_PR_TOTAL,
+
+};
+
+enum {
+	DUAL_ROLE_PROP_DR_HOST = 0,
+	DUAL_ROLE_PROP_DR_DEVICE,
+	DUAL_ROLE_PROP_DR_FAULT,
+	DUAL_ROLE_PROP_DR_NONE,
+	/*The following should be the last element*/
+	DUAL_ROLE_PROP_DR_TOTAL,
+};
 #endif
 
 struct hw_pd_dev {
@@ -30,11 +59,6 @@ struct hw_pd_dev {
 	int mode;
 	int pr;
 	int dr;
-
-#ifdef CONFIG_DUAL_ROLE_USB_INTF
-	struct dual_role_phy_desc *desc;
-	struct dual_role_phy_instance *dual_role;
-#endif
 
 	struct gpio_desc *redriver_sel_gpio;
 
@@ -94,6 +118,7 @@ enum pd_dpm_typec {
 	PD_DPM_TYPEC_UNATTACHED,
 	PD_DPM_TYPEC_ATTACHED_SRC,
 	PD_DPM_TYPEC_ATTACHED_SNK,
+	PD_DPM_TYPEC_CC_FAULT,
 };
 
 struct pd_dpm_typec_state {

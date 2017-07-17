@@ -23,13 +23,25 @@
 #else
 #include <soc/qcom/lge/lge_cable_detection.h>
 #endif
+#include <linux/module.h>
 #include <linux/power/lge_battery_id.h>
 #include <linux/lge_display_debug.h>
 #include "lge_mdss_display.h"
 
+extern int get_factory_cable(void);
+#define LGEUSB_FACTORY_56K 1
+#define LGEUSB_FACTORY_130K 2
+#define LGEUSB_FACTORY_910K 3
 
 #if IS_ENABLED(CONFIG_LGE_DISPLAY_BL_EXTENDED)
 extern int mdss_fb_mode_switch(struct msm_fb_data_type *mfd, u32 mode);
+#endif
+#if defined(CONFIG_LGE_PANEL_RECOVERY)
+struct msm_fb_data_type *mfd_recovery = NULL;
+#endif
+
+#ifdef CONFIG_LGE_DP_UNSUPPORT_NOTIFY
+extern void register_dp_notify_node(void);
 #endif
 
 void lge_mdss_fb_init(struct msm_fb_data_type *mfd)
@@ -55,6 +67,12 @@ void lge_mdss_fb_init(struct msm_fb_data_type *mfd)
 #if defined(CONFIG_LGE_DISPLAY_AOD_WITH_MIPI)
 	mutex_init(&mfd->watch_lock);
 #endif
+#if defined(CONFIG_LGE_PANEL_RECOVERY)
+	mfd_recovery = mfd;
+#endif
+#ifdef CONFIG_LGE_DP_UNSUPPORT_NOTIFY
+	register_dp_notify_node();
+#endif
 }
 
 /*---------------------------------------------------------------------------*/
@@ -71,50 +89,25 @@ static inline bool is_factory_cable(void)
 {
 	unsigned int cable_info;
 #ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_CABLE_DETECT
-	struct lge_power *lge_cd_lpc;
-	union lge_power_propval lge_val = {0,};
-	int rc;
-	unsigned int *p_cable_type = NULL;
-	unsigned int cable_smem_size = 0;
-
-	lge_cd_lpc = lge_power_get_by_name("lge_cable_detect");
-	if (!lge_cd_lpc) {
-		pr_err("[MDSS] lge_cd_lpc is not yet ready\n");
-		p_cable_type = smem_get_entry(SMEM_ID_VENDOR1,
-					&cable_smem_size, 0, 0);
-		if (p_cable_type)
-			cable_info = *p_cable_type;
-		else
-			return  false;
-
-		pr_err("[MDSS] cable %d\n", cable_info);
+	cable_info = get_factory_cable();
 #if !defined(CONFIG_LGE_PM_EMBEDDED_BATTERY)
-		if (cable_info == LT_CABLE_56K ||
-			cable_info == LT_CABLE_130K ||
-			cable_info == LT_CABLE_910K)
-#else
-		if (cable_info == LT_CABLE_130K ||
-			cable_info == LT_CABLE_910K)
-#endif
+		if (cable_info == LGEUSB_FACTORY_56K ||
+			cable_info == LGEUSB_FACTORY_130K ||
+			cable_info == LGEUSB_FACTORY_910K) {
+			pr_info("%s : cable_type = factory(%d) \n",__func__, cable_info);
 			return true;
-	} else {
-		rc = lge_cd_lpc->get_property(lge_cd_lpc,
-				LGE_POWER_PROP_CABLE_TYPE, &lge_val);
-		cable_info = lge_val.intval;
-
-#if !defined(CONFIG_LGE_PM_EMBEDDED_BATTERY)
-		if (cable_info == CABLE_ADC_56K ||
-			cable_info == CABLE_ADC_130K ||
-			cable_info == CABLE_ADC_910K) {
-#else
-		if (cable_info == CABLE_ADC_130K ||
-			cable_info == CABLE_ADC_910K) {
-#endif
-
-				pr_err("[MDSS] lge_cd_lpc is ready, cable_info = %d\n", cable_info);
-				return true;
+		} else {
+			return false;
 		}
-	}
+#else
+		if (cable_info == LGEUSB_FACTORY_130K ||
+			cable_info == LGEUSB_FACTORY_910K) {
+			pr_info("%s : cable_type = factory(%d) \n",__func__, cable_info);
+			return true;
+		} else {
+			return false;
+		}
+#endif
 #elif defined (CONFIG_LGE_PM_CABLE_DETECTION)
 	cable_info = lge_pm_get_cable_type();
 
@@ -253,9 +246,15 @@ int lge_br_to_bl (struct msm_fb_data_type *mfd, int br_lvl)
 
 	if (pinfo->blmap[blmaptype])
 		bl_lvl = pinfo->blmap[blmaptype][br_lvl];
-
-	pr_info("%s: br_lvl(%d) -> bl_lvl(%d)\n", lge_get_blmapname(blmaptype),
-						br_lvl, bl_lvl);
+#if defined(CONFIG_LGE_DISPLAY_AOD_WITH_MIPI)
+	if (mfd->panel_info->aod_cur_mode == AOD_PANEL_MODE_U2_BLANK ||
+		mfd->panel_info->aod_cur_mode == AOD_PANEL_MODE_U2_UNBLANK)
+		pr_info("[AOD] br_lvl(%d) -> bl_lvl(%d)\n", br_lvl, bl_lvl);
+	else
+		pr_info("%s: br_lvl(%d) -> bl_lvl(%d)\n", lge_get_blmapname(blmaptype), br_lvl, bl_lvl);
+#else
+	pr_info("%s: br_lvl(%d) -> bl_lvl(%d)\n", lge_get_blmapname(blmaptype), br_lvl, bl_lvl);
+#endif
 	return bl_lvl;
 }
 
@@ -385,6 +384,86 @@ static ssize_t mdss_fb_set_bl_off_and_block(struct device *dev,
 static DEVICE_ATTR(sp_link_backlight_off, S_IRUGO | S_IWUSR,
 	mdss_fb_get_bl_off_and_block, mdss_fb_set_bl_off_and_block);
 #endif
+
+/*---------------------------------------------------------------------------*/
+/* Recovery Mode - To recovery when screen crack occured					 */
+/*---------------------------------------------------------------------------*/
+#if defined(CONFIG_LGE_PANEL_RECOVERY)
+int recovery_val;
+ssize_t get_recovery_mode(struct device *dev,
+                struct device_attribute *attr, char *buf)
+{
+	int ret;
+
+	ret = scnprintf(buf, PAGE_SIZE, "%d\n", recovery_val);
+
+	return ret;
+}
+
+ssize_t set_recovery_mode(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	struct fb_info *fbi = dev_get_drvdata(dev);
+	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
+	struct mdss_panel_data *pdata;
+	struct mdss_dsi_ctrl_pdata *ctrl;
+
+	pdata = dev_get_platdata(&mfd->pdev->dev);
+	if (!pdata) {
+		pr_err("no panel connected!\n");
+		return count;
+	}
+	if (mfd->panel_power_state == MDSS_PANEL_POWER_OFF) {
+		pr_err("%s: Panel is off\n", __func__);
+		return count;
+	}
+	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata, panel_data);
+	if (!ctrl) {
+		pr_err("%s: ctrl is null\n", __func__);
+		return count;
+	}
+
+	recovery_val = simple_strtoul(buf, NULL, 10);
+
+	if(recovery_val > 0) {
+		pr_info("%s: RECOVERY when screen crack occured.\n",__func__);
+		lge_panel_recovery_mode();
+	} else {
+		pr_info("%s: NO RECOVERY\n",__func__);
+	}
+
+	return count;
+}
+static DEVICE_ATTR(recovery_mode, S_IWUSR|S_IRUGO, get_recovery_mode, set_recovery_mode);
+
+bool lge_panel_recovery_mode(void)
+{
+	struct mdss_panel_data *pdata;
+	struct mdss_dsi_ctrl_pdata *ctrl;
+	pdata = dev_get_platdata(&mfd_recovery->pdev->dev);
+	if (!pdata) {
+		pr_err("no panel connected!\n");
+		return false;
+	}
+	if (mfd_recovery->panel_power_state == MDSS_PANEL_POWER_OFF) {
+		pr_err("%s: Panel is off\n", __func__);
+		return false;
+	}
+	ctrl = container_of(pdata, struct mdss_dsi_ctrl_pdata, panel_data);
+	if (!ctrl) {
+		pr_err("%s: ctrl is null\n", __func__);
+		return false;
+	}
+
+	pr_info("%s: RECOVERY when screen crack occured.\n",__func__);
+	mdss_fb_report_panel_dead(mfd_recovery);
+	return true;
+}
+EXPORT_SYMBOL(lge_panel_recovery_mode);
+#endif
+
+
 /*---------------------------------------------------------------------------*/
 /* AOD backlight                                                             */
 /*---------------------------------------------------------------------------*/
@@ -533,6 +612,13 @@ static void mdss_fb_set_bl_brightness_aod(struct led_classdev *led_cdev,
 				      enum led_brightness value)
 {
 	struct msm_fb_data_type *mfd = dev_get_drvdata(led_cdev->dev->parent);
+#if defined(CONFIG_LGE_DISPLAY_AOD_WITH_MIPI)
+	if (mfd->block_aod_bl) {
+		pr_info("[AOD] Save unset Level : %d\n", value);
+		mfd->unset_aod_bl = value;
+		return;
+	}
+#endif
 	mutex_lock(&mfd->bl_lock);
 	mdss_fb_set_bl_brightness_aod_sub(mfd, value);
 	mutex_unlock(&mfd->bl_lock);
@@ -1008,7 +1094,10 @@ static ssize_t mdss_fb_set_keep_aod(struct device *dev,
 	pdata->panel_info.aod_keep_u2 = new_value;
 	mutex_unlock(&mfd->aod_lock);
 	pr_info("[AOD] keep_aod old value : %d, new value : %d\n", old_value, new_value);
-
+#if defined(CONFIG_LGE_DISPLAY_AOD_WITH_MIPI)
+	if (new_value == AOD_MOVE_TO_U3)
+		mfd->ready_to_u2 = false;
+#endif
 	/* Current mode is  AOD_PANEL_MODE_U2_UNBLANK and if set keep_aod by 0,
 	     We have to U2-> U3 command only */
 #if defined(CONFIG_LGE_DISPLAY_DYN_DSI_MODE_SWITCH)
@@ -1044,6 +1133,15 @@ static ssize_t mdss_fb_set_keep_aod(struct device *dev,
 #endif
 		oem_mdss_aod_set_backlight_mode(mfd);
 		pdata->panel_info.aod_keep_u2 = AOD_NO_DECISION;
+#if defined(CONFIG_LGE_DISPLAY_AOD_WITH_MIPI)
+		/* When Move to U3 mode from U2 unblank */
+		/* 1. Turn off backlight	*/
+		/* 2. Block aod bl control */
+		mutex_lock(&mfd->bl_lock);
+		mdss_fb_set_bl_brightness_aod_sub(mfd, 0);
+		mutex_unlock(&mfd->bl_lock);
+		mfd->block_aod_bl = true;
+#endif
 #if IS_ENABLED(CONFIG_LGE_DISPLAY_BL_EXTENDED)
 		mutex_lock(&mfd->bl_lock);
 		mdss_fb_set_bl_brightness_aod_sub(mfd, mfd->br_lvl_ex);
@@ -1288,6 +1386,9 @@ static struct attribute *lge_mdss_fb_attrs[] = {
 #endif
 #if defined(CONFIG_LGE_HIGH_LUMINANCE_MODE)
 	&dev_attr_hl_mode.attr,
+#endif
+#if defined(CONFIG_LGE_PANEL_RECOVERY)
+	&dev_attr_recovery_mode.attr,
 #endif
 #if defined(CONFIG_LGE_DISPLAY_AOD_SUPPORTED)
 	&dev_attr_aod.attr,

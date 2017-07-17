@@ -174,6 +174,7 @@ static void sg_kfree(struct scatterlist *sg, unsigned int nents)
  *    that previously used with __sg_alloc_table().
  *
  **/
+#define LGE_KGSL_CRASH_DEBUG /*CASE#02743919, kgsl crash debug patch*/
 void __sg_free_table(struct sg_table *table, unsigned int max_ents,
 		     bool skip_first_chunk, sg_free_fn *free_fn)
 {
@@ -197,6 +198,10 @@ void __sg_free_table(struct sg_table *table, unsigned int max_ents,
 			next = sg_chain_ptr(&sgl[max_ents - 1]);
 			alloc_size = max_ents;
 			sg_size = alloc_size - 1;
+#ifdef LGE_KGSL_CRASH_DEBUG
+			if (next == NULL)
+				BUG();
+#endif
 		} else {
 			sg_size = alloc_size;
 			next = NULL;

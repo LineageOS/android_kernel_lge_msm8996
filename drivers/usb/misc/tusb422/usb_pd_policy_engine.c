@@ -19,6 +19,7 @@
 #include "tusb422.h"
 #include "tusb422_common.h"
 #include "usb_pd.h"
+#include <linux/module.h>
 #ifdef CONFIG_TUSB422_PAL
 	#include "usb_pd_pal.h"
 #endif
@@ -32,6 +33,10 @@
 	#include <linux/usb/class-dual-role.h>
 #endif
 
+#define VDM_DISCOVER_IDENTITY
+#ifdef VDM_DISCOVER_IDENTITY
+#include "vdm.h"
+#endif
 
 /* PD Counter */
 #define N_CAPS_COUNT        50
@@ -67,6 +72,9 @@ extern void usb_pd_pm_evaluate_src_caps(unsigned int port);
 extern usb_pd_port_config_t* usb_pd_pm_get_config(unsigned int port);
 extern void build_rdo(unsigned int port);
 extern uint32_t get_data_object(uint8_t *obj_data);
+#ifdef CONFIG_LGE_DP_UNSUPPORT_NOTIFY
+extern void tusb422_set_dp_notify_node(int val);
+#endif
 
 const char * const pdstate2string[PE_NUM_STATES] =
 {
@@ -375,6 +383,39 @@ static void usb_pd_pe_tx_data_msg(unsigned int port, msg_hdr_data_msg_type_t msg
 
 	return;
 }
+
+#ifdef VDM_DISCOVER_IDENTITY
+static void usb_pd_pe_tx_vdm_msg(unsigned int port, vdm_cmd_t command)
+{
+	vdm_hdr_t *vdm = (vdm_hdr_t *)(&buf[3]);
+	uint8_t ndo = 0;
+
+	switch (command) {
+	case VDM_HDR_CMD_DISCOVER_IDENTITY:
+		ndo = 1;
+
+		vdm->CommandType = VDM_HDR_CMD_TYPE_REQ;
+		vdm->ObjectPosition = 0;
+		vdm->SVID = VDM_HDR_SVID_PD_SID;
+		break;
+
+	default:
+		CRIT("%s: command %u not supported.\n", __func__, command);
+		break;
+	}
+
+	if (ndo > 0)
+	{
+		vdm->Command = command;
+		vdm->Reserved1 = 0;
+		vdm->Reserved2 = 0;
+		vdm->StructedVDMVersion = VDM_HDR_VERSION_10;
+		vdm->VDMType = VDM_HDR_TYPE_STRUCTURED_VDM;
+
+		usb_pd_prl_tx_data_msg(port, buf, DATA_MSG_TYPE_VENDOR, TCPC_TX_SOP, ndo);
+	}
+}
+#endif
 
 static void pe_send_accept_entry(usb_pd_port_t *dev)
 {
@@ -782,6 +823,28 @@ static void usb_pd_pe_data_msg_rx_handler(usb_pd_port_t *dev)
 			break;
 
 		case DATA_MSG_TYPE_VENDOR:
+#ifdef VDM_DISCOVER_IDENTITY
+		{
+			vdm_hdr_t *vdm = (vdm_hdr_t *)dev->rx_msg_buf;
+
+			if (vdm->Command == VDM_HDR_CMD_DISCOVER_IDENTITY &&
+			    vdm->CommandType == VDM_HDR_CMD_TYPE_ACK)
+			{
+				vdm_id_hdr_t *hdr = (vdm_id_hdr_t *)(&vdm[1]);
+
+				if (hdr->ProductTypeUFP == VDM_ID_HDR_PRODUCT_TYPE_UFP_AMC)
+				{
+					/* FIXME */
+					PRINT("Alternate Mode Adapter detected!\n");
+#ifdef CONFIG_LGE_DP_UNSUPPORT_NOTIFY
+					tusb422_set_dp_notify_node(1);
+#endif
+				}
+				break;
+			}
+		}
+#endif
+
 #if (PD_SPEC_REV == PD_REV30) && !defined(CABLE_PLUG)
 			// For USB_PD v3.0, DFP and UFP shall return Not_Supported msg if
 			// VDM is not supported.
@@ -1232,6 +1295,16 @@ static void pe_src_ready_entry(usb_pd_port_t *dev)
 		// If VCONN source, start DiscoveryIdentity timer and negotiate PD with cable plug. - BQ
 		//T_DISCOVER_IDENTITY_MS
 	}
+
+
+#ifdef VDM_DISCOVER_IDENTITY
+	if (dev->discover_identity_cnt == 0)
+	{
+		// Send Discover Identity.
+		usb_pd_pe_tx_vdm_msg(dev->port, VDM_HDR_CMD_DISCOVER_IDENTITY);
+		dev->discover_identity_cnt++;
+	}
+#endif
 
 	return;
 }
@@ -1849,8 +1922,13 @@ static void pe_snk_ready_entry(usb_pd_port_t *dev)
 
 	if (min_voltage == DEFAULT_5V)
 	{
+#ifdef CONFIG_LGE_USB_TYPE_C
+		// Set Sink Disconnect Threshold to VDISCON_MAX.
+		threshold = VDISCON_MAX;
+#else
 		// Set Sink Disconnect Threshold to zero to disable.
 		threshold = 0;
+#endif
 	}
 	else
 	{

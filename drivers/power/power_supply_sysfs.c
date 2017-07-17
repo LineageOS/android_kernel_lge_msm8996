@@ -405,9 +405,15 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(soc_reporting_ready),
 	POWER_SUPPLY_ATTR(ignore_false_negative_isense),
 	POWER_SUPPLY_ATTR(enable_jeita_detection),
+#ifdef CONFIG_LGE_PM_CHARGING_SCENARIO
+	POWER_SUPPLY_ATTR(jeita_charging_enabled),
+#endif
 #ifdef CONFIG_LGE_PM_RESTORE_BATT_INFO
 	POWER_SUPPLY_ATTR(battery_info),
 	POWER_SUPPLY_ATTR(battery_info_id),
+#endif
+#ifdef CONFIG_LGE_PM_CYCLE_BASED_CHG_VOLTAGE
+	POWER_SUPPLY_ATTR(battery_cycle),
 #endif
 	/* Local extensions of type int64_t */
 	POWER_SUPPLY_ATTR(charge_counter_ext),

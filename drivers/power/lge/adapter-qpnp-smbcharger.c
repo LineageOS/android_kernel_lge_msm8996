@@ -44,30 +44,6 @@ static int current_control_idc(struct smbchg_chip* chip, int current_ma) {
 	return 0;
 }
 
-static bool is_gauged_data_valid(struct smbchg_chip *chip) {
-	/* Check whether the data of fg system, eg. bms, is valid or not.
-	 *
-	 * In the case of lucye, we have no choice but to do it by reading "POWER_SUPPLY_PROP_FIRST_SOC_EST_DONE".
-	 * In other words, reading fg data(temp, voltage and so on...) before POWER_SUPPLY_PROP_FIRST_SOC_EST_DONE
-	 * are not guaranted values.
-	 * But in your case of using other battery driver or #define feature,
-	 * Please DO consider the best approach for it on your system.
-	 * One of 'The best approach' is registering psy-'fg' to psy AFTER setting data is finished.
-	 * Then the psy-'battery' can return an error code on get_property rather than returning unstable data.
-	 *
-	 * The only one point I recommend to you in this comment is that when you do porting,
-	 * DO NOT use POWER_SUPPLY_PROP_FIRST_SOC_EST_DONE without such consideration.
-	 */
-	int ready;
-	int rc = get_property_from_fg(chip, POWER_SUPPLY_PROP_FIRST_SOC_EST_DONE, &ready);
-	if (rc || !ready) {
-		pr_smb(PR_STATUS, "BMS(Gauging system) is not ready yet.\n");
-		return false;
-	}
-	else
-		return true;
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 
 #define PROPERTY_CONSUMED_WITH_SUCCESS	0
@@ -101,9 +77,7 @@ static int smbchg_battery_get_property_pre(struct power_supply *psy,
 
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW:
 	case POWER_SUPPLY_PROP_TEMP:
-		pr_smb(PR_STATUS, "factory_mode = %d\n", factory_mode);
-		rc = (!factory_mode && !is_gauged_data_valid(chip)) ?
-			-PROPERTY_CONSUMED_WITH_FAIL : -PROPERTY_BYPASS_REASON_ONEMORE;
+		rc = -PROPERTY_BYPASS_REASON_ONEMORE;
 		break;
 	default:
 		rc = -PROPERTY_BYPASS_REASON_NOENTRY;

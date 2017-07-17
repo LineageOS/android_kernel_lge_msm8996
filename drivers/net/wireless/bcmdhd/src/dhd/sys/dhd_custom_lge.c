@@ -566,8 +566,8 @@ int set_softap_params(dhd_pub_t *dhd)
 			sizeof(iovar_set), TRUE, 0)) < 0) {
 			DHD_ERROR(("%s Set LRL failed  %d\n", __FUNCTION__, ret));
 		}
-
-		iovar_set = 0;
+// Update frameburst to 1 to meet SoftAP T.P requirement for BELL operator, BRCM Case 1112892
+		iovar_set = 1;
 		if ((ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_FAKEFRAG, (char *)&iovar_set,
 			sizeof(iovar_set), TRUE, 0)) < 0) {
 			DHD_ERROR(("%s Set frameburst failed  %d\n", __FUNCTION__, ret));

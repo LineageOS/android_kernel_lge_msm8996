@@ -182,3 +182,6 @@ obj-$(CONFIG_TRUSTONIC_TEE)	+= gud/
 
 #FeliCa
 obj-$(CONFIG_CXD224X_FELICA_F3)	+= felica/
+
+#immersion tsp3000
+obj-$(CONFIG_TSPDRV) += tspdrv/

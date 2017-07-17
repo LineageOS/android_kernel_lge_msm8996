@@ -1419,7 +1419,7 @@ static struct clk_freq_tbl ftbl_sdcc2_apps_clk_src[] = {
 	F(  25000000, gpll0_out_main,   12,    1,     2),
 	F(  50000000, gpll0_out_main,   12,    0,     0),
 	F( 100000000, gpll0_out_main,    6,    0,     0),
-#ifdef CONFIG_MACH_MSM8996_ELSA_KR
+#if defined (CONFIG_MACH_MSM8996_ELSA_KR) || defined (CONFIG_MACH_MSM8996_LUCYE_KR)
 /* change clk frequency from 200MHz to 171MHz to meet the RE standard */
 	F( 200000000, gpll0_out_main,    3.5,    0,     0),
 #else

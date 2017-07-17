@@ -126,11 +126,11 @@
 				/* Role */
 				use_lpwg = <1>;
 				use_lpwg_test = <1>;
-				hide_coordinate = <0>;
+				hide_coordinate = <1>;
 
 				/* Firmware */
-				fw_image = "touch/lucye/L1L57P2_1_00.img",
-					 "touch/lucye/L1L57P2_1_00.img";
+				fw_image = "touch/lucye/L1L57P2_1_03.img",
+					 "touch/lucye/L1L57P2_1_03.img";
 
 				panel_spec = "touch/lucye/lucye_limit.txt";
 				panel_spec_mfts_folder = "touch/lucye/lucye_limit_mfts.txt";

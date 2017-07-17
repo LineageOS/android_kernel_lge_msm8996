@@ -68,6 +68,10 @@ extern int dhd_dscpmap_enable;
 #if defined(OTP_WRITE_ON)
 #include <dhd_custom_lge_otpbinary.h>
 #endif /* OTP_WRITE_ON */
+
+#ifdef LOGTRACE_FROM_FILE
+#define LOGTRACEINFO "/data/logger/.logtrace.info"
+#endif /* LOGTRACE_FROM_FILE */
 struct cntry_locales_custom {
 	char iso_abbrev[WLC_CNTRY_BUF_SZ]; /* ISO 3166-1 country abbreviation */
 	char custom_locale[WLC_CNTRY_BUF_SZ]; /* Custom firmware locale */
@@ -525,6 +529,25 @@ int dhd_adjust_tcp_winsize(int index, int pk_type, int op_mode, struct sk_buff *
 }
 #endif /* DHD_TCP_WINSIZE_ADJUST */
 
+int set_parallelscan(dhd_pub_t *dhd)
+{
+	uint32 iovar_set;
+	char iov_buf[WLC_IOCTL_SMLEN];
+	int ret = 0;
+
+	if (dhd->op_mode & DHD_FLAG_HOSTAP_MODE) {
+		iovar_set = 0;
+	} else {
+		iovar_set = 1;
+	}
+	DHD_ERROR(("set_parallelscan op_mode = 0x%04x, set = %d\n", dhd->op_mode, iovar_set));
+
+	bcm_mkiovar("scan_parallel", (char *)&iovar_set, 4, iov_buf, sizeof(iov_buf));
+	ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iov_buf, sizeof(iov_buf), TRUE, 0);
+
+	return ret;
+}
+
 #ifdef SOFTAP_TPUT_ENHANCE
 int set_softap_params(dhd_pub_t *dhd)
 {
@@ -568,8 +591,8 @@ int set_softap_params(dhd_pub_t *dhd)
 			sizeof(iovar_set), TRUE, 0)) < 0) {
 			DHD_ERROR(("%s Set LRL failed  %d\n", __FUNCTION__, ret));
 		}
-
-		iovar_set = 0;
+		// Update frameburst to 1 to meet SoftAP T.P requirement for BELL operator, BRCM Case 1112892
+		iovar_set = 1;
 		if ((ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_FAKEFRAG, (char *)&iovar_set,
 			sizeof(iovar_set), TRUE, 0)) < 0) {
 			DHD_ERROR(("%s Set frameburst failed  %d\n", __FUNCTION__, ret));
@@ -608,4 +631,49 @@ int set_softap_params(dhd_pub_t *dhd)
 	return ret;
 }
 #endif /* SOFTAP_TPUT_ENHANCE */
+
+#ifdef LOGTRACE_FROM_FILE
+/*
+ * LOGTRACEINFO = /data/.logtrace.info
+ *  - logtrace = 1            => Enable LOGTRACE Event
+ *  - logtrace = 0            => Disable LOGTRACE Event
+ *  - file not exist          => Disable LOGTRACE Event
+ */
+int dhd_logtrace_from_file(dhd_pub_t *dhd)
+{
+	struct file *fp = NULL;
+	int ret = -1;
+	uint32 logtrace = 0;
+	char *filepath = LOGTRACEINFO;
+
+	/* Read LOGTRACE Event on/off request from the file */
+	fp = filp_open(filepath, O_RDONLY, 0);
+	if (IS_ERR(fp)) {
+		DHD_ERROR(("[WIFI_LGE] %s: File [%s] doesn't exist\n", __FUNCTION__, filepath));
+		return 0;
+	} else {
+		ret = kernel_read(fp, 0, (char *)&logtrace, 4);
+		if (ret < 0) {
+			DHD_ERROR(("[WIFI_LGE] %s: File read error, ret=%d\n", __FUNCTION__, ret));
+			filp_close(fp, NULL);
+			return 0;
+		}
+
+		logtrace = bcm_atoi((char *)&logtrace);
+
+		DHD_ERROR(("[WIFI_LGE] %s: LOGTRACE On/Off from file = %d\n",
+			__FUNCTION__, logtrace));
+		filp_close(fp, NULL);
+
+		/* Check value from the file */
+		if (logtrace > 2) {
+			DHD_ERROR(("[WIFI_LGE] %s: Invalid value %d read from the file %s\n",
+				__FUNCTION__, logtrace, filepath));
+			return 0;
+		}
+	}
+
+	return (int)logtrace;
+}
+#endif /* LOGTRACE_FROM_FILE */
 #endif /* CUSTOMER_HW10 */

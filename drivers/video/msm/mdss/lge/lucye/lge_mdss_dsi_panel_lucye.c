@@ -29,13 +29,17 @@ extern struct dsi_panel_cmds reader_mode_step4_cmds;
 #endif
 #endif
 
+#if defined(CONFIG_LGE_DISPLAY_AOD_WITH_MIPI)
+extern void lcd_watch_restore_reg_after_panel_reset(void);
+extern void lcd_watch_font_crc_check_after_panel_reset(void);
+#endif
+
 extern void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
 		struct dsi_panel_cmds *pcmds, u32 flags);
 
 static void lge_set_image_quality_cmds(struct mdss_dsi_ctrl_pdata *ctrl)
 {
 	char mask = 0x00;
-	mdss_dsi_panel_cmds_send(ctrl, &ctrl->on_cmds, CMD_REQ_COMMIT);
 #if defined(CONFIG_LGE_DISPLAY_READER_MODE)
 	switch(lge_get_reader_mode()) {
 		case READER_MODE_STEP_1:
@@ -380,16 +384,19 @@ int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 			mdss_dsi_panel_cmds_send(ctrl, &ctrl->aod_cmds[AOD_PANEL_CMD_U2_TO_U3], CMD_REQ_COMMIT);
 			goto notify;
 		case ON_AND_AOD:
+			lcd_watch_font_crc_check_after_panel_reset();
+			lcd_watch_restore_reg_after_panel_reset();
+			if (ctrl->display_on_and_aod_comds.cmd_cnt)
+				mdss_dsi_panel_cmds_send(ctrl, &ctrl->display_on_and_aod_comds, CMD_REQ_COMMIT);
 			lge_set_image_quality_cmds(ctrl);
 
 			if (pinfo->compression_mode == COMPRESSION_DSC)
 				mdss_dsi_panel_dsc_pps_send(ctrl, pinfo);
 			if (ctrl->ds_registered && pinfo->is_pluggable)
 				 mdss_dba_utils_video_on(pinfo->dba_data, pinfo);
-			if (ctrl->display_on_cmds.cmd_cnt)
-				mdss_dsi_panel_cmds_send(ctrl, &ctrl->display_on_cmds, CMD_REQ_COMMIT);
-			goto end;
+			goto notify;
 		case ON_CMD:
+			lcd_watch_font_crc_check_after_panel_reset();
 			break;
 		case CMD_SKIP:
 			goto notify;
@@ -398,6 +405,8 @@ int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 			break;
 	}
 #endif
+	if (ctrl->on_cmds.cmd_cnt)
+		mdss_dsi_panel_cmds_send(ctrl, &ctrl->on_cmds, CMD_REQ_COMMIT);
 	lge_set_image_quality_cmds(ctrl);
 
 	if (pinfo->compression_mode == COMPRESSION_DSC)

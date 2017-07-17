@@ -219,15 +219,27 @@ static void show_data(unsigned long addr, int nbytes, const char *name)
 	}
 }
 
+#define LGE_KGSL_CRASH_DEBUG /*CASE#02743919, kgsl crash debug patch*/
 static void show_extra_register_data(struct pt_regs *regs, int nbytes)
 {
 	mm_segment_t fs;
-
+#ifdef LGE_KGSL_CRASH_DEBUG
+	unsigned int i;
+#endif
 	fs = get_fs();
 	set_fs(KERNEL_DS);
 	show_data(regs->pc - nbytes, nbytes * 2, "PC");
 	show_data(regs->regs[30] - nbytes, nbytes * 2, "LR");
 	show_data(regs->sp - nbytes, nbytes * 2, "SP");
+
+#ifdef LGE_KGSL_CRASH_DEBUG
+	for (i = 0; i < 30; i++) {
+		char name[4];
+		snprintf(name, sizeof(name), "X%u", i);
+		show_data(regs->regs[i] - nbytes, nbytes * 2, name);
+	}
+#endif
+
 	set_fs(fs);
 }
 
@@ -257,7 +269,9 @@ void __show_regs(struct pt_regs *regs)
 		if (i % 2 == 0)
 			printk("\n");
 	}
+#ifndef LGE_KGSL_CRASH_DEBUG
 	if (!user_mode(regs))
+#endif
 		show_extra_register_data(regs, 256);
 	printk("\n");
 }

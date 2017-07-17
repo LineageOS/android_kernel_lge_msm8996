@@ -471,18 +471,65 @@ void lge_panic_handler_fb_cleanup(void)
 
 #ifdef CONFIG_LGE_BOOT_LOCKUP_DETECT
 
+#define LOCKUP_WQ_NOT_START_YET (-1)
+#define LOCKUP_WQ_PAUSED        (0)
+#define LOCKUP_WQ_STARTED       (1)
+#define LOCKUP_WQ_CANCELED      (2)
+
 static unsigned long boot_deadline = 240 * 1000;
 static struct delayed_work lge_boot_lockup_detect_work;
 static int boot_lockup_detect_working = -1;
 
+#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_ADC_QCT
+#include <soc/qcom/lge/power/lge_power_class.h>
+
+static int lge_boot_lockup_check_xo_therm_too_hot(void)
+{
+	struct lge_power *lge_adc_lpc;
+	union lge_power_propval lge_val = {0,};
+	int xo_therm,rc;
+	lge_adc_lpc = lge_power_get_by_name("lge_adc");
+
+	if(!lge_adc_lpc) {
+		pr_emerg("lge_adc is not connected\n");
+        return -1;
+	}
+
+	rc = lge_adc_lpc->get_property(lge_adc_lpc,
+			LGE_POWER_PROP_XO_THERM_PHY, &lge_val);
+
+	if(rc < 0) {
+		pr_emerg("lge_adc XO_THERM is not valid\n");
+        return -1;
+	}
+
+	xo_therm = lge_val.intval;
+
+	pr_emerg("boot_lockup_detect XO_THERM[%d]\n",xo_therm);
+
+	if(xo_therm >= 70) // too hot
+		return 1;
+
+    return 0;
+}
+#endif
 static void lge_boot_lockup_detect_func(struct work_struct *work)
 {
-	pr_emerg("==========================================================\n");
-	pr_emerg("WARNING: detecting lockup during boot! forcing panic......\n");
-	pr_emerg("==========================================================\n");
+#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_ADC_QCT
+	if(lge_boot_lockup_check_xo_therm_too_hot() == 1) { // too hot
+		pr_emerg("==================================================================\n");
+		pr_emerg("WARNING: detecting lockup during boot! skip panic by too hot\n");
+		pr_emerg("==================================================================\n");
+	} else
+#endif
+	{
+		pr_emerg("==========================================================\n");
+		pr_emerg("WARNING: detecting lockup during boot! forced panic......\n");
+		pr_emerg("==========================================================\n");
 
-	//panic("detecting lockup during boot!\n");
-	gen_wdt_bite(NULL,NULL);
+		//panic("detecting lockup during boot!\n");
+		gen_wdt_bite(NULL,NULL);
+	}
 }
 
 static void lge_init_boot_lockup_detect(void)
@@ -501,7 +548,7 @@ static void lge_init_boot_lockup_detect(void)
 	if( strncmp(lge_get_boot_partition(),"boot",strlen("boot")) == 0
 			&& lge_get_boot_mode() == LGE_BOOT_MODE_NORMAL
 			&& lge_get_fota_mode() == 0) {
-		boot_lockup_detect_working = 1;
+		boot_lockup_detect_working = LOCKUP_WQ_STARTED;
 		pr_info("start boot_lockup_detect_work after %lds\n", (unsigned long)boot_deadline/1000);
 		queue_delayed_work(system_highpri_wq, &lge_boot_lockup_detect_work, msecs_to_jiffies(boot_deadline));
 	}
@@ -510,8 +557,8 @@ static void lge_init_boot_lockup_detect(void)
 /* These sysfs node should be called by only init.rc files for mutual exclusion*/
 static int cancel_boot_lockup_detect(const char *val, struct kernel_param *kp)
 {
-    if( boot_lockup_detect_working == 1) {
-		boot_lockup_detect_working = 0;
+    if( boot_lockup_detect_working == LOCKUP_WQ_STARTED) {
+		boot_lockup_detect_working = LOCKUP_WQ_CANCELED;
 		pr_info("cancel boot_lockup_detect_work\n");
 		cancel_delayed_work_sync(&lge_boot_lockup_detect_work);
 	}
@@ -522,12 +569,12 @@ module_param_call(cancel_boot_lockup_detect, cancel_boot_lockup_detect, NULL, NU
 
 static int pause_boot_lockup_detect(const char *val, struct kernel_param *kp)
 {
-	if (!strcmp(val, "1") && boot_lockup_detect_working == 1) {
-		boot_lockup_detect_working = 0;
+	if (!strcmp(val, "1") && boot_lockup_detect_working == LOCKUP_WQ_STARTED) {
+		boot_lockup_detect_working = LOCKUP_WQ_PAUSED;
 		pr_info("pause boot_lockup_detect_work\n");
 		cancel_delayed_work_sync(&lge_boot_lockup_detect_work);
-	} else if (!strcmp(val, "0") && boot_lockup_detect_working == 0) {
-		boot_lockup_detect_working = 1;
+	} else if (!strcmp(val, "0") && boot_lockup_detect_working == LOCKUP_WQ_PAUSED) {
+		boot_lockup_detect_working = LOCKUP_WQ_STARTED;
 		pr_info("restart boot_lockup_detect_work after %lds\n", (unsigned long)boot_deadline/1000);
 		queue_delayed_work(system_highpri_wq, &lge_boot_lockup_detect_work, msecs_to_jiffies(boot_deadline));
     }
@@ -537,19 +584,18 @@ static int pause_boot_lockup_detect(const char *val, struct kernel_param *kp)
 module_param_call(pause_boot_lockup_detect, pause_boot_lockup_detect, NULL, NULL, S_IWUSR);
 #endif
 
-#ifdef CONFIG_LGE_REBOOT_LOCKUP_DETECT
-
 #define REBOOT_DEADLINE msecs_to_jiffies(30 * 1000)
 
 static struct delayed_work lge_panic_reboot_work;
 
 static void lge_panic_reboot_work_func(struct work_struct *work)
 {
-	pr_emerg("==========================================================\n");
+
+    pr_emerg("==========================================================\n");
 	pr_emerg("WARNING: detecting lockup during reboot! forcing panic....\n");
 	pr_emerg("==========================================================\n");
 
-	panic("lockup during reboot is detected!\n");
+	BUG();
 }
 
 static int lge_panic_reboot_handler(struct notifier_block *this,
@@ -569,14 +615,11 @@ static struct notifier_block lge_panic_reboot_notifier = {
 	NULL,
 	0
 };
-#endif
 
 static int __init lge_panic_handler_early_init(void)
 {
 	struct device_node *np;
-#ifdef CONFIG_LGE_REBOOT_LOCKUP_DETECT
 	int ret = 0;
-#endif
 
 	panic_handler = kzalloc(sizeof(*panic_handler), GFP_KERNEL);
 	if (!panic_handler) {
@@ -623,14 +666,12 @@ static int __init lge_panic_handler_early_init(void)
 	lge_init_boot_lockup_detect();
 #endif
 
-#ifdef CONFIG_LGE_REBOOT_LOCKUP_DETECT
 	/* register reboot notifier for detecting reboot lockup */
 	ret = register_reboot_notifier(&lge_panic_reboot_notifier);
 	if (ret) {
 		pr_err("%s: Failed to register reboot notifier\n", __func__);
 		return ret;
 	}
-#endif
 
 	return 0;
 }

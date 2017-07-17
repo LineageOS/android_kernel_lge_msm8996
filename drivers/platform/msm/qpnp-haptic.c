@@ -77,7 +77,7 @@
 #ifdef CONFIG_LGE_QPNP_HAPTIC_OV_RB
 #define QPNP_HAP_VMAX_MAX_MV		2088
 #else /* QCT original */
-#define QPNP_HAP_VMAX_MAX_MV		3596
+#define QPNP_HAP_VMAX_MAX_MV		3248
 #endif
 
 #define QPNP_HAP_ILIM_MASK		0xFE
@@ -377,11 +377,38 @@ struct qpnp_hap {
 	bool correct_lra_drive_freq;
 	bool misc_trim_error_rc19p2_clk_reg_present;
 	bool perform_lra_auto_resonance_search;
+#ifdef CONFIG_TSPDRV
+	u16 tsp_amp;
+#endif
 };
+
+#ifdef CONFIG_TSPDRV
+static u8 rb_pattern[] = {
+	0x00, /* 0 ~ 9 */
+	0x02, /* 10 ~ 19 */
+	0x03, /* 20 ~ 29 */
+	0x07, /* 30 ~ 39 */
+	0x07, /* 40 ~ 49 */
+	0x0b, /* 50 ~ 59 */
+	0x7f, /* 60 ~ 69 */
+	0x7f, /* 70 ~ 79 */
+	0xbf, /* 80 ~ 89 */
+	0xbf, /* 90 ~ 99*/
+	0xff, /* 100 ~ 109 */
+	0xff, /* 110 ~ 119 */
+	0xff, /* 120 ~ 126 */
+	0xff, /* 127 */
+};
+#define RB_PATTERN_MAX 14
+#endif
 
 #ifdef CONFIG_LGE_QPNP_HAPTIC_OV_RB
 /* LGE add qpnp_hap_vmax_config function for Overdrive and reverse braking in Direct MODE */
 static int qpnp_hap_vmax_config(struct qpnp_hap *hap, int odrb);
+bool elt_state;
+#endif
+#ifdef CONFIG_TSPDRV
+static int qpnp_hap_vmax_config(struct qpnp_hap *hap);
 bool elt_state;
 #endif
 
@@ -521,12 +548,23 @@ static int qpnp_hap_play(struct qpnp_hap *hap, int on)
 		}
 	}
 #endif
+#ifdef CONFIG_TSPDRV
+	if (hap->play_mode == QPNP_HAP_DIRECT) {
+		if (!on) {
+			hap->vmax_mv = QPNP_HAP_VMAX_MAX_MV;
+			qpnp_hap_vmax_config(hap);
+		}
+	}
+
+#endif
 
 	rc = qpnp_hap_write_reg(hap, &val,
 			QPNP_HAP_PLAY_REG(hap->base));
 	if (rc < 0)
 		return rc;
 #ifdef CONFIG_LGE_QPNP_HAPTIC_OV_RB
+	dev_info(&hap->spmi->dev, "qpnp_hap_play: on = %d, voltage = %d \n", on, hap->vmax_mv);
+#else
 	dev_info(&hap->spmi->dev, "qpnp_hap_play: on = %d, voltage = %d \n", on, hap->vmax_mv);
 #endif
 	hap->reg_play = val;
@@ -1374,6 +1412,84 @@ static ssize_t qpnp_hap_elt_store(struct device *dev,
 }
 #endif
 
+#ifdef CONFIG_TSPDRV
+/* sysfs show for amp */
+static ssize_t qpnp_hap_amp_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct timed_output_dev *timed_dev = dev_get_drvdata(dev);
+	struct qpnp_hap *hap = container_of(timed_dev, struct qpnp_hap,
+					 timed_dev);
+
+	return snprintf(buf, PAGE_SIZE, "%d\n", hap->tsp_amp);
+}
+
+/* sysfs store for amp */
+static ssize_t qpnp_hap_amp_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	struct timed_output_dev *timed_dev = dev_get_drvdata(dev);
+	struct qpnp_hap *hap = container_of(timed_dev, struct qpnp_hap,
+					 timed_dev);
+	int value, amp_index, rc;
+	u8 rb_reg;
+
+	if (sscanf(buf, "%d", &value) != 1)
+		return -EINVAL;
+
+	if (value == 127) {
+		amp_index = RB_PATTERN_MAX - 1;
+	} else {
+		amp_index = value/10;
+	}
+	if(amp_index <  RB_PATTERN_MAX)
+		rc = qpnp_hap_write_reg(hap, &rb_pattern[amp_index],
+					QPNP_HAP_BRAKE_REG(hap->base));
+	
+	if (rc) {
+		dev_err(&hap->spmi->dev,
+				"Error while writing BRAKE register\n");
+		return rc;
+	}
+
+	hap->tsp_amp = value;
+
+	rc = qpnp_hap_read_reg(hap, &rb_reg,
+				QPNP_HAP_BRAKE_REG(hap->base));
+
+	if (rc) {
+		dev_err(&hap->spmi->dev,
+				"Error while reading BRAKE register\n");
+		return rc;
+	}
+
+	dev_info(&hap->spmi->dev, "%s: value : %d, amp_index : %d, rb_reg : %d\n", __func__, value, amp_index, rb_reg);
+
+	return count;
+}
+static ssize_t qpnp_hap_elt_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%d\n", elt_state);
+}
+
+/* sysfs store for elt */
+static ssize_t qpnp_hap_elt_store(struct device *dev,
+		struct device_attribute *attr, const char *buf, size_t count)
+{
+	int value;
+	if (sscanf(buf, "%d", &value) != 1)
+		return 0;
+
+	if (value == 1){
+		elt_state = 1;
+	} else {
+		elt_state = 0;
+	}
+	return count;
+}
+#endif
+
 /* sysfs store for ramp test data */
 static ssize_t qpnp_hap_min_max_test_data_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count)
@@ -1506,7 +1622,7 @@ static struct device_attribute qpnp_hap_attrs[] = {
 	__ATTR(dump_regs, (S_IRUGO | S_IWUSR | S_IWGRP),
 			qpnp_hap_dump_regs_show,
 			NULL),
-#ifdef CONFIG_LGE_QPNP_HAPTIC_OV_RB
+#if defined (CONFIG_LGE_QPNP_HAPTIC_OV_RB) || defined (CONFIG_TSPDRV)
 	__ATTR(amp, (S_IRUGO | S_IWUSR | S_IWGRP),
 			qpnp_hap_amp_show,
 			qpnp_hap_amp_store),
@@ -2578,6 +2694,31 @@ static int qpnp_hap_parse_dt(struct qpnp_hap *hap)
 
 	return 0;
 }
+
+/* set vmax from other kernel module through opaque device struct */
+int qpnp_haptic_timed_vmax(struct timed_output_dev *timed, int value, int duration)
+{
+//    struct qpnp_hap *hap = dev_get_drvdata(timed->dev);
+	struct qpnp_hap *hap = container_of(timed, struct qpnp_hap,
+					 timed_dev);
+    int prev_vmax_mv = hap->vmax_mv;
+    hap->vmax_mv = value + QPNP_HAP_VMAX_MIN_MV;
+
+//	dev_info(&hap->spmi->dev, "%s : value : %d, duration : %d\n", __func__, value, duration);
+
+#ifdef CONFIG_LGE_QPNP_HAPTIC_OV_RB
+	qpnp_hap_vmax_config(hap,0);
+#else
+	qpnp_hap_vmax_config(hap);
+#endif
+
+    if (duration > 0) {
+        qpnp_hap_td_enable(timed, value > 0 ? duration : 0);
+    }
+
+    return prev_vmax_mv;
+}
+EXPORT_SYMBOL_GPL(qpnp_haptic_timed_vmax);
 
 static int qpnp_haptic_probe(struct spmi_device *spmi)
 {

@@ -133,6 +133,12 @@ static const char *const proxy_rx_ch_text[] = {"One", "Two", "Three", "Four",
 static char const *hdmi_rx_sample_rate_text[] = {"KHZ_48", "KHZ_96",
 					"KHZ_192"};
 
+#ifdef CONFIG_SND_USE_SKU_INFO
+#define NATION_REG1 131
+#define NATION_REG2 132
+static char const *sku_value_text[] = {"LowLow", "LowHigh", "HighLow", "HighHigh"};
+#endif
+
 static const char *const auxpcm_rate_text[] = {"8000", "16000"};
 static const struct soc_enum msm8996_auxpcm_enum[] = {
 		SOC_ENUM_SINGLE_EXT(2, auxpcm_rate_text),
@@ -257,11 +263,7 @@ static struct wcd_mbhc_config wcd_mbhc_cfg = {
 	.key_code[6] = 0,
 	.key_code[7] = 0,
 	.linein_th = 5000,
-#if defined(CONFIG_SND_SOC_ES9018)||defined(CONFIG_SND_SOC_ES9218P)
-	.moist_cfg = { false, false },
-#else
 	.moist_cfg = { V_45_MV, I_3P0_UA },
-#endif
 	.mbhc_micbias = MIC_BIAS_2,
 	.anc_micbias = MIC_BIAS_2,
 	.enable_anc_mic_detect = false,
@@ -1236,6 +1238,31 @@ static int msm_vi_feed_tx_ch_put(struct snd_kcontrol *kcontrol,
 	return 1;
 }
 
+#ifdef CONFIG_SND_USE_SKU_INFO
+static int sku_value_get(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	int gpio1, gpio2;
+	int sku_value;
+
+	gpio1 = gpio_get_value(NATION_REG1);
+	gpio2 = gpio_get_value(NATION_REG2);
+
+	sku_value = gpio2 + ((1 << gpio1) & 0x2);
+	ucontrol->value.integer.value[0] = sku_value;
+	pr_info("%s: sku_value = %ld, gpio1 = %d, gpio2 = %d\n", __func__,
+		 ucontrol->value.integer.value[0], gpio1, gpio2);
+	return 0;
+}
+
+static int sku_value_put(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s: \n", __func__);
+	return 1;
+}
+#endif
+
 static int hdmi_rx_bit_format_get(struct snd_kcontrol *kcontrol,
 				  struct snd_ctl_elem_value *ucontrol)
 {
@@ -1962,6 +1989,9 @@ static const struct soc_enum msm_snd_enum[] = {
 	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(slim6_rx_bit_format_text),
 			    slim6_rx_bit_format_text),
 	SOC_ENUM_SINGLE_EXT(2, slim6_rx_ch_text),
+#ifdef CONFIG_SND_USE_SKU_INFO
+	SOC_ENUM_SINGLE_EXT(4, sku_value_text),
+#endif
 };
 
 static const struct snd_kcontrol_new msm_snd_controls[] = {
@@ -2010,6 +2040,10 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 			msm8996_hifi_put),
 	SOC_ENUM_EXT("VI_FEED_TX Channels", msm_snd_enum[12],
 			msm_vi_feed_tx_ch_get, msm_vi_feed_tx_ch_put),
+#ifdef CONFIG_SND_USE_SKU_INFO
+	SOC_ENUM_EXT("SKU Value", msm_snd_enum[16],
+			sku_value_get, sku_value_put),
+#endif
 };
 
 static bool msm8996_swap_gnd_mic(struct snd_soc_codec *codec)
@@ -2328,6 +2362,13 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 		}
 	}
 	/* Start mbhc */
+#if defined(CONFIG_SND_SOC_ES9218P)
+	if(enable_es9218p) {
+		wcd_mbhc_cfg.moist_cfg.m_vref_ctl = V_OFF;
+		wcd_mbhc_cfg.moist_cfg.m_iref_ctl = I_OFF;
+		pr_info("%s : set moist_cfg installed es9218p chip : m_vref_ctl %d, m_iref_ctl %d",__func__,wcd_mbhc_cfg.moist_cfg.m_vref_ctl,wcd_mbhc_cfg.moist_cfg.m_iref_ctl);
+	}
+#endif
 	tasha_mbhc_zdet_gpio_ctrl(msm8996_config_hph_en0_gpio, rtd->codec);
 	mbhc_calibration = def_tasha_mbhc_cal();
 	if (mbhc_calibration) {
@@ -2399,10 +2440,12 @@ static void *def_tasha_mbhc_cal(void)
 	}
 
 #define S(X, Y) ((WCD_MBHC_CAL_PLUG_TYPE_PTR(tasha_wcd_cal)->X) = (Y))
-#if defined(CONFIG_SND_SOC_ES9018)||defined(CONFIG_SND_SOC_ES9218P)
-	S(v_hs_max, 2800);
-#else
 	S(v_hs_max, 1500);
+#if defined(CONFIG_SND_SOC_ES9218P)
+	if(enable_es9218p){
+		S(v_hs_max, 2800);
+		pr_info("%s: set v_hs_max as 2800 installed es9218p chip\n", __func__);
+	}
 #endif
 #undef S
 #define S(X, Y) ((WCD_MBHC_CAL_BTN_DET_PTR(tasha_wcd_cal)->X) = (Y))

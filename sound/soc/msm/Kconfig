@@ -223,6 +223,12 @@ config SND_USE_QUAT_MI2S
 	help
 	 To support MSM QUAT MI2S PORT for LG FM RADIO
 
+config SND_USE_SKU_INFO
+	bool "USE SKU INFO"
+	default n
+	help
+	 To separate calibration data depending on SKU value
+
 config SND_SOC_MDMCALIFORNIUM
         tristate "SoC Machine driver for MDMCALIFORNIUM boards"
         depends on ARCH_MDMCALIFORNIUM

@@ -4,7 +4,7 @@
  * Provides type definitions and function prototypes used to link the
  * DHD OS, bus, and protocol modules.
  *
- * Copyright (C) 1999-2016, Broadcom Corporation
+ * Copyright (C) 1999-2017, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -27,7 +27,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd.h 672121 2016-11-24 07:36:53Z $
+ * $Id: dhd.h 678617 2017-01-10 08:43:06Z $
  */
 
 /****************
@@ -412,8 +412,11 @@ struct dhd_log_dump_buf
 extern void dhd_log_dump_write(int type, const char *fmt, ...);
 extern char *dhd_log_dump_get_timestamp(void);
 #endif /* DHD_LOG_DUMP */
+#ifdef CUSTOMER_HW10
+#define DHD_COMMON_DUMP_PATH	"/data/logger/"
+#else
 #define DHD_COMMON_DUMP_PATH	"/data/misc/wifi/log/"
-
+#endif /* CUSTOMER_HW10 */
 /* check the coexistence of COUNTRY_SINGLE_REGREV with
 * DHD_USE_CLMINFO_PARSER or CUSTOM_COUNTRY_CODE
 */
@@ -1914,5 +1917,12 @@ void dhd_pktid_audit_fail_cb(dhd_pub_t *dhdp);
 
 int dhd_check_eapol_4way_message(char *dump_data);
 void dhd_dump_eapol_4way_message(char *ifname, char *dump_data, bool direction);
+
+#if defined(CONFIG_64BIT)
+#define DHD_SUPPORT_64BIT
+#elif defined(DHD_EFI)
+#define DHD_SUPPORT_64BIT
+/* by default disabled for other platforms, can enable appropriate macro to enable 64 bit support */
+#endif /* (linux || LINUX) && CONFIG_64BIT */
 
 #endif /* _dhd_h_ */

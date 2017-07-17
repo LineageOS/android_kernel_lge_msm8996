@@ -16,7 +16,6 @@
 //
 ////////////////////////////////////////////////////////////////////////////
 #include "../msm8996-sound/msm8996-lucye-sound_fmradio.dtsi"
-#include "../msm8996-sound/msm8996-lucye-sound_es9218p.dtsi"
 
 &soc {
 //Enable i2c_1 if FM Chip is installed

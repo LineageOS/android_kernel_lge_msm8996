@@ -1615,9 +1615,13 @@ static struct sock *qtaguid_find_sk(const struct sk_buff *skb,
 		 * "struct inet_timewait_sock" which is missing fields.
 		 */
 		if (sk->sk_state  == TCP_TIME_WAIT) {
-			if (sk != skb->sk)
-				sock_gen_put(sk);
-			sk = NULL;
+//below code is blocked by heeyeon.nah@lge.com, START
+//Because sockets on TIME-WAIT state cannot be freed after TIME-WAIT timeout, below if-statement is blocked.
+//			if (sk != skb->sk)
+//				sock_gen_put(sk);
+//below code is blocked by heeyeon.nah@lge.com, END
+          sock_gen_put(sk);
+          sk = NULL;
 		}
 	}
 	return sk;

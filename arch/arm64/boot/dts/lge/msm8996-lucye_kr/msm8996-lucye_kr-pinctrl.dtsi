@@ -2401,35 +2401,6 @@
 			};
 		};
 		/* NFC End */
-		lge_mme {
-			lge_mme_active: lge_mme_active {
-				mux {
-					pins = "gpio0", "gpio2", "gpio3";
-					function = "gpio";
-				};
-
-				config {
-					pins = "gpio0", "gpio2", "gpio3";
-					drive-strength = <2>; /* 2 mA */
-					bias-pull-down; /* pull down */
-					output-low;
-				};
-			};
-
-			lge_mme_sleep: lge_mme_sleep {
-				mux {
-					pins = "gpio0", "gpio2", "gpio3";
-					function = "gpio";
-				};
-
-                config {
-					pins = "gpio0", "gpio2", "gpio3";
-					drive-strength = <2>; /* 2 mA */
-					bias-pull-down; /* pull down */
-					output-low;
-				};
-			};
-		};
 
 	};
 };

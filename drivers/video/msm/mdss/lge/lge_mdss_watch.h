@@ -105,10 +105,6 @@ struct WatchFontTypeSliceInfoConfig {
 #define WATCH_RTC_UPDATE			3
 #define WATCH_CLEAR_RTC_UPDATE		4
 
-#define WATCH_FONT_CRC_START		1
-#define WATCH_FONT_CRC_CLEAR		2
-#define WATCH_FONT_CRC_READ			3
-
 #define WATCH_LUT_NUM 			7
 
 struct watch_rtc_ctrl_bits {
@@ -302,11 +298,22 @@ enum {
 	FONT_MINI
 };
 
+enum {
+	FONT_STATE_NONE,
+	FONT_LAYER_REQUESTED,
+	FONT_DOWNLOAD_PROCESSING,
+	FONT_DOWNLOAD_COMPLETE
+};
+
 struct watch_data {
 	unsigned int requested_font_type;
 	unsigned int current_font_type;
 	bool hw_clock_user_state;
+	unsigned int font_download_state;
 	struct watch_cfg wdata;
+#if defined(CONFIG_LGE_LCD_TUNING)
+	unsigned int font_type_reset;
+#endif
 };
 
 /* Default Clock/Font position and Size */
@@ -327,7 +334,7 @@ struct watch_data {
 #define AWATCH_CEN_Y 300
 
 //Dwatch Size
-#define DWATCH_SIZE_X 512
+#define DWATCH_SIZE_X 592
 #define DWATCH_SIZE_Y 184
 
 //Dwatch Pos
@@ -349,6 +356,10 @@ struct watch_data {
 //Dwatch Colon
 #define DWATCH_COLON_POS_X 232
 
+//Miniwatch Size
+#define MWATCH_SIZE_X 240
+#define MWATCH_SIZE_Y 75
+
 //AOD Pos
 #define AOD_POS_X 420
 
@@ -360,9 +371,5 @@ struct watch_data {
 #define FONT_A_Y 330
 #define FONT_A_C_X 19
 #define FONT_A_C_Y 270
-
-#define FONT_A_CRC 0xAAAA
-#define FONT_D_CRC 0xBBBB
-#define FONT_M_CRC 0xCCCC
 
 #endif

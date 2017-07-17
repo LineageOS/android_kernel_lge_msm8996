@@ -49,5 +49,7 @@ void mdss_fb_set_backlight_ex(struct msm_fb_data_type *mfd, u32 bkl_lvl);
 void mdss_fb_update_backlight_ex(struct msm_fb_data_type *mfd);
 #endif
 #endif
-
+#if defined(CONFIG_LGE_PANEL_RECOVERY)
+bool lge_panel_recovery_mode(void);
+#endif
 #endif /* LGE_MDSS_FB_H */
