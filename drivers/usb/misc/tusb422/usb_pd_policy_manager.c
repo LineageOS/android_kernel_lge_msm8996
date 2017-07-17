@@ -255,8 +255,12 @@ void usb_pd_pm_evaluate_src_caps(unsigned int port)
 			acceptable_pdo = false;
 
 			// Determine whether PDO is acceptable.
+#ifdef CONFIG_LGE_USB_TYPE_C
+			if (new_offer->max_voltage <= config->snk_caps[snk_pdo_idx].MaxV)
+#else
 			if ((new_offer->max_voltage <= config->snk_caps[snk_pdo_idx].MaxV) &&
 				(new_offer->min_voltage >= config->snk_caps[snk_pdo_idx].MinV))
+#endif
 			{
 				if (config->snk_caps[snk_pdo_idx].SupplyType == SUPPLY_TYPE_BATTERY)
 				{

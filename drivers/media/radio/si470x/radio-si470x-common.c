@@ -140,12 +140,12 @@ module_param(de, ushort, 0444);
 MODULE_PARM_DESC(de, "De-emphasis: 0=75us *1=50us*");
 
 /* Tune timeout */
-static unsigned int tune_timeout = 5000;
+static unsigned int tune_timeout = 3000;
 module_param(tune_timeout, uint, 0644);
 MODULE_PARM_DESC(tune_timeout, "Tune timeout: *3000*");
 
 /* Seek timeout */
-static unsigned int seek_timeout = 5000;
+static unsigned int seek_timeout = 3000;
 module_param(seek_timeout, uint, 0644);
 MODULE_PARM_DESC(seek_timeout, "Seek timeout: *5000*");
 
@@ -570,7 +570,7 @@ int si470x_start(struct si470x_device *radio)
 
 	/* sysconfig 2 */
 	radio->registers[SYSCONFIG2] =
-		(0x14 << 8)|				/* SEEKTH */
+		(0x0 << 8)|				/* SEEKTH */
 		((radio->band << 6) & SYSCONFIG2_BAND) |/* BAND */
 		((space << 4) & SYSCONFIG2_SPACE) |	/* SPACE */
 		SYSCONFIG2_VOLUME;					/* VOLUME (max) */
@@ -1586,7 +1586,7 @@ static int si470x_s_ctrl(struct file *file, void *priv, struct v4l2_control *ctr
 			space_s = ctrl->value;
 			radio->space = ctrl->value;
 			radio->registers[SYSCONFIG2] =
-				(0x14 << 8)|				/* SEEKTH */
+				(0x0 << 8)|				/* SEEKTH */
 				((radio->band << 6) & SYSCONFIG2_BAND) |/* BAND */
 				((space_s << 4) & SYSCONFIG2_SPACE) |	/* SPACE */
 				SYSCONFIG2_VOLUME;					/* VOLUME (max) */
@@ -1612,7 +1612,10 @@ static int si470x_s_ctrl(struct file *file, void *priv, struct v4l2_control *ctr
 			break;
 		case V4L2_CID_PRIVATE_SILABS_SINR_THRESHOLD:
 			snr = ctrl->value;
-			radio->registers[SYSCONFIG3] |= 3 << 4;
+			if(snr >= 0 && snr < 16)
+				radio->registers[SYSCONFIG3] |= snr << 4;
+			else
+				radio->registers[SYSCONFIG3] |= 3 << 4;
 			retval = si470x_set_register(radio, SYSCONFIG3);
 			if(retval < 0)
 				pr_err("%s fail to write snr\n",__func__);
@@ -1629,6 +1632,10 @@ static int si470x_s_ctrl(struct file *file, void *priv, struct v4l2_control *ctr
 				retval = -EINVAL;
 				goto end;
 			}
+			break;
+		case V4L2_CID_PRIVATE_SILABS_PSALL:
+			break;
+		case V4L2_CID_PRIVATE_SILABS_RXREPEATCOUNT:
 			break;
 		case V4L2_CID_PRIVATE_SILABS_SCANDWELL:
 			if ((ctrl->value >= MIN_DWELL_TIME) &&

@@ -28,7 +28,6 @@
 #include <sound/q6adm-v2.h>
 #include <sound/q6asm-v2.h>
 #include <sound/q6afe-v2.h>
-#include <sound/q6audio-v2.h>
 #include <sound/tlv.h>
 #include <sound/asound.h>
 #include <sound/pcm_params.h>
@@ -55,6 +54,7 @@ static struct cal_type_data *cal_data;
 struct msm_pcm_channel_mux channel_mux;
 
 static int fm_switch_enable;
+static int slim3_tx_fm_switch_enable;
 static int hfp_switch_enable;
 static int pri_mi2s_switch_enable;
 static int sec_mi2s_switch_enable;
@@ -503,14 +503,11 @@ static struct msm_pcm_routing_fdai_data
 	 {0, INVALID_SESSION, LEGACY_PCM_MODE, {NULL, NULL} } },
 };
 
-#define MAX_BE_INDEX_TABLE	2
-#define INVALID_BE_ID	       -1
 static unsigned long session_copp_map[MSM_FRONTEND_DAI_MM_SIZE][2]
 				     [MSM_BACKEND_DAI_MAX];
 static struct msm_pcm_routing_app_type_data app_type_cfg[MAX_APP_TYPES];
 static struct msm_pcm_stream_app_type_cfg
-	fe_dai_app_type_cfg[MSM_FRONTEND_DAI_MM_SIZE][2][MAX_BE_INDEX_TABLE];
-static int spkr_be_index = INVALID_BE_ID;
+			 fe_dai_app_type_cfg[MSM_FRONTEND_DAI_MM_SIZE][2];
 
 /* The caller of this should aqcuire routing lock */
 void msm_pcm_routing_get_bedai_info(int be_idx,
@@ -553,14 +550,12 @@ static int msm_pcm_routing_get_app_type_idx(int app_type)
 	return 0;
 }
 
-void msm_pcm_routing_reg_stream_app_type_cfg(int fedai_id,
-	int app_type,
-	int acdb_dev_id, int sample_rate,
-	int session_type, int index)
+void msm_pcm_routing_reg_stream_app_type_cfg(int fedai_id, int app_type,
+	int acdb_dev_id, int sample_rate, int session_type)
 {
-	pr_debug("%s: fedai_id %d, session_type %d, app_type %d, acdb_dev_id %d, sample_rate %d, index %d\n",
+	pr_debug("%s: fedai_id %d, session_type %d, app_type %d, acdb_dev_id %d, sample_rate %d\n",
 		__func__, fedai_id, session_type, app_type,
-		acdb_dev_id, sample_rate, index);
+		acdb_dev_id, sample_rate);
 	if (fedai_id > MSM_FRONTEND_DAI_MM_MAX_ID) {
 		pr_err("%s: Invalid machine driver ID %d\n",
 			__func__, fedai_id);
@@ -572,17 +567,9 @@ void msm_pcm_routing_reg_stream_app_type_cfg(int fedai_id,
 			__func__, session_type);
 		return;
 	}
-	if (index >= MAX_BE_INDEX_TABLE) {
-		/* bad ID assigned in machine driver */
-		pr_err("%s: bad index %d\n", __func__, index);
-		return;
-	}
-	fe_dai_app_type_cfg[fedai_id][session_type][index].app_type =
-		app_type;
-	fe_dai_app_type_cfg[fedai_id][session_type][index].acdb_dev_id =
-		acdb_dev_id;
-	fe_dai_app_type_cfg[fedai_id][session_type][index].sample_rate =
-		sample_rate;
+	fe_dai_app_type_cfg[fedai_id][session_type].app_type = app_type;
+	fe_dai_app_type_cfg[fedai_id][session_type].acdb_dev_id = acdb_dev_id;
+	fe_dai_app_type_cfg[fedai_id][session_type].sample_rate = sample_rate;
 }
 
 /**
@@ -628,12 +615,9 @@ int msm_pcm_routing_get_stream_app_type_cfg(int fedai_id, int session_type,
 		ret = -EINVAL;
 		goto done;
 	}
-	*app_type =
-		fe_dai_app_type_cfg[fedai_id][session_type][0].app_type;
-	*acdb_dev_id =
-		fe_dai_app_type_cfg[fedai_id][session_type][0].acdb_dev_id;
-	*sample_rate =
-		fe_dai_app_type_cfg[fedai_id][session_type][0].sample_rate;
+	*app_type = fe_dai_app_type_cfg[fedai_id][session_type].app_type;
+	*acdb_dev_id = fe_dai_app_type_cfg[fedai_id][session_type].acdb_dev_id;
+	*sample_rate = fe_dai_app_type_cfg[fedai_id][session_type].sample_rate;
 
 	pr_debug("%s: fedai_id %d, session_type %d, app_type %d, acdb_dev_id %d, sample_rate %d\n",
 		__func__, fedai_id, session_type,
@@ -642,27 +626,6 @@ done:
 	return ret;
 }
 EXPORT_SYMBOL(msm_pcm_routing_get_stream_app_type_cfg);
-
-static int msm_routing_get_stream_app_type_cfg(
-	struct msm_pcm_stream_app_type_cfg *cfg,
-	int fedai_id,
-	int session,
-	int index)
-{
-	if ((fedai_id > MSM_FRONTEND_DAI_MM_MAX_ID) ||
-	    (index >= MAX_BE_INDEX_TABLE)) {
-		pr_err("%s: bad MM ID %d or bad index %d\n",
-			__func__, fedai_id, index);
-		return -EINVAL;
-	}
-	cfg->app_type =
-		fe_dai_app_type_cfg[fedai_id][session][index].app_type;
-	cfg->sample_rate =
-		fe_dai_app_type_cfg[fedai_id][session][index].sample_rate;
-	cfg->acdb_dev_id =
-		fe_dai_app_type_cfg[fedai_id][session][index].acdb_dev_id;
-	return 0;
-}
 
 static struct cal_block_data *msm_routing_find_topology_by_path(int path)
 {
@@ -693,8 +656,7 @@ static struct cal_block_data *msm_routing_find_topology(int path,
 	struct list_head		*ptr, *next;
 	struct cal_block_data		*cal_block = NULL;
 	struct audio_cal_info_adm_top	*cal_info;
-	pr_debug("%s: path %d, app %d, acdb_id %d sample_rate %d\n",
-		__func__, path, app_type, acdb_id, sample_rate);
+	pr_debug("%s\n", __func__);
 
 	list_for_each_safe(ptr, next,
 		&cal_data->cal_blocks) {
@@ -704,12 +666,10 @@ static struct cal_block_data *msm_routing_find_topology(int path,
 
 		cal_info = (struct audio_cal_info_adm_top *)
 			cal_block->cal_info;
-		pr_debug("%s:  cal info: path %d, app %d, acdb_id %d sample_rate %d\n",
-			 __func__, cal_info->path, cal_info->app_type,
-			 cal_info->acdb_id, cal_info->sample_rate);
 		if ((cal_info->path == path)  &&
 			(cal_info->app_type == app_type) &&
-			(cal_info->acdb_id == acdb_id)) {
+			(cal_info->acdb_id == acdb_id) &&
+			(cal_info->sample_rate == sample_rate)) {
 			return cal_block;
 		}
 	}
@@ -719,14 +679,11 @@ static struct cal_block_data *msm_routing_find_topology(int path,
 }
 
 static int msm_routing_get_adm_topology(int path, int fedai_id,
-					int session_type,
-					int index)
+					int session_type)
 {
 	int				topology = NULL_COPP_TOPOLOGY;
 	struct cal_block_data		*cal_block = NULL;
 	int app_type = 0, acdb_dev_id = 0, sample_rate = 0;
-	struct msm_pcm_stream_app_type_cfg cfg;
-
 	pr_debug("%s\n", __func__);
 	path = get_cal_path(path);
 	if (cal_data == NULL)
@@ -734,12 +691,10 @@ static int msm_routing_get_adm_topology(int path, int fedai_id,
 
 	mutex_lock(&cal_data->lock);
 
-	if (!msm_routing_get_stream_app_type_cfg(&cfg, fedai_id, session_type,
-						index)) {
-		app_type = cfg.app_type;
-		acdb_dev_id = cfg.acdb_dev_id;
-		sample_rate = cfg.sample_rate;
-	}
+	app_type = fe_dai_app_type_cfg[fedai_id][session_type].app_type;
+	acdb_dev_id = fe_dai_app_type_cfg[fedai_id][session_type].acdb_dev_id;
+	sample_rate = fe_dai_app_type_cfg[fedai_id][session_type].sample_rate;
+
 	cal_block = msm_routing_find_topology(path, app_type,
 					      acdb_dev_id, sample_rate);
 	if (cal_block == NULL)
@@ -765,25 +720,10 @@ static uint8_t is_be_dai_extproc(int be_dai)
 }
 
 static void msm_pcm_routing_build_matrix(int fedai_id, int sess_type,
-					 int path_type, int perf_mode,
-					 int index)
+					 int path_type, int perf_mode)
 {
 	int i, port_type, j, num_copps = 0;
 	struct route_payload payload;
-	int  app_type, acdb_id, sr;
-
-	if ((index >= MAX_BE_INDEX_TABLE) ||
-	    (sess_type > SESSION_TYPE_TX) ||
-	    (fedai_id >= MSM_FRONTEND_DAI_MAX)) {
-		pr_err("%s: bad parameters => index %d, session %d, FE ID %d\n",
-			__func__, index, sess_type, fedai_id);
-	}
-	app_type =
-		fe_dai_app_type_cfg[fedai_id][sess_type][index].app_type;
-	acdb_id =
-		fe_dai_app_type_cfg[fedai_id][sess_type][index].acdb_dev_id;
-	sr =
-		fe_dai_app_type_cfg[fedai_id][sess_type][index].sample_rate;
 
 	port_type = ((path_type == ADM_PATH_PLAYBACK  ||
 		     path_type == ADM_PATH_COMPRESSED_RX) ?
@@ -801,11 +741,6 @@ static void msm_pcm_routing_build_matrix(int fedai_id, int sess_type,
 					payload.port_id[num_copps] =
 							msm_bedais[i].port_id;
 					payload.copp_idx[num_copps] = j;
-					payload.app_type[num_copps] =
-								app_type;
-					payload.acdb_dev_id[num_copps] =
-								acdb_id;
-					payload.sample_rate[num_copps] = sr;
 					num_copps++;
 				}
 			}
@@ -815,6 +750,12 @@ static void msm_pcm_routing_build_matrix(int fedai_id, int sess_type,
 	if (num_copps) {
 		payload.num_copps = num_copps;
 		payload.session_id = fe_dai_map[fedai_id][sess_type].strm_id;
+		payload.app_type =
+			fe_dai_app_type_cfg[fedai_id][sess_type].app_type;
+		payload.acdb_dev_id =
+			fe_dai_app_type_cfg[fedai_id][sess_type].acdb_dev_id;
+		payload.sample_rate =
+			fe_dai_app_type_cfg[fedai_id][sess_type].sample_rate;
 		adm_matrix_map(path_type, payload, perf_mode);
 		msm_pcm_routng_cfg_matrix_map_pp(payload, path_type, perf_mode);
 	}
@@ -863,7 +804,7 @@ int msm_pcm_routing_reg_phy_compr_stream(int fe_id, int perf_mode,
 					  int dspst_id, int stream_type,
 					  uint32_t compr_passthr_mode)
 {
-	int i, j, session, path_type, port_type, topology, num_copps = 0;
+	int i, j, session_type, path_type, port_type, topology, num_copps = 0;
 	struct route_payload payload;
 	u32 channels, sample_rate;
 	u16 bit_width = 16;
@@ -879,14 +820,14 @@ int msm_pcm_routing_reg_phy_compr_stream(int fe_id, int perf_mode,
 	}
 
 	if (stream_type == SNDRV_PCM_STREAM_PLAYBACK) {
-		session = SESSION_TYPE_RX;
+		session_type = SESSION_TYPE_RX;
 		if (compr_passthr_mode != LEGACY_PCM)
 			path_type = ADM_PATH_COMPRESSED_RX;
 		else
 			path_type = ADM_PATH_PLAYBACK;
 		port_type = MSM_AFE_PORT_TYPE_RX;
 	} else if (stream_type == SNDRV_PCM_STREAM_CAPTURE) {
-		session = SESSION_TYPE_TX;
+		session_type = SESSION_TYPE_TX;
 		path_type = ADM_PATH_LIVE_REC;
 		port_type = MSM_AFE_PORT_TYPE_TX;
 	} else {
@@ -897,7 +838,7 @@ int msm_pcm_routing_reg_phy_compr_stream(int fe_id, int perf_mode,
 	mutex_lock(&routing_lock);
 
 	payload.num_copps = 0; /* only RX needs to use payload */
-	fe_dai_map[fe_id][session].strm_id = dspst_id;
+	fe_dai_map[fe_id][session_type].strm_id = dspst_id;
 	/* re-enable EQ if active */
 	msm_qti_pp_send_eq_values(fe_id);
 	for (i = 0; i < MSM_BACKEND_DAI_MAX; i++) {
@@ -910,12 +851,12 @@ int msm_pcm_routing_reg_phy_compr_stream(int fe_id, int perf_mode,
 			(msm_bedais[i].active) &&
 			(test_bit(fe_id, &msm_bedais[i].fe_sessions))) {
 			int app_type, app_type_idx, copp_idx, acdb_dev_id;
-			int idx = (i == spkr_be_index) ? 1 : 0;
 			channels = msm_bedais[i].channel;
+
 			bit_width = msm_routing_get_bit_width(
 						msm_bedais[i].format);
 			app_type =
-			fe_dai_app_type_cfg[fe_id][session][idx].app_type;
+			fe_dai_app_type_cfg[fe_id][session_type].app_type;
 			if (app_type) {
 				app_type_idx =
 					msm_pcm_routing_get_app_type_idx(
@@ -928,9 +869,9 @@ int msm_pcm_routing_reg_phy_compr_stream(int fe_id, int perf_mode,
 				sample_rate = msm_bedais[i].sample_rate;
 			}
 			acdb_dev_id =
-			fe_dai_app_type_cfg[fe_id][session][idx].acdb_dev_id;
+			fe_dai_app_type_cfg[fe_id][session_type].acdb_dev_id;
 			topology = msm_routing_get_adm_topology(path_type,
-						fe_id, session, idx);
+						fe_id, session_type);
 			pr_err("%s: Before adm open topology %d\n", __func__,
 				topology);
 
@@ -947,9 +888,9 @@ int msm_pcm_routing_reg_phy_compr_stream(int fe_id, int perf_mode,
 				return -EINVAL;
 			}
 			pr_debug("%s: set idx bit of fe:%d, type: %d, be:%d\n",
-				 __func__, fe_id, session, i);
+				 __func__, fe_id, session_type, i);
 			set_bit(copp_idx,
-				&session_copp_map[fe_id][session][i]);
+				&session_copp_map[fe_id][session_type][i]);
 
 			if (msm_is_fractional_resample_needed(
 				sample_rate,
@@ -960,17 +901,11 @@ int msm_pcm_routing_reg_phy_compr_stream(int fe_id, int perf_mode,
 
 			for (j = 0; j < MAX_COPPS_PER_PORT; j++) {
 				unsigned long copp =
-				session_copp_map[fe_id][session][i];
+				session_copp_map[fe_id][session_type][i];
 				if (test_bit(j, &copp)) {
 					payload.port_id[num_copps] =
 					msm_bedais[i].port_id;
 					payload.copp_idx[num_copps] = j;
-					payload.acdb_dev_id[num_copps] =
-						acdb_dev_id;
-					payload.sample_rate[num_copps] =
-						sample_rate;
-					payload.app_type[num_copps] =
-						app_type;
 					num_copps++;
 				}
 			}
@@ -980,7 +915,11 @@ int msm_pcm_routing_reg_phy_compr_stream(int fe_id, int perf_mode,
 	}
 	if (num_copps) {
 		payload.num_copps = num_copps;
-		payload.session_id = fe_dai_map[fe_id][session].strm_id;
+		payload.session_id = fe_dai_map[fe_id][session_type].strm_id;
+		payload.app_type =
+			fe_dai_app_type_cfg[fe_id][session_type].app_type;
+		payload.acdb_dev_id =
+			fe_dai_app_type_cfg[fe_id][session_type].acdb_dev_id;
 		adm_matrix_map(path_type, payload, perf_mode);
 		msm_pcm_routng_cfg_matrix_map_pp(payload, path_type, perf_mode);
 	}
@@ -1070,7 +1009,7 @@ static u32 msm_pcm_routing_get_voc_sessionid(u16 val)
 int msm_pcm_routing_reg_phy_stream(int fedai_id, int perf_mode,
 					int dspst_id, int stream_type)
 {
-	int i, j, session, path_type, port_type, topology, num_copps = 0;
+	int i, j, session_type, path_type, port_type, topology, num_copps = 0;
 	struct route_payload payload;
 	u32 channels, sample_rate;
 	uint16_t bits_per_sample = 16;
@@ -1082,11 +1021,11 @@ int msm_pcm_routing_reg_phy_stream(int fedai_id, int perf_mode,
 	}
 
 	if (stream_type == SNDRV_PCM_STREAM_PLAYBACK) {
-		session = SESSION_TYPE_RX;
+		session_type = SESSION_TYPE_RX;
 		path_type = ADM_PATH_PLAYBACK;
 		port_type = MSM_AFE_PORT_TYPE_RX;
 	} else {
-		session = SESSION_TYPE_TX;
+		session_type = SESSION_TYPE_TX;
 		path_type = ADM_PATH_LIVE_REC;
 		port_type = MSM_AFE_PORT_TYPE_TX;
 	}
@@ -1094,8 +1033,8 @@ int msm_pcm_routing_reg_phy_stream(int fedai_id, int perf_mode,
 	mutex_lock(&routing_lock);
 
 	payload.num_copps = 0; /* only RX needs to use payload */
-	fe_dai_map[fedai_id][session].strm_id = dspst_id;
-	fe_dai_map[fedai_id][session].perf_mode = perf_mode;
+	fe_dai_map[fedai_id][session_type].strm_id = dspst_id;
+	fe_dai_map[fedai_id][session_type].perf_mode = perf_mode;
 
 	/* re-enable EQ if active */
 	msm_qti_pp_send_eq_values(fedai_id);
@@ -1105,7 +1044,6 @@ int msm_pcm_routing_reg_phy_stream(int fedai_id, int perf_mode,
 		   (msm_bedais[i].active) &&
 		   (test_bit(fedai_id, &msm_bedais[i].fe_sessions))) {
 			int app_type, app_type_idx, copp_idx, acdb_dev_id;
-			int idx = (i == spkr_be_index) ? 1 : 0;
 			channels = msm_bedais[i].channel;
 			msm_bedais[i].compr_passthr_mode =
 				LEGACY_PCM;
@@ -1114,12 +1052,12 @@ int msm_pcm_routing_reg_phy_stream(int fedai_id, int perf_mode,
 						msm_bedais[i].format);
 
 			app_type =
-			fe_dai_app_type_cfg[fedai_id][session][idx].app_type;
+			fe_dai_app_type_cfg[fedai_id][session_type].app_type;
 			if (app_type) {
 				app_type_idx =
 				msm_pcm_routing_get_app_type_idx(app_type);
 				sample_rate =
-				fe_dai_app_type_cfg[fedai_id][session][idx].
+				fe_dai_app_type_cfg[fedai_id][session_type].
 					sample_rate;
 				bits_per_sample =
 					app_type_cfg[app_type_idx].bit_width;
@@ -1127,9 +1065,9 @@ int msm_pcm_routing_reg_phy_stream(int fedai_id, int perf_mode,
 				sample_rate = msm_bedais[i].sample_rate;
 
 			acdb_dev_id =
-			fe_dai_app_type_cfg[fedai_id][session][idx].acdb_dev_id;
+			fe_dai_app_type_cfg[fedai_id][session_type].acdb_dev_id;
 			topology = msm_routing_get_adm_topology(path_type,
-						fedai_id, session, idx);
+						fedai_id, session_type);
 			copp_idx = adm_open(msm_bedais[i].port_id, path_type,
 					    sample_rate, channels, topology,
 					    perf_mode, bits_per_sample,
@@ -1142,9 +1080,9 @@ int msm_pcm_routing_reg_phy_stream(int fedai_id, int perf_mode,
 				return -EINVAL;
 			}
 			pr_debug("%s: setting idx bit of fe:%d, type: %d, be:%d\n",
-				 __func__, fedai_id, session, i);
+				 __func__, fedai_id, session_type, i);
 			set_bit(copp_idx,
-				&session_copp_map[fedai_id][session][i]);
+				&session_copp_map[fedai_id][session_type][i]);
 
 			if (msm_is_fractional_resample_needed(
 				sample_rate,
@@ -1155,17 +1093,11 @@ int msm_pcm_routing_reg_phy_stream(int fedai_id, int perf_mode,
 
 			for (j = 0; j < MAX_COPPS_PER_PORT; j++) {
 				unsigned long copp =
-				    session_copp_map[fedai_id][session][i];
+				    session_copp_map[fedai_id][session_type][i];
 				if (test_bit(j, &copp)) {
 					payload.port_id[num_copps] =
 							msm_bedais[i].port_id;
 					payload.copp_idx[num_copps] = j;
-					payload.acdb_dev_id[num_copps] =
-						acdb_dev_id;
-					payload.sample_rate[num_copps] =
-						sample_rate;
-					payload.app_type[num_copps] =
-						app_type;
 					num_copps++;
 				}
 			}
@@ -1179,7 +1111,13 @@ int msm_pcm_routing_reg_phy_stream(int fedai_id, int perf_mode,
 	}
 	if (num_copps) {
 		payload.num_copps = num_copps;
-		payload.session_id = fe_dai_map[fedai_id][session].strm_id;
+		payload.session_id = fe_dai_map[fedai_id][session_type].strm_id;
+		payload.app_type =
+			fe_dai_app_type_cfg[fedai_id][session_type].app_type;
+		payload.acdb_dev_id =
+			fe_dai_app_type_cfg[fedai_id][session_type].acdb_dev_id;
+		payload.sample_rate =
+			fe_dai_app_type_cfg[fedai_id][session_type].sample_rate;
 		adm_matrix_map(path_type, payload, perf_mode);
 		msm_pcm_routng_cfg_matrix_map_pp(payload, path_type, perf_mode);
 	}
@@ -1286,11 +1224,10 @@ static bool msm_pcm_routing_route_is_set(u16 be_id, u16 fe_id)
 
 static void msm_pcm_routing_process_audio(u16 reg, u16 val, int set)
 {
-	int session, path_type, topology;
+	int session_type, path_type, topology;
 	u32 channels, sample_rate;
 	uint16_t bits_per_sample = 16;
 	struct msm_pcm_routing_fdai_data *fdai;
-	int id = (reg == spkr_be_index) ? 1 : 0;
 
 	pr_debug("%s: reg %x val %x set %x\n", __func__, reg, val, set);
 
@@ -1302,13 +1239,13 @@ static void msm_pcm_routing_process_audio(u16 reg, u16 val, int set)
 
 	if (afe_get_port_type(msm_bedais[reg].port_id) ==
 		MSM_AFE_PORT_TYPE_RX) {
-		session = SESSION_TYPE_RX;
+		session_type = SESSION_TYPE_RX;
 		if (msm_bedais[reg].compr_passthr_mode != LEGACY_PCM)
 			path_type = ADM_PATH_COMPRESSED_RX;
 		else
 			path_type = ADM_PATH_PLAYBACK;
 	} else {
-		session = SESSION_TYPE_TX;
+		session_type = SESSION_TYPE_TX;
 		path_type = ADM_PATH_LIVE_REC;
 	}
 
@@ -1320,12 +1257,12 @@ static void msm_pcm_routing_process_audio(u16 reg, u16 val, int set)
 			voc_start_playback(set, msm_bedais[reg].port_id);
 
 		set_bit(val, &msm_bedais[reg].fe_sessions);
-		fdai = &fe_dai_map[val][session];
+		fdai = &fe_dai_map[val][session_type];
 		if (msm_bedais[reg].active && fdai->strm_id !=
 			INVALID_SESSION) {
 			int app_type, app_type_idx, copp_idx, acdb_dev_id;
 			channels = msm_bedais[reg].channel;
-			if (session == SESSION_TYPE_TX &&
+			if (session_type == SESSION_TYPE_TX &&
 			    fdai->be_srate &&
 			    (fdai->be_srate != msm_bedais[reg].sample_rate)) {
 				pr_debug("%s: flush strm %d diff BE rates\n",
@@ -1342,12 +1279,12 @@ static void msm_pcm_routing_process_audio(u16 reg, u16 val, int set)
 						msm_bedais[reg].format);
 
 			app_type =
-				fe_dai_app_type_cfg[val][session][id].app_type;
+				fe_dai_app_type_cfg[val][session_type].app_type;
 			if (app_type) {
 				app_type_idx =
 				msm_pcm_routing_get_app_type_idx(app_type);
 				sample_rate =
-				fe_dai_app_type_cfg[val][session][id].
+				fe_dai_app_type_cfg[val][session_type].
 					sample_rate;
 				bits_per_sample =
 					app_type_cfg[app_type_idx].bit_width;
@@ -1355,9 +1292,9 @@ static void msm_pcm_routing_process_audio(u16 reg, u16 val, int set)
 				sample_rate = msm_bedais[reg].sample_rate;
 
 			topology = msm_routing_get_adm_topology(path_type, val,
-						session, id);
+						session_type);
 			acdb_dev_id =
-			fe_dai_app_type_cfg[val][session][id].acdb_dev_id;
+			fe_dai_app_type_cfg[val][session_type].acdb_dev_id;
 			copp_idx = adm_open(msm_bedais[reg].port_id, path_type,
 					    sample_rate, channels, topology,
 					    fdai->perf_mode, bits_per_sample,
@@ -1369,9 +1306,9 @@ static void msm_pcm_routing_process_audio(u16 reg, u16 val, int set)
 				return;
 			}
 			pr_debug("%s: setting idx bit of fe:%d, type: %d, be:%d\n",
-				 __func__, val, session, reg);
+				 __func__, val, session_type, reg);
 			set_bit(copp_idx,
-				&session_copp_map[val][session][reg]);
+				&session_copp_map[val][session_type][reg]);
 
 			if (msm_is_fractional_resample_needed(
 				sample_rate,
@@ -1380,15 +1317,15 @@ static void msm_pcm_routing_process_audio(u16 reg, u16 val, int set)
 					msm_bedais[reg].port_id, copp_idx,
 					msm_bedais[reg].sample_rate);
 
-			if (session == SESSION_TYPE_RX &&
+			if (session_type == SESSION_TYPE_RX &&
 			    fdai->event_info.event_func)
 				fdai->event_info.event_func(
 					MSM_PCM_RT_EVT_DEVSWITCH,
 					fdai->event_info.priv_data);
 
-			msm_pcm_routing_build_matrix(val, session,
+			msm_pcm_routing_build_matrix(val, session_type,
 						     path_type,
-						     fdai->perf_mode, id);
+						     fdai->perf_mode);
 			if ((fdai->perf_mode == LEGACY_PCM_MODE) &&
 				(msm_bedais[reg].compr_passthr_mode ==
 					LEGACY_PCM))
@@ -1402,13 +1339,13 @@ static void msm_pcm_routing_process_audio(u16 reg, u16 val, int set)
 			(msm_bedais[reg].port_id == VOICE2_PLAYBACK_TX)))
 			voc_start_playback(set, msm_bedais[reg].port_id);
 		clear_bit(val, &msm_bedais[reg].fe_sessions);
-		fdai = &fe_dai_map[val][session];
+		fdai = &fe_dai_map[val][session_type];
 		if (msm_bedais[reg].active && fdai->strm_id !=
 			INVALID_SESSION) {
 			int idx;
 			int port_id;
 			unsigned long copp =
-				session_copp_map[val][session][reg];
+				session_copp_map[val][session_type][reg];
 			for (idx = 0; idx < MAX_COPPS_PER_PORT; idx++)
 				if (test_bit(idx, &copp))
 					break;
@@ -1419,10 +1356,10 @@ static void msm_pcm_routing_process_audio(u16 reg, u16 val, int set)
 			adm_close(msm_bedais[reg].port_id, fdai->perf_mode,
 				  idx);
 			pr_debug("%s: copp: %ld, reset idx bit fe:%d, type: %d, be:%d topology=0x%x\n",
-				 __func__, copp, val, session, reg,
+				 __func__, copp, val, session_type, reg,
 				 topology);
 			clear_bit(idx,
-				  &session_copp_map[val][session][reg]);
+				  &session_copp_map[val][session_type][reg]);
 			if ((DOLBY_ADM_COPP_TOPOLOGY_ID == topology ||
 				DS2_ADM_COPP_TOPOLOGY_ID == topology) &&
 			    (fdai->perf_mode == LEGACY_PCM_MODE) &&
@@ -1431,9 +1368,9 @@ static void msm_pcm_routing_process_audio(u16 reg, u16 val, int set)
 				msm_pcm_routing_deinit_pp(
 						msm_bedais[reg].port_id,
 						topology);
-			msm_pcm_routing_build_matrix(val, session,
+			msm_pcm_routing_build_matrix(val, session_type,
 						     path_type,
-						     fdai->perf_mode, id);
+						     fdai->perf_mode);
 		}
 	}
 	if ((msm_bedais[reg].port_id == VOICE_RECORD_RX)
@@ -1469,9 +1406,6 @@ static int msm_routing_put_audio_mixer(struct snd_kcontrol *kcontrol,
 	struct soc_mixer_control *mc =
 		(struct soc_mixer_control *)kcontrol->private_value;
 	struct snd_soc_dapm_update *update = NULL;
-
-	pr_debug("%s: value[0](%ld) mc->reg 0x%x, mc->shift 0x%x\n",
-		__func__, ucontrol->value.integer.value[0], mc->reg, mc->shift);
 
 	if (ucontrol->value.integer.value[0] &&
 	   msm_pcm_routing_route_is_set(mc->reg, mc->shift) == false) {
@@ -1538,49 +1472,6 @@ static void msm_pcm_routing_process_voice(u16 reg, u16 val, int set)
 
 	mutex_unlock(&routing_lock);
 
-}
-
-static int msm_pcm_get_dev_id_per_port(int port_id)
-{
-	int acdb_id = 0;
-	int i = 0;
-	int session;
-	int port_type = afe_get_port_type(port_id);
-	int be_id = msm_get_be_id_from_port_id(port_id);
-
-	pr_debug("%s: be_id %d, spkr_be_index %d afe_get_port_type 0x%x\n",
-	       __func__, be_id, spkr_be_index, port_type);
-	if (port_type == MSM_AFE_PORT_TYPE_TX)
-		session = SESSION_TYPE_TX;
-	else if (port_type == MSM_AFE_PORT_TYPE_RX)
-		session = SESSION_TYPE_RX;
-	else {
-		pr_err("%s: Invalid port type\n", __func__);
-		goto exit;
-	}
-	if (be_id < 0) {
-		pr_err("%s: Invalid port type\n", __func__);
-		goto exit;
-	}
-
-	mutex_lock(&routing_lock);
-	for_each_set_bit(i, &msm_bedais[be_id].fe_sessions,
-			 MSM_FRONTEND_DAI_MM_SIZE) {
-			if (be_id == spkr_be_index)
-				acdb_id =
-				fe_dai_app_type_cfg[i][session][1].acdb_dev_id;
-			else
-				acdb_id =
-				fe_dai_app_type_cfg[i][session][0].acdb_dev_id;
-
-			pr_debug("%s: FE(%d) session[%d] acdb_id selected(%d)acdb_dev_id[0](%d) acdb_dev_id[1](%d)\n",
-			       __func__, i, session, acdb_id,
-			       fe_dai_app_type_cfg[i][session][0].acdb_dev_id,
-			       fe_dai_app_type_cfg[i][session][1].acdb_dev_id);
-	}
-	mutex_unlock(&routing_lock);
-exit:
-	return acdb_id;
 }
 
 static int msm_routing_get_voice_mixer(struct snd_kcontrol *kcontrol,
@@ -1729,6 +1620,35 @@ static int msm_routing_put_hfp_switch_mixer(struct snd_kcontrol *kcontrol,
 		snd_soc_dapm_mixer_update_power(widget->dapm, kcontrol,
 						0, update);
 	hfp_switch_enable = ucontrol->value.integer.value[0];
+	return 1;
+}
+
+static int msm_routing_get_slim3_tx_fm_switch_mixer(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = slim3_tx_fm_switch_enable;
+	pr_debug("%s: SLIM3 TX Switch enable %ld\n", __func__,
+		ucontrol->value.integer.value[0]);
+	return 0;
+}
+
+static int msm_routing_put_slim3_tx_fm_switch_mixer(struct snd_kcontrol *kcontrol,
+				struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_dapm_widget_list *wlist =
+					dapm_kcontrol_get_wlist(kcontrol);
+	struct snd_soc_dapm_widget *widget = wlist->widgets[0];
+	struct snd_soc_dapm_update *update = NULL;
+
+	pr_debug("%s: SLIM3 TX Switch enable %ld\n", __func__,
+			ucontrol->value.integer.value[0]);
+	if (ucontrol->value.integer.value[0])
+		snd_soc_dapm_mixer_update_power(widget->dapm, kcontrol,
+						1, update);
+	else
+		snd_soc_dapm_mixer_update_power(widget->dapm, kcontrol,
+						0, update);
+	slim3_tx_fm_switch_enable = ucontrol->value.integer.value[0];
 	return 1;
 }
 
@@ -6201,6 +6121,11 @@ static const struct snd_kcontrol_new hfp_int_switch_mixer_controls =
 	0, 1, 0, msm_routing_get_hfp_switch_mixer,
 	msm_routing_put_hfp_switch_mixer);
 
+static const struct snd_kcontrol_new slim3_tx_fm_switch_mixer_controls =
+	SOC_SINGLE_EXT("Switch", SND_SOC_NOPM,
+	0, 1, 0, msm_routing_get_slim3_tx_fm_switch_mixer,
+	msm_routing_put_slim3_tx_fm_switch_mixer);
+
 static const struct soc_enum lsm_mux_enum =
 	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(mad_audio_mux_text), mad_audio_mux_text);
 
@@ -6420,10 +6345,6 @@ static int msm_routing_put_app_type_cfg_control(struct snd_kcontrol *kcontrol,
 				ucontrol->value.integer.value[i++];
 		app_type_cfg[j].bit_width =
 				ucontrol->value.integer.value[i++];
-		pr_debug("%s: app_type[%d](%d) sample_rate[%d](%d) bit_width[%d](%d)\n",
-			__func__, j, app_type_cfg[j].app_type,
-			j, app_type_cfg[j].sample_rate,
-			j, app_type_cfg[j].bit_width);
 	}
 
 	return 0;
@@ -7601,6 +7522,8 @@ static const struct snd_soc_dapm_widget msm_qdsp6_widgets[] = {
 				&hfp_aux_switch_mixer_controls),
 	SND_SOC_DAPM_SWITCH("HFP_INT_UL_HL", SND_SOC_NOPM, 0, 0,
 				&hfp_int_switch_mixer_controls),
+	SND_SOC_DAPM_SWITCH("SLIMBUS3_UL_HL", SND_SOC_NOPM, 0, 0,
+				&slim3_tx_fm_switch_mixer_controls),
 
 	/* Mux Definitions */
 	SND_SOC_DAPM_MUX("LSM1 MUX", SND_SOC_NOPM, 0, 0, &lsm1_mux),
@@ -8924,7 +8847,8 @@ static const struct snd_soc_dapm_route intercon[] = {
 	{"SLIMBUS_6_RX", NULL, "SLIMBUS6_DL_HL"},
 	{"SLIM0_UL_HL", NULL, "SLIMBUS_0_TX"},
 	{"SLIM1_UL_HL", NULL, "SLIMBUS_1_TX"},
-	{"SLIM3_UL_HL", NULL, "SLIMBUS_3_TX"},
+	{"SLIM3_UL_HL", NULL, "SLIMBUS3_UL_HL"},
+	{"SLIMBUS3_UL_HL", "Switch", "SLIMBUS_3_TX"},
 	{"SLIM4_UL_HL", NULL, "SLIMBUS_4_TX"},
 
 	{"LSM1 MUX", "SLIMBUS_0_TX", "SLIMBUS_0_TX"},
@@ -9456,9 +9380,9 @@ static int msm_pcm_routing_hw_params(struct snd_pcm_substream *substream,
 	msm_bedais[be_id].sample_rate = params_rate(params);
 	msm_bedais[be_id].channel = params_channels(params);
 	msm_bedais[be_id].format = params_format(params);
-	pr_debug("%s: BE Sample Rate (%d) format (%d) be_id %d cup_dai id 0x%x\n",
+	pr_debug("%s: BE Sample Rate (%d) format (%d) be_id %d\n",
 		__func__, msm_bedais[be_id].sample_rate,
-		msm_bedais[be_id].format, be_id, rtd->cpu_dai->id);
+		msm_bedais[be_id].format, be_id);
 	mutex_unlock(&routing_lock);
 	return 0;
 }
@@ -9528,16 +9452,15 @@ static int msm_pcm_routing_prepare(struct snd_pcm_substream *substream)
 {
 	struct snd_soc_pcm_runtime *rtd = substream->private_data;
 	unsigned int be_id = rtd->dai_link->be_id;
-	int i, path_type, session, topology;
+	int i, path_type, session_type, topology;
 	struct msm_pcm_routing_bdai_data *bedai;
 	u32 channels, sample_rate;
 	uint16_t bits_per_sample = 16, voc_path_type;
 	struct msm_pcm_routing_fdai_data *fdai;
 	u32 session_id;
-	int idx = (be_id == spkr_be_index) ? 1 : 0;
 
-	pr_debug("%s: substream->pcm->id:%s, be_id %d <=> afe_port_id 0x%x\n",
-		 __func__, substream->pcm->id, be_id, rtd->cpu_dai->id);
+	pr_debug("%s: substream->pcm->id:%s\n",
+		 __func__, substream->pcm->id);
 
 	if (be_id >= MSM_BACKEND_DAI_MAX) {
 		pr_err("%s: unexpected be_id %d\n", __func__, be_id);
@@ -9551,10 +9474,10 @@ static int msm_pcm_routing_prepare(struct snd_pcm_substream *substream)
 			path_type = ADM_PATH_COMPRESSED_RX;
 		else
 			path_type = ADM_PATH_PLAYBACK;
-		session = SESSION_TYPE_RX;
+		session_type = SESSION_TYPE_RX;
 	} else {
 		path_type = ADM_PATH_LIVE_REC;
-		session = SESSION_TYPE_TX;
+		session_type = SESSION_TYPE_TX;
 	}
 
 	mutex_lock(&routing_lock);
@@ -9569,10 +9492,10 @@ static int msm_pcm_routing_prepare(struct snd_pcm_substream *substream)
 	bedai->active = 1;
 
 	for_each_set_bit(i, &bedai->fe_sessions, MSM_FRONTEND_DAI_MM_SIZE) {
-		fdai = &fe_dai_map[i][session];
+		fdai = &fe_dai_map[i][session_type];
 		if (fdai->strm_id != INVALID_SESSION) {
 			int app_type, app_type_idx, copp_idx, acdb_dev_id;
-			if (session == SESSION_TYPE_TX &&
+			if (session_type == SESSION_TYPE_TX &&
 			    fdai->be_srate &&
 			    (fdai->be_srate != bedai->sample_rate)) {
 				pr_debug("%s: flush strm %d diff BE rates\n",
@@ -9589,12 +9512,12 @@ static int msm_pcm_routing_prepare(struct snd_pcm_substream *substream)
 						bedai->format);
 
 			app_type =
-			fe_dai_app_type_cfg[i][session][idx].app_type;
+				fe_dai_app_type_cfg[i][session_type].app_type;
 			if (app_type) {
 				app_type_idx =
 				msm_pcm_routing_get_app_type_idx(app_type);
 				sample_rate =
-					fe_dai_app_type_cfg[i][session][idx].
+					fe_dai_app_type_cfg[i][session_type].
 						sample_rate;
 				bits_per_sample =
 					app_type_cfg[app_type_idx].bit_width;
@@ -9602,9 +9525,9 @@ static int msm_pcm_routing_prepare(struct snd_pcm_substream *substream)
 				sample_rate = bedai->sample_rate;
 			channels = bedai->channel;
 			acdb_dev_id =
-			fe_dai_app_type_cfg[i][session][idx].acdb_dev_id;
+			fe_dai_app_type_cfg[i][session_type].acdb_dev_id;
 			topology = msm_routing_get_adm_topology(path_type, i,
-						session, idx);
+						session_type);
 			copp_idx = adm_open(bedai->port_id, path_type,
 					    sample_rate, channels, topology,
 					    fdai->perf_mode, bits_per_sample,
@@ -9616,9 +9539,9 @@ static int msm_pcm_routing_prepare(struct snd_pcm_substream *substream)
 				return -EINVAL;
 			}
 			pr_debug("%s: setting idx bit of fe:%d, type: %d, be:%d\n",
-				 __func__, i, session, be_id);
+				 __func__, i, session_type, be_id);
 			set_bit(copp_idx,
-				&session_copp_map[i][session][be_id]);
+				&session_copp_map[i][session_type][be_id]);
 
 			if (msm_is_fractional_resample_needed(
 				sample_rate,
@@ -9627,8 +9550,8 @@ static int msm_pcm_routing_prepare(struct snd_pcm_substream *substream)
 					bedai->port_id, copp_idx,
 					bedai->sample_rate);
 
-			msm_pcm_routing_build_matrix(i, session, path_type,
-						     fdai->perf_mode, idx);
+			msm_pcm_routing_build_matrix(i, session_type, path_type,
+						     fdai->perf_mode);
 			if ((fdai->perf_mode == LEGACY_PCM_MODE) &&
 				(bedai->compr_passthr_mode ==
 					LEGACY_PCM))
@@ -9643,7 +9566,7 @@ static int msm_pcm_routing_prepare(struct snd_pcm_substream *substream)
 			pr_debug("%s voice session_id: 0x%x",
 				 __func__, session_id);
 
-			if (session == SESSION_TYPE_TX)
+			if (session_type == SESSION_TYPE_TX)
 				voc_path_type = TX_PATH;
 			else
 				voc_path_type = RX_PATH;
@@ -9824,33 +9747,10 @@ static int msm_routing_get_device_pp_params_mixer(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
-static int msm_routing_put_spkr_be_index(struct snd_kcontrol *kcontrol,
-					struct snd_ctl_elem_value *ucontrol)
-{
-	pr_debug("%s: spkr_be_index %d\n", __func__, spkr_be_index);
-	spkr_be_index = ucontrol->value.integer.value[0];
-	return 0;
-}
-
-static int msm_routing_get_spkr_be_index(struct snd_kcontrol *kcontrol,
-					struct snd_ctl_elem_value *ucontrol)
-{
-	ucontrol->value.integer.value[0] = spkr_be_index;
-	pr_debug("%s: spkr_be_index %d\n", __func__, spkr_be_index);
-	return 0;
-}
-
 static const struct snd_kcontrol_new device_pp_params_mixer_controls[] = {
 	SOC_SINGLE_MULTI_EXT("Device PP Params", SND_SOC_NOPM, 0, 0xFFFFFFFF,
 	0, 3, msm_routing_get_device_pp_params_mixer,
 	msm_routing_put_device_pp_params_mixer),
-};
-
-static const struct snd_kcontrol_new speaker_be_index_mixer_controls[] = {
-	SOC_SINGLE_MULTI_EXT("Speaker BE Index", SND_SOC_NOPM, 0,
-	MSM_BACKEND_DAI_MAX,
-	0, 1, msm_routing_get_spkr_be_index,
-	msm_routing_put_spkr_be_index),
 };
 
 static struct snd_pcm_ops msm_routing_pcm_ops = {
@@ -9914,10 +9814,6 @@ static int msm_routing_probe(struct snd_soc_platform *platform)
 			return -ENOMEM;
 		snd_ctl_add(platform->component.card->snd_card, kctl);
 	}
-
-	snd_soc_add_platform_controls(platform,
-				speaker_be_index_mixer_controls,
-				ARRAY_SIZE(speaker_be_index_mixer_controls));
 
 	msm_dts_eagle_add_controls(platform);
 
@@ -10055,7 +9951,6 @@ static int __init msm_soc_routing_platform_init(void)
 	if (msm_routing_init_cal_data())
 		pr_err("%s: could not init cal data!\n", __func__);
 
-	afe_set_routing_callback((routing_cb)msm_pcm_get_dev_id_per_port);
 	return platform_driver_register(&msm_routing_pcm_driver);
 }
 module_init(msm_soc_routing_platform_init);

@@ -208,10 +208,15 @@ int oem_mdss_aod_decide_status(struct msm_fb_data_type *mfd, int blank_mode)
 			cmd_status = OFF_CMD;
 #endif
 			next_mode = AOD_PANEL_MODE_U0_BLANK;
-#if defined(CONFIG_LGE_DISPLAY_AOD_WITH_MIPI)
-			mfd->watch.current_font_type = FONT_NONE;
-#endif
 		}
+#if defined(CONFIG_LGE_DISPLAY_AOD_WITH_MIPI)
+		/* U2_UNBLANK -> U0_BLANK, When font download is Fail */
+		else if (blank_mode == FB_BLANK_POWERDOWN && aod_node == 1 && !mfd->watch.current_font_type) {
+			cmd_status = OFF_CMD;
+			next_mode = AOD_PANEL_MODE_U0_BLANK;
+			labibb_ctrl = true;
+		}
+#endif
 		/* U2_UNBLANK -> U2_BLANK */
 		else if (blank_mode == FB_BLANK_POWERDOWN && aod_node == 1) {
 			cmd_status = CMD_SKIP;
@@ -296,7 +301,11 @@ int oem_mdss_aod_decide_status(struct msm_fb_data_type *mfd, int blank_mode)
 #endif
 		/* U3_UNBLANK -> U2_BLANK */
 		else if (blank_mode == FB_BLANK_POWERDOWN && aod_node == 1) {
+#if defined(CONFIG_LGE_DISPLAY_AOD_WITH_MIPI)
+			cmd_status = CMD_SKIP;
+#else
 			cmd_status = AOD_CMD_ENABLE;
+#endif
 			next_mode = AOD_PANEL_MODE_U2_BLANK;
 			labibb_ctrl = false;
 		}
@@ -321,8 +330,11 @@ int oem_mdss_aod_decide_status(struct msm_fb_data_type *mfd, int blank_mode)
 	/* set backlight mode as aod mode changes */
 	oem_mdss_aod_set_backlight_mode(mfd);
 #if defined(CONFIG_LGE_DISPLAY_AOD_WITH_MIPI)
-	if (mfd->panel_info->panel_type == LGD_SIC_LG49408_1440_2880_INCELL_CMD_PANEL)
+	if (mfd->panel_info->panel_type == LGD_SIC_LG49408_1440_2880_INCELL_CMD_PANEL) {
+		mutex_lock(&mfd->watch_lock);
 		lcd_watch_deside_status(mfd, cur_mode, next_mode);
+		mutex_unlock(&mfd->watch_lock);
+	}
 #endif
 
 	return AOD_RETURN_SUCCESS;
@@ -342,6 +354,14 @@ error:
 	}
 	/* set backlight mode as aod mode changes */
 	oem_mdss_aod_set_backlight_mode(mfd);
+#if defined(CONFIG_LGE_DISPLAY_AOD_WITH_MIPI)
+	if (mfd->panel_info->panel_type == LGD_SIC_LG49408_1440_2880_INCELL_CMD_PANEL) {
+		mutex_lock(&mfd->watch_lock);
+		lcd_watch_deside_status(mfd, cur_mode, mfd->panel_info->aod_cur_mode);
+		mutex_unlock(&mfd->watch_lock);
+	}
+#endif
+
 	return rc;
 }
 
@@ -361,8 +381,18 @@ int oem_mdss_aod_cmd_send(struct msm_fb_data_type *mfd, int cmd)
 	switch (cmd) {
 	case AOD_CMD_ENABLE:
 		cmd_index = AOD_PANEL_CMD_U3_TO_U2;
+#if defined(CONFIG_LGE_DISPLAY_AOD_WITH_MIPI)
+		if (ctrl->panel_data.panel_info.aod_cur_mode == AOD_PANEL_MODE_U3_UNBLANK) {
+			param = AOD_PANEL_MODE_NONE;
+		}
+		else {
+			ctrl->panel_data.panel_info.aod_cur_mode = AOD_PANEL_MODE_U2_UNBLANK;
+			param = AOD_PANEL_MODE_U2_UNBLANK;
+		}
+#else
 		ctrl->panel_data.panel_info.aod_cur_mode = AOD_PANEL_MODE_U2_UNBLANK;
 		param = AOD_PANEL_MODE_U2_UNBLANK;
+#endif
 		break;
 	case AOD_CMD_DISABLE:
 		cmd_index = AOD_PANEL_CMD_U2_TO_U3;
@@ -405,6 +435,9 @@ int oem_mdss_aod_cmd_send(struct msm_fb_data_type *mfd, int cmd)
 	mdss_dsi_clk_ctrl(ctrl, ctrl->dsi_clk_handle,
 				  MDSS_DSI_ALL_CLKS, MDSS_DSI_CLK_OFF);
 
+	/* Don't send notify to touch when AOD_PANEL_MODE_NONE */
+	if (param == AOD_PANEL_MODE_NONE)
+		return AOD_RETURN_SUCCESS;
 	if(touch_notifier_call_chain(LCD_EVENT_LCD_MODE, (void *)&param))
 		pr_err("[AOD] Failt to send notify to touch\n");
 	return AOD_RETURN_SUCCESS;

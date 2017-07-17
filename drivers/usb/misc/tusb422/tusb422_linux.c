@@ -525,8 +525,10 @@ static irqreturn_t tusb422_event_handler(int irq, void *data)
 	struct tusb422_pwr_delivery *tusb422_pwr = data;
 
 #if defined(CONFIG_WAKELOCK) && defined(CONFIG_LGE_USB_TYPE_C)
-	wake_lock_timeout(&tusb422_pd->attach_wakelock,
-			  msecs_to_jiffies(WAKE_LOCK_TIMEOUT_MS));
+	if (!tcpm_is_cc_fault(0)) {
+		wake_lock_timeout(&tusb422_pd->attach_wakelock,
+				  msecs_to_jiffies(WAKE_LOCK_TIMEOUT_MS));
+	}
 #endif
 
 	tusb422_schedule_work(&tusb422_pwr->work);
@@ -873,8 +875,10 @@ static enum hrtimer_restart tusb422_timer_tasklet(struct hrtimer *hrtimer)
 	struct tusb422_pwr_delivery *tusb422_pwr = container_of(hrtimer, struct tusb422_pwr_delivery, timer);
 
 #if defined(CONFIG_WAKELOCK) && defined(CONFIG_LGE_USB_TYPE_C)
-	wake_lock_timeout(&tusb422_pwr->attach_wakelock,
-			  msecs_to_jiffies(WAKE_LOCK_TIMEOUT_MS));
+	if (!tcpm_is_cc_fault(0)) {
+		wake_lock_timeout(&tusb422_pwr->attach_wakelock,
+				  msecs_to_jiffies(WAKE_LOCK_TIMEOUT_MS));
+	}
 #endif
 
 	tusb422_pwr->timer_expired = true;
@@ -1067,6 +1071,11 @@ static int tusb422_i2c_probe(struct i2c_client *client,
 		dev_err(dev, "failed to create sysfs: %d\n", ret);
 		goto err_sysfs;
 	}
+#endif
+
+#ifdef CONFIG_LGE_USB_TYPE_C
+	/* Run USB Type-C init state machine */
+	tcpm_connection_state_machine(0);
 #endif
 
 	tusb422_schedule_work(&tusb422_pd->work);

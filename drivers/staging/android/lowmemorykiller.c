@@ -713,6 +713,13 @@ static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 		task_unlock(p);
 		if (tasksize <= 0)
 			continue;
+
+		if (p->state & TASK_UNINTERRUPTIBLE) {
+			lowmem_print(1, "%s: [tsk] pid : %d state : %ld , [p] pid : %d, state : %ld !!\n",
+					__func__, tsk->pid, tsk->state, p->pid,p->state);
+			continue;
+		}
+
 		if (selected) {
 #ifdef CONFIG_HSWAP
 			if (min_score_adj <= OOM_SCORE_SERVICE_B_ADJ) {
@@ -758,6 +765,7 @@ static unsigned long lowmem_scan(struct shrinker *s, struct shrink_control *sc)
 			goto kill;
 		else if (!reclaim_cnt && (min_score_adj > OOM_SCORE_CACHED_APP_MIN_ADJ)) {
 			rcu_read_unlock();
+			rem = SHRINK_STOP;
 			goto end_lmk;
 		}
 

@@ -21,12 +21,29 @@
 #include <linux/device.h>
 #include <linux/fs.h>
 #include <linux/err.h>
+#include <linux/string.h>
 
 #include "timed_output.h"
 
 static struct class *timed_output_class;
 static atomic_t device_count;
+static struct timed_output_dev *hdev = NULL;
+/*
+static int match_name(struct device *dev, const void *data)
+{
+	const char *name = data;
+    return data && ((strcmp(dev_name(dev), name) == 0));
+}
+*/
+struct timed_output_dev *timed_output_dev_find_by_name(const char *name)
+{
+//	struct device *dev = class_find_device(timed_output_class, NULL, name, match_name);
 
+//	return dev ? container_of(&dev, struct timed_output_dev, dev) : NULL;
+	return hdev;
+}
+EXPORT_SYMBOL_GPL(timed_output_dev_find_by_name);
+ 
 static ssize_t enable_show(struct device *dev, struct device_attribute *attr,
 			   char *buf)
 {
@@ -91,6 +108,9 @@ int timed_output_dev_register(struct timed_output_dev *tdev)
 
 	dev_set_drvdata(tdev->dev, tdev);
 	tdev->state = 0;
+	if (!strcmp(tdev->name, "vibrator"))
+		hdev = tdev;
+
 	return 0;
 }
 EXPORT_SYMBOL_GPL(timed_output_dev_register);

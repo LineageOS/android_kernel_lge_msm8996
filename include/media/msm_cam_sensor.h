@@ -80,7 +80,6 @@ struct csid_cfg_data32 {
 	} cfg;
 };
 
-#ifndef CONFIG_LGE_CAMERA_DRIVER
 struct msm_ir_led_cfg_data_t32 {
 	enum msm_ir_led_cfg_type_t cfg_type;
 	int32_t pwm_duty_on_ns;
@@ -90,7 +89,6 @@ struct msm_ir_led_cfg_data_t32 {
 struct msm_ir_cut_cfg_data_t32 {
 	enum msm_ir_cut_cfg_type_t cfg_type;
 };
-#endif
 
 struct eeprom_read_t32 {
 	compat_uptr_t dbuffer;
@@ -327,22 +325,21 @@ struct msm_flash_cfg_data_t32 {
 #define VIDIOC_MSM_FLASH_CFG32 \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 13, struct msm_flash_cfg_data_t32)
 
-#ifndef CONFIG_LGE_CAMERA_DRIVER
 #define VIDIOC_MSM_IR_LED_CFG32 \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 14, struct msm_ir_led_cfg_data_t32)
 
 #define VIDIOC_MSM_IR_CUT_CFG32 \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 15, struct msm_ir_cut_cfg_data_t32)
 
-#else
+#if 1 /* CONFIG_MACH_LGE */
 #define VIDIOC_MSM_PROXY_CFG32 \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 12, struct msm_proxy_cfg_data32)
 
 #define VIDIOC_MSM_TCS_CFG32 \
-	_IOWR('V', BASE_VIDIOC_PRIVATE + 14, struct msm_tcs_cfg_data32)
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 16, struct msm_tcs_cfg_data32)
 
 #define VIDIOC_MSM_IRIS_CFG32 \
-	_IOWR('V', BASE_VIDIOC_PRIVATE + 15, struct msm_iris_cfg_data32)
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 17, struct msm_iris_cfg_data32)
 #endif
 #endif
 

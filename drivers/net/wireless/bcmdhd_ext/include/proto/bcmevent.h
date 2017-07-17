@@ -3,7 +3,7 @@
  *
  * Dependencies: proto/bcmeth.h
  *
- * Copyright (C) 1999-2016, Broadcom Corporation
+ * Copyright (C) 1999-2017, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -26,7 +26,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: bcmevent.h 670125 2016-11-14 12:07:48Z $
+ * $Id: bcmevent.h 674470 2016-12-08 21:37:19Z $
  *
  */
 
@@ -883,9 +883,19 @@ typedef struct wl_invalid_ie_event {
 	uint8  ie[];     /* Variable length buffer for the invalid IE copy */
 } wl_invalid_ie_event_t;
 
+/* Fixed header portion of Invalid IE Event */
+typedef struct wl_invalid_ie_event_hdr {
+	uint16 version;
+	uint16 len;      /* Length of the invalid IE copy */
+	uint16 type;     /* Type/subtype of the frame which contains the invalid IE */
+	uint16 error;    /* error code of the wrong IE, defined in ie_error_code_t */
+	/* var length IE data follows */
+} wl_invalid_ie_event_hdr_t;
+
 typedef enum ie_error_code {
 	IE_ERROR_OUT_OF_RANGE = 0x01
 } ie_error_code_t;
+
 /* This marks the end of a packed structure section. */
 #include <packed_section_end.h>
 

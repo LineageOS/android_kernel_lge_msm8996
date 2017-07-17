@@ -5159,6 +5159,9 @@ static struct android_configuration *alloc_android_config
 	conf->usb_config.label = dev->name;
 	conf->usb_config.unbind = android_unbind_config;
 	conf->usb_config.bConfigurationValue = dev->configs_num;
+#ifdef CONFIG_LGE_USB_G_ANDROID
+	conf->usb_config.bmAttributes |= USB_CONFIG_ATT_SELFPOWER;
+#endif
 
 	INIT_LIST_HEAD(&conf->enabled_functions);
 

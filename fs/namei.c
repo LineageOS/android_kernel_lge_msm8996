@@ -4267,9 +4267,28 @@ SYSCALL_DEFINE5(renameat2, int, olddfd, const char __user *, oldname,
 	unsigned int lookup_flags = 0;
 	bool should_retry = false;
 	int error;
+#ifdef CONFIG_SDCARD_FS
+	/* we need to propagate rename for all path(default/read/write) */
+	struct inode *inode = NULL;
+	bool propagate_enable = true;
+	char *path_old_buf = NULL;
+	char *path_new_buf = NULL;
+	char *propagate_old_path = NULL;
+	char *propagate_new_path = NULL;
+#endif
 
+#ifdef CONFIG_SDCARD_FS
+	if (flags & ~(RENAME_NOREPLACE | RENAME_EXCHANGE | RENAME_WHITEOUT | RENAME_NOPROPAGATE))
+		return -EINVAL;
+
+	if (flags & RENAME_NOPROPAGATE) {
+		flags &= ~RENAME_NOPROPAGATE;
+		propagate_enable = false;
+	}
+#else
 	if (flags & ~(RENAME_NOREPLACE | RENAME_EXCHANGE | RENAME_WHITEOUT))
 		return -EINVAL;
+#endif
 
 	if ((flags & (RENAME_NOREPLACE | RENAME_WHITEOUT)) &&
 	    (flags & RENAME_EXCHANGE))
@@ -4362,6 +4381,27 @@ retry_deleg:
 	if (new_dentry == trap)
 		goto exit5;
 
+#ifdef CONFIG_SDCARD_FS
+	/* we need to propagate rename for all path(default/read/write) */
+	if (old_dir->d_inode->i_sb->s_op->rename_callback && propagate_enable) {
+		struct inode *lower_old_inode = old_dir->d_inode;
+		struct inode *lower_new_inode = new_dir->d_inode;
+		inode = old_dir->d_inode;
+
+		while (lower_old_inode->i_op->get_lower_inode) {
+			if (lower_old_inode->i_sb->s_magic == SDCARDFS_SUPER_MAGIC
+					&& SDCARDFS_SB(lower_old_inode->i_sb)->options.label) {
+				path_old_buf = kmalloc(PATH_MAX, GFP_KERNEL);
+				path_new_buf = kmalloc(PATH_MAX, GFP_KERNEL);
+				propagate_old_path = dentry_path_raw(old_dentry, path_old_buf, PATH_MAX);
+				propagate_new_path = dentry_path_raw(new_dentry, path_new_buf, PATH_MAX);
+			}
+			lower_old_inode = lower_old_inode->i_op->get_lower_inode(lower_old_inode);
+			lower_new_inode = lower_new_inode->i_op->get_lower_inode(lower_new_inode);
+		}
+	}
+#endif
+
 	error = security_path_rename(&oldnd.path, old_dentry,
 				     &newnd.path, new_dentry, flags);
 	if (error)
@@ -4375,6 +4415,15 @@ exit4:
 	dput(old_dentry);
 exit3:
 	unlock_rename(new_dir, old_dir);
+#ifdef CONFIG_SDCARD_FS
+	/* we need to propagate rename for all path(default/read/write) */
+	if (path_old_buf && !IS_ERR(path_old_buf) && path_new_buf && !IS_ERR(path_new_buf)
+			&& !error && propagate_enable) {
+		inode->i_sb->s_op->rename_callback(inode, propagate_old_path, propagate_new_path);
+		kfree(path_old_buf);
+		kfree(path_new_buf);
+	}
+#endif
 	if (delegated_inode) {
 		error = break_deleg_wait(&delegated_inode);
 		if (!error)

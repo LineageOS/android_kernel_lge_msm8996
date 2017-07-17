@@ -27,7 +27,7 @@
  * other than the GPL, without Broadcom's express prior written consent.
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wlioctl.h 641342 2016-06-02 08:28:42Z $
+ * $Id: wlioctl.h 674944 2016-12-13 10:31:30Z $
  */
 
 #ifndef _wlioctl_h_
@@ -4378,6 +4378,7 @@ typedef struct wl_tcp_keep_set {
 			OFFSETOF(wl_pkt_filter_pattern_listel_t, mask_and_data)
 
 #define WL_APF_INTERNAL_VERSION 1
+#define WL_APF_PROGRAM_MAX_SIZE (2 * 1024)
 #define WL_APF_PROGRAM_FIXED_LEN OFFSETOF(wl_apf_program_t, instrs)
 #define WL_APF_PROGRAM_LEN(apf_program) \
 	(apf_program->instr_len * sizeof(apf_program->instrs[0]))

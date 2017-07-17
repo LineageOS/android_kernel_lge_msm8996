@@ -62,9 +62,21 @@ typedef enum
 	TCPC_STATE_DEBUG_ACC_SNK,
 	TCPC_STATE_AUDIO_ACC,
 	TCPC_STATE_ERROR_RECOVERY,
+#ifdef CONFIG_LGE_USB_TYPE_C
+	TCPC_STATE_CC_FAULT_OV,
+	TCPC_STATE_CC_FAULT_SWING,
+	TCPC_STATE_CC_FAULT_TEST,
+#endif
 	TCPC_STATE_DISABLED,  /* no CC terminations */
 	TCPC_NUM_STATES
 } tcpc_state_t;
+
+#ifdef CONFIG_LGE_USB_TYPE_C
+#define IS_STATE_CC_FAULT(state) \
+	((state == TCPC_STATE_CC_FAULT_OV) || \
+	 (state == TCPC_STATE_CC_FAULT_SWING) || \
+	 (state == TCPC_STATE_CC_FAULT_TEST))
+#endif
 
 extern const char * const tcstate2string[TCPC_NUM_STATES];
 
@@ -119,6 +131,11 @@ typedef struct
 	uint8_t             silicon_revision;
 	uint8_t             rx_buff_overflow_cnt;
 	uint8_t             vconn_ocp_cnt;
+#ifdef CONFIG_LGE_USB_TYPE_C
+	bool                debug_accessory_mode;
+	unsigned long       cc_swing_timeout;
+	uint8_t             cc_swing_cnt;
+#endif
 } tcpc_device_t;
 
 typedef struct
@@ -215,6 +232,11 @@ void tcpm_update_msg_header_info(unsigned int port, uint8_t data_role, uint8_t p
 void tcpm_set_rp_value(unsigned int port, tcpc_role_rp_val_t rp_val);
 
 void tcpm_register_dump(unsigned int port);
+
+#ifdef CONFIG_LGE_USB_TYPE_C
+void tcpm_cc_fault_test(unsigned int port, bool enable);
+bool tcpm_is_cc_fault(unsigned int port);
+#endif
 
 #endif //__TCPM_H__
 

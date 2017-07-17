@@ -21,7 +21,6 @@
 #include <linux/delay.h>
 #include <linux/io.h>
 #include <asm/setup.h>
-//#include <mach/board_lge.h>
 #include <soc/qcom/lge/board_lge.h>
 #include <linux/slab.h>
 #include <linux/random.h>
@@ -29,13 +28,14 @@
 #include <linux/syscalls.h>
 #include <asm/uaccess.h>
 #include <linux/buffer_head.h>
-//#include <mach/secinfo.h>
-//#include <mach/qfprom_addr.h>
 #include <soc/qcom/lge/secinfo.h>
 #include <soc/qcom/lge/qfprom_addr.h>
 #include <linux/crypto.h>
 #include <linux/scatterlist.h>
 #include <linux/mutex.h>
+#include <linux/fs_struct.h>
+#include <linux/sched.h>
+#include <linux/path.h>
 
 #define LGE_QFPROM_INTERFACE_NAME "lge-qfprom"
 #define DEFENSIVE_LOOP_NUM 3
@@ -419,8 +419,6 @@ static u32 qfprom_read(u32 fuse_addr)
   void __iomem *value_addr;
   u32 value;
 
-  printk(KERN_INFO "[QFUSE]%s start\n", __func__);
-
   if(fuse_addr ==  QFPROM_SEC_HW_KEY){
     value_addr = ioremap(QFPROM_HW_KEY_STATUS, sizeof(u32));
   }else{
@@ -433,13 +431,13 @@ static u32 qfprom_read(u32 fuse_addr)
   value = (u32)readl(value_addr);
   iounmap(value_addr);
   printk(KERN_INFO "[QFUSE]%s address:0x%x, value:0x%x\n", __func__, fuse_addr, value);
-  printk(KERN_INFO "[QFUSE]%s end\n", __func__);
   return value;
 }
 
 static u32 qfprom_secdat_read(void)
 {
   struct file *fp;
+  struct path root;
   int cnt=0;
   u32 ret = RET_OK;
   mm_segment_t old_fs=get_fs();
@@ -469,9 +467,13 @@ static u32 qfprom_secdat_read(void)
     return RET_OK;
   }
 
-
   set_fs(KERNEL_DS);
-  fp=filp_open(SEC_PATH, O_RDONLY, S_IRUSR);
+
+  task_lock(&init_task);
+  get_fs_root(init_task.fs, &root);
+  task_unlock(&init_task);
+  fp = file_open_root(root.dentry, root.mnt, SEC_PATH, O_RDONLY, 0);
+  path_put(&root);
 
   if(IS_ERR(fp)){
     int temp_err=0;

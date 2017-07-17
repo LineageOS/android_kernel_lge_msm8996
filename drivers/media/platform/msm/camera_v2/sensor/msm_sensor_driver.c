@@ -18,11 +18,19 @@
 #include "msm_cci.h"
 #include "msm_camera_dt_util.h"
 
+#define SENSOR_INFO
 /* Logging macro */
 #undef CDBG
 #define CDBG(fmt, args...) pr_err(fmt, ##args)
 
 #define SENSOR_MAX_MOUNTANGLE (360)
+
+#ifdef SENSOR_INFO
+static struct class *camera_sensor_id_class = NULL;
+static char* rear_sensor_name=NULL;
+static char* front_sensor_name = NULL;
+static char* rear2_sensor_name = NULL;
+#endif
 
 static struct v4l2_file_operations msm_sensor_v4l2_subdev_fops;
 static int32_t msm_sensor_driver_platform_probe(struct platform_device *pdev);
@@ -1191,6 +1199,20 @@ int32_t msm_sensor_driver_probe(void *setting,
 		slave_info->sensor_init_params.position);
 	CDBG("mount %d",
 		slave_info->sensor_init_params.sensor_mount_angle);
+#ifdef SENSOR_INFO
+	if(slave_info->camera_id == 0)
+	{
+		rear_sensor_name = slave_info->sensor_name;
+	}
+		else if (slave_info->camera_id == 1)
+	{
+		front_sensor_name = slave_info->sensor_name;
+	}
+	else if (slave_info->camera_id == 2)
+	{
+		rear2_sensor_name = slave_info->sensor_name;
+	}
+#endif
 
 	/* Validate camera id */
 	if (slave_info->camera_id >= MAX_CAMERAS) {
@@ -1759,6 +1781,16 @@ static int msm_sensor_driver_i2c_remove(struct i2c_client *client)
 	return 0;
 }
 
+#ifdef SENSOR_INFO
+static ssize_t show_LGCameraSensorName(struct device *dev,struct device_attribute *attr, char *buf)
+{
+	pr_err("show_LGCameraSensorName: rear_camera_name [%s] , front_camera_name [%s], rear2_camera_name [%s] \n", rear_sensor_name, front_sensor_name, rear2_sensor_name);
+	return sprintf(buf, "FCam:%s^^RCam:%s^^RCam1:%s\n", front_sensor_name, rear_sensor_name, rear2_sensor_name);
+}
+
+static DEVICE_ATTR(sensor_name, S_IRUGO, show_LGCameraSensorName, NULL);
+#endif
+
 static const struct i2c_device_id i2c_id[] = {
 	{SENSOR_DRIVER_I2C, (kernel_ulong_t)NULL},
 	{ }
@@ -1776,7 +1808,9 @@ static struct i2c_driver msm_sensor_driver_i2c = {
 static int __init msm_sensor_driver_init(void)
 {
 	int32_t rc = 0;
-
+#ifdef SENSOR_INFO
+	struct device*	camera_sensor_name_dev;
+#endif
 	CDBG("%s Enter\n", __func__);
 	rc = platform_driver_register(&msm_sensor_platform_driver);
 	if (rc)
@@ -1786,6 +1820,17 @@ static int __init msm_sensor_driver_init(void)
 	if (rc)
 		pr_err("%s i2c_add_driver failed rc = %d",  __func__, rc);
 
+#ifdef SENSOR_INFO
+	if(!rc)
+	{
+		CDBG(" %s : register sensor_name class  ",__func__);
+		camera_sensor_id_class = class_create(THIS_MODULE, "camsensor");
+		camera_sensor_name_dev = device_create(camera_sensor_id_class, NULL,
+		0, NULL, "sensor_name");
+		device_create_file(camera_sensor_name_dev, &dev_attr_sensor_name);
+	}
+#endif
+
 	return rc;
 }
 
@@ -1794,6 +1839,9 @@ static void __exit msm_sensor_driver_exit(void)
 	CDBG("Enter");
 	platform_driver_unregister(&msm_sensor_platform_driver);
 	i2c_del_driver(&msm_sensor_driver_i2c);
+#ifdef SENSOR_INFO
+	class_destroy(camera_sensor_id_class);
+#endif
 	return;
 }
 

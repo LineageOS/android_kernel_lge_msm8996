@@ -353,6 +353,9 @@ struct device_node *of_batterydata_get_best_profile(
 {
 	struct batt_ids batt_ids;
 	struct device_node *node, *best_node = NULL;
+#ifdef CONFIG_LGE_PM_EMBEDDED_BATT_ID_ADC
+	struct device_node *last_node;
+#endif
 	struct power_supply *psy;
 	const char *battery_type = NULL;
 	union power_supply_propval ret = {0, };
@@ -424,10 +427,23 @@ struct device_node *of_batterydata_get_best_profile(
 						batt_ids.kohm[i], batt_id_kohm);
 			}
 		}
+#ifdef CONFIG_LGE_PM_EMBEDDED_BATT_ID_ADC
+			last_node = node;
+#endif
 	}
 
 	if (best_node == NULL) {
 		pr_err("No battery data found\n");
+#ifdef CONFIG_LGE_PM_EMBEDDED_BATT_ID_ADC
+		//If not found battery data, use last battery profile.
+		best_node = last_node;
+		rc = of_property_read_string(best_node, "qcom,battery-type",
+						&battery_type);
+		if (!rc)
+			pr_err("Load default battery profile, %s", battery_type);
+		else
+			pr_err("Load default battery profile, %s", best_node->name);
+#endif
 		return best_node;
 	}
 

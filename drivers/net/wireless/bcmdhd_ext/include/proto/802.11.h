@@ -1,7 +1,7 @@
 /*
  * Fundamental types and constants relating to 802.11
  *
- * Copyright (C) 1999-2016, Broadcom Corporation
+ * Copyright (C) 1999-2017, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -24,7 +24,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: 802.11.h 672627 2016-11-29 08:08:04Z $
+ * $Id: 802.11.h 676694 2016-12-23 06:30:03Z $
  */
 
 #ifndef _802_11_H_
@@ -432,7 +432,7 @@ BWL_PRE_PACKED_STRUCT struct dot11_csa_body {
 
 /** 11n Extended Channel Switch IE data structure */
 BWL_PRE_PACKED_STRUCT struct dot11_ext_csa {
-	uint8 id;	/* id DOT11_MNG_EXT_CHANNEL_SWITCH_ID */
+	uint8 id;	/* id DOT11_MNG_EXT_CSA_ID */
 	uint8 len;	/* length of IE */
 	struct dot11_csa_body b;	/* body of the ie */
 } BWL_POST_PACKED_STRUCT;
@@ -1442,6 +1442,7 @@ typedef struct ti_ie ti_ie_t;
 #define DOT11_MNG_PROPR_ID			221
 /* should start using this one instead of above two */
 #define DOT11_MNG_VS_ID				221	/* d11 management Vendor Specific IE */
+#define DOT11_MNG_MESH_CSP_ID			222	/* d11 Mesh Channel Switch Parameter */
 
 /* The follwing ID extensions should be defined >= 255
  * i.e. the values should include 255 (DOT11_MNG_ID_EXT_ID + ID Extension).
@@ -1707,6 +1708,7 @@ typedef struct dot11_oper_mode_notif_ie dot11_oper_mode_notif_ie_t;
 /* Public action ids */
 #define DOT11_PUB_ACTION_BSS_COEX_MNG	0	/* 20/40 Coexistence Management action id */
 #define DOT11_PUB_ACTION_CHANNEL_SWITCH	4	/* d11 action channel switch */
+#define DOT11_PUB_ACTION_VENDOR_SPEC	9	/* Vendor specific */
 #define DOT11_PUB_ACTION_GAS_CB_REQ	12	/* GAS Comeback Request */
 #define DOT11_PUB_ACTION_FTM_REQ	32		/* FTM request */
 #define DOT11_PUB_ACTION_FTM		33		/* FTM measurement */
@@ -3345,7 +3347,9 @@ BWL_PRE_PACKED_STRUCT struct dot11_ngbr_bsstrans_pref_se {
 	uint8 preference;
 } BWL_POST_PACKED_STRUCT;
 typedef struct dot11_ngbr_bsstrans_pref_se dot11_ngbr_bsstrans_pref_se_t;
-#define DOT11_NGBR_BSSTRANS_PREF_SE_LEN	1
+#define DOT11_NGBR_BSSTRANS_PREF_SE_LEN		1
+#define DOT11_NGBR_BSSTRANS_PREF_SE_IE_LEN	3
+#define DOT11_NGBR_BSSTRANS_PREF_SE_HIGHEST	0xff
 
 /** Neighbor Report, BSS Termination Duration subelement */
 BWL_PRE_PACKED_STRUCT struct dot11_ngbr_bss_term_dur_se {
@@ -3600,6 +3604,7 @@ typedef struct d11cnt {
  * #define RWL_ACTION_WIFI_FRAG_TYPE	85
  * #define BTC_INFO_BRCM_PROP_IE_TYPE	90
  * #define ULB_BRCM_PROP_IE_TYPE	91
+ * #define SDB_BRCM_PROP_IE_TYPE	92
  */
 
 /* Action frame type for RWL */

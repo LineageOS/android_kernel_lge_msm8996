@@ -253,6 +253,7 @@ static u32 ufs_query_desc_max_size[] = {
 	QUERY_DESC_RFU_MAX_SIZE,
 	QUERY_DESC_GEOMETRY_MAZ_SIZE,
 	QUERY_DESC_POWER_MAX_SIZE,
+	QUERY_DESC_DEVICE_HEALTH_MAX_SIZE,
 	QUERY_DESC_RFU_MAX_SIZE,
 };
 
@@ -3401,6 +3402,11 @@ int ufshcd_read_inter_desc(struct ufs_hba *hba, u8 *buf, u32 size)
 {
 	return ufshcd_read_desc(hba, QUERY_DESC_IDN_INTERCONNECT, 0, buf, size);
 }
+
+int ufshcd_read_health_desc(struct ufs_hba *hba, u8 *buf, u32 size)
+{
+	return ufshcd_read_desc(hba, QUERY_DESC_IDN_DEVICE_HEALTH, 0, buf, size);
+}
 #endif
 
 /**
@@ -4080,6 +4086,7 @@ static int __ufshcd_uic_hibern8_enter(struct ufs_hba *hba)
 		 * don't retry the hibern8 enter again.
 		 */
 		ret = ufshcd_link_recovery(hba);
+		dev_err(hba->dev, "%s: ufshcd_link_recovery Completed. ret = %d", __func__, ret);
 	} else {
 		dev_dbg(hba->dev, "%s: Hibern8 Enter at %lld us", __func__,
 			ktime_to_us(ktime_get()));
@@ -7045,6 +7052,7 @@ static int ufshcd_query_ioctl(struct ufs_hba *hba, u8 lun, void __user *buffer)
 		case QUERY_DESC_IDN_INTERCONNECT:
 		case QUERY_DESC_IDN_GEOMETRY:
 		case QUERY_DESC_IDN_POWER:
+		case QUERY_DESC_IDN_DEVICE_HEALTH:
 			index = 0;
 			break;
 		case QUERY_DESC_IDN_UNIT:

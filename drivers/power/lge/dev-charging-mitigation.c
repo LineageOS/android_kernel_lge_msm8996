@@ -3,18 +3,37 @@
 
 #define CHARGING_MITIGATION_DEVICE	"lge-chg-mitigation"
 
+// Interacting with thermal deamon
 #define VOTER_THERMALD_IUSB		"thermald-iusb"
 #define VOTER_THERMALD_IBAT		"thermald-ibat"
 #define VOTER_THERMALD_IDC		"thermald-idc"
-#define VOTER_QCHGSTAT_LCD		"qchgstat-lcd"
-#define VOTER_QCHGSTAT_CALL		"qchgstat-call"
+// Interacting with user scenario
+#define VOTER_SCENARIO_CALL		"scenario-call"
+#define VOTER_SCENARIO_TDMB		"scenario-tdmb"
 
 // Configure here
-#define QCHGSTAT_IBAT_CONTROLLABLE	true
-#define QCHGSTAT_LCD_VTYPE		(QCHGSTAT_IBAT_CONTROLLABLE ? LIMIT_VOTER_IBAT : LIMIT_VOTER_IUSB)
-#define QCHGSTAT_LCD_LIMIT		1000
-#define QCHGSTAT_CALL_VTYPE		(QCHGSTAT_IBAT_CONTROLLABLE ? LIMIT_VOTER_IBAT : LIMIT_VOTER_IUSB)
-#define QCHGSTAT_CALL_LIMIT		500
+#define SCENARIO_IBAT_CONTROLLABLE	true
+#define VOTER_TYPE_CALL			(SCENARIO_IBAT_CONTROLLABLE ? LIMIT_VOTER_IBAT : LIMIT_VOTER_IUSB)
+#define VOTER_TYPE_TDMB			(SCENARIO_IBAT_CONTROLLABLE ? LIMIT_VOTER_IBAT : LIMIT_VOTER_IUSB)
+// Limit values in milli-Ampere
+#define VOTER_LIMIT_LCD			1000
+#define VOTER_LIMIT_CALL		500
+#define VOTER_LIMIT_TDMB_500		500
+#define VOTER_LIMIT_TDMB_300		300
+
+// For legacy sysfs named "quick_charging_state"
+// NOTICE : Mitigation for LCD On/Off should be deprecated!
+// Restricting chg current on LCD On/Off is transferred to thermal-daemon
+#define SCENARIO_LCD_ON			1
+#define SCENARIO_LCD_OFF		2
+#define SCENARIO_CALL_ON		3
+#define SCENARIO_CALL_OFF		4
+// For TDMB sysfs named "tdmb_mode_on"
+// NOTICE : Mitigation for TDMB is only for KR, but DON'T DISABLE its declaration here
+// DO disable it in 'charging_mitigation_attrs' with feature
+#define SCENARIO_TDMB_OFF		0
+#define SCENARIO_TDMB_500		1
+#define SCENARIO_TDMB_300		2
 
 #include <linux/of.h>
 #include <linux/slab.h>
@@ -25,56 +44,50 @@
 
 #include "inc-limit-voter.h"
 
-enum quickchg_state {
-	STATE_NONE = 0,
-	STATE_LCD_ON,
-	STATE_LCD_OFF,
-	STATE_CALL_ON,
-	STATE_CALL_OFF,
-};
-
 struct charging_mitigation {
 	// Voters
-	struct limit_voter thermal_mitigation_iusb;
-	struct limit_voter thermal_mitigation_ibat;
-	struct limit_voter thermal_mitigation_idc;
-	struct limit_voter quickchg_state_lcd;
-	struct limit_voter quickchg_state_call;
-
-	// sysfs data
-	int sysfs_mitigation_iusb;
-	int sysfs_mitigation_ibat;
-	int sysfs_mitigation_idc;
-	int sysfs_mitigation_qstate;
+	// Controlled by Thermal Engine
+	struct limit_voter voter_thermald_iusb;
+	struct limit_voter voter_thermald_ibat;
+	struct limit_voter voter_thermald_idc;
+	// Controlled by User scenario
+	struct limit_voter voter_scenario_call;
+	struct limit_voter voter_scenario_tdmb;
 };
 
-static ssize_t mitigation_iusb_show(struct device *dev,
-		struct device_attribute *attr, char *buffer);
-static ssize_t mitigation_iusb_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t size);
-static ssize_t mitigation_ibat_show(struct device *dev,
-		struct device_attribute *attr, char *buffer);
-static ssize_t mitigation_ibat_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t size);
-static ssize_t mitigation_idc_show(struct device *dev,
-		struct device_attribute *attr, char *buffer);
-static ssize_t mitigation_idc_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t size);
-static ssize_t mitigation_qstate_show(struct device *dev,
-		struct device_attribute *attr, char *buffer);
-static ssize_t mitigation_qstate_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t size);
+static ssize_t thermald_iusb_show(struct device *dev,
+	struct device_attribute *attr, char *buffer);
+static ssize_t thermald_iusb_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t size);
+static ssize_t thermald_ibat_show(struct device *dev,
+	struct device_attribute *attr, char *buffer);
+static ssize_t thermald_ibat_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t size);
+static ssize_t thermald_idc_show(struct device *dev,
+	struct device_attribute *attr, char *buffer);
+static ssize_t thermald_idc_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t size);
+static ssize_t scenario_call_show(struct device *dev,
+	struct device_attribute *attr, char *buffer);
+static ssize_t scenario_call_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t size);
+static ssize_t scenario_tdmb_show(struct device *dev,
+	struct device_attribute *attr, char *buffer);
+static ssize_t scenario_tdmb_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t size);
 
-static DEVICE_ATTR(mitigation_iusb, S_IWUSR|S_IRUGO, mitigation_iusb_show, mitigation_iusb_store);
-static DEVICE_ATTR(mitigation_ibat, S_IWUSR|S_IRUGO, mitigation_ibat_show, mitigation_ibat_store);
-static DEVICE_ATTR(mitigation_idc, S_IWUSR|S_IRUGO, mitigation_idc_show, mitigation_idc_store);
-static DEVICE_ATTR(mitigation_qstate, S_IWUSR|S_IRUGO, mitigation_qstate_show, mitigation_qstate_store);
+static DEVICE_ATTR(thermald_iusb, S_IWUSR|S_IRUGO, thermald_iusb_show, thermald_iusb_store);
+static DEVICE_ATTR(thermald_ibat, S_IWUSR|S_IRUGO, thermald_ibat_show, thermald_ibat_store);
+static DEVICE_ATTR(thermald_idc, S_IWUSR|S_IRUGO, thermald_idc_show, thermald_idc_store);
+static DEVICE_ATTR(scenario_call, S_IWUSR|S_IRUGO, scenario_call_show, scenario_call_store);
+static DEVICE_ATTR(scenario_tdmb, S_IWUSR|S_IRUGO, scenario_tdmb_show, scenario_tdmb_store);
 
 static struct attribute* charging_mitigation_attrs [] = {
-	&dev_attr_mitigation_iusb.attr,
-	&dev_attr_mitigation_ibat.attr,
-	&dev_attr_mitigation_idc.attr,
-	&dev_attr_mitigation_qstate.attr,
+	&dev_attr_thermald_iusb.attr,
+	&dev_attr_thermald_ibat.attr,
+	&dev_attr_thermald_idc.attr,
+	&dev_attr_scenario_call.attr,
+	&dev_attr_scenario_tdmb.attr,
 	NULL
 };
 
@@ -82,138 +95,195 @@ static const struct attribute_group charging_mitigation_files = {
 	.attrs  = charging_mitigation_attrs,
 };
 
-static ssize_t mitigation_iusb_show(struct device *dev,
-		struct device_attribute *attr, char *buffer) {
+static ssize_t thermald_iusb_show(struct device *dev,
+	struct device_attribute *attr, char *buffer) {
 
 	struct charging_mitigation* mitigation_me = dev->platform_data;
-	return snprintf(buffer, PAGE_SIZE, "%d", mitigation_me->sysfs_mitigation_iusb);
+	struct limit_voter* voter_iusb = &mitigation_me->voter_thermald_iusb;
+
+	return snprintf(buffer, PAGE_SIZE, "%d", voter_iusb->limit);
 }
-static ssize_t mitigation_iusb_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t size) {
+static ssize_t thermald_iusb_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t size) {
 
 	struct charging_mitigation* mitigation_me = dev->platform_data;
-	sscanf(buf, "%d", &mitigation_me->sysfs_mitigation_iusb);
+	int limit_ma;
+	sscanf(buf, "%d", &limit_ma);
 
-	if (0 < mitigation_me->sysfs_mitigation_iusb)
-		limit_voter_set(&mitigation_me->thermal_mitigation_iusb,
-			mitigation_me->sysfs_mitigation_iusb);
+	if (0 < limit_ma) {
+		// mitigation_me->voter_thermald_iusb->limit will be updated to limit_ma
+		// after limit_voter_set
+		limit_voter_set(&mitigation_me->voter_thermald_iusb,
+			limit_ma);
+	}
 	else
-		limit_voter_release(&mitigation_me->thermal_mitigation_iusb);
+		limit_voter_release(&mitigation_me->voter_thermald_iusb);
 
-	pr_chgmiti("iusb mitigatin = %d\n", mitigation_me->sysfs_mitigation_iusb);
+	pr_chgmiti("iusb mitigation = %d\n", limit_ma);
 
 	return size;
 }
 
-static ssize_t mitigation_ibat_show(struct device *dev,
-		struct device_attribute *attr, char *buffer) {
+static ssize_t thermald_ibat_show(struct device *dev,
+	struct device_attribute *attr, char *buffer) {
 
 	struct charging_mitigation* mitigation_me = dev->platform_data;
-	return snprintf(buffer, PAGE_SIZE, "%d", mitigation_me->sysfs_mitigation_ibat);
+	struct limit_voter* voter_ibat = &mitigation_me->voter_thermald_ibat;
+
+	return snprintf(buffer, PAGE_SIZE, "%d", voter_ibat->limit);
 }
-static ssize_t mitigation_ibat_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t size) {
+static ssize_t thermald_ibat_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t size) {
 
 	struct charging_mitigation* mitigation_me = dev->platform_data;
-	sscanf(buf, "%d", &mitigation_me->sysfs_mitigation_ibat);
+	int limit_ma;
+	sscanf(buf, "%d", &limit_ma);
 
-	if (0 < mitigation_me->sysfs_mitigation_ibat)
-		limit_voter_set(&mitigation_me->thermal_mitigation_ibat,
-			mitigation_me->sysfs_mitigation_ibat);
+	if (0 < limit_ma) {
+		// mitigation_me->voter_thermald_ibat->limit will be updated to limit_ma
+		// after limit_voter_set
+		limit_voter_set(&mitigation_me->voter_thermald_ibat,
+			limit_ma);
+	}
 	else
-		limit_voter_release(&mitigation_me->thermal_mitigation_ibat);
+		limit_voter_release(&mitigation_me->voter_thermald_ibat);
 
-	pr_chgmiti("ibat mitigatin = %d\n", mitigation_me->sysfs_mitigation_ibat);
+	pr_chgmiti("ibat mitigation = %d\n", limit_ma);
 
 	return size;
 }
 
-static ssize_t mitigation_idc_show(struct device *dev,
-		struct device_attribute *attr, char *buffer) {
+static ssize_t thermald_idc_show(struct device *dev,
+	struct device_attribute *attr, char *buffer) {
 
 	struct charging_mitigation* mitigation_me = dev->platform_data;
-	return snprintf(buffer, PAGE_SIZE, "%d", mitigation_me->sysfs_mitigation_idc);
+	struct limit_voter* voter_idc = &mitigation_me->voter_thermald_idc;
+
+	return snprintf(buffer, PAGE_SIZE, "%d", voter_idc->limit);
 }
-static ssize_t mitigation_idc_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t size) {
+static ssize_t thermald_idc_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t size) {
 
 	struct charging_mitigation* mitigation_me = dev->platform_data;
-	sscanf(buf, "%d", &mitigation_me->sysfs_mitigation_idc);
+	int limit_ma;
+	sscanf(buf, "%d", &limit_ma);
 
-	if (0 < mitigation_me->sysfs_mitigation_idc)
-		limit_voter_set(&mitigation_me->thermal_mitigation_idc,
-			mitigation_me->sysfs_mitigation_idc);
+	if (0 < limit_ma) {
+		// mitigation_me->voter_thermald_idc->limit will be updated to limit_ma
+		// after limit_voter_set
+		limit_voter_set(&mitigation_me->voter_thermald_idc,
+			limit_ma);
+	}
 	else
-		limit_voter_release(&mitigation_me->thermal_mitigation_idc);
+		limit_voter_release(&mitigation_me->voter_thermald_idc);
 
-	pr_chgmiti("idc mitigatin = %d\n", mitigation_me->sysfs_mitigation_idc);
+	pr_chgmiti("idc mitigation = %d\n", limit_ma);
 
 	return size;
 }
 
-static ssize_t mitigation_qstate_show(struct device *dev,
-		struct device_attribute *attr, char *buffer) {
+static ssize_t scenario_call_show(struct device *dev,
+	struct device_attribute *attr, char *buffer) {
 
 	struct charging_mitigation* mitigation_me = dev->platform_data;
-	return snprintf(buffer, PAGE_SIZE, "%d", mitigation_me->sysfs_mitigation_qstate);
+	struct limit_voter* voter_call = &mitigation_me->voter_scenario_call;
+
+	return snprintf(buffer, PAGE_SIZE, "%d", voter_call->limit);
 }
-static ssize_t mitigation_qstate_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t size) {
+static ssize_t scenario_call_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t size) {
 
 	struct charging_mitigation* mitigation_me = dev->platform_data;
-	sscanf(buf, "%d", &mitigation_me->sysfs_mitigation_qstate);
+	int qchgstat;
+	sscanf(buf, "%d", &qchgstat);
 
-	switch (mitigation_me->sysfs_mitigation_qstate) {
-	case STATE_LCD_ON:
-		limit_voter_set(&mitigation_me->quickchg_state_lcd, QCHGSTAT_LCD_LIMIT);
-		pr_chgmiti("LCD on decreasing chg_current\n");
+	switch (qchgstat) {
+	case SCENARIO_CALL_ON:
+		// mitigation_me->voter_scenario_call->limit will be set to 500
+		limit_voter_set(&mitigation_me->voter_scenario_call, VOTER_LIMIT_CALL);
+		pr_chgmiti("Call on : decreasing chg current\n");
 		break;
-	case STATE_LCD_OFF:
-		limit_voter_release(&mitigation_me->quickchg_state_lcd);
-		pr_chgmiti("LCD off return max chg_current\n");
+	case SCENARIO_CALL_OFF:
+		// mitigation_me->voter_scenario_call->limit will be released
+		limit_voter_release(&mitigation_me->voter_scenario_call);
+		pr_chgmiti("Call off : returning to max chg current\n");
 		break;
-	case STATE_CALL_ON:
-		limit_voter_set(&mitigation_me->quickchg_state_call, QCHGSTAT_CALL_LIMIT);
-		pr_chgmiti("Call on decreasing chg_current\n");
-		break;
-	case STATE_CALL_OFF:
-		limit_voter_release(&mitigation_me->quickchg_state_call);
-		pr_chgmiti("Call off return max chg_current\n");
-		break;
+
+	case SCENARIO_LCD_ON:
+	case SCENARIO_LCD_OFF:
 	default:
-		limit_voter_release(&mitigation_me->quickchg_state_lcd);
-		limit_voter_release(&mitigation_me->quickchg_state_call);
+		pr_chgmiti("command '%d' is ignored.\n", qchgstat);
 		break;
 	}
 
-	pr_chgmiti("set quick_charging_state[%d]\n", mitigation_me->sysfs_mitigation_qstate);
+	pr_chgmiti("set quick_charging_state [%d]\n", qchgstat);
+	return size;
+}
+
+static ssize_t scenario_tdmb_show(struct device *dev,
+	struct device_attribute *attr, char *buffer) {
+
+	struct charging_mitigation* mitigation_me = dev->platform_data;
+	struct limit_voter* voter_tdmb = &mitigation_me->voter_scenario_tdmb;
+
+	return snprintf(buffer, PAGE_SIZE, "%d", voter_tdmb->limit);
+}
+static ssize_t scenario_tdmb_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t size) {
+
+	struct charging_mitigation* mitigation_me = dev->platform_data;
+	int tdmb;
+	sscanf(buf, "%d", &tdmb);
+
+	switch (tdmb) {
+	case SCENARIO_TDMB_500:
+		// mitigation_me->voter_scenario_tdmb->limit will be set to 500
+		limit_voter_set(&mitigation_me->voter_scenario_tdmb, VOTER_LIMIT_TDMB_500);
+		pr_chgmiti("Call off : returning to max chg current\n");
+		break;
+	case SCENARIO_TDMB_300:
+		// mitigation_me->voter_scenario_tdmb->limit will be set to 300
+		limit_voter_set(&mitigation_me->voter_scenario_tdmb, VOTER_LIMIT_TDMB_300);
+		pr_chgmiti("Call off : returning to max chg current\n");
+		break;
+	case SCENARIO_TDMB_OFF:
+		// mitigation_me->voter_scenario_tdmb->limit will be released
+		limit_voter_release(&mitigation_me->voter_scenario_tdmb);
+		pr_chgmiti("Call on : decreasing chg current\n");
+		break;
+	default:
+		pr_chgmiti("command '%d' is ignored.\n", tdmb);
+		break;
+	}
+
+	pr_chgmiti("set tdmb_mode_on [%d]\n", tdmb);
 	return size;
 }
 
 static int charging_mitigation_voters(struct charging_mitigation* mitigation_me) {
-// For Thermald iusb
-	if (limit_voter_register(&mitigation_me->thermal_mitigation_iusb, VOTER_THERMALD_IUSB,
-			LIMIT_VOTER_IUSB, NULL, NULL, NULL))
+	// For Thermald iusb
+	if (limit_voter_register(&mitigation_me->voter_thermald_iusb, VOTER_THERMALD_IUSB,
+		LIMIT_VOTER_IUSB, NULL, NULL, NULL))
 		return -EINVAL;
 
-// For Thermald ibat
-	if (limit_voter_register(&mitigation_me->thermal_mitigation_ibat, VOTER_THERMALD_IBAT,
-			LIMIT_VOTER_IBAT, NULL, NULL, NULL))
+	// For Thermald ibat
+	if (limit_voter_register(&mitigation_me->voter_thermald_ibat, VOTER_THERMALD_IBAT,
+		LIMIT_VOTER_IBAT, NULL, NULL, NULL))
 		return -EINVAL;
 
-// For Thermald idc
-	if (limit_voter_register(&mitigation_me->thermal_mitigation_idc, VOTER_THERMALD_IDC,
-			LIMIT_VOTER_IDC, NULL, NULL, NULL))
+	// For Thermald idc
+	if (limit_voter_register(&mitigation_me->voter_thermald_idc, VOTER_THERMALD_IDC,
+		LIMIT_VOTER_IDC, NULL, NULL, NULL))
 		return -EINVAL;
 
-// For qchgstat lcd
-	if (limit_voter_register(&mitigation_me->quickchg_state_lcd, VOTER_QCHGSTAT_LCD,
-			QCHGSTAT_LCD_VTYPE, NULL, NULL, NULL))
+	// For scenario call
+	if (limit_voter_register(&mitigation_me->voter_scenario_call, VOTER_SCENARIO_CALL,
+		VOTER_TYPE_CALL, NULL, NULL, NULL))
 		return -EINVAL;
 
-// For qchgstat call
-	if (limit_voter_register(&mitigation_me->quickchg_state_call, VOTER_QCHGSTAT_CALL,
-			QCHGSTAT_CALL_VTYPE, NULL, NULL, NULL))
+	// For scenario tdmb
+	if (limit_voter_register(&mitigation_me->voter_scenario_tdmb, VOTER_SCENARIO_TDMB,
+		VOTER_TYPE_TDMB, NULL, NULL, NULL))
 		return -EINVAL;
 
 	return 0;
@@ -221,7 +291,7 @@ static int charging_mitigation_voters(struct charging_mitigation* mitigation_me)
 
 static struct platform_device charging_mitigation_device = {
 	.name = CHARGING_MITIGATION_DEVICE,
-	.id = -1,
+	.id = -1,	// Set -1 explicitly to make device name simple
 	.dev = {
 		.platform_data = NULL,
 	}

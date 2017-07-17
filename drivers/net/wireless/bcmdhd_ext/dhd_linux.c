@@ -2,7 +2,7 @@
  * Broadcom Dongle Host Driver (DHD), Linux-specific network interface
  * Basically selected code segments from usb-cdc.c and usb-rndis.c
  *
- * Copyright (C) 1999-2016, Broadcom Corporation
+ * Copyright (C) 1999-2017, Broadcom Corporation
  * 
  *      Unless you and Broadcom execute a separate written software license
  * agreement governing use of this software, this software is licensed to you
@@ -25,7 +25,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_linux.c 672121 2016-11-24 07:36:53Z $
+ * $Id: dhd_linux.c 678617 2017-01-10 08:43:06Z $
  */
 
 #include <typedefs.h>
@@ -8833,7 +8833,9 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 #if defined(CUSTOM_AMSDU_AGGSF)
 	int32 amsdu_aggsf = 0;
 #endif
+#ifndef CUSTOMER_HW10
 	shub_control_t shub_ctl;
+#endif /* CUSTOMER_HW10 */
 #if defined(BCMSDIO)
 #ifdef PROP_TXSTATUS
 	int wlfc_enable = TRUE;
@@ -9999,6 +10001,7 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 			__FUNCTION__, dhd->info->shub_enable));
 	}
 #else
+#ifndef CUSTOMER_HW10
 	dhd->info->shub_enable = FALSE;
 	shub_ctl.enable = FALSE;
 	bcm_mkiovar("shub", (char *)&shub_ctl, sizeof(shub_ctl),
@@ -10008,6 +10011,7 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 		DHD_ERROR(("%s failed to set ShubHub disable\n",
 			__FUNCTION__));
 	}
+#endif /* CUSTOMER_HW10 */
 #endif /* SUPPORT_SENSORHUB */
 #ifdef NDO_CONFIG_SUPPORT
 	dhd->ndo_enable = FALSE;
@@ -13009,6 +13013,14 @@ __dhd_apf_add_filter(struct net_device *ndev, uint32 filter_id,
 	}
 
 	cmd_len = sizeof(cmd);
+
+	/* check if the program_len is more than the expected len */
+	if (program_len > WL_APF_PROGRAM_MAX_SIZE) {
+			DHD_ERROR(("%s Invalid program_len: 0x%x\n",
+			__FUNCTION__, program_len));
+		return -EINVAL;
+	}
+
 	buf_len = cmd_len + WL_PKT_FILTER_FIXED_LEN +
 		WL_APF_PROGRAM_FIXED_LEN + program_len;
 
@@ -13335,13 +13347,19 @@ int dhd_os_send_hang_message(dhd_pub_t *dhdp)
 	int ret = 0;
 	if (dhdp) {
 #ifdef CUSTOMER_HW10
-		if (dhdp->busstate == DHD_BUS_DATA) {
-			DHD_ERROR(("%s: disable PCIe interrupts.\n", __FUNCTION__));
-			dhdpcie_bus_intr_disable(dhdp->bus);
+#ifdef DHD_FW_COREDUMP
+		if (dhdp->memdump_enabled != DUMP_DISABLED) {
+#endif /* DHD_FW_COREDUMP */
+			if (dhdp->busstate == DHD_BUS_DATA) {
+				DHD_ERROR(("%s: disable PCIe interrupts.\n", __FUNCTION__));
+				dhdpcie_bus_intr_disable(dhdp->bus);
+			}
+			/* Enforce bus down to stop any future traffic */
+			dhdp->busstate = DHD_BUS_DOWN;
+#ifdef DHD_FW_COREDUMP
 		}
-		/* Enforce bus down to stop any future traffic */
-		dhdp->busstate = DHD_BUS_DOWN;
-#endif
+#endif /* DHD_FW_COREDUMP */
+#endif /* CUSTOMER_HW10 */
 		if (!dhdp->hang_was_sent) {
 #ifdef DHD_DEBUG_UART
 			/* If PCIe lane has broken, execute the debug uart application
@@ -15209,7 +15227,9 @@ int dhd_set_ap_isolate(dhd_pub_t *dhdp, uint32 idx, int val)
 
 #ifdef DHD_FW_COREDUMP
 
-
+#ifdef CUSTOMER_HW10
+#define MEMDUMPINFO "/data/logger/.memdump.info"
+#else
 #ifdef CUSTOMER_HW4_DEBUG
 #ifdef PLATFORM_SLP
 #define MEMDUMPINFO "/opt/etc/.memdump.info"
@@ -15219,6 +15239,7 @@ int dhd_set_ap_isolate(dhd_pub_t *dhdp, uint32 idx, int val)
 #else
 #define MEMDUMPINFO "/installmedia/.memdump.info"
 #endif /* CUSTOMER_HW4_DEBUG */
+#endif /* CUSTOMER_HW10 */
 
 void dhd_get_memdump_info(dhd_pub_t *dhd)
 {

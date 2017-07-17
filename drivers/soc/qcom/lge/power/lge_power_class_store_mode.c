@@ -40,6 +40,7 @@ struct lge_store_mode {
 	int capacity;
 	int llk_max_thr_soc;
 	int llk_min_thr_soc;
+	int iusb_enable;
 #ifdef CONFIG_LGE_PM_ONLY_STORE_MODE
 	int default_set;
 #endif
@@ -51,9 +52,15 @@ static void lge_sm_llk_work(struct work_struct *work)
 	struct lge_store_mode *chip = container_of(work, struct lge_store_mode,
 						llk_work);
 	int prev_chg_enable = chip->charging_enable;
+	int prev_iusb_enable = chip->iusb_enable;
 
 	if (chip->chg_present) {
 		if (chip->capacity > chip->llk_max_thr_soc) {
+			chip->iusb_enable = 0;
+		} else {
+			chip->iusb_enable = 1;
+		}
+		if (chip->capacity >= chip->llk_max_thr_soc) {
 			chip->charging_enable = 0;
 			pr_info("Stop charging by LLK_mode.\n");
 		}
@@ -61,7 +68,8 @@ static void lge_sm_llk_work(struct work_struct *work)
 			chip->charging_enable = 1;
 			pr_info("Start Charging by LLK_mode.\n");
 		}
-		if (chip->charging_enable != prev_chg_enable) {
+		if ((chip->charging_enable != prev_chg_enable)
+			|| (chip->iusb_enable != prev_iusb_enable)) {
 			pr_info("lge_power_changed in LLK_mode.\n");
 			lge_power_changed(&chip->lge_sm_lpc);
 		}
@@ -135,6 +143,7 @@ static void lge_sm_external_lge_power_changed(struct lge_power *lpc)
 static enum lge_power_property lge_power_lge_sm_properties[] = {
 	LGE_POWER_PROP_STORE_DEMO_ENABLED,
 	LGE_POWER_PROP_CHARGING_ENABLED,
+	LGE_POWER_PROP_USB_CHARGING_ENABLED,
 };
 
 static int
@@ -197,6 +206,10 @@ static int lge_power_lge_sm_get_property(struct lge_power *lpc,
 		val->intval = chip->charging_enable;
 		break;
 
+	case LGE_POWER_PROP_USB_CHARGING_ENABLED:
+		val->intval = chip->iusb_enable;
+		break;
+
 	default:
 		ret_val = -EINVAL;
 		break;
@@ -221,6 +234,7 @@ static int lge_store_mode_probe(struct platform_device *pdev)
 	chip->store_demo_enabled = 0;
 	lge_power_sm = &chip->lge_sm_lpc;
 	lge_power_sm->name = "lge_sm";
+	chip->iusb_enable = 1;
 
 #ifdef CONFIG_LGE_PM_ONLY_STORE_MODE
 	ret = of_property_read_u32(pdev->dev.of_node, "lge,default-set",

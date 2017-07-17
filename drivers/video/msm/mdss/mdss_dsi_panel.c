@@ -2824,6 +2824,7 @@ int mdss_dsi_panel_timing_switch(struct mdss_dsi_ctrl_pdata *ctrl,
 #endif
 #if defined(CONFIG_LGE_DISPLAY_LUCYE_COMMON)
 	ctrl->display_on_cmds= pt->display_on_cmds;
+	ctrl->display_on_and_aod_comds = pt->display_on_and_aod_comds;
 	ctrl->reg_55h_cmds = pt->reg_55h_cmds;
 	ctrl->reg_f0h_cmds = pt->reg_f0h_cmds;
 	ctrl->reg_f2h_cmds = pt->reg_f2h_cmds;
@@ -2998,6 +2999,9 @@ static int  mdss_dsi_panel_config_res_properties(struct device_node *np,
 #if defined(CONFIG_LGE_DISPLAY_LUCYE_COMMON)
 	mdss_dsi_parse_dcs_cmds(np, &pt->display_on_cmds,
 		"qcom,mdss-display-on-command",
+		"qcom,mdss-dsi-on-command-state");
+	mdss_dsi_parse_dcs_cmds(np, &pt->display_on_and_aod_comds,
+		"lge,mode-change-cmds-u0-to-u2",
 		"qcom,mdss-dsi-on-command-state");
 	mdss_dsi_parse_dcs_cmds(np, &pt->reg_55h_cmds,
 		"lge,mdss-dsi-55h-command",

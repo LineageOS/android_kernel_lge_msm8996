@@ -25,7 +25,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd_linux.c 646097 2016-06-28 09:03:29Z $
+ * $Id: dhd_linux.c 674944 2016-12-13 10:31:30Z $
  */
 
 #include <typedefs.h>
@@ -8250,8 +8250,9 @@ static int dhd_preinit_config(dhd_pub_t *dhd, int ifidx)
 	if (!(fp = dhd_os_open_image(config_path)) ||
 		(len = dhd_os_get_image_block(buf, stat.size, fp)) < 0)
 		goto err;
-	if(len != stat.size) {
-		printk("dhd_preinit_config : Error - read length doen't match with file size len = %d\n", len);
+
+	if (len != stat.size) {
+		printk("dhd_preinit_config : Error - read length mismatched len = %d\n", len);
 		goto err;
 	}
 
@@ -10563,6 +10564,7 @@ dhd_os_runtimepm_timer(void *bus, uint tick)
 			mod_timer(&dhd->rpm_timer, jiffies + msecs_to_jiffies(dhd_runtimepm_ms));
 			dhd->rpm_timer_valid = TRUE;
 
+			/* we have already released the lock, so just go to exit */
 			goto exit;
 		}
 	} else {
@@ -12251,6 +12253,14 @@ __dhd_apf_add_filter(struct net_device *ndev, uint32 filter_id,
 	}
 
 	cmd_len = sizeof(cmd);
+
+	/* check if the program_len is more than the expected len */
+	if (program_len > WL_APF_PROGRAM_MAX_SIZE) {
+			DHD_ERROR(("%s Invalid program_len: 0x%x\n",
+			__FUNCTION__, program_len));
+		return -EINVAL;
+	}
+
 	buf_len = cmd_len + WL_PKT_FILTER_FIXED_LEN +
 		WL_APF_PROGRAM_FIXED_LEN + program_len;
 

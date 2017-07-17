@@ -1360,12 +1360,15 @@ static int cpu_clock_8996_driver_probe(struct platform_device *pdev)
 			"qcom,perfcl-speedbin%d-v%d", perfclspeedbin, pvs_ver);
 #ifdef CONFIG_LGE_PM
 	_socinfo = smem_get_entry(SMEM_HW_SW_BUILD_ID, &size, 0, SMEM_ANY_HOST_FLAG);
-	pr_err("soc_id = %d\n", _socinfo->v0_1.id);
 
-	if (_socinfo->v0_1.id == 305 &&
-			(lge_get_factory_boot() || lge_get_laf_mode())) {
-		snprintf(perfclspeedbinstr, ARRAY_SIZE(perfclspeedbinstr),
-				"qcom,perfcl-speedbin%d-v%d-%s", perfclspeedbin, pvs_ver, "f");
+	if (_socinfo != NULL) {
+		pr_err("soc_id = %d\n", _socinfo->v0_1.id);
+
+		if (_socinfo->v0_1.id == 305 &&
+				(lge_get_factory_boot() || lge_get_laf_mode())) {
+			snprintf(perfclspeedbinstr, ARRAY_SIZE(perfclspeedbinstr),
+					"qcom,perfcl-speedbin%d-v%d-%s", perfclspeedbin, pvs_ver, "f");
+		}
 	}
 	pr_err("%s\n", perfclspeedbinstr);
 #endif
@@ -1383,12 +1386,13 @@ static int cpu_clock_8996_driver_probe(struct platform_device *pdev)
 			"qcom,pwrcl-speedbin%d-v%d", perfclspeedbin, pvs_ver);
 
 #ifdef CONFIG_LGE_PM
-	if (_socinfo->v0_1.id == 305 &&
-			(lge_get_factory_boot() || lge_get_laf_mode())) {
-		snprintf(pwrclspeedbinstr, ARRAY_SIZE(pwrclspeedbinstr),
-				"qcom,pwrcl-speedbin%d-v%d-%s", perfclspeedbin, pvs_ver, "f");
+	if (_socinfo != NULL) {
+		if (_socinfo->v0_1.id == 305 &&
+				(lge_get_factory_boot() || lge_get_laf_mode())) {
+			snprintf(pwrclspeedbinstr, ARRAY_SIZE(pwrclspeedbinstr),
+					"qcom,pwrcl-speedbin%d-v%d-%s", perfclspeedbin, pvs_ver, "f");
+		}
 	}
-
 	pr_err("%s\n", pwrclspeedbinstr);
 #endif
 	ret = of_get_fmax_vdd_class(pdev, &pwrcl_clk.c, pwrclspeedbinstr);

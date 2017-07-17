@@ -167,9 +167,7 @@ static void psy_external_changed(struct power_supply* external_supplier);
 static enum power_supply_property psy_property_list [] = {
 	POWER_SUPPLY_PROP_ONLINE,
 	POWER_SUPPLY_PROP_CHARGING_ENABLED,	// Wireless charging should be disabled on wired charging
-	POWER_SUPPLY_PROP_TEMP,			// For checking overheat (> 60.0degC)
-	POWER_SUPPLY_PROP_CAPACITY,		// For WPC only
-	POWER_SUPPLY_PROP_CHARGE_DONE,		// For PMA only
+	POWER_SUPPLY_PROP_CHARGE_DONE,
 };
 static int psy_property_set(struct power_supply* psy,
 	enum power_supply_property prop,
@@ -483,18 +481,6 @@ static int psy_property_set(struct power_supply* psy,
 			rc = SET_PROPERTY_DO_EFFECTED;
 		}
 		break;
-	case POWER_SUPPLY_PROP_TEMP:
-		if (psy_set_temperature(chip, val->intval)) {
-			pr_idt(UPDATE, "set POWER_SUPPLY_PROP_TEMP : %d\n", val->intval);
-			rc = SET_PROPERTY_NO_EFFECTED; // Do not update on soc
-		}
-		break;
-	case POWER_SUPPLY_PROP_CAPACITY:
-		if (psy_set_capacity(chip, val->intval)) {
-			pr_idt(UPDATE, "set POWER_SUPPLY_PROP_CAPACITY : %d\n", val->intval);
-			rc = SET_PROPERTY_NO_EFFECTED; // Do not update on soc
-		}
-		break;
 	case POWER_SUPPLY_PROP_CHARGE_DONE:
 		if (psy_set_full(chip, val->intval)) {
 			pr_idt(UPDATE, "set POWER_SUPPLY_PROP_CHARGE_DONE : %d\n", val->intval);
@@ -523,14 +509,6 @@ static int psy_property_get(struct power_supply* psy,
 		val->intval = idtp9223_is_enabled(chip);
 		pr_idt(RETURN, "get POWER_SUPPLY_PROP_CHARGING_ENABLED : %d\n", val->intval);
 		break;
-	case POWER_SUPPLY_PROP_TEMP:
-		val->intval = chip->status_temperature;
-		pr_idt(RETURN, "get POWER_SUPPLY_PROP_TEMP : %d\n", val->intval);
-		break;
-	case POWER_SUPPLY_PROP_CAPACITY:
-		val->intval = chip->status_capacity;
-		pr_idt(RETURN, "get POWER_SUPPLY_PROP_CAPACITY : %d\n", val->intval);
-		break;
 	case POWER_SUPPLY_PROP_CHARGE_DONE:
 		val->intval = idtp9223_is_full(chip);
 		pr_idt(RETURN, "get POWER_SUPPLY_PROP_CHARGE_DONE : %d\n", val->intval);
@@ -550,8 +528,6 @@ static int psy_property_writeable(struct power_supply* psy,
 	switch (prop) {
 	case POWER_SUPPLY_PROP_ONLINE:
 	case POWER_SUPPLY_PROP_CHARGING_ENABLED:
-	case POWER_SUPPLY_PROP_TEMP:
-	case POWER_SUPPLY_PROP_CAPACITY:
 	case POWER_SUPPLY_PROP_CHARGE_DONE:
 		rc = 1;
 		break;
@@ -597,12 +573,9 @@ static void psy_external_changed(struct power_supply* wlc_psy) {
 
 	if (psy_batt) {
 		psy_batt->get_property(psy_batt, POWER_SUPPLY_PROP_TEMP, &value);
-		effected |= (SET_PROPERTY_DO_EFFECTED ==
-			psy_me->set_property(psy_me, POWER_SUPPLY_PROP_TEMP, &value));
-
+		psy_set_temperature(chip, value.intval);
 		psy_batt->get_property(psy_batt, POWER_SUPPLY_PROP_CAPACITY, &value);
-		effected |= (SET_PROPERTY_DO_EFFECTED ==
-			psy_me->set_property(psy_me, POWER_SUPPLY_PROP_CAPACITY, &value));
+		psy_set_capacity(chip, value.intval);
 
 		psy_batt->get_property(psy_batt, POWER_SUPPLY_PROP_CHARGE_DONE, &value);
 		effected |= (SET_PROPERTY_DO_EFFECTED ==

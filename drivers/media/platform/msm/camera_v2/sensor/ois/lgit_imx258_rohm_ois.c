@@ -477,8 +477,6 @@ int32_t lgit_imx258_init_set_rohm_ois(struct msm_ois_ctrl_t *o_ctrl,
 	default:
 		pr_err("[CHECK] %s: Apply Default : No Download BIN_DATA\n", __func__);
 		rc = -EFAULT;
-
-
 		break;
 	}
 
