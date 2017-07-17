@@ -452,7 +452,7 @@ static int32_t msm_sensor_fill_ois_subdevid_by_name(
 	return rc;
 }
 
-#ifdef CONFIG_MACH_LGE
+#ifdef CONFIG_LGE_CAMERA_DRIVER
 static int32_t msm_sensor_fill_tcs_subdevid_by_name(
 				struct msm_sensor_ctrl_t *s_ctrl)
 {
