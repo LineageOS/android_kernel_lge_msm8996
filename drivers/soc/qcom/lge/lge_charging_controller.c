@@ -975,7 +975,7 @@ static void lge_monitor_batt_temp_work(struct work_struct *work){
 			(res.force_update == true)) {
 		if (res.change_lvl == STS_CHE_NORMAL_TO_DECCUR ||
 				(res.state == CHG_BATT_DECCUR_STATE &&
-				 res.dc_current != DC_CURRENT_DEF &&
+				 res.chg_current != DC_CURRENT_DEF &&
 				 res.change_lvl != STS_CHE_STPCHG_TO_DECCUR)) {
 			pr_info("ibatmax_set STS_CHE_NORMAL_TO_DECCUR\n");
 			the_controller->otp_ibat_current = OTP_CHG_DECCUR_IBAT;
@@ -993,8 +993,8 @@ static void lge_monitor_batt_temp_work(struct work_struct *work){
 				the_controller->otp_ibat_current);
 			lgcc_set_charging_enable(0, BATTCHG_USER_EN_VOTER);
 
-		} else if (res.change_lvl == STS_CHE_DECCUR_TO_NORAML) {
-			pr_info("ibatmax_set STS_CHE_DECCUR_TO_NORAML\n");
+		} else if (res.change_lvl == STS_CHE_DECCUR_TO_NORMAL) {
+			pr_info("ibatmax_set STS_CHE_DECCUR_TO_NORMAL\n");
 			the_controller->otp_ibat_current = OTP_CHG_NORMAL_IBAT;
 			lgcc_set_ibat_current(OTP_FCC_VOTER, true,
 				the_controller->otp_ibat_current);
@@ -1029,7 +1029,7 @@ static void lge_monitor_batt_temp_work(struct work_struct *work){
 
 		} else if (res.force_update == true &&
 				res.state == CHG_BATT_NORMAL_STATE &&
-				res.dc_current != DC_CURRENT_DEF) {
+				res.chg_current != DC_CURRENT_DEF) {
 			pr_info("ibatmax_set CHG_BATT_NORMAL_STATE\n");
 			lgcc_set_charging_enable(1, BATTCHG_USER_EN_VOTER);
 		}

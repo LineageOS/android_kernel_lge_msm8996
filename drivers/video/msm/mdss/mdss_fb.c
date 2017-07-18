@@ -5710,7 +5710,9 @@ void mdss_fb_report_panel_dead(struct msm_fb_data_type *mfd)
 
 #if defined(CONFIG_LGE_DISPLAY_AOD_SUPPORTED)
 	lge_mdss_fb_aod_recovery(mfd, envp);
+#ifdef CONFIG_LGE_DISPLAY_AOD_WITH_MIPI
 	mfd->watch.current_font_type = 0;
+#endif
 #endif
 	kobject_uevent_env(&mfd->fbi->dev->kobj,
 		KOBJ_CHANGE, envp);
