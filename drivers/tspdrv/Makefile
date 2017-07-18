@@ -35,8 +35,8 @@ EXTRA_CFLAGS += -I$(KERNEL_ROOT)/drivers/tspdrv/
 
 obj-$(CONFIG_TSPDRV) += tspdrv.o
 
-all:
-    @$(MAKE) -C $(KERNEL_ROOT) M=$(shell pwd) modules
-
-clean:
-    @$(MAKE) -C $(KERNEL_ROOT) M=$(shell pwd) clean
+#all:
+#    @$(MAKE) -C $(KERNEL_ROOT) M=$(shell pwd) modules
+#
+#clean:
+#    @$(MAKE) -C $(KERNEL_ROOT) M=$(shell pwd) clean
