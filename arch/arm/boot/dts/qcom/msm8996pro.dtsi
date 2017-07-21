@@ -21,8 +21,114 @@
 	model = "Qualcomm Technologies, Inc. MSM 8996pro";
 	qcom,msm-id = <305 0x10000>;
 
-    cpus {
-        energy-costs {
+	cpus {
+		#address-cells = <2>;
+		#size-cells = <0>;
+
+		CPU0: cpu@0 {
+			device_type = "cpu";
+			compatible = "qcom,kryo";
+			reg = <0x0 0x0>;
+			qcom,limits-info = <&mitigation_profile0>;
+			enable-method = "psci";
+			qcom,ea = <&ea0>;
+			sched-energy-costs = <&CPU_COST_0 &CLUSTER_COST_0>;
+			next-level-cache = <&L2_0>;
+			L2_0: l2-cache {
+			      compatible = "arm,arch-cache";
+			      cache-level = <2>;
+			      qcom,dump-size = <0x88000>;
+			};
+			L1_D_0: l1-dcache {
+				compatible = "arm,arch-cache";
+				qcom,dump-size = <0x7800>;
+			};
+			L1_TLB_0: l1-tlb {
+				qcom,dump-size = <0x2800>;
+			};
+		};
+
+		CPU1: cpu@1 {
+			device_type = "cpu";
+			compatible = "qcom,kryo";
+			reg = <0x0 0x1>;
+			qcom,limits-info = <&mitigation_profile1>;
+			enable-method = "psci";
+			qcom,ea = <&ea1>;
+			sched-energy-costs = <&CPU_COST_0 &CLUSTER_COST_0>;
+			next-level-cache = <&L2_0>;
+			L1_D_1: l1-dcache {
+				compatible = "arm,arch-cache";
+				qcom,dump-size = <0x7800>;
+			};
+			L1_TLB_1: l1-tlb {
+				qcom,dump-size = <0x2800>;
+			};
+		};
+
+		CPU2: cpu@100 {
+			device_type = "cpu";
+			compatible = "qcom,kryo";
+			reg = <0x0 0x100>;
+			qcom,limits-info = <&mitigation_profile2>;
+			enable-method = "psci";
+			qcom,ea = <&ea2>;
+			sched-energy-costs = <&CPU_COST_1 &CLUSTER_COST_1>;
+			next-level-cache = <&L2_1>;
+			L2_1: l2-cache {
+			      compatible = "arm,arch-cache";
+			      cache-level = <2>;
+			      qcom,dump-size = <0x110000>;
+			};
+			L1_D_100: l1-dcache {
+				compatible = "arm,arch-cache";
+				qcom,dump-size = <0x7800>;
+			};
+			L1_TLB_100: l1-tlb {
+				qcom,dump-size = <0x2800>;
+			};
+		};
+
+		CPU3: cpu@101 {
+			device_type = "cpu";
+			compatible = "qcom,kryo";
+			reg = <0x0 0x101>;
+			enable-method = "psci";
+			qcom,limits-info = <&mitigation_profile3>;
+			qcom,ea = <&ea3>;
+			sched-energy-costs = <&CPU_COST_1 &CLUSTER_COST_1>;
+			next-level-cache = <&L2_1>;
+			L1_D_101: l1-dcache {
+				compatible = "arm,arch-cache";
+				qcom,dump-size = <0x7800>;
+			};
+			L1_TLB_101: l1-tlb {
+				qcom,dump-size = <0x2800>;
+			};
+		};
+
+		cpu-map {
+			cluster0 {
+				core0 {
+					cpu = <&CPU0>;
+				};
+
+				core1 {
+					cpu = <&CPU1>;
+				};
+			};
+
+			cluster1 {
+				core0 {
+					cpu = <&CPU2>;
+				};
+
+				core1 {
+					cpu = <&CPU3>;
+				};
+			};
+		};
+    energy-costs {
 			CPU_COST_0: core-cost0 {
 				busy-cost-data = <
 					149 90
@@ -139,8 +245,8 @@
 					0
 				>;
 			};
-        };
-    };
+		};
+	};
 };
 
 &apc_apm {
