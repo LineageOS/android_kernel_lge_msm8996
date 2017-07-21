@@ -435,6 +435,8 @@ static u64 update_load(int cpu)
 	return now;
 }
 
+#define NEW_TASK_RATIO 75
+#define PRED_TOLERANCE_PCT 10
 static void __cpufreq_interactive_timer(unsigned long data, bool is_notif)
 {
 	s64 now;
@@ -520,7 +522,6 @@ static void __cpufreq_interactive_timer(unsigned long data, bool is_notif)
 			new_freq = tunables->hispeed_freq;
 		} else {
 			new_freq = choose_freq(ppol, loadadjfreq);
-
 			if (new_freq < tunables->hispeed_freq)
 				new_freq = tunables->hispeed_freq;
 			else

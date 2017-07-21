@@ -302,7 +302,6 @@ static void __cpufreq_stats_free_table(struct cpufreq_policy *policy)
 	kfree(stat->time_in_state);
 	kfree(stat);
 	per_cpu(cpufreq_stats_table, policy->cpu) = NULL;
-	trace_printk("cpufreq_stats_table policy->cpu set NULL: %d\n", policy->cpu);
 }
 
 static void cpufreq_stats_free_table(unsigned int cpu)
@@ -412,7 +411,6 @@ error_alloc:
 error_out:
 	kfree(stat);
 	per_cpu(cpufreq_stats_table, cpu) = NULL;
-	trace_printk("cpufreq_stats_table cpu set NULL: %d\n", cpu);
 	return ret;
 }
 
@@ -426,7 +424,6 @@ static void cpufreq_stats_update_policy_cpu(struct cpufreq_policy *policy)
 	per_cpu(cpufreq_stats_table, policy->cpu) = per_cpu(cpufreq_stats_table,
 			policy->last_cpu);
 	per_cpu(cpufreq_stats_table, policy->last_cpu) = NULL;
-	trace_printk("cpufreq_stats_table policy->last_cpu set NULL: %d\n", policy->last_cpu);
 	stat->cpu = policy->cpu;
 }
 
