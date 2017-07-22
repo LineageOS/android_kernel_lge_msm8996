@@ -1,0 +1,595 @@
+/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "../dsi-panel-sw49407-dsc-qhd-cmd.dtsi"
+#include "../dsi-panel-sw49407-dsc-qhd-video.dtsi"
+#include "../msm8992-panel-backlight-lm3697.dtsi"
+
+&mdss_mdp {
+	qcom,mdss-pref-prim-intf = "dsi";
+	qcom,mdss-has-source-split;
+	dsi_sw49407_dsc_cmd: qcom,mdss_dsi_sw49407_dsc_qhd_cmd {
+		qcom,mdss-dsi-on-command = [ /*initset v2.0_0.1 modified for anna*/
+			/* Manufacturer Command Protection */
+			15 01 00 00 00 00 02 B0 AC
+			/* Init. Code Version modified for anna*/
+			39 01 00 00 00 00 04 D7 2A 13 01
+			/*Left Side GIP pad setting*/
+			39 01 00 00 00 00 0E E5 1A 0D 0C 0E 1A 1A 01 05 07 09 0B 1A 11
+			/*Right Side GIP pad setting*/
+			39 01 00 00 00 00 0E E6 1A 0D 0C 0E 1A 1A 00 04 06 08 0A 1A 11
+			/*Left Side Mux Pad Setting*/
+			39 01 00 00 00 00 07 E7 18 17 16 15 14 13
+			/*Right Side Mux Pad Setting*/
+			39 01 00 00 00 00 07 E8 18 17 16 15 14 13
+			/* Page Address Set */
+			39 01 00 00 00 00 05 2B 00 00 0A 9F
+			/* Partial Area Set */
+			39 01 00 00 00 00 05 30 00 00 00 9F
+			/* TE line */
+			39 01 00 00 00 00 03 44 00 00
+			/* Tearing Effect Line on */
+			15 01 00 00 00 00 02 35 00
+			/* Write Display Brightness */
+			15 01 00 00 00 00 02 51 ff
+			/* Write Control Display */
+			15 01 00 00 00 00 02 53 2C
+			/* Write Content Adaptive Brightness Control */
+			15 01 00 00 00 00 02 55 81
+			/* Display Control 1 */
+			39 01 00 00 00 00 08 B3 0A 07 28 C8 1A 94 02
+			/* Display Control 2 */
+			39 01 00 00 00 00 0C B4 93 08 00 0C 0C 0C 0C 18 18 18 18
+			/* Display Control 3 */
+			39 01 00 00 00 00 0F B5 28 14 2A C8 36 08 00 0A 00 C0 93 13 31 31
+			/* Display Control 4 */
+			39 01 00 00 00 00 09 B6 1F 0F 10 C0 00 10 C0 00
+			/* Panel Setting */
+			39 01 00 00 00 00 05 B7 61 75 EA A9
+			/* Touch Timing Control */
+			39 01 00 00 00 00 1F B8 70 01 04 40 BF F0 8B 00 00 18 33 04 01 40 01 45 F8 C1 A1 00 00 08 01 15 01 0A A0 0A 0A 00
+			/* Touch Source Setting */
+			39 01 00 00 00 00 06 B9 64 64 2A 3F EE
+			/* Backlight Control */
+			39 01 00 00 00 00 07 BA 23 67 70 78 7F 80
+			/* Internal Oscillator Setting */
+			39 01 00 00 00 00 08 C0 98 08 0F 1D FD 68 92
+			/* Power Control 1 */
+			39 01 00 00 00 00 07 C1 01 00 F0 C2 CF 0C
+			/* Power Control 2 */
+			39 01 00 00 00 00 05 C2 CC 44 44 40
+			/* Power Control 4 */
+			39 01 00 00 00 00 08 C3 35 44 22 26 21 35 DD
+			/* Power Control 5 */
+			39 01 00 00 00 00 07 C5 A2 38 28 54 D4 0E
+			/* Vcom Setting modified for anna*/
+			//39 01 00 00 00 00 03 C6 1F 01
+			/* Power Sequence Option Configuration */
+			39 01 00 00 00 00 06 C9 05 5D 03 04 01
+			/* APO control */
+			39 01 00 00 00 00 03 CA 9F 10
+			/* LFD Control */
+			39 01 00 00 00 00 06 CB F3 90 3D 3D CC
+			/* Tail TFT Setting */
+			39 01 00 00 00 00 06 CC 14 50 50 90 41
+			/* U2 Control */
+			39 01 00 00 00 00 04 CD 86 40 07
+			/* Positive Gamma Curve for Red modified for anna*/
+			39 01 00 00 00 00 0E D0 00 12 1F 2E 39 42 4C 41 33 23 15 00 03
+			/* Negative Gamma Curve for Red modified for anna*/
+			39 01 00 00 00 00 0E D1 00 12 1F 2E 39 42 4C 41 33 23 15 00 03
+			/* Positive Gamma Curve for Green modified for anna*/
+			39 01 00 00 00 00 0E D2 00 12 1E 2D 38 41 4D 44 34 23 15 00 03
+			/* Negative Gamma Curve for Green modified for anna*/
+			39 01 00 00 00 00 0E D3 00 12 1E 2D 38 41 4D 44 34 23 15 00 03
+			/* Positive Gamma Curve for Blue modified for anna*/
+			39 01 00 00 00 00 0E D4 00 12 1F 2E 39 42 4C 41 33 23 15 00 03
+			/* Negative Gamma Curve for Blue modified for anna*/
+			39 01 00 00 00 00 0E D5 00 12 1F 2E 39 42 4C 41 33 23 15 00 03
+			/* Test1 */
+			39 01 00 00 00 00 05 ED 61 6A 00 82
+			/* CABC Test */
+			39 01 00 00 00 00 18 F9 20 40 60 80 A0 C0 E0 10 14 14 14 14 14 04 00 B4 C0 CD DC E8 F0 F7 FF
+			/* CABC Test */
+			39 01 00 00 00 00 0F FA 88 22 22 22 20 42 32 26 02 08 0A A0 52 D0
+			/* IE Setting1 */
+			39 01 00 00 00 00 03 F0 82 00
+			/* IE Setting2 */
+			39 01 00 00 00 00 05 F2 01 00 24 00
+			/* IE Setting3 */
+			39 01 00 00 00 00 18 F3 00 43 83 C0 FF 00 00 40 80 C0 FF 00 00 40 80 C0 00 00 00 40 80 C0 FF
+			/* reader mode */
+			39 01 00 00 00 00 11 F4 40 40 40 40 40 40 40 40 00 00 00 00 00 00 00 00
+			39 01 00 00 00 00 11 F5 40 40 40 40 40 40 40 40 00 00 00 00 00 00 00 00
+			39 01 00 00 00 00 11 F6 40 40 40 40 40 40 40 40 00 00 00 00 00 00 00 00
+			/* Normal Display mode on */
+			05 01 00 00 00 00 01 13
+		];
+
+		lge,blmap = <
+			0
+			33 33 33 33 33 33 33 33 33 33
+			33 34 34 35 35 35 36 36 36 37
+			37 38 38 39 41 42 44 45 47 48
+			49 51 52 54 55 57 60 62 64 67
+			69 72 74 76 79 81 83 86 88 92
+			96 101 105 109 113 117 121 126 130 134
+			138 144 151 157 163 170 176 183 189 195
+			202 208 215 221 228 234 241 247 254 260
+			267 273 280 286 294 303 311 319 328 336
+			344 353 361 369 378 386 396 405 415 425
+			434 444 454 463 473 483 492 502 513 523
+			534 544 555 566 576 587 598 608 619 629
+			640 651 663 674 686 697 709 720 732 743
+			755 766 778 789 804 818 833 847 862 876
+			891 905 920 934 949 963 978 995 1012 1029
+			1045 1062 1079 1096 1113 1130 1146 1163 1180 1201
+			1221 1242 1263 1284 1304 1325 1346 1367 1387 1408
+			1428 1447 1467 1487 1506 1526 1546 1566 1585 1605
+			1625 1644 1664 1685 1707 1728 1750 1771 1792 1814
+			1835 1856 1878 1899 1921 1942 1968 1994 2020 2045
+			2071 2097 2123 2149 2175 2200 2226 2252 2283 2313
+			2344 2374 2405 2435 2466 2496 2527 2557 2588 2619
+			2649 2680 2711 2741 2772 2803 2833 2864 2895 2925
+			2956 2984 3012 3040 3068 3096 3124 3152 3180 3208
+			3236 3264 3292 3320 3348 3390 3432 3474 3516 3558
+			3600 3642 3684 3726 3768
+		>;
+
+		lge,blmap-ex = <
+			0
+			54 54 54 54 54 54 54 54 54 54
+			54 54 55 55 55 55 56 56 56 56
+			57 57 57 58 59 60 61 62 63 64
+			65 66 67 68 69 70 71 72 74 75
+			76 77 78 79 80 82 83 84 85 86
+			87 88 89 90 91 91 92 93 94 95
+			96 97 98 100 101 102 103 104 105 107
+			108 109 110 111 112 113 114 116 117 118
+			119 120 121 122 123 124 125 126 127 128
+			128 129 130 131 132 133 134 135 136 136
+			137 138 139 140 141 141 142 143 144 145
+			145 146 147 148 148 149 150 151 151 152
+			153 154 154 155 155 156 157 157 158 159
+			159 160 160 161 162 162 163 164 164 165
+			166 167 167 168 169 169 170 171 171 172
+			172 173 173 174 174 175 175 176 176 177
+			177 178 178 179 179 180 180 181 181 182
+			182 183 183 184 184 184 185 185 185 186
+			186 187 187 187 188 188 189 189 189 190
+			190 190 191 191 192 192 192 193 193 194
+			194 195 195 195 196 196 197 197 197 198
+			198 199 199 200 200 201 201 202 202 202
+			203 203 204 204 205 205 205 206 206 207
+			207 207 208 208 208 209 209 210 210 210
+			211 211 211 212 212 213 213 214 214 215
+			215 216 216 217 217
+		>;
+
+		lge,blmap-ex-dim = <
+			0
+			32 32 32 32 32 32 32 32 32 32
+			32 33 33 34 34 34 35 35 35 36
+			36 37 37 38 39 40 41 42 44 45
+			46 47 48 49 50 51 53 54 55 56
+			58 59 60 62 63 64 65 67 68 69
+			71 72 73 74 76 77 78 79 81 82
+			83 84 86 87 88 90 91 93 94 95
+			97 98 99 100 101 102 103 105 106 107
+			108 109 110 111 112 113 114 114 115 116
+			117 118 119 119 120 121 122 123 124 124
+			125 126 127 128 129 129 130 131 132 132
+			133 134 134 135 136 137 137 138 139 139
+			140 141 141 142 142 143 143 144 144 145
+			145 146 146 147 148 148 149 149 150 150
+			151 151 152 152 153 153 154 155 155 156
+			156 157 158 158 159 159 160 160 161 162
+			162 163 164 164 165 165 166 167 167 168
+			169 169 170 170 171 171 172 172 173 173
+			174 174 175 175 176 176 177 177 177 178
+			178 178 179 179 180 180 181 181 182 182
+			183 183 184 184 185 185 186 186 186 187
+			187 188 188 189 189 190 190 191 191 191
+			192 192 193 193 194 194 194 195 195 196
+			196 196 197 197 197 198 198 199 199 199
+			200 200 200 201 201 201 202 202 203 203
+			203 204 204 205 205
+		>;
+		qcom,mdss-pan-physical-width-dimension = <64>;
+		qcom,mdss-pan-physical-height-dimension = <121>;
+	};
+
+	dsi_sw49407_dsc_video: qcom,mdss_dsi_sw49407_dsc_qhd_video {
+		qcom,c-to-v-on-command = [ /*initset v2.0_v0.1 modified for anna*/
+			/* Manufacturer Command Protection */
+			15 01 00 00 00 00 02 B0 AC
+			/* Init. Code Version modified for anna*/
+			39 01 00 00 00 00 04 D7 2A 13 10
+			/*Left Side GIP pad setting*/
+			39 01 00 00 00 00 0E E5 1A 0D 0C 0E 1A 1A 01 05 07 09 0B 1A 11
+			/*Right Side GIP pad setting*/
+			39 01 00 00 00 00 0E E6 1A 0D 0C 0E 1A 1A 00 04 06 08 0A 1A 11
+			/*Left Side Mux Pad Setting*/
+			39 01 00 00 00 00 07 E7 18 17 16 15 14 13
+			/*Right Side Mux Pad Setting*/
+			39 01 00 00 00 00 07 E8 18 17 16 15 14 13
+			/* Page Address Set */
+			39 01 00 00 00 00 05 2B 00 00 0A 9F
+			/* Partial Area Set */
+			39 01 00 00 00 00 05 30 00 00 00 9F
+			/* TE line */
+			39 01 00 00 00 00 03 44 01 54
+			/* Tearing Effect Line on */
+			15 01 00 00 00 00 02 35 00
+			/* Write Display Brightness */
+			15 01 00 00 00 00 02 51 FF
+			/* Write Control Display */
+			15 01 00 00 00 00 02 53 2C
+			/* Write Content Adaptive Brightness Control */
+			15 01 00 00 00 00 02 55 81
+			/* Display Control 1 */
+			39 01 00 00 00 00 08 B3 0A 07 28 C8 1A 94 02
+			/* Display Control 2 */
+			39 01 00 00 00 00 0C B4 93 08 00 0C 0C 0C 0C 18 18 18 18
+			/* Display Control 3 */
+			39 01 00 00 00 00 0F B5 28 14 2A C8 36 08 00 0A 00 C0 93 13 31 31
+			/* Display Control 4 */
+			39 01 00 00 00 00 09 B6 1F 0F 8A 64 48 10 C0 00
+			/* Panel Setting */
+			39 01 00 00 00 00 05 B7 61 75 EA A9
+			/* Touch Timing Control */
+			39 01 00 00 00 00 1F B8 70 A8 92 40 AF F2 0B 00 00 08 33 04 01 40 01 45 F8 C1 A1 00 00 08 01 15 01 0A A0 0A 0A 00
+			/* Touch Source Setting */
+			39 01 00 00 00 00 06 B9 64 64 2A 3F EE
+			/* Backlight Control */
+			39 01 00 00 00 00 07 BA 23 67 70 78 7F 80
+			/* Internal Oscillator Setting */
+			39 01 00 00 00 00 08 C0 98 08 0F 1D FD 68 92
+			/* Power Control 1 */
+			39 01 00 00 00 00 07 C1 01 00 F0 E2 CF 0C
+			/* Power Control 2 */
+			39 01 00 00 00 00 05 C2 CC 44 44 40
+			/* Power Control 4 */
+			39 01 00 00 00 00 08 C3 35 44 22 26 21 35 DD
+			/* Power Control 5 */
+			39 01 00 00 00 00 07 C5 A2 38 28 54 D4 0E
+			/* Vcom Setting modified for anna*/
+			//39 01 00 00 00 00 03 C6 1F 01
+			/* Power Sequence Option Configuration */
+			39 01 00 00 00 00 06 C9 05 5D 03 04 01
+			/* APO control */
+			39 01 00 00 00 00 03 CA 9F 10
+			/* LFD Control */
+			39 01 00 00 00 00 06 CB F3 90 3D 3D CC
+			/* Tail TFT Setting */
+			39 01 00 00 00 00 06 CC 14 50 50 90 41
+			/* U2 Control */
+			39 01 00 00 00 00 04 CD 86 40 07
+			/* Positive Gamma Curve for Red modified for anna*/
+			39 01 00 00 00 00 0E D0 00 12 1F 2E 39 42 4C 41 33 23 15 00 03
+			/* Negative Gamma Curve for Red modified for anna*/
+			39 01 00 00 00 00 0E D1 00 12 1F 2E 39 42 4C 41 33 23 15 00 03
+			/* Positive Gamma Curve for Green modified for anna*/
+			39 01 00 00 00 00 0E D2 00 12 1E 2D 38 41 4D 44 34 23 15 00 03
+			/* Negative Gamma Curve for Green modified for anna*/
+			39 01 00 00 00 00 0E D3 00 12 1E 2D 38 41 4D 44 34 23 15 00 03
+			/* Positive Gamma Curve for Blue modified for anna*/
+			39 01 00 00 00 00 0E D4 00 12 1F 2E 39 42 4C 41 33 23 15 00 03
+			/* Negative Gamma Curve for Blue modified for anna*/
+			39 01 00 00 00 00 0E D5 00 12 1F 2E 39 42 4C 41 33 23 15 00 03
+			/* Test1 */
+			39 01 00 00 00 00 05 ED 61 6A 00 82
+			/* CABC Test */
+			39 01 00 00 00 00 18 F9 20 40 60 80 A0 C0 E0 10 14 14 14 14 14 04 00 B4 C0 CD DC E8 F0 F7 FF
+			/* CABC Test */
+			39 01 00 00 00 00 0F FA 88 22 22 22 20 42 32 26 02 08 0A A0 52 D0
+			/* IE Setting1 */
+			39 01 00 00 00 00 03 F0 82 00
+			/* IE Setting2 */
+			39 01 00 00 00 00 05 F2 01 00 24 00
+			/* IE Setting3 */
+			39 01 00 00 00 00 18 F3 00 43 83 C0 FF 00 00 40 80 C0 FF 00 00 40 80 C0 00 00 00 40 80 C0 FF
+			/* reader mode */
+			39 01 00 00 00 00 11 F4 40 40 40 40 40 40 40 40 00 00 00 00 00 00 00 00
+			39 01 00 00 00 00 11 F5 40 40 40 40 40 40 40 40 00 00 00 00 00 00 00 00
+			39 01 00 00 00 00 11 F6 40 40 40 40 40 40 40 40 00 00 00 00 00 00 00 00
+			/* MIPI DSI Configuration */
+			39 01 00 00 00 00 06 B1 47 00 80 00 00
+			/* Normal Display mode on */
+			05 01 00 00 00 00 01 13
+		];
+
+		qcom,v-to-c-on-command = [ /*initset v2.0_v0.1 modified for anna*/
+			/* Manufacturer Command Protection */
+			15 01 00 00 00 00 02 B0 AC
+			/* Init. Code Version modified for anna*/
+			39 01 00 00 00 00 04 D7 2A 13 01
+			/*Left Side GIP pad setting*/
+			39 01 00 00 00 00 0E E5 1A 0D 0C 0E 1A 1A 01 05 07 09 0B 1A 11
+			/*Right Side GIP pad setting*/
+			39 01 00 00 00 00 0E E6 1A 0D 0C 0E 1A 1A 00 04 06 08 0A 1A 11
+			/*Left Side Mux Pad Setting*/
+			39 01 00 00 00 00 07 E7 18 17 16 15 14 13
+			/*Right Side Mux Pad Setting*/
+			39 01 00 00 00 00 07 E8 18 17 16 15 14 13
+			/* Page Address Set */
+			39 01 00 00 00 00 05 2B 00 00 0A 9F
+			/* Partial Area Set */
+			39 01 00 00 00 00 05 30 00 00 00 9F
+			/* TE line */
+			39 01 00 00 00 00 03 44 00 00
+			/* Tearing Effect Line on */
+			15 01 00 00 00 00 02 35 00
+			/* Write Display Brightness */
+			15 01 00 00 00 00 02 51 ff
+			/* Write Control Display */
+			15 01 00 00 00 00 02 53 2C
+			/* Write Content Adaptive Brightness Control */
+			15 01 00 00 00 00 02 55 81
+			/* Display Control 1 */
+			39 01 00 00 00 00 08 B3 0A 07 28 C8 1A 94 02
+			/* Display Control 2 */
+			39 01 00 00 00 00 0C B4 93 08 00 0C 0C 0C 0C 18 18 18 18
+			/* Display Control 3 */
+			39 01 00 00 00 00 0F B5 28 14 2A C8 36 08 00 0A 00 C0 93 13 31 31
+			/* Display Control 4 */
+			39 01 00 00 00 00 09 B6 1F 0F 10 C0 00 10 C0 00
+			/* Panel Setting */
+			39 01 00 00 00 00 05 B7 61 75 EA A9
+			/* Touch Timing Control */
+			39 01 00 00 00 00 1F B8 70 01 04 40 BF F0 8B 00 00 18 33 04 01 40 01 45 F8 C1 A1 00 00 08 01 15 01 0A A0 0A 0A 00
+			/* Touch Source Setting */
+			39 01 00 00 00 00 06 B9 64 64 2A 3F EE
+			/* Backlight Control */
+			39 01 00 00 00 00 07 BA 23 67 70 78 7F 80
+			/* Internal Oscillator Setting */
+			39 01 00 00 00 00 08 C0 98 08 0F 1D FD 68 92
+			/* Power Control 1 */
+			39 01 00 00 00 00 07 C1 01 00 F0 C2 CF 0C
+			/* Power Control 2 */
+			39 01 00 00 00 00 05 C2 CC 44 44 40
+			/* Power Control 4 */
+			39 01 00 00 00 00 08 C3 35 44 22 26 21 35 DD
+			/* Power Control 5 */
+			39 01 00 00 00 00 07 C5 A2 38 28 54 D4 0E
+			/* Vcom Setting modified for anna*/
+			//39 01 00 00 00 00 03 C6 1F 01
+			/* Power Sequence Option Configuration */
+			39 01 00 00 00 00 06 C9 05 5D 03 04 01
+			/* APO control */
+			39 01 00 00 00 00 03 CA 9F 10
+			/* LFD Control */
+			39 01 00 00 00 00 06 CB F3 90 3D 3D CC
+			/* Tail TFT Setting */
+			39 01 00 00 00 00 06 CC 14 50 50 90 41
+			/* U2 Control */
+			39 01 00 00 00 00 04 CD 86 40 07
+			/* Positive Gamma Curve for Red modified for anna*/
+			39 01 00 00 00 00 0E D0 00 12 1F 2E 39 42 4C 41 33 23 15 00 03
+			/* Negative Gamma Curve for Red modified for anna*/
+			39 01 00 00 00 00 0E D1 00 12 1F 2E 39 42 4C 41 33 23 15 00 03
+			/* Positive Gamma Curve for Green modified for anna*/
+			39 01 00 00 00 00 0E D2 00 12 1E 2D 38 41 4D 44 34 23 15 00 03
+			/* Negative Gamma Curve for Green modified for anna*/
+			39 01 00 00 00 00 0E D3 00 12 1E 2D 38 41 4D 44 34 23 15 00 03
+			/* Positive Gamma Curve for Blue modified for anna*/
+			39 01 00 00 00 00 0E D4 00 12 1F 2E 39 42 4C 41 33 23 15 00 03
+			/* Negative Gamma Curve for Blue modified for anna*/
+			39 01 00 00 00 00 0E D5 00 12 1F 2E 39 42 4C 41 33 23 15 00 03
+			/* Test1 */
+			39 01 00 00 00 00 05 ED 61 6A 00 82
+			/* CABC Test */
+			39 01 00 00 00 00 18 F9 20 40 60 80 A0 C0 E0 10 14 14 14 14 14 04 00 B4 C0 CD DC E8 F0 F7 FF
+			/* CABC Test */
+			39 01 00 00 00 00 0F FA 88 22 22 22 20 42 32 26 02 08 0A A0 52 D0
+			/* IE Setting1 */
+			39 01 00 00 00 00 03 F0 82 00
+			/* IE Setting2 */
+			39 01 00 00 00 00 05 F2 01 00 24 00
+			/* IE Setting3 */
+			39 01 00 00 00 00 18 F3 00 43 83 C0 FF 00 00 40 80 C0 FF 00 00 40 80 C0 00 00 00 40 80 C0 FF
+			/* reader mode */
+			39 01 00 00 00 00 11 F4 40 40 40 40 40 40 40 40 00 00 00 00 00 00 00 00
+			39 01 00 00 00 00 11 F5 40 40 40 40 40 40 40 40 00 00 00 00 00 00 00 00
+			39 01 00 00 00 00 11 F6 40 40 40 40 40 40 40 40 00 00 00 00 00 00 00 00
+			/* Normal Display mode on */
+			05 01 00 00 00 00 01 13
+			/* All off */
+			05 01 00 00 00 00 01 22
+		];
+
+		lge,blmap = <
+			0
+			33 33 33 33 33 33 33 33 33 33
+			33 34 34 35 35 35 36 36 36 37
+			37 38 38 39 41 42 44 45 47 48
+			49 51 52 54 55 57 60 62 64 67
+			69 72 74 76 79 81 83 86 88 92
+			96 101 105 109 113 117 121 126 130 134
+			138 144 151 157 163 170 176 183 189 195
+			202 208 215 221 228 234 241 247 254 260
+			267 273 280 286 294 303 311 319 328 336
+			344 353 361 369 378 386 396 405 415 425
+			434 444 454 463 473 483 492 502 513 523
+			534 544 555 566 576 587 598 608 619 629
+			640 651 663 674 686 697 709 720 732 743
+			755 766 778 789 804 818 833 847 862 876
+			891 905 920 934 949 963 978 995 1012 1029
+			1045 1062 1079 1096 1113 1130 1146 1163 1180 1201
+			1221 1242 1263 1284 1304 1325 1346 1367 1387 1408
+			1428 1447 1467 1487 1506 1526 1546 1566 1585 1605
+			1625 1644 1664 1685 1707 1728 1750 1771 1792 1814
+			1835 1856 1878 1899 1921 1942 1968 1994 2020 2045
+			2071 2097 2123 2149 2175 2200 2226 2252 2283 2313
+			2344 2374 2405 2435 2466 2496 2527 2557 2588 2619
+			2649 2680 2711 2741 2772 2803 2833 2864 2895 2925
+			2956 2984 3012 3040 3068 3096 3124 3152 3180 3208
+			3236 3264 3292 3320 3348 3390 3432 3474 3516 3558
+			3600 3642 3684 3726 3768
+		>;
+
+		lge,blmap-ex = <
+			0
+			54 54 54 54 54 54 54 54 54 54
+			54 54 55 55 55 55 56 56 56 56
+			57 57 57 58 59 60 61 62 63 64
+			65 66 67 68 69 70 71 72 74 75
+			76 77 78 79 80 82 83 84 85 86
+			87 88 89 90 91 91 92 93 94 95
+			96 97 98 100 101 102 103 104 105 107
+			108 109 110 111 112 113 114 116 117 118
+			119 120 121 122 123 124 125 126 127 128
+			128 129 130 131 132 133 134 135 136 136
+			137 138 139 140 141 141 142 143 144 145
+			145 146 147 148 148 149 150 151 151 152
+			153 154 154 155 155 156 157 157 158 159
+			159 160 160 161 162 162 163 164 164 165
+			166 167 167 168 169 169 170 171 171 172
+			172 173 173 174 174 175 175 176 176 177
+			177 178 178 179 179 180 180 181 181 182
+			182 183 183 184 184 184 185 185 185 186
+			186 187 187 187 188 188 189 189 189 190
+			190 190 191 191 192 192 192 193 193 194
+			194 195 195 195 196 196 197 197 197 198
+			198 199 199 200 200 201 201 202 202 202
+			203 203 204 204 205 205 205 206 206 207
+			207 207 208 208 208 209 209 210 210 210
+			211 211 211 212 212 213 213 214 214 215
+			215 216 216 217 217
+		>;
+
+		lge,blmap-ex-dim = <
+			0
+			32 32 32 32 32 32 32 32 32 32
+			32 33 33 34 34 34 35 35 35 36
+			36 37 37 38 39 40 41 42 44 45
+			46 47 48 49 50 51 53 54 55 56
+			58 59 60 62 63 64 65 67 68 69
+			71 72 73 74 76 77 78 79 81 82
+			83 84 86 87 88 90 91 93 94 95
+			97 98 99 100 101 102 103 105 106 107
+			108 109 110 111 112 113 114 114 115 116
+			117 118 119 119 120 121 122 123 124 124
+			125 126 127 128 129 129 130 131 132 132
+			133 134 134 135 136 137 137 138 139 139
+			140 141 141 142 142 143 143 144 144 145
+			145 146 146 147 148 148 149 149 150 150
+			151 151 152 152 153 153 154 155 155 156
+			156 157 158 158 159 159 160 160 161 162
+			162 163 164 164 165 165 166 167 167 168
+			169 169 170 170 171 171 172 172 173 173
+			174 174 175 175 176 176 177 177 177 178
+			178 178 179 179 180 180 181 181 182 182
+			183 183 184 184 185 185 186 186 186 187
+			187 188 188 189 189 190 190 191 191 191
+			192 192 193 193 194 194 194 195 195 196
+			196 196 197 197 197 198 198 199 199 199
+			200 200 200 201 201 201 202 202 203 203
+			203 204 204 205 205
+		>;
+		qcom,mdss-pan-physical-width-dimension = <64>;
+		qcom,mdss-pan-physical-height-dimension = <121>;
+
+	};
+};
+
+&mdss_dsi0 {
+	pinctrl-names = "mdss_default", "mdss_sleep";
+	pinctrl-0 = <&mdss_dsi_active &mdss_dsi_active1 &mdss_dsi_active2 &mdss_dsi_active3 &mdss_te_active>;
+	pinctrl-1 = <&mdss_dsi_suspend &mdss_dsi_suspend1 &mdss_dsi_suspend2 &mdss_dsi_suspend3 &mdss_te_suspend>;
+	qcom,dsi-panel-bias-vreg;
+	qcom,platform-te-gpio = <&tlmm 10 0>;
+	qcom,platform-reset-gpio = <&tlmm 8 0>;
+
+	/delete-property/vddio-supply;
+};
+
+&mdss_dsi0_pll {
+		/delete-property/ memory-region;
+};
+
+&labibb {
+	status = "ok";
+	qpnp,qpnp-labibb-mode = "lcd";
+	qcom,labibb-touch-to-wake-en;
+};
+
+&ibb_regulator {
+	qcom,qpnp-ibb-discharge-resistor-8994 = <32>;
+	qcom,qpnp-ibb-discharge-resistor = <300>;
+	qcom,qpnp-ibb-lab-pwrup-delay = <1000>;
+	qcom,qpnp-ibb-lab-pwrdn-delay = <2000>;
+};
+
+&dsi_sw49407_dsc_video {
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
+	qcom,mdss-dsi-blex-pmic-control-type = "bl_ctrl_lge";
+	qcom,mdss-dsi-bl-min-level = <1>;
+	qcom,mdss-dsi-bl-max-level = <4095>;
+	qcom,cont-splash-enabled;
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+};
+
+&dsi_sw49407_dsc_cmd {
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
+	qcom,mdss-dsi-blex-pmic-control-type = "bl_ctrl_lge";
+	qcom,mdss-dsi-bl-min-level = <1>;
+	qcom,mdss-dsi-bl-max-level = <4095>;
+	qcom,cont-splash-enabled;
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+};
+
+&spmi_bus {
+	qcom,pmi8994@3 {
+		qcom,leds@d800 {
+			qcom,fs-curr-ua = <20000>;
+			qcom,ibb-pwrup-dly = <1>;
+			qcom,led-strings-list = [00 01 02];
+			qcom,switch-freq-khz = <600>;
+			qcom,en-cabc;
+		};
+	};
+};
+
+&soc {
+	gpio_keys {
+		compatible = "gpio-keys";
+		input-name = "gpio-keys";
+
+		pinctrl-names = "tlmm_gpio_key_active","tlmm_gpio_key_suspend";
+		pinctrl-0 = <&hallic_gpio_active>;
+		pinctrl-1 = <&hallic_gpio_suspend>;
+
+		hall_ic {
+			label = "hall_ic";
+			gpios = <&tlmm 124 0x1>;
+			linux,input-type = <5>;
+			linux,code = <222>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+		};
+	};
+};
+
+&i2c_6{
+	lm3697@36 {
+		lm3697,output_config = <0x06>;
+		lm3697,brightness_config = <0x00>;
+		lm3697,sink_feedback = <0x01>;
+		lm3697,boost_ctrl = <0x04>;
+		lm3697,default_brightness = <0xA1>;
+	};
+};
+
+&mdss_fb0 {
+	qcom,default-brightness = <0x86>;
+};

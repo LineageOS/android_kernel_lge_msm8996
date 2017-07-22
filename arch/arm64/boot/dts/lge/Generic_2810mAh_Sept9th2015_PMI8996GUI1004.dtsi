@@ -1,0 +1,49 @@
+
+qcom,generic_2810mah_sept9th2015 {
+	/* Generic_2810mAh_Sept9th2015*/
+	qcom,max-voltage-uv = <4400000>;
+	qcom,nom-batt-capacity-mah = <2810>;
+	qcom,batt-id-kohm = <0>;
+	qcom,battery-beta = <4150>;
+	qcom,battery-type = "generic_2810mah_sept9th2015";
+	qcom,chg-rslow-comp-c1 = <3847803>;
+	qcom,chg-rslow-comp-c2 = <7057841>;
+	qcom,chg-rs-to-rslow = <1293217>;
+	qcom,chg-rslow-comp-thr = <0xBA>;
+	qcom,checksum = <0x6E65>;
+	qcom,gui-version = "PMI8996GUI - 1.0.0.4";
+	qcom,fg-profile-data = [
+		 D9 83 91 7C
+		 EA 80 E5 76
+		 5E 83 99 6F
+		 8B 89 D3 94
+		 4F 82 C3 98
+		 3C B7 58 C3
+		 52 15 E7 83
+		 9A 7C D3 80
+		 9C 76 61 83
+		 01 6C D3 88
+		 93 94 73 82
+		 A9 98 C6 B7
+		 5A C8 52 10
+		 4C 0B E2 59
+		 14 70 71 FD
+		 A7 35 05 47
+		 77 41 00 00
+		 EE 45 6E 1B
+		 FE 32 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 08 71 4E 70
+		 1E 68 24 81
+		 8A 6F 68 5B
+		 92 5B 0C 80
+		 8D 6E 1A 59
+		 A8 5D 25 AA
+		 17 DC 68 1E
+		 67 A0 71 0C
+		 28 00 FF 36
+		 F0 11 30 03
+		 00 00 00 0C
+	];
+};

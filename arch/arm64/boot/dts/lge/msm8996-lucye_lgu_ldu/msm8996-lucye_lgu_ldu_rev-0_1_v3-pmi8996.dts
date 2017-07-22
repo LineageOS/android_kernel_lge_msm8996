@@ -1,0 +1,145 @@
+/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+
+/dts-v1/;
+
+#include "../../qcom/msm8996-v3.dtsi"
+#include "../../qcom/msm-pmi8996.dtsi"
+#include "msm8996-lucye_lgu_ldu.dtsi"
+#include "msm8996-lucye_lgu_ldu-touch.dtsi"
+#include "../msm8996-camera/msm8996-lucye-camera_rev-0.0.dtsi"
+#include "../msm8996-lucye_storage_type/current_storage_type.dtsi"
+#include "../msm8996-sound/msm8996-lucye-sound_rev-0_0.dtsi"
+#include "msm8996-lucye_lgu_ldu-sound.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. MSM 8996 v3.x + PMI8996 MTP";
+	compatible = "qcom,msm8996-mtp", "qcom,msm8996", "qcom,mtp";
+	qcom,board-id = <0x408 0>;
+};
+
+&i2c_12 {
+	status = "disabled";
+};
+
+/* Display Function */
+&soc {
+	dsi_panel_pwr_supply: dsi_panel_pwr_supply {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		qcom,panel-supply-entry@0 {
+			reg = <0>;
+			qcom,supply-name = "lab";
+			qcom,supply-min-voltage = <4600000>;
+			qcom,supply-max-voltage = <6000000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+		};
+
+		qcom,panel-supply-entry@1 {
+			reg = <1>;
+			qcom,supply-name = "ibb";
+			qcom,supply-min-voltage = <4600000>;
+			qcom,supply-max-voltage = <6000000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-post-on-sleep = <20>;
+		};
+	};
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&dsi_sw49408_dsc_1440_2880_cmd>;
+	lge,extra-gpio-names = "vddio", "vpnl";
+
+	lge,gpio-vddio = <&tlmm 69 0>;
+	lge,gpio-vpnl = <&tlmm 94 0>;
+};
+
+&mdss_dsi1 {
+	/delete-property/cell-index;
+};
+
+/* pinctrl for Display function
+ * GPIO69 : LCD_VDD_IO_EN
+ * GPIO94 : LCD_VCL_EN
+ */
+&soc {
+	tlmm: pinctrl@01010000 {
+		compatible = "qcom,msm8996-pinctrl";
+		reg = <0x01010000 0x300000>;
+		interrupts = <0 208 0>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
+
+		pmx_mdss: pmx_mdss {
+			mdss_dsi_active1: mdss_dsi_active1 {
+				mux {
+					pins = "gpio69";
+					function = "gpio";
+				};
+
+				pmx_mdss {
+					pins = "gpio69";
+					drive-strength = <8>; /* 8 mA */
+					bias-disable = <0>; /* no pull */
+					output-high;
+				};
+			};
+			mdss_dsi_active2: mdss_dsi_active2 {
+				mux {
+					pins = "gpio94";
+					function = "gpio";
+				};
+
+				pmx_mdss {
+					pins = "gpio94";
+					drive-strength = <8>; /* 8 mA */
+					bias-disable = <0>; /* no pull */
+					output-high;
+				};
+			};
+			mdss_dsi_suspend1: mdss_dsi_suspend1 {
+				mux {
+					pins = "gpio69";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio69";
+					drive-strength = <2>; /* 2 mA */
+					bias-pull-down; /* pull down */
+				};
+			};
+			mdss_dsi_suspend2: mdss_dsi_suspend2 {
+				mux {
+					pins = "gpio94";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio94";
+					drive-strength = <2>; /* 2 mA */
+					bias-pull-down; /* pull down */
+				};
+			};
+		};
+	};
+};
+
+&pmi8994_charger {
+    lge,lge_otp_enable;
+};

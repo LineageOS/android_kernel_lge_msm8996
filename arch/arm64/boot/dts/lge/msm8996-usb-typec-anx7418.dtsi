@@ -1,0 +1,59 @@
+/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&i2c_6 {
+	anx7418@28 {
+		compatible = "analogix,anx7418";
+		reg = <0x28>;
+
+		interrupt-parent = <&tlmm>;
+		interrupts = <131 0x0>;
+
+		vbus-supply = <&smbcharger_charger_otg>;
+		avdd33-supply = <&pm8994_l30>;
+
+		anx7418,pwr-en = <&tlmm 130 0>;
+		anx7418,resetn = <&tlmm 76 0>;
+		anx7418,cable-det = <&tlmm 131 0>;
+		anx7418,i2c-irq = <&tlmm 132 0>;
+		anx7418,sbu-sel = <&pm8994_gpios 3 0>;
+		anx7418,vconn = <&pm8994_gpios 1 0>;
+		anx7418,ext-acc-en = <&pm8994_gpios 19 0>;
+
+		status = "ok";
+
+		pinctrl-names = "default", "sleep";
+		pinctrl-0	= <&anx7418_cable_det_active &anx7418_interrupt_active>;
+		pinctrl-1	= <&anx7418_cable_det_sleep &anx7418_interrupt_sleep>;
+	};
+};
+
+&pm8994_gpios {
+	gpio@c000 {	/* GPIO 1 VCONN */
+		qcom,mode = <1>;		/* Digital output */
+		qcom,pull = <0>;
+		qcom,vin-sel = <2>;		/* VIN2 */
+		qcom,src-sel = <2>;		/* GPIO */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@c200 {	/* GPIO 3 SBU_SEL */
+		qcom,mode = <1>;		/* Digital output */
+		qcom,output-type = <0>;		/* MOS logic */
+		qcom,vin-sel = <0>;		/* VPH_PWR */
+		qcom,src-sel = <0>;		/* Constant */
+		qcom,out-strength = <1>;	/* High drive strength */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+};

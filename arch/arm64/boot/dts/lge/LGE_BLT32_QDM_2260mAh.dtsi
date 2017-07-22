@@ -1,0 +1,49 @@
+
+qcom,LGE_BLT32_QDM_2260mAh {
+	/* #2622130_LGE_Lucy_2260mAh_averaged_MasterSlave_Sept30th2016*/
+	qcom,max-voltage-uv = <4350000>;
+	qcom,nom-batt-capacity-mah = <2260>;
+	qcom,batt-id-kohm = <0 120 140>;
+	qcom,battery-beta = <4250>;
+	qcom,battery-type = "LGE_BLT32_QDM_2260mAh";
+	qcom,chg-rslow-comp-c1 = <3301777>;
+	qcom,chg-rslow-comp-c2 = <4786462>;
+	qcom,chg-rs-to-rslow = <1083413>;
+	qcom,chg-rslow-comp-thr = <0xA8>;
+	qcom,checksum = <0x7301>;
+	qcom,gui-version = "PMI8996GUI - 1.1.0.4";
+	qcom,fg-profile-data = [
+		 DD 83 A2 7C
+		 DE 80 C7 76
+		 64 83 19 74
+		 60 89 8E 94
+		 34 82 8F 99
+		 78 BC DB C8
+		 55 0F 7E 83
+		 43 67 3D 78
+		 66 66 3A 83
+		 2F 79 30 86
+		 DF 81 BB 82
+		 DC 90 DB AD
+		 AD B8 70 12
+		 BB 08 BC 5B
+		 14 70 71 FD
+		 00 34 6D 44
+		 8E 32 00 00
+		 F9 46 FC 2B
+		 3F 39 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 41 70 CB 6A
+		 95 68 24 88
+		 DB 74 B2 63
+		 3A 55 54 7A
+		 F3 6F B5 61
+		 4D 76 F0 A9
+		 1B F6 68 B8
+		 66 A0 71 0C
+		 28 00 FF 36
+		 F0 11 30 03
+		 00 00 00 0C
+	];
+};

@@ -1,0 +1,232 @@
+/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&i2c_12 {
+	qcom,clk-freq-out = <400000>;
+	synaptics@20 {
+		compatible = "synaptics,s3320";
+		status = "ok";
+		reg = <0x20>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <125 0x2008>;
+		irqflags = <0x00000002>;
+
+		pinctrl-names = "pmx_ts_active", "pmx_ts_suspend";
+		pinctrl-0 = <&reset_active_ts &int_active_ts>;
+		pinctrl-1 = <&reset_suspend_ts &int_suspend_ts>;
+
+		reset-gpio = <&tlmm 89 0x00>;
+		irq-gpio = <&tlmm 125 0x2008>;
+
+		/*Caps*/
+		max_x = <1439>;
+		max_y = <2559>;
+		max_pressure = <0xff>;
+		max_width = <15>;
+		max_orientation = <1>;
+		max_id = <10>;
+
+		/*role*/
+		hw_reset_delay = <80>;
+		sw_reset_delay = <30>;
+		use_lpwg = <1>;
+		use_lpwg_test = <1>;
+
+		/* firmware */
+		use_upgrade = <0>;
+		fw_image = "touch/h1/PLG468-V1.20-PR1901334-DS5.2.200.1.1002_50055194504C47343638.img";
+		panel_spec = "touch/h1/h1_limit.txt";
+		panel_spec_mfts = "touch/h1/h1_limit_mfts.txt";
+	};
+
+	synap@20 {
+		compatible = "synap,s3320";
+		status = "disable";
+		reg = <0x20>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <125 0x2008>;
+		vcc_i2c-supply = <&pm8994_l14>;
+		vdd_ana-supply = <&pm8994_l22>;
+		pinctrl-names = "pmx_ts_active", "pmx_ts_suspend";
+		pinctrl-0 = <&reset_active_ts &int_active_ts>;
+		pinctrl-1 = <&reset_suspend_ts &int_suspend_ts>;
+		synaptics,display-coords = <0 0 1599 2559>;
+		synaptics,panel-coords = <0 0 1599 2559>;
+		reset-gpio = <&tlmm 89 0x00>;
+		irq-gpio = <&tlmm 125 0x2008>;
+		maker_id-gpio = <&tlmm 121 0x00>;
+		synaptics,disable-gpios;
+		/* Underlying clocks used by secure touch */
+		clock-names = "iface_clk", "core_clk";
+		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
+				 <&clock_gcc clk_gcc_blsp2_qup6_i2c_apps_clk>;
+
+		/*Caps*/
+		button_support = <0>;
+		number_of_button = <4>;
+		button_name = [9e 8b 66 d9];
+		max_x = <1439>;
+		max_y = <2559>;
+		max_pressure = <0xff>;
+		max_width = <15>;
+		max_orientation = <1>;
+		max_id = <10>;
+
+		/*role*/
+		protocol_type = <1>;
+		report_mode = <0>;
+		delta_pos_threshold = <1>;
+		report_period = <10000000>;
+		booting_delay = <80>;
+		reset_delay = <10>;
+		softreset_delay = <30>;
+		wake_up_by_touch = <1>;
+		use_sleep_mode = <1>;
+		thermal_check = <1>;
+		palm_ctrl_mode = <0>;
+		use_hover_finger = <0>;
+		use_rmi_dev = <1>;
+		irqflags = <0x00000002>;
+		bouncing.enable = <0>;
+		grip.enable = <0>;
+		grip.edge_region = <5>;
+		grip.max_delta = <10>;
+		grip.width_ratio = <2>;
+		accuracy.enable = <0>;
+		accuracy.min_delta = <3>;
+		accuracy.curr_ratio = <5>;
+		accuracy.min_pressure = <50>;
+		jitter.enable = <0>;
+		jitter.curr_ratio = <115>;
+		/*change. 1 -> 0 for H1 HDK*/
+		quickcover.enable = <0>;
+		quickcover.X1 = <148>;
+		quickcover.X2 = <1292>;
+		quickcover.Y1 = <0>;
+		quickcover.Y2 = <1101>;
+		crack.enable = <0>;
+		crack.min.cap = <300>;
+		use_lpwg_test = <1>;
+		/*ghost_detection -S*/
+		ghost_enable = <1>;
+		ghost_chk_cnt = <3>;
+		jitter_value = <20>;
+		ta_noise_chk = <0>;
+		incoming_call_chk = <0>;
+		first_finger_chk = <0>;
+		first_finger_time = <200>;
+		pressure_zero_chk = <1>;
+		pressure_high_chk = <1>;
+		ta_debouncing_chk = <0>;
+		ta_debouncing_cnt = <2>;
+		ta_debouncing_finger_num = <2>;
+		press_interval_chk = <1>;
+		press_interval = <29>;
+		diff_fingers_chk = <1>;
+		diff_finger_num = <5>;
+		subtraction_finger_chk = <0>;
+		subtraction_time = <11>;
+		subtraction_finger_cnt = <5>;
+		long_press_chk = <0>;
+		long_press_chk_time = <10>;
+		long_press_cnt = <700>;
+		button_chk = <0>;
+		button_int_num = <6>;
+		button_duration = <100>;
+		rebase_repetition_chk = <1>;
+		rebase_since_init = <3>;
+		rebase_since_rebase = <5>;
+		use_lpwg_all = <0>;
+		use_security_mode = <0>;
+		use_lcd_notifier_callback = <0>;
+		/*ghost_detection -E*/
+
+		/*pwr*/
+		use_regulator = <0>;
+		vdd = "vdd_ana";
+		vdd_voltage = <3300000>;
+		vio = "vcc_i2c";
+		vio_voltage = <1800000>;
+		vio_control = <0>;
+		reset_control = <3>;
+
+		/*Swipe Down*/
+		swp_down_min_distance = <16>;
+		swp_down_ratio_thres = <200>;
+		swp_down_ratio_chk_period = <5>;
+		swp_down_ratio_chk_min_distance = <2>;
+		swp_down_min_time_thres = <0>;
+		swp_down_max_time_thres = <150>;
+		swp_down_active_area_x0 = <0>;
+		swp_down_active_area_y0 = <0>;
+		swp_down_active_area_x1 = <1439>;
+		swp_down_active_area_y1 = <2559>;
+
+		swp_down_min_distance_reg_offset = <16>;
+		swp_down_ratio_thres_reg_offset = <17>;
+		swp_down_ratio_chk_period_reg_offset = <18>;
+		swp_down_ratio_chk_min_distance_reg_offset = <19>;
+		swp_down_min_time_thres_reg_offset = <20>;
+		swp_down_max_time_thres_reg_offset = <22>;
+		swp_down_active_area_x0_reg_offset = <24>;
+		swp_down_active_area_y0_reg_offset = <26>;
+		swp_down_active_area_x1_reg_offset = <28>;
+		swp_down_active_area_y1_reg_offset = <30>;
+
+		/*Swipe Up*/
+		swp_up_min_distance = <10>;
+		swp_up_ratio_thres = <100>;
+		swp_up_ratio_chk_period = <5>;
+		swp_up_ratio_chk_min_distance = <2>;
+		swp_up_min_time_thres = <0>;
+		swp_up_max_time_thres = <150>;
+		swp_up_active_area_x0 = <0>;
+		swp_up_active_area_y0 = <2060>;
+		swp_up_active_area_x1 = <1439>;
+		swp_up_active_area_y1 = <2559>;
+
+		swp_up_min_distance_reg_offset = <32>;
+		swp_up_ratio_thres_reg_offset = <33>;
+		swp_up_ratio_chk_period_reg_offset = <34>;
+		swp_up_ratio_chk_min_distance_reg_offset = <35>;
+		swp_up_min_time_thres_reg_offset = <36>;
+		swp_up_max_time_thres_reg_offset = <38>;
+		swp_up_active_area_x0_reg_offset = <40>;
+		swp_up_active_area_y0_reg_offset = <42>;
+		swp_up_active_area_x1_reg_offset = <44>;
+		swp_up_active_area_y1_reg_offset = <46>;
+
+		/*firmware*/
+		need_upgrade = <1>;
+		fw_pid_addr = <0x0040 0x0040 0x4f4 0x4f4>;     /*PLG446_BL6, PLG468_BL6, PLG446_BL7, PLG468_BL7*/
+		fw_ver_addr = <0x16d00 0x15500 0x4f0 0x4f0>;    /*PLG446_BL6, PLG468_BL6, PLG446_BL7, PLG468_BL7*/
+
+		/* Rx & Tx cap*/
+		tx_cap = <5 10 2 9 7 5 1 2 2 1 10 2 3 83 7 2 8 0 10 0 5 8 4 8 6 40 88>;
+		rx_cap = <53 12 15 26 28 13 27 25 4 15 5 6 22 9 44>;
+
+		/* 1:sd. 2:ref_rebase. 3:TX. 4:RX.*/
+		ref_chk_option = <0 0 1 1>;
+		/* P1:0 PPlus:1 */
+		touch_solution = <0>;
+
+		/* firmware & panel_spec path */
+		fw_image = "touch/h1/PLG446-V1.14-PR1860478-DS5.2.13.1014_4005518E.img",
+					"touch/h1/PLG468-V1.05-PR1801483-DS5.2.100.0.1005_50055185.img",
+					"touch/h1/PLG446-V1.24-PR1939616-DS5.2.18.1.1006_40055198_v7_2.img", /*PLG446_BL7*/
+					"touch/h1/PLG468-V1.20-PR1901334-DS5.2.200.1.1002_50055194504C47343638.img"; /*PLG468_BL7*/
+		panel_spec = "touch/h1/h1_hdk_limit.txt";
+		panel_spec_mfts_flat = "touch/h1/h1_hdk_limit_mfts_flat.txt";
+		panel_spec_mfts_curved = "touch/h1/h1_hdk_limit_mfts_curved.txt";
+		panel_spec_mfts_folder = "touch/h1/h1_hdk_limit_mfts_folder.txt";
+	};
+};

@@ -1,0 +1,61 @@
+/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&mdss_hdmi_tx {
+	pinctrl-names = "hdmi_hpd_active", "hdmi_ddc_active", "hdmi_cec_active",
+				"hdmi_active", "hdmi_sleep";
+	pinctrl-0 = <&mdss_hdmi_hpd_active &mdss_hdmi_ddc_suspend
+						&mdss_hdmi_cec_suspend>;
+	pinctrl-1 = <&mdss_hdmi_hpd_active &mdss_hdmi_ddc_active
+						&mdss_hdmi_cec_suspend>;
+	pinctrl-2 = <&mdss_hdmi_hpd_active &mdss_hdmi_cec_active
+						&mdss_hdmi_ddc_suspend>;
+	pinctrl-3 = <&mdss_hdmi_hpd_active &mdss_hdmi_ddc_active
+						&mdss_hdmi_cec_active>;
+	pinctrl-4 = <&mdss_hdmi_hpd_suspend &mdss_hdmi_ddc_suspend
+						&mdss_hdmi_cec_suspend>;
+};
+
+&i2c_6 {
+	analogix_anx7816@72 {
+	compatible = "analogix,anx7816";
+	status = "ok";
+	reg = <0x72>;
+	interrupt-parent = <&tlmm>;
+	interrupts = <90 0x2>;
+	analogix,reset-gpio = <&tlmm 75 0x00>;
+	analogix,irq-gpio = <&tlmm 77 0x00>;
+	analogix,p-dwn-gpio = <&pm8994_gpios 5 0x0>;
+	analogix,cbl-det-gpio = <&tlmm 90 0x0>;
+	analogix,vdd_dig-supply = <&pm8994_l27>; //DVDD10
+	lge,external-ldo-control = <0>;
+	analogix,i2c-pull-up = <1>;
+	qcom,hdmi-tx-map = <&mdss_hdmi_tx>;
+
+	pinctrl-names = "default", "sleep";
+	pinctrl-0	= <&anx7816_isr_active>;
+	pinctrl-1	= <&anx7816_isr_sleep>;
+	};
+};
+
+&rpm_bus {
+	rpm-regulator-ldoa27 {
+		status = "okay";
+		pm8994_l27: regulator-l27 {
+			regulator-min-microvolt = <1000000>;
+			regulator-max-microvolt = <1000000>;
+			qcom,init-voltage = <1000000>;
+			status = "okay";
+		};
+	};
+};
+

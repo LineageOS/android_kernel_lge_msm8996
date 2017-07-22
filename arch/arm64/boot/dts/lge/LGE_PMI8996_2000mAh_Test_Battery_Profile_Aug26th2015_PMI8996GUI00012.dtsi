@@ -1,0 +1,49 @@
+
+qcom,LGE_PMI8996_2000mAh_Aug26th2015 {
+	/* #LGE_PMI8996_2000mAh_Aug26th2015*/
+	qcom,max-voltage-uv = <4350000>;
+	qcom,nom-batt-capacity-mah = <2000>;
+	qcom,batt-id-kohm = <0>;
+	qcom,battery-beta = <3380>;
+	qcom,battery-type = "LGE_PMI8996_2000mAh_Aug26th2015";
+	qcom,chg-rslow-comp-c1 = <3388948>;
+	qcom,chg-rslow-comp-c2 = <5718305>;
+	qcom,chg-rs-to-rslow = <1098442>;
+	qcom,chg-rslow-comp-thr = <0xB4>;
+	qcom,checksum = <0xEC22>;
+	qcom,gui-version = "PMI8996GUI - 0.0.0.12";
+	qcom,fg-profile-data = [
+		 C5 83 6B 77
+		 0E 80 50 75
+		 76 83 DF 7D
+		 8C 91 C8 9C
+		 FC 81 8F 99
+		 8C B7 DD C2
+		 4C 15 DE 83
+		 C3 77 DB 7B
+		 BF 74 6C 83
+		 97 75 FE 8A
+		 19 96 37 82
+		 04 9A 20 BD
+		 DE C9 52 0F
+		 17 08 98 5A
+		 CE 6E 71 FD
+		 F0 3C 7A 3C
+		 1E 32 00 00
+		 FC 46 D4 20
+		 5E 3C 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 25 71 30 70
+		 21 77 5D 73
+		 F0 76 EF 69
+		 56 6F A5 6B
+		 C4 75 43 63
+		 AD 7F AA B8
+		 20 E9 6A 62
+		 6C A0 71 0C
+		 28 00 FF 36
+		 F0 11 30 03
+		 00 00 00 0C
+	];
+};
