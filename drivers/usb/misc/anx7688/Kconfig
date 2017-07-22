@@ -1,0 +1,23 @@
+config LGE_USB_ANX7688
+	bool "USB Type-C Crosspoint Switch Driver"
+	help
+	  Say Y here to add support for analogix ANX7418 Type-C Crosspoint Switch
+	  Driver.
+
+config LGE_DP_ANX7688
+	depends on LGE_USB_ANX7688
+	bool "Use for DP block of ANX7688"
+	help
+	  Set Y to use for debugging DP block of ANX7688.
+
+config LGE_USB_ANX7688_OVP
+	depends on LGE_USB_ANX7688
+	bool "Protect 9V on CC line to prevent damage on ANX7688"
+	help
+	  Set Y to enable OVP for ANX7688 (Sotfware Workaround).
+
+config LGE_USB_ANX7688_ADC
+	depends on LGE_USB_ANX7688_OVP
+	bool "use adc check cc line to prevent damage on ANX7688"
+        help
+          Set Y to enable ADC for ANX7688 (Sotfware Workaround).

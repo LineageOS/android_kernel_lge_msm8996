@@ -1,0 +1,131 @@
+* Texas Instruments TUSB422 Power Delivery
+
+Required Properties:
+- compatible - Must be "ti,tusb422-usb-pd"
+- reg - I2C address of the device.
+- ti,alert-gpio - Interrupt GPIO for the device.
+- ti,src-settling-time-ms - Time in milliseconds the source power supply needs to settle after a voltage transition. (50 ms by default)
+- ti,fast-role-swap-support - Fast role swap support: 0 = Not supported (default), 1 = Default Power, 2 = 1.5A, 3 = 3.0A.
+- ti,pdo-priority - Source PDO selection priority: 0 = voltage, 1 = current, 2 = power.
+- ti,role - Type-C Role: 0 = SRC, 1 = SNK, 2 = DRP.
+- ti,rp-val - Source current advertisement: 0 = Default, 1 = 1.5A, 2 = 3.0A.
+- ti,flags - Option Flags: 0 = none, 1 = Try.SRC, 2 = Try.SNK.
+
+Optional Properties (true if defined, otherwise they are false):
+- ti,usb-comm-capable - Sink and/or source is capable of USB data communication.
+- ti,no-usb-suspend - Sink requests to continue its power contract during USB suspend.
+- ti,usb-suspend-supported - Source indicates to sink that it should follow the USB 2.0 or USB 3.1 for suspend and resume.
+- ti,externally-powered - Source is externally powered.
+- ti,dual-role-data - Port is dual-role data capable and supports DR_Swap message.
+- ti,higher-capability - Sink requires more than 5V to provide full functionality.
+- ti,giveback-flag - Sink will respond to GotoMin message and reduce its load to the minimum operation current.
+- ti,auto-accept-swap-to-dfp - Automatically accept data role swap request to host.
+- ti,auto-accept-swap-to-ufp - Automatically accept data role swap request to device.
+- ti,auto-accept-swap-to-source - Automatically accept power role swap request to source.
+- ti,auto-accept-swap-to-sink - Automatically accept power role swap request to sink.
+- ti,auto-accept-vconn-swap - Automatically accept VCONN swap request even if not currently VCONN source.
+
+Optional Properties for TUSB422 EVM Power Control:
+- ti,vbus-snk-gpio - GPIO to control VBUS sinking.
+- ti,vbus-src-gpio - GPIO to control VBUS sourcing.
+- ti,vconn-en-gpio - GPIO to control VCONN source into TUSB422 device pin.
+- ti,vbus-5v-gpio - GPIO to control 5V VBUS source.
+- ti,vbus-hv-gpio - GPIO to control higher voltage VBUS source.
+
+Source PDO Parameters:
+	- ti,current-flow - Current flow direction: 0 = source, 1 = sink.
+	- ti,supply-type - Supply type: 0 = fixed, 1 = battery, 2 = variable.
+	- ti,pdo-number - Index number, starting from zero for source PDOs.
+	- ti,min-voltage - Minimum voltage in millivolts.
+	- ti,max-voltage - Maximum voltage in millivolts. (variable and battery types only)
+	- ti,peak-current - Peak current: 0 = Ioc default, 1 = 110% Ioc for 10ms, 2 = 125% Ioc for 10ms, 3 = 150% Ioc for 10ms. (fixed and variable types only)
+	- ti,max-current - Maximum current in milliamps. (fixed and variable types only)
+	- ti,max-power - Maximum power in milliwatts. (battery type only)
+
+Sink PDO Parameters:
+	- ti,current-flow - Current flow direction: 0 = source, 1 = sink.
+	- ti,supply-type - Supply type: 0 = fixed, 1 = battery, 2 = variable.
+	- ti,pdo-number - Index number, starting from zero for sink PDOs.
+	- ti,min-voltage - Minimum voltage in millivolts.
+	- ti,max-voltage - Maximum voltage in millivolts. (variable and battery types only)
+	- ti,max-operating-curr - Maximum operating current in milliamps. (fixed and variable types only)
+	- ti,min-operating-curr - Minimum operating current in milliamps. (fixed and variable types only)
+	- ti,operational-curr - Operational current in milliamps. (fixed and variable types only)
+	- ti,max-operating-pwr - Maximum operating power in milliwatts. (battery type only)
+	- ti,min-operating-pwr - Minimum operating power in milliwatts. (battery type only)
+	- ti,operational-pwr - Operational power in milliwatts. (battery type only)
+
+usb_power_dev: usb_power_dev@20 {
+	compatible = "ti,tusb422-usb-pd";
+	reg = <0x20>;
+	ti,alert-gpio = <&gpio1 16 GPIO_ACTIVE_HIGH>;
+	ti,vbus-snk-gpio = <&gpio1 28 GPIO_ACTIVE_HIGH>;
+	ti,vbus-src-gpio = <&gpio3 21 GPIO_ACTIVE_HIGH>;
+	ti,vconn-en-gpio = <&gpio3 19 GPIO_ACTIVE_HIGH>;
+	ti,vbus-hv-gpio = <&gpio1 17 GPIO_ACTIVE_HIGH>;
+	ti,vbus-5v-gpio = <&gpio0 7 GPIO_ACTIVE_HIGH>;
+
+	/* Port Config See the tusb422_common.h */
+	ti,usb-comm-capable;
+	ti,no-usb-suspend;
+	/* Uncomment the below tags to make them true for the driver
+	 * otherwise they are false */
+	/* ti,usb-suspend-supported;
+	ti,externally-powered;
+	ti,dual-role-data;
+    ti,higher-capability;
+	ti,giveback-flag;
+    ti,auto-accept-swap-to-dfp;
+	ti,auto-accept-swap-to-ufp;
+	ti,auto-accept-swap-to-source;
+	ti,auto-accept-swap-to-sink;
+    ti,auto-accept-vconn-swap; */
+
+	ti,src-settling-time-ms = /bits/ 16 <50>;
+	ti,fast-role-swap-support = <0>;
+	ti,pdo-priority = <0>;
+	ti,role = <2>;    /* 0 = SRC, 1 = SNK, 2 = DRP */
+	ti,rp-val = <2>;  /* 0 = default, 1 = 1.5A, 2 = 3.0A */
+	ti,flags = <0>;   /* 0 = none, 1 = Try.SRC, 2 = Try.SNK */
+
+	source@0 {
+		ti,current-flow = <0>; /* 0 for source, 1 for sink */
+		ti,supply-type = <0>;
+		ti,pdo-number = <0>;
+		ti,min-voltage = <5000>;
+		ti,max-voltage = <0>;
+		ti,peak-current = <0>;
+		ti,max-current = <3000>;
+		ti,max-power = <0>;
+	};
+
+	sink@0 {
+		ti,current-flow = <1>; /* 0 for source, 1 for sink */
+		ti,supply-type = <0>;
+		ti,pdo-number = <0>;
+		ti,min-voltage = <5000>;
+		ti,max-voltage = <0>;
+		ti,max-operating-curr = <2000>;
+		ti,min-operating-curr = <100>;
+		ti,operational-curr = <2000>;
+		ti,max-operating-pwr = <0>;
+		ti,min-operating-pwr = <0>;
+		ti,operational-pwr = <0>;
+		ti,peak-current = <0>;
+	};
+
+	sink@1 {
+		ti,current-flow = <1>; /* 0 for source, 1 for sink */
+		ti,supply-type = <0>;
+		ti,pdo-number = <1>;
+		ti,min-voltage = <9000>;
+		ti,max-voltage = <0>;
+		ti,max-operating-curr = <2000>;
+		ti,min-operating-curr = <100>;
+		ti,operational-curr = <2000>;
+		ti,max-operating-pwr = <0>;
+		ti,min-operating-pwr = <0>;
+		ti,operational-pwr = <0>;
+		ti,peak-current = <0>;
+	};
+};
