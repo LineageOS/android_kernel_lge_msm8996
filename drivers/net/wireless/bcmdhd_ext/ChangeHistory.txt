@@ -1,0 +1,42 @@
+BCM43596 DHD 1.80 Release Note.
+
+DHD 1.80.6 - 2017.01.10
+Kernel Panic
+ - CSP:1118375 Apply memory barrier function as potential fix for SMMU fault
+
+Others
+ - CSP:1114781 Remove error mesasge print when creating a P2P GO
+ - CSP:1117006 Disassoc connection first when there exists previous connection
+ - CSP:1117006 Wait max 500ms for disconnection
+ - CSP:1117820 Add get_rsdb_mode priv cmd for LGE
+ - CSP:1117820 Disable parallel scan while SoftAP is enabled
+ - CSP:1117820 Fix for client disconnection issue when hostapd running
+ - CSP:1119195 add sar_limit mode handling routine in wl_android_set_sarlimit_txctrl()
+ - CSP:1120247  Google Security Patch ANDROID-32838767
+ - CSP:1120247 Google Security Patch (ANDROID-31707909)
+
+DHD 1.80.5 - 2016.12.16
+Others
+ - CSP:1114036 Google Security patches
+ - CSP:1114030 Google Security patches
+ - CSP:1114026 Google Security patches
+ - CSP:1114023 Google Security patches
+ - CSP:110489 Fix:private command SETROAMPROF is not working
+ - CSP:1111511 Eliminate unnecessary driver loading logs
+ - CSP:1109726 Fix GSCAN error
+
+DHD 1.80.4 - 2016.11.29
+Others
+  - apply Downloadable CLM blob file and uses all ccode rev0.
+    * must locate the file in 'system/etc/wifi/4359_lg.clm_blob' from Official FW release
+  - Sync up with previous additional project fixes
+  - Linkstat Fix
+
+DHD 1.80.2 - 2016.11.07
+Others
+  - Sync up with previous project fixes
+  - NOS Update: GSCAN/LinkStat/NDOE/ePNO
+
+DHD 1.80.1 - 2016.10.13
+Others
+  - Initial release for G6 bring up

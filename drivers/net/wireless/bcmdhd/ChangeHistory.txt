@@ -1,0 +1,19 @@
+BCM43XX DHD 1.78 for N OS Release Note.
+DHD 1.78.8 (2016.12.16)
+	- Google Security patches (CSP#1114036,  1104030, 1104026, 1104023)
+DHD 1.78.7 (2016.09.08)
+	- Google Security patch CVE-2016-3869 (CSP#1086098)
+DHD 1.363.70.5 (2016.06.30)
+  - Sync up CSP attached patches and LGE modified patches
+  - Update Google security patches(CSP#1062605)
+  - Google security patches have dependancy with FW 7.177.3
+
+DHD 1.363.70.4 (2016.06.02)
+  - Introduce preliminary N OS features
+
+DHD 1.363.70.2 (2016.05.20)
+  - Enable Gscan/Linkstat/Debugability Features of M OS
+  
+DHD 1.363.70.1 (2016.05.20)
+  - Initial release for M OS
+
