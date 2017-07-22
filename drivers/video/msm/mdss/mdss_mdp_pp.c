@@ -23,6 +23,25 @@
 #include <linux/msm-bus-board.h>
 #include "mdss_mdp_pp_cache_config.h"
 
+#ifdef CONFIG_LGE_DISPLAY_COMMON
+#include "lge/lge_mdss_display.h"
+#endif
+
+#if defined(CONFIG_LGE_CAM_PREVIEW_TUNE)
+struct mdp_csc_cfg mdp_csc_convert_wideband = {
+	0,
+	{
+		0x0200, 0x0000, 0x02CD,
+		0x0200, 0xFF4F, 0xFE91,
+		0x0200, 0x038B, 0x0000,
+	},
+	{ 0x0, 0xFF80, 0xFF80,},
+	{ 0x0, 0x0, 0x0,},
+	{ 0x0, 0xFF, 0x0, 0xFF, 0x0, 0xFF,},
+	{ 0x0, 0xFF, 0x0, 0xFF, 0x0, 0xFF,},
+	};
+#endif
+
 struct mdp_csc_cfg mdp_csc_8bit_convert[MDSS_MDP_MAX_CSC] = {
 	[MDSS_MDP_CSC_YUV2RGB_601L] = {
 		0,
@@ -500,6 +519,15 @@ static struct mdp_pp_feature_ops *pp_ops;
 
 static DEFINE_MUTEX(mdss_pp_mutex);
 static struct mdss_pp_res_type *mdss_pp_res;
+
+#if defined(CONFIG_LGE_CAM_PREVIEW_TUNE)
+static int cam_preview_tune_status; /* on - 1, off - 0 */
+int pp_set_cam_preview_tune_status(int flag) {
+	cam_preview_tune_status = flag;
+	pr_debug("[Display] cam_preview_tune_status=%d\n", cam_preview_tune_status);
+	return 0;
+}
+#endif /* LGE_CAM_PREVIEW_TUNE */
 
 static u32 pp_hist_read(char __iomem *v_addr,
 				struct pp_hist_col_info *hist_info);
@@ -1139,8 +1167,18 @@ static int pp_vig_pipe_setup(struct mdss_mdp_pipe *pipe, u32 *op)
 		 * is a previously configured pipe need to re-configure
 		 * CSC matrix
 		 */
+#if !defined(CONFIG_LGE_CAM_PREVIEW_TUNE)
 		mdss_mdp_csc_setup(MDSS_MDP_BLOCK_SSPP, pipe->num,
-			   pp_vig_csc_pipe_val(pipe));
+				pp_vig_csc_pipe_val(pipe));
+#else
+		if(cam_preview_tune_status == 1) {
+				mdss_mdp_csc_setup_data(MDSS_MDP_BLOCK_SSPP, pipe->num,
+						&mdp_csc_convert_wideband);
+		} else {
+				mdss_mdp_csc_setup(MDSS_MDP_BLOCK_SSPP, pipe->num,
+						pp_vig_csc_pipe_val(pipe));
+		}
+#endif
 	}
 
 	/* Update CSC state only if tuning mode is enable */
@@ -4376,7 +4414,11 @@ static int mdss_mdp_panel_default_dither_config(struct msm_fb_data_type *mfd,
 	struct mdp_pp_feature_version dither_version = {
 		.pp_feature = DITHER,
 	};
+#ifdef QCT_DITHER_CONFIG_PATCH
+	struct mdp_dither_data_v1_7 dither_data = {0,};
+#else
 	struct mdp_dither_data_v1_7 dither_data;
+#endif
 
 	if (!mdss_mdp_mfd_valid_dspp(mfd)) {
 		pr_debug("dither config not supported on display num %d\n",
@@ -5740,6 +5782,9 @@ int mdss_mdp_ad_config(struct msm_fb_data_type *mfd,
 	if (!ret && (init_cfg->ops & MDP_PP_OPS_DISABLE)) {
 		ad->sts &= ~PP_STS_ENABLE;
 		mutex_unlock(&ad->lock);
+		#if defined(CONFIG_LGE_PP_AD_SUPPORTED)
+		lge_mdss_fb_ad_set_brightness(mfd, 0, 0);
+		#endif
 		cancel_work_sync(&ad->calc_work);
 		mutex_lock(&ad->lock);
 		ad->mfd = NULL;
@@ -5800,6 +5845,11 @@ int mdss_mdp_ad_input(struct msm_fb_data_type *mfd,
 		ad->calc_itr = ad->cfg.stab_itr;
 		ad->sts |= PP_AD_STS_DIRTY_VSYNC;
 		ad->sts |= PP_AD_STS_DIRTY_DATA;
+#if defined(CONFIG_LGE_PP_AD_SUPPORTED)
+		mutex_unlock(&ad->lock);
+		lge_mdss_fb_ad_set_brightness(mfd, input->in.amb_light, 1);
+		mutex_lock(&ad->lock);
+#endif
 		mdp5_data = mfd_to_mdp5_data(mfd);
 		if (mdp5_data)
 			mdp5_data->ad_events = 0;
@@ -5837,6 +5887,10 @@ int mdss_mdp_ad_input(struct msm_fb_data_type *mfd,
 			MDSS_BRIGHT_TO_BL(bl, bl, mfd->panel_info->bl_max,
 					mfd->panel_info->brightness_max);
 			mdss_fb_set_backlight(mfd, bl);
+#ifdef CONFIG_LGE_DISPLAY_BL_EXTENDED
+			/* TODO: change bl level correctly */
+			mdss_fb_set_backlight_ex(mfd, bl >> 4);
+#endif
 			mutex_unlock(&mfd->bl_lock);
 			mutex_lock(&ad->lock);
 			mfd->calib_mode_bl = bl;

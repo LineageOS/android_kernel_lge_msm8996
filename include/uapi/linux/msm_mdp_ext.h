@@ -115,6 +115,11 @@ DESTINATION SCALER FLAG CONFIGURATION
  */
 #define MDP_LAYER_MULTIRECT_PARALLEL_MODE	0x2000
 
+#if defined(CONFIG_LGE_DISPLAY_AOD_WITH_MIPI)
+/* Flag indicates that layer is for font download */
+#define MDP_LAYER_AOD_FONT_DOWNLOAD_SESSION   0x4000
+#endif
+
 /**********************************************************************
 VALIDATE/COMMIT FLAG CONFIGURATION
 **********************************************************************/

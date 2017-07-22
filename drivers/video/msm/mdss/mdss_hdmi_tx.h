@@ -69,6 +69,9 @@ struct hdmi_tx_ctrl {
 	struct msm_hdmi_mode_timing_info timing;
 	struct hdmi_tx_pinctrl pin_res;
 	struct mutex mutex;
+#ifdef CONFIG_SLIMPORT_DYNAMIC_HPD
+	struct mutex mutex_hpd;
+#endif
 	struct mutex tx_lock;
 	struct list_head cable_notify_handlers;
 	struct kobject *kobj;

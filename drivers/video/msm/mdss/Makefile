@@ -1,5 +1,6 @@
 ccflags-y += -I$(src)
 
+obj-$(CONFIG_LGE_DISPLAY_COMMON) += lge/
 obj-$(CONFIG_FB_MSM_MDSS_MHL3) += mhl3/
 
 mdss-mdp3-objs = mdp3.o mdp3_dma.o mdp3_ctrl.o dsi_status_v2.o

@@ -47,6 +47,7 @@ struct hdmi_hdcp_ops {
 	int (*hdmi_hdcp_isr)(void *ptr);
 	int (*hdmi_hdcp_reauthenticate)(void *input);
 	int (*hdmi_hdcp_authenticate)(void *hdcp_ctrl);
+	int (*load_keys)(void *input);
 	bool (*feature_supported)(void *input);
 	void (*hdmi_hdcp_off)(void *hdcp_ctrl);
 };

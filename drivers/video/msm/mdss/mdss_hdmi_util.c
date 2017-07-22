@@ -482,6 +482,14 @@ int msm_hdmi_get_timing_info(
 	case HDMI_VFRMT_3840x2160p60_64_27:
 		MSM_HDMI_MODES_GET_DETAILS(mode, HDMI_VFRMT_3840x2160p60_64_27);
 		break;
+	/* Add LG VR SVD LGE_S*/
+	case HDMI_VFRMT_1440x960p60_3_2:
+		MSM_HDMI_MODES_GET_DETAILS(mode, HDMI_VFRMT_1440x960p60_3_2);
+		break;
+	case HDMI_VFRMT_1440x960p57_3_2:
+		MSM_HDMI_MODES_GET_DETAILS(mode, HDMI_VFRMT_1440x960p57_3_2);
+		break;
+	/* Add LG VR SVD LGE_E*/
 	default:
 		ret = hdmi_get_resv_timing_info(mode, id);
 	}
