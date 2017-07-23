@@ -405,6 +405,13 @@ endmenu
 
 menu "LGE Specific Patches"
 
+config LGE_HANDLE_PANIC
+	tristate "Support LGE Crash Handler"
+	default n
+	depends on MACH_LGE
+	help
+	  LGE Crash Handler
+
 config LGE_HALL_IC
   bool "LGE HALL IC"
 	depends on MACH_LGE
