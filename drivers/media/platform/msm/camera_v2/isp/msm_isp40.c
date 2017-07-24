@@ -228,12 +228,12 @@ static int32_t msm_vfe40_init_qos_parms(struct vfe_device *vfe_dev,
 						__func__);
 					kfree(ds_settings);
 					kfree(ds_regs);
-	} else {
+				} else {
 					for (i = 0; i < ds_entries; i++)
 						msm_camera_io_w(ds_settings[i],
 							vfebase + ds_regs[i]);
-						kfree(ds_regs);
-						kfree(ds_settings);
+					kfree(ds_regs);
+					kfree(ds_settings);
 				}
 			} else {
 				kfree(ds_regs);
@@ -2318,4 +2318,3 @@ module_init(msm_vfe40_init_module);
 module_exit(msm_vfe40_exit_module);
 MODULE_DESCRIPTION("MSM VFE40 driver");
 MODULE_LICENSE("GPL v2");
-

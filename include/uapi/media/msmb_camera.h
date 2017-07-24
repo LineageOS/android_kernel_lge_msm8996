@@ -52,6 +52,12 @@
 #define MSM_CAMERA_SUBDEV_IR_CUT       18
 #define MSM_CAMERA_SUBDEV_EXT          19
 
+#if 1 /* CONFIG_MACH_LGE */
+#define MSM_CAMERA_SUBDEV_PROXY        20
+#define MSM_CAMERA_SUBDEV_TCS          21
+#define MSM_CAMERA_SUBDEV_IRIS         22
+#endif
+
 #define MSM_MAX_CAMERA_SENSORS  5
 
 /* The below macro is defined to put an upper limit on maximum
@@ -85,7 +91,10 @@
 #define MSM_CAMERA_MAPPING_CFG  (MSM_CAMERA_EVENT_MIN + 5)
 #define MSM_CAMERA_MAPPING_SES  (MSM_CAMERA_EVENT_MIN + 6)
 #define MSM_CAMERA_MSM_NOTIFY   (MSM_CAMERA_EVENT_MIN + 7)
-#define MSM_CAMERA_EVENT_MAX    (MSM_CAMERA_EVENT_MIN + 8)
+
+/*LGE_CHANGE, CST, added qcamsvr shutdown event*/
+#define MSM_CAMERA_SHUTDOWN     (MSM_CAMERA_EVENT_MIN + 8)
+#define MSM_CAMERA_EVENT_MAX    (MSM_CAMERA_EVENT_MIN + 9)
 
 /* data.command */
 #define MSM_CAMERA_PRIV_S_CROP			(V4L2_CID_PRIVATE_BASE + 1)

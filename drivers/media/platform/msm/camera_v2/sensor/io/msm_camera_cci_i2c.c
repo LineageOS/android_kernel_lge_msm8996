@@ -80,6 +80,7 @@ int32_t msm_camera_cci_i2c_read_seq(struct msm_camera_i2c_client *client,
 		pr_err("%s:%d no memory\n", __func__, __LINE__);
 		return -ENOMEM;
 	}
+
 	cci_ctrl.cmd = MSM_CCI_I2C_READ;
 	cci_ctrl.cci_info = client->cci_client;
 	cci_ctrl.cfg.cci_i2c_read_cfg.addr = addr;

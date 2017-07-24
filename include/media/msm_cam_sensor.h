@@ -32,6 +32,13 @@ struct msm_camera_sensor_slave_info32 {
 	char actuator_name[32];
 	char ois_name[32];
 	char flash_name[32];
+
+#if 1 /* CONFIG_MACH_LGE */
+	char proxy_name[32];
+	char tcs_name[32];
+	char iris_name[32];
+#endif
+
 	enum msm_sensor_camera_id_t camera_id;
 	uint16_t slave_addr;
 	enum i2c_freq_mode_t i2c_freq_mode;
@@ -73,6 +80,7 @@ struct csid_cfg_data32 {
 	} cfg;
 };
 
+#ifndef CONFIG_LGE_CAMERA_DRIVER
 struct msm_ir_led_cfg_data_t32 {
 	enum msm_ir_led_cfg_type_t cfg_type;
 	int32_t pwm_duty_on_ns;
@@ -82,6 +90,7 @@ struct msm_ir_led_cfg_data_t32 {
 struct msm_ir_cut_cfg_data_t32 {
 	enum msm_ir_cut_cfg_type_t cfg_type;
 };
+#endif
 
 struct eeprom_read_t32 {
 	compat_uptr_t dbuffer;
@@ -218,15 +227,63 @@ struct msm_ois_params_t32 {
 
 struct msm_ois_set_info_t32 {
 	struct msm_ois_params_t32 ois_params;
+#if 1 /* CONFIG_LG_OIS */
+	compat_uptr_t ois_info;
+	compat_uptr_t setting;
+#endif
 };
 
 struct msm_ois_cfg_data32 {
 	int cfgtype;
+#ifdef CONFIG_MACH_MSM8996_LUCYE
+	uint16_t eeprom_slave_addr;
+#endif
 	union {
 		struct msm_ois_set_info_t32 set_info;
 		compat_uptr_t settings;
 	} cfg;
 };
+
+#if 1 /* CONFIG_MACH_LGE */
+struct msm_iris_params_t32 {
+	uint16_t data_size;
+	uint16_t setting_size;
+	uint32_t i2c_addr;
+	enum i2c_freq_mode_t i2c_freq_mode;
+	enum msm_camera_i2c_reg_addr_type i2c_addr_type;
+	enum msm_camera_i2c_data_type i2c_data_type;
+	compat_uptr_t settings;
+};
+
+struct msm_iris_set_info_t32 {
+	struct msm_iris_params_t32 iris_params;
+};
+
+struct msm_iris_cfg_data32 {
+	int cfgtype;
+	union {
+		struct msm_iris_set_info_t32 set_info;
+		compat_uptr_t settings;
+	} cfg;
+};
+
+struct msm_proxy_info_t32{
+	uint16_t proxy_val;
+	uint32_t proxy_conv;
+	uint32_t proxy_sig;
+	uint32_t proxy_amb;
+	uint32_t proxy_raw;
+	uint32_t cal_count;
+	uint32_t cal_done;
+};
+
+struct msm_proxy_cfg_data32 {
+	int cfgtype;
+	union {
+		struct msm_proxy_info_t set_info;
+	} cfg;
+};
+#endif
 
 struct msm_flash_init_info_t32 {
 	enum msm_flash_driver_type flash_driver_type;
@@ -270,12 +327,24 @@ struct msm_flash_cfg_data_t32 {
 #define VIDIOC_MSM_FLASH_CFG32 \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 13, struct msm_flash_cfg_data_t32)
 
+#ifndef CONFIG_LGE_CAMERA_DRIVER
 #define VIDIOC_MSM_IR_LED_CFG32 \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 14, struct msm_ir_led_cfg_data_t32)
 
 #define VIDIOC_MSM_IR_CUT_CFG32 \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 15, struct msm_ir_cut_cfg_data_t32)
+
+#endif
+#if 1 /* CONFIG_MACH_LGE */
+#define VIDIOC_MSM_PROXY_CFG32 \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 12, struct msm_proxy_cfg_data32)
+
+#define VIDIOC_MSM_TCS_CFG32 \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 16, struct msm_tcs_cfg_data32)
+
+#define VIDIOC_MSM_IRIS_CFG32 \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 17, struct msm_iris_cfg_data32)
+#endif
 #endif
 
 #endif
-

@@ -20,6 +20,20 @@
 #define MAX_OIS_NAME_SIZE 32
 #define MAX_OIS_REG_SETTINGS 800
 
+#if 1 /* CONFIG_MACH_LGE */
+#define MAX_PROXY_MOD_NAME_SIZE 32
+#define MAX_PROXY_NAME_SIZE 32
+#define MAX_PROXY_REG_SETTINGS 800
+
+#define MAX_TCS_MOD_NAME_SIZE 32
+#define MAX_TCS_NAME_SIZE 32
+#define MAX_TCS_REG_SETTINGS 800
+
+#define MAX_IRIS_MOD_NAME_SIZE 32
+#define MAX_IRIS_NAME_SIZE 32
+#define MAX_IRIS_REG_SETTINGS 800
+#endif
+
 #define MOVE_NEAR 0
 #define MOVE_FAR  1
 
@@ -83,8 +97,17 @@ enum sensor_sub_module_t {
 	SUB_MODULE_CSIPHY_3D,
 	SUB_MODULE_OIS,
 	SUB_MODULE_EXT,
+#ifndef CONFIG_LGE_CAMERA_DRIVER
 	SUB_MODULE_IR_LED,
 	SUB_MODULE_IR_CUT,
+#endif
+
+#if 1 /* CONFIG_MACH_LGE */
+	SUB_MODULE_PROXY,
+	SUB_MODULE_TCS,
+	SUB_MODULE_IRIS,
+#endif
+
 	SUB_MODULE_MAX,
 };
 
@@ -216,6 +239,22 @@ struct msm_sensor_info_t {
 	enum camb_position_t position;
 };
 
+#if 1 /* CONFIG_LG_OIS */
+struct msm_ois_info_t{
+	char ois_provider[MAX_SENSOR_NAME];
+	int16_t gyro[2];
+	int16_t target[2];
+	int16_t hall[2];
+	uint8_t is_stable;
+};
+
+enum ois_ver_t {
+	OIS_VER_RELEASE,
+	OIS_VER_CALIBRATION,
+	OIS_VER_DEBUG
+};
+#endif
+
 struct camera_vreg_t {
 	const char *reg_name;
 	int min_voltage;
@@ -288,6 +327,7 @@ struct msm_eeprom_info_t {
 	struct msm_eeprom_memory_map_array *mem_map_array;
 };
 
+#ifndef CONFIG_LGE_CAMERA_DRIVER
 struct msm_ir_led_cfg_data_t {
 	enum msm_ir_led_cfg_type_t cfg_type;
 	int32_t pwm_duty_on_ns;
@@ -297,6 +337,7 @@ struct msm_ir_led_cfg_data_t {
 struct msm_ir_cut_cfg_data_t {
 	enum msm_ir_cut_cfg_type_t cfg_type;
 };
+#endif
 
 struct msm_eeprom_cfg_data {
 	enum eeprom_cfg_type_t cfgtype;
@@ -342,6 +383,13 @@ enum msm_sensor_cfg_type_t {
 	CFG_WRITE_I2C_ARRAY_ASYNC,
 	CFG_WRITE_I2C_ARRAY_SYNC,
 	CFG_WRITE_I2C_ARRAY_SYNC_BLOCK,
+
+#if 1 /* CONFIG_MACH_LGE */
+	CFG_SET_PREVIEW_TUNE_ON,
+	CFG_SET_PREVIEW_TUNE_OFF,
+	CFG_POWER_UP_WITHOUT_TCS,
+	CFG_POWER_DOWN_WITHOUT_TCS,
+#endif
 };
 
 enum msm_actuator_cfg_type_t {
@@ -362,6 +410,22 @@ struct msm_ois_opcode {
 	uint32_t memory;
 };
 
+#if 1 /* CONFIG_MACH_LGE */
+enum msm_ois_cfg_type_t {
+	CFG_OIS_INIT,
+	CFG_GET_OIS_INFO,
+	CFG_OIS_POWERDOWN,
+	CFG_OIS_INI_SET,
+	CFG_OIS_ENABLE,
+	CFG_OIS_DISABLE,
+	CFG_OIS_POWERUP,
+	CFG_OIS_CONTROL,
+	CFG_OIS_I2C_WRITE_SEQ_TABLE,
+	CFG_OIS_SET_MODE,
+	CFG_OIS_MOVE_LENS,
+	CFG_OIS_PWM_MODE,
+};
+#else
 enum msm_ois_cfg_type_t {
 	CFG_OIS_INIT,
 	CFG_OIS_POWERDOWN,
@@ -369,6 +433,37 @@ enum msm_ois_cfg_type_t {
 	CFG_OIS_CONTROL,
 	CFG_OIS_I2C_WRITE_SEQ_TABLE,
 };
+#endif
+
+#if 1 /* CONFIG_MACH_LGE */
+enum msm_tcs_cfg_type_t {
+	CFG_TCS_INIT,
+	CFG_TCS_ON,
+	CFG_TCS_OFF,
+	CFG_GET_TCS,
+	CFG_TCS_THREAD_ON,
+	CFG_TCS_THREAD_PAUSE,
+	CFG_TCS_THREAD_RESTART,
+	CFG_TCS_THREAD_OFF,
+	CFG_TCS_POWERDOWN,
+	CFG_TCS_POWERUP,
+	CFG_TCS_AAT_MODE,
+};
+
+enum msm_proxy_cfg_type_t {
+	CFG_PROXY_INIT,
+	CFG_PROXY_ON,
+	CFG_PROXY_OFF,
+	CFG_GET_PROXY,
+	CFG_PROXY_THREAD_ON,
+	CFG_PROXY_THREAD_PAUSE,
+	CFG_PROXY_THREAD_RESTART,
+	CFG_PROXY_THREAD_OFF,
+	CFG_PROXY_CAL,
+	CFG_PROXY_POWERDOWN,
+	CFG_PROXY_POWERUP,
+};
+#endif
 
 enum msm_ois_cfg_download_type_t {
 	CFG_OIS_DOWNLOAD,
@@ -401,7 +496,79 @@ struct msm_ois_params_t {
 
 struct msm_ois_set_info_t {
 	struct msm_ois_params_t ois_params;
+#if 1 /* CONFIG_LG_OIS */
+	struct msm_ois_info_t *ois_info;
+	void	*setting;
+#endif
 };
+
+#if 1 /* CONFIG_MACH_LGE */
+enum msm_iris_cfg_type_t {
+	CFG_IRIS_INIT,
+	CFG_IRIS_POWERDOWN,
+	CFG_IRIS_POWERUP,
+	CFG_IRIS_CONTROL,
+	CFG_IRIS_I2C_WRITE_SEQ_TABLE,
+};
+
+enum msm_iris_i2c_operation {
+	MSM_IRIS_WRITE = 0,
+	MSM_IRIS_POLL,
+	MSM_IRIS_DELAY,
+};
+
+struct reg_settings_iris_t {
+	uint16_t reg_addr;
+	enum msm_camera_i2c_reg_addr_type addr_type;
+	uint32_t reg_data;
+	enum msm_camera_i2c_data_type data_type;
+	enum msm_iris_i2c_operation i2c_operation;
+	uint32_t delay;
+};
+
+struct msm_iris_params_t {
+	uint16_t data_size;
+	uint16_t setting_size;
+	uint32_t i2c_addr;
+	enum i2c_freq_mode_t i2c_freq_mode;
+	enum msm_camera_i2c_reg_addr_type i2c_addr_type;
+	enum msm_camera_i2c_data_type i2c_data_type;
+	struct reg_settings_iris_t *settings;
+};
+
+struct msm_iris_set_info_t {
+	struct msm_iris_params_t iris_params;
+};
+
+struct msm_iris_cfg_data {
+	int cfgtype;
+	union {
+		struct msm_iris_set_info_t set_info;
+		struct msm_camera_i2c_seq_reg_setting *settings;
+	} cfg;
+};
+
+struct msm_tcs_info_t{
+	uint32_t status;
+	uint32_t clear;
+	uint32_t red;
+	uint32_t green;
+	uint32_t blue;
+	uint32_t ir;
+	uint32_t extra1;
+	uint32_t extra2;
+};
+
+struct msm_proxy_info_t {
+	uint16_t true_range_millimeter;
+	uint32_t measurement_time_usec;
+	uint32_t signal_rtn_rate_mcps;
+	uint32_t ambient_rtn_rate_mcps;
+	uint32_t effective_spad_rtn_count;
+	uint32_t cal_count;
+	uint32_t cal_done;
+};
+#endif
 
 struct msm_actuator_move_params_t {
 	int8_t dir;
@@ -480,11 +647,30 @@ struct msm_ois_slave_info {
 };
 struct msm_ois_cfg_data {
 	int cfgtype;
+#ifdef CONFIG_MACH_MSM8996_LUCYE
+	uint16_t eeprom_slave_addr;
+#endif
 	union {
 		struct msm_ois_set_info_t set_info;
 		struct msm_camera_i2c_seq_reg_setting *settings;
 	} cfg;
 };
+
+#if 1 /* CONFIG_MACH_LGE */
+struct msm_tcs_cfg_data {
+	int cfgtype;
+	union {
+		struct msm_tcs_info_t set_info;
+} cfg;
+};
+
+struct msm_proxy_cfg_data {
+	int cfgtype;
+	union {
+		struct msm_proxy_info_t set_info;
+	} cfg;
+};
+#endif
 
 struct msm_ois_cfg_download_data {
 	int cfgtype;
@@ -559,6 +745,26 @@ struct sensor_init_cfg_data {
 	} cfg;
 };
 
+#if 1 /* CONFIG_MACH_LGE */
+struct msm_tcs_info_t32{
+	uint32_t status;
+	uint32_t clear;
+	uint32_t red;
+	uint32_t green;
+	uint32_t blue;
+	uint32_t ir;
+	uint32_t extra1;
+	uint32_t extra2;
+};
+
+struct msm_tcs_cfg_data32 {
+	int cfgtype;
+	union {
+		struct msm_tcs_info_t set_info;
+	} cfg;
+};
+#endif
+
 #define VIDIOC_MSM_SENSOR_CFG \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 1, struct sensorb_cfg_data)
 
@@ -598,6 +804,7 @@ struct sensor_init_cfg_data {
 #define VIDIOC_MSM_OIS_CFG_DOWNLOAD \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 14, struct msm_ois_cfg_download_data)
 
+#ifndef CONFIG_LGE_CAMERA_DRIVER
 #define VIDIOC_MSM_IR_LED_CFG \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 15, struct msm_ir_led_cfg_data_t)
 
@@ -605,4 +812,14 @@ struct sensor_init_cfg_data {
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 15, struct msm_ir_cut_cfg_data_t)
 
 #endif
+#if 1 /* CONFIG_MACH_LGE */
+#define VIDIOC_MSM_PROXY_CFG \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 12, struct msm_proxy_cfg_data)
 
+#define VIDIOC_MSM_TCS_CFG \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 16, struct msm_tcs_cfg_data)
+
+#define VIDIOC_MSM_IRIS_CFG \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 17, struct msm_iris_cfg_data)
+#endif
+#endif
