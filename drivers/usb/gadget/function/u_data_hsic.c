@@ -538,7 +538,9 @@ static void ghsic_data_connect_w(struct work_struct *w)
 	struct gdata_port	*port =
 		container_of(w, struct gdata_port, connect_w);
 	int			ret;
-
+	printk("%s: connected=%d, CH_READY=%d, port=%pK\n",
+ 		__func__, atomic_read(&port->connected),
+ 		test_bit(CH_READY, &port->bridge_sts), port);
 	if (!port || !atomic_read(&port->connected) ||
 		!test_bit(CH_READY, &port->bridge_sts))
 		return;
@@ -740,6 +742,9 @@ static int ghsic_data_port_alloc(unsigned port_num, enum gadget_type gtype)
 	pdrv->driver.owner = THIS_MODULE;
 
 	platform_driver_register(pdrv);
+
+	pr_debug("%s: port:%pK portno:%d\n", __func__, port, port_num);
+
 	return 0;
 }
 
@@ -1196,7 +1201,7 @@ int ghsic_data_setup(unsigned num_ports, enum gadget_type gtype)
 free_ports:
 	for (i = first_port_id; i < no_data_ports; i++)
 		ghsic_data_port_free(i);
-		no_data_ports = first_port_id;
+	no_data_ports = first_port_id;
 
 	return ret;
 }

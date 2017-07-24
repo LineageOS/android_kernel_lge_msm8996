@@ -1,0 +1,167 @@
+config LGE_PM_LGE_POWER_CORE
+	bool "Apply LGE Power Core"
+	depends on LGE_PM
+	default n
+	help
+	  Say Y here enable support lge power core
+
+config LGE_PM_CHARGING_SCENARIO_DRIVER
+	bool "Apply LGE charging scenario driver"
+	depends on LGE_PM_LGE_POWER_CORE
+	default n
+	help
+	  Say Y here enable support lge charging scenario
+
+config LGE_PM_BATTERY_DRIVER
+	bool "Apply LGE battery driver"
+	depends on LGE_PM_LGE_POWER_CORE
+	default n
+	help
+	  Say Y here enable support lge battery
+
+config LGE_PM_LGE_POWER_CLASS_CABLE_DETECT
+	tristate "cable detec driver"
+	depends on LGE_PM_LGE_POWER_CORE
+	default n
+	help
+	  Say Y here enable support cable detect
+
+config LGE_PM_LGE_POWER_CLASS_ADC_QCT
+	tristate "LGE ADC driver for qualcomm solution"
+	depends on LGE_PM_LGE_POWER_CORE
+	default n
+	help
+	  Say Y here enable support lge adc for qualcomm
+
+config LGE_PM_ADC_MTK
+	tristate "LGE ADC driver for MTK solution"
+	depends on LGE_PM_LGE_POWER_CORE
+	default n
+	help
+	  Say Y here enable support lge adc for MTK
+
+config LGE_PM_ADC_INTEL
+	tristate "LGE ADC driver for INTEL solution"
+	depends on LGE_PM_LGE_POWER_CORE
+	default n
+	help
+	  Say Y here enable support lge adc for INTEL
+
+config LGE_PM_CHARGING_LPC_BQ24296
+	tristate "BQ24296 driver for LG Power Class"
+	depends on LGE_PM_LGE_POWER_CORE
+	default n
+	help
+	  Say Y here enable support bq24296 driver for LG Power Class
+
+config LGE_PM_LGE_POWER_CLASS_CHARGING_CONTROLLER
+	tristate "LGE charging controller driver for LG Power Class"
+	depends on LGE_PM_LGE_POWER_CORE
+	default n
+	help
+	  Say Y here enable support charging controller for LG Power Class
+
+config LGE_PM_LGE_POWER_CLASS_BATTERY_ID_CHECKER
+	tristate "Battery ID checker driver for LG Power Class"
+	depends on LGE_PM_LGE_POWER_CORE
+	default n
+	help
+	  Say Y here enable support battery id checker driver for LG Power Class
+
+config LGE_PM_LGE_POWER_CLASS_DOCK
+	tristate "DOCK driver for LG Power Class"
+	depends on LGE_PM_LGE_POWER_CORE
+	default n
+	help
+	  Say Y here enable support DOCK driver for LG Power Class
+
+config LGE_PM_LGE_POWER_CLASS_UEVENT
+	tristate "UEVENT driver for LG Power Class"
+	depends on LGE_PM_LGE_POWER_CORE
+	default n
+	help
+	  Say Y here enable support UEVENT driver for LG Power Class
+
+config LGE_PM_LGE_POWER_CLASS_VZW_REQ
+	tristate "VZW requirement driver for LG Power Class"
+	depends on LGE_PM_LGE_POWER_CORE
+	default n
+	help
+	  Say Y here enable support VZW requirement driver for LG Power Class
+
+config LGE_PM_LGE_POWER_CLASS_STORE_MODE
+	tristate "Store demo mode driver for LG Power Class"
+	depends on LGE_PM_LGE_POWER_CORE
+	default n
+	help
+	  Say Y here enable support store mode driver for LG Power Class
+
+config LGE_PM_ONLY_STORE_MODE
+	bool "Only store mode on LG Power Class"
+	depends on LGE_PM_LGE_POWER_CORE
+	default n
+	help
+	  Say Y here enable support store mode for global live dummy battery
+
+config LGE_PM_LGE_POWER_CLASS_CHARGER_PSY
+	bool "Charger Power Supply for LG Power Class"
+	depends on LGE_PM_LGE_POWER_CORE
+	default n
+	help
+	  Say Y here enable charger psy used for LG Power Class
+
+config LGE_PM_LGE_POWER_CLASS_BOARD_REVISION
+	tristate "board revision driver for LG Power Class"
+	depends on LGE_PM_LGE_POWER_CORE
+	default n
+	help
+	  Say Y here enable support board revision driver for LG Power Class
+
+config LGE_PM_LGE_POWER_CLASS_TYPE_HVDCP
+	bool "Apply to support hvdcp type"
+	depends on LGE_PM_LGE_POWER_CORE
+	default n
+	help
+	  Say Y here enable support hvdcp function for LG Power Class
+
+config LGE_PM_LGE_POWER_CLASS_CHARGER_SLEEP
+	bool "Charger Sleep Feature for LG Power Class"
+	depends on LGE_PM_LGE_POWER_CORE
+	default n
+	help
+	  Say Y here enable charger sleep feature used for LG Power Class
+
+config LGE_PM_LGE_POWER_CLASS_TDMB_MODE
+	bool "tdmb mode Feature for LG Power Class"
+	depends on LGE_PM_LGE_POWER_CORE
+	default n
+	help
+	  Say Y here enable tdmb mode feature used for LG Power Class
+
+config LGE_PM_EMBEDDED_BATTERY
+    bool "embedded battery"
+        depends on LGE_PM
+        default n
+        help
+            Enable embedded battery
+
+config LGE_PM_LGE_POWER_CLASS_SIMPLE
+	bool "Simplify LG Power Class"
+	depends on LGE_PM_LGE_POWER_CORE
+	default n
+	help
+	  Say Y here enable simplify LG Power Class
+
+config LGE_PM_LGE_POWER_CLASS_PSEUDO_BATTERY
+	bool "pseudo battery driver for LG Power Class"
+	depends on LGE_PM_LGE_POWER_CORE
+	default n
+	help
+	  Say Y here enable pseudo battery driver for LG Power Class
+
+config LGE_PM_LGE_POWER_CLASS_SUPPORT_CCD
+	bool "support CCD"
+	depends on LGE_PM_LGE_POWER_CORE
+	default n
+	help
+	  Say Y here enable CCD

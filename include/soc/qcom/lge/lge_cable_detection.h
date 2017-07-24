@@ -41,11 +41,11 @@ unsigned lge_pm_get_ta_current(void);
 unsigned lge_pm_get_usb_current(void);
 int lge_smem_cable_type(void);
 
-/*#ifdef CONFIG_LGE_PM_FACTORY_CABLE
+#ifdef CONFIG_LGE_PM_FACTORY_CABLE
 bool lge_is_factory_cable(void);
 #else
 inline bool lge_is_factory_cable(void) { return false; }
-#endif*/
+#endif
 
 #ifdef CONFIG_LGE_DOCK
 void check_dock_connected(enum power_supply_type type);

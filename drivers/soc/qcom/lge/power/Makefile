@@ -1,0 +1,11 @@
+obj-$(CONFIG_LGE_PM_LGE_POWER_CORE)		+= lge_power_class_core.o lge_power_class_sysfs.o
+obj-$(CONFIG_LGE_PM_LGE_POWER_CLASS_ADC_QCT)		+= lge_power_class_adc_qct.o
+obj-$(CONFIG_LGE_PM_LGE_POWER_CLASS_CABLE_DETECT)		+= lge_power_class_cable_detect.o
+obj-$(CONFIG_LGE_PM_LGE_POWER_CLASS_CHARGING_CONTROLLER)		+= lge_power_class_charging_controller.o
+obj-$(CONFIG_LGE_PM_LGE_POWER_CLASS_BATTERY_ID_CHECKER)		+= lge_power_class_battery_id_checker.o
+obj-$(CONFIG_LGE_PM_LGE_POWER_CLASS_DOCK)		+= lge_power_class_dock.o
+obj-$(CONFIG_LGE_PM_LGE_POWER_CLASS_UEVENT)		+= lge_power_class_uevent.o
+obj-$(CONFIG_LGE_PM_LGE_POWER_CLASS_VZW_REQ)		+= lge_power_class_vzw_req.o
+obj-$(CONFIG_LGE_PM_LGE_POWER_CLASS_BOARD_REVISION) += lge_power_class_board_revision.o
+obj-$(CONFIG_LGE_PM_LGE_POWER_CLASS_STORE_MODE) += lge_power_class_store_mode.o
+obj-$(CONFIG_LGE_PM_LGE_POWER_CLASS_PSEUDO_BATTERY) += lge_power_class_pseudo_battery.o

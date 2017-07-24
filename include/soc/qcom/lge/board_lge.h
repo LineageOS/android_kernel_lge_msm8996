@@ -91,7 +91,7 @@ struct pre_selfd_platform_data {
 	int (*get_values) (int *r, int *g, int *b);
 };
 #endif
-//#ifdef CONFIG_LGE_USB_FACTORY
+#ifdef CONFIG_LGE_USB_FACTORY
 enum lge_boot_mode_type {
 	LGE_BOOT_MODE_NORMAL = 0,
 	LGE_BOOT_MODE_CHARGER,
@@ -109,7 +109,7 @@ enum lge_boot_mode_type lge_get_boot_mode(void);
 int lge_get_android_dlcomplete(void);
 int lge_get_factory_boot(void);
 int get_lge_frst_status(void);
-//#endif
+#endif
 
 int lge_get_mfts_mode(void);
 
@@ -219,7 +219,7 @@ int lge_get_panel(void);
 void lge_set_panel(int);
 #endif
 
-//#if defined(CONFIG_LGE_PANEL_MAKER_ID_SUPPORT)
+#if defined(CONFIG_LGE_PANEL_MAKER_ID_SUPPORT)
 enum panel_maker_id_type {
 	LGD_LG4946 = 0,
 	LGD_LG4945,
@@ -229,7 +229,7 @@ enum panel_maker_id_type {
 };
 
 enum panel_maker_id_type lge_get_panel_maker_id(void);
-//#endif
+#endif
 
 #if defined(CONFIG_LGE_DISPLAY_COMMON)
 enum panel_revision_id_type {

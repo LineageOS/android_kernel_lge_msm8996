@@ -28,6 +28,31 @@
 
 struct usb_ep;
 
+#ifdef CONFIG_LGE_USB_MAXIM_EVP
+/**
+ * The evp_sts is flag for EVP detection.
+ * 0: Sets when EVP operate as simple mode.
+ * 1: Sets when EVP operate as dynamic mode.
+ * 2: Only sets during simple mode operation. Set when EVP into suspend.
+ * 3: reserved.
+ * 4: Sets if source is DCP type.
+ *    DCP, QC2.0 and EVP are detected as DCP through BC1.2 probing.
+ * 5: If supports both EVP and QC2.0, detect QC2.0 first.
+ *    Sets when not detected as QC2.0 and start EVP detecton flow.
+ * 6: Use for distinguish android gadget enable/disable.
+ * 7: Sets when QC2.0 plugged.
+ */
+
+#define EVP_STS_SIMPLE  	BIT(0)
+#define EVP_STS_DYNAMIC 	BIT(1)
+#define EVP_STS_SLEEP   	BIT(2)
+#define EVP_STS_RESERVED	BIT(3)
+#define EVP_STS_DCP     	BIT(4)
+#define EVP_STS_DETGO   	BIT(5)
+#define EVP_STS_G_EN    	BIT(6)
+#define EVP_STS_QC20    	BIT(7)
+#define EVP_STS_EVP     	(EVP_STS_SIMPLE | EVP_STS_DYNAMIC)
+#endif
 enum ep_type {
 	EP_TYPE_NORMAL = 0,
 	EP_TYPE_GSI,
@@ -218,6 +243,9 @@ struct usb_ep_ops {
 
 	int (*fifo_status) (struct usb_ep *ep);
 	void (*fifo_flush) (struct usb_ep *ep);
+#ifdef CONFIG_LGE_USB_G_MULTIPLE_CONFIGURATION
+	void (*yield_request)(struct usb_ep *ep, struct usb_request *req);
+#endif
 	int (*gsi_ep_op)(struct usb_ep *ep, void *op_data,
 		enum gsi_ep_op op);
 };
@@ -274,6 +302,19 @@ struct usb_ep {
 };
 
 /*-------------------------------------------------------------------------*/
+#ifdef CONFIG_LGE_USB_G_MULTIPLE_CONFIGURATION
+/*
+ * If some eps need to share the usb_requset,
+ * this function do that.
+ * Change original ep num of dwc3_request to parameter ep num.
+ */
+static inline void lge_usb_ep_yield_request(struct usb_ep *ep,
+				       struct usb_request *req)
+{
+	if (ep->ops->yield_request)
+		ep->ops->yield_request(ep, req);
+}
+#endif
 
 /**
  * usb_ep_set_maxpacket_limit - set maximum packet size limit for endpoint
@@ -597,6 +638,10 @@ struct usb_gadget_ops {
 			struct usb_gadget_driver *);
 	int	(*udc_stop)(struct usb_gadget *,
 			struct usb_gadget_driver *);
+#ifdef CONFIG_LGE_USB_MAXIM_EVP
+	int	(*gadget_func_io)(struct usb_gadget *, char *, int *, bool);
+	int	(*evp_connect)(struct usb_gadget *, bool);
+#endif
 };
 
 /**
@@ -682,6 +727,9 @@ struct usb_gadget {
 	bool				l1_supported;
 	bool				bam2bam_func_enabled;
 	u32				extra_buf_alloc;
+#ifdef CONFIG_LGE_USB_MAXIM_EVP
+	unsigned			evp_sts;
+#endif
 	int				interrupt_num;
 };
 #define work_to_gadget(w)	(container_of((w), struct usb_gadget, work))
@@ -699,6 +747,14 @@ static inline struct usb_gadget *dev_to_usb_gadget(struct device *dev)
 #define gadget_for_each_ep(tmp, gadget) \
 	list_for_each_entry(tmp, &(gadget)->ep_list, ep_list)
 
+#ifdef CONFIG_LGE_USB_MAXIM_EVP
+static inline int usb_gadget_evp_connect(struct usb_gadget *gadget, bool connect)
+{
+	if (!gadget->ops->evp_connect)
+		return -EOPNOTSUPP;
+	return gadget->ops->evp_connect(gadget, connect);
+}
+#endif
 
 /**
  * usb_ep_align_maybe - returns @len aligned to ep's maxpacketsize if gadget
@@ -1154,6 +1210,9 @@ struct usb_gadget_driver {
 	void			(*suspend)(struct usb_gadget *);
 	void			(*resume)(struct usb_gadget *);
 	void			(*reset)(struct usb_gadget *);
+#ifdef CONFIG_LGE_USB_MAXIM_EVP
+	int			(*func_io)(struct usb_gadget *, char *, int *, bool);
+#endif
 
 	/* FIXME support safe rmmod */
 	struct device_driver	driver;

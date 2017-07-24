@@ -18,6 +18,9 @@ enum dual_role_supported_modes {
 enum {
 	DUAL_ROLE_PROP_MODE_UFP = 0,
 	DUAL_ROLE_PROP_MODE_DFP,
+#ifdef CONFIG_LGE_USB_TYPE_C
+	DUAL_ROLE_PROP_MODE_FAULT,
+#endif
 	DUAL_ROLE_PROP_MODE_NONE,
 /*The following should be the last element*/
 	DUAL_ROLE_PROP_MODE_TOTAL,
@@ -26,6 +29,9 @@ enum {
 enum {
 	DUAL_ROLE_PROP_PR_SRC = 0,
 	DUAL_ROLE_PROP_PR_SNK,
+#ifdef CONFIG_LGE_USB_TYPE_C
+	DUAL_ROLE_PROP_PR_FAULT,
+#endif
 	DUAL_ROLE_PROP_PR_NONE,
 /*The following should be the last element*/
 	DUAL_ROLE_PROP_PR_TOTAL,
@@ -35,6 +41,9 @@ enum {
 enum {
 	DUAL_ROLE_PROP_DR_HOST = 0,
 	DUAL_ROLE_PROP_DR_DEVICE,
+#ifdef CONFIG_LGE_USB_TYPE_C
+	DUAL_ROLE_PROP_DR_FAULT,
+#endif
 	DUAL_ROLE_PROP_DR_NONE,
 /*The following should be the last element*/
 	DUAL_ROLE_PROP_DR_TOTAL,
@@ -47,12 +56,30 @@ enum {
 	DUAL_ROLE_PROP_VCONN_SUPPLY_TOTAL,
 };
 
+#ifdef CONFIG_LGE_USB_TYPE_C
+enum {
+	DUAL_ROLE_PROP_CC_OPEN = 0,
+	DUAL_ROLE_PROP_CC_RP_DEFAULT,
+	DUAL_ROLE_PROP_CC_RP_POWER1P5,
+	DUAL_ROLE_PROP_CC_RP_POWER3P0,
+	DUAL_ROLE_PROP_CC_RD,
+	DUAL_ROLE_PROP_CC_RA,
+/*The following should be the last element*/
+	DUAL_ROLE_PROP_CC_TOTAL,
+};
+#endif
+
+
 enum dual_role_property {
 	DUAL_ROLE_PROP_SUPPORTED_MODES = 0,
 	DUAL_ROLE_PROP_MODE,
 	DUAL_ROLE_PROP_PR,
 	DUAL_ROLE_PROP_DR,
 	DUAL_ROLE_PROP_VCONN_SUPPLY,
+#ifdef CONFIG_LGE_USB_TYPE_C
+	DUAL_ROLE_PROP_CC1,
+	DUAL_ROLE_PROP_CC2,
+#endif
 };
 
 struct dual_role_phy_instance;
@@ -86,7 +113,11 @@ struct dual_role_phy_instance {
 	void *drv_data;
 
 	struct device dev;
+#if defined(CONFIG_LGE_USB_ANX7418)
+	struct delayed_work changed_work;
+#else
 	struct work_struct changed_work;
+#endif
 };
 
 #if IS_ENABLED(CONFIG_DUAL_ROLE_USB_INTF)

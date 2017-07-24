@@ -20,9 +20,9 @@
 #define GSI_CTRL_NAME_LEN (sizeof(GSI_MBIM_CTRL_NAME)+2)
 #define GSI_MAX_CTRL_PKT_SIZE 4096
 
-#define GSI_NUM_IN_BUFFERS 7
+#define GSI_NUM_IN_BUFFERS 15
 #define GSI_IN_BUFF_SIZE 2048
-#define GSI_NUM_OUT_BUFFERS 7
+#define GSI_NUM_OUT_BUFFERS 15
 #define GSI_ECM_NUM_OUT_BUFFERS 31
 #define GSI_OUT_AGGR_SIZE 24576
 
@@ -227,6 +227,10 @@ struct f_gsi {
 
 	struct gsi_data_port d_port;
 	struct gsi_ctrl_port c_port;
+	/* To test remote wakeup using debugfs */
+	struct timer_list debugfs_rw_timer;
+	u8 debugfs_rw_enable;
+	u16 debugfs_rw_interval;
 };
 
 static struct f_gsi *gsi_prot_ctx[IPA_USB_MAX_TETH_PROT_SIZE];

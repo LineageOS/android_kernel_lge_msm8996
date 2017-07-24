@@ -416,7 +416,12 @@ static int udc_bind_to_driver(struct usb_udc *udc, struct usb_gadget_driver *dri
 	 *
 	 * usb_gadget_connect(udc->gadget);
 	 */
+	printk(KERN_INFO "udc->gadget->name: %s \n",udc->gadget->name);
 
+	if (!strcmp(udc->gadget->name,"dummy_udc")) {
+		printk(KERN_INFO " usb_gadget_connect dummy_udc \n");
+		usb_gadget_connect(udc->gadget);
+	}
 	kobject_uevent(&udc->dev.kobj, KOBJ_CHANGE);
 	return 0;
 err1:
@@ -459,15 +464,36 @@ int usb_gadget_probe_driver(struct usb_gadget_driver *driver)
 {
 	struct usb_udc		*udc = NULL;
 	int			ret;
-
+	int count =0;
+	int udc_flag = 0;
+	printk(KERN_INFO "%s \n",__func__);
 	if (!driver || !driver->bind || !driver->setup)
 		return -EINVAL;
 
 	mutex_lock(&udc_lock);
 	list_for_each_entry(udc, &udc_list, list) {
-		/* Match according to usb_core_id */
-		if (!udc->driver && udc->gadget
-		    && udc->gadget->usb_core_id == driver->usb_core_id)
+			printk(KERN_INFO "gadget name udc->gadget->name %s \n",udc->gadget->name);			
+			count++;
+	}
+	printk(KERN_INFO "\n********************************************");
+	printk(KERN_INFO "\n No of UDCs: %d",count);
+	printk(KERN_INFO "\n driver->function: %s",driver->function);
+	printk(KERN_INFO "\n********************************************");
+	list_for_each_entry(udc, &udc_list, list) {
+		if ((udc->dev).init_name)
+		printk(KERN_INFO "\n UDC Name: %s",(udc->dev).init_name);
+		if (udc_flag == 0)
+			if ((!strcmp(driver->function,"printer")) || 
+
+				(!strcmp(driver->function,"mausb_diag")) ||
+				(!strcmp(driver->function,"laf_mausb")) ||
+				(!strcmp(driver->function,"adb"))) {
+					udc_flag = 1;
+					continue;	
+				}
+		printk(KERN_INFO "\n udc->gadget->usb_core_id : %d",udc->gadget->usb_core_id);
+		printk(KERN_INFO "\n driver->usb_core_id: %d \n",driver->usb_core_id);
+		if (!udc->driver )
 			goto found;
 	}
 
