@@ -10,6 +10,8 @@
  * GNU General Public License for more details.
  */
 
+#include <linux/kconfig.h>
+
 #include "msm8996-elsa_vzw-pinctrl.dtsi"
 #include "msm8996-elsa_vzw-misc.dtsi"
 #include "msm8996-elsa_vzw-panel.dtsi"

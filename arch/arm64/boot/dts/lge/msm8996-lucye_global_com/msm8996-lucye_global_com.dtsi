@@ -10,6 +10,8 @@
  * GNU General Public License for more details.
  */
 
+#include <linux/kconfig.h>
+
 #include "msm8996-lucye_global_com-pinctrl.dtsi"
 #include "msm8996-lucye_global_com-misc.dtsi"
 #include "msm8996-lucye_global_com-panel.dtsi"

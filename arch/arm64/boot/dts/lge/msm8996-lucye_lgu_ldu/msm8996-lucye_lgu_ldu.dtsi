@@ -10,6 +10,8 @@
  * GNU General Public License for more details.
  */
 
+#include <linux/kconfig.h>
+
 #include "msm8996-lucye_lgu_ldu-pinctrl.dtsi"
 #include "msm8996-lucye_lgu_ldu-misc.dtsi"
 #include "msm8996-lucye_lgu_ldu-panel.dtsi"

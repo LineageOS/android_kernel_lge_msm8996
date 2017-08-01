@@ -10,6 +10,8 @@
  * GNU General Public License for more details.
  */
 
+#include <linux/kconfig.h>
+
 #include "msm8996-h1_global_esa-pinctrl.dtsi"
 #include "msm8996-h1_global_esa-misc.dtsi"
 #include "msm8996-h1_global_esa-panel.dtsi"

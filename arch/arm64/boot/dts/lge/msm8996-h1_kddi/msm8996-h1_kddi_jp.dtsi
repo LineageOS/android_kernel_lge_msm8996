@@ -10,6 +10,8 @@
  * GNU General Public License for more details.
  */
 
+#include <linux/kconfig.h>
+
 #include "msm8996-h1_kddi_jp-pinctrl.dtsi"
 #include "msm8996-h1_kddi_jp-misc.dtsi"
 #include "msm8996-h1_kddi_jp-panel.dtsi"
