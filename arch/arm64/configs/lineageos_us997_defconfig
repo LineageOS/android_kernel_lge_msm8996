@@ -2616,6 +2616,7 @@ CONFIG_MSM_JPEGDMA=y
 # CONFIG_LG_TCS is not set
 # CONFIG_LGE_EEPROM is not set
 CONFIG_LG_OIS=y
+CONFIG_LG_OIS_FIRMWARE_PATH="/system/etc/firmware"
 # CONFIG_LG_PROXY is not set
 # CONFIG_LC898123F40 is not set
 # CONFIG_TSPP is not set

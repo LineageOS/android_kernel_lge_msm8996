@@ -282,6 +282,14 @@ config LG_OIS
 	---help---
 	Enable support for ois for LG Camera.
 
+config LG_OIS_FIRMWARE_PATH
+	string "Specify path to search for OIS firmware"
+	depends on LG_OIS
+	---help---
+	  LGE's Android implementation places these firmware files in
+	  /system/media, but other Android implementions may choose to place
+	  them elsewhere.  LineageOS places them in /system/etc/firmware.
+
 config LG_PROXY
     bool "Qualcomm MSM camera proxy support"
     depends on MSMB_CAMERA
