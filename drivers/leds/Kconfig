@@ -487,6 +487,11 @@ config LEDS_BLINKM
 	  This option enables support for the BlinkM RGB LED connected
 	  through I2C. Say Y to enable support for the BlinkM LED.
 
+config LEDS_PMI8996_EMOTIONAL
+	tristate "Support for EMOTIONAL LEDs using PMI8996"
+	help
+	  This enables support for emotional LED using PMI8996.
+
 config LEDS_QPNP
 	tristate "Support for QPNP LEDs"
 	depends on LEDS_CLASS && MSM_SPMI && OF_SPMI
