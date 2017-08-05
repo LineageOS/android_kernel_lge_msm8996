@@ -33,9 +33,11 @@
 #define HDSET_FACTORY
 
 #if defined(CONFIG_SND_SOC_ES9018)|| defined(CONFIG_SND_SOC_ES9218P)
+#ifdef CONFIG_SND_SOC_ES9218P
 #define SKIP_RECALC_IMPED
 #if defined(SKIP_RECALC_IMPED)  // defensive code
 static bool skip_recalc_imped = false;
+#endif
 #endif
 extern bool enable_es9218p;
 extern int es9218_sabre_headphone_on(void);
