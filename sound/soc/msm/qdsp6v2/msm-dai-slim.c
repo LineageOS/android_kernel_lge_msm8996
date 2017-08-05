@@ -266,6 +266,7 @@ static int msm_dai_slim_hw_params(
 		dai_data->bits = 16;
 		break;
 	case SNDRV_PCM_FORMAT_S24_LE:
+	case SNDRV_PCM_FORMAT_S24_3LE:
 		dai_data->bits = 24;
 		break;
 	case SNDRV_PCM_FORMAT_S32_LE:

@@ -5344,6 +5344,8 @@ static int voice_cvs_stop_playback(struct voice_data *v)
 				v->async_err));
 			ret = adsp_err_get_lnx_err_code(
 					v->async_err);
+		v->music_info.playing = 0;
+		v->music_info.force = 0;
 			goto fail;
 		}
 

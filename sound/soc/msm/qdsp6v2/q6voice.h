@@ -1740,6 +1740,11 @@ int voc_set_tx_mute(uint32_t session_id, uint32_t dir, uint32_t mute,
 		    uint32_t ramp_duration);
 int voc_set_device_mute(uint32_t session_id, uint32_t dir, uint32_t mute,
 			uint32_t ramp_duration);
+//[Audio][BSP] junday.lee@lge.com phonememo initial code [START]
+#ifdef CONFIG_SND_LGE_USE_PHONE_MEMO
+int voc_set_phonememo_tx_mute(uint32_t session_id, uint32_t dir, uint32_t mute);
+#endif //CONFIG_SND_LGE_USE_PHONE_MEMO
+//[Audio][BSP] junday.@lge.com phonememo initial code [END]
 int voc_get_rx_device_mute(uint32_t session_id);
 int voc_set_route_flag(uint32_t session_id, uint8_t path_dir, uint8_t set);
 uint8_t voc_get_route_flag(uint32_t session_id, uint8_t path_dir);

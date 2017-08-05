@@ -418,6 +418,7 @@ unlock_and_exit:
 
 static void cpe_create_worker_thread(struct cpe_info *t_info)
 {
+	pr_debug("%s:\n", __func__);
 	INIT_LIST_HEAD(&t_info->main_queue);
 	init_completion(&t_info->cmd_complete);
 	init_completion(&t_info->thread_comp);
