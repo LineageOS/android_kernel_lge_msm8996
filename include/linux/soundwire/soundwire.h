@@ -151,6 +151,9 @@ struct swr_master {
 			  const void *buf, size_t len);
 	int (*get_logical_dev_num)(struct swr_master *mstr, u64 dev_id,
 				u8 *dev_num);
+#ifdef CONFIG_MACH_LGE
+	int (*wakeup_soundwire_master)(struct swr_master *mstr);
+#endif
 	void (*slvdev_datapath_control)(struct swr_master *mstr, bool enable);
 	bool (*remove_from_group)(struct swr_master *mstr);
 };
@@ -284,6 +287,9 @@ extern int swr_connect_port(struct swr_device *dev, u8 *port_id, u8 num_port,
 extern int swr_disconnect_port(struct swr_device *dev,
 				u8 *port_id, u8 num_port);
 
+#ifdef CONFIG_MACH_LGE
+extern int swr_wakeup_soundwire_master(struct swr_device *dev);
+#endif
 extern int swr_set_device_group(struct swr_device *swr_dev, u8 id);
 
 extern int swr_driver_register(struct swr_driver *drv);
