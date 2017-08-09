@@ -1807,12 +1807,21 @@ static void tasha_wcd_mbhc_calc_impedance(struct wcd_mbhc *mbhc, uint32_t *zl,
 	bool is_fsm_disable = false;
 	bool is_change = false;
 
+#ifdef CONFIG_SND_SOC_ES9018
+	struct tasha_mbhc_zdet_param zdet_param[] = {
+		{4, 0, 4, 0x08, 0x14, 0x18}, /* < 32ohm */
+		{2, 0, 3, 0x18, 0x7C, 0x90}, /* 32ohm < Z < 400ohm */
+		{2, 0, 3, 0x18, 0x7C, 0x90}, /* 400ohm < Z < 1200ohm */
+		{2, 0, 3, 0x18, 0x7C, 0x90}, /* >1200ohm */
+	};
+#else
 	struct tasha_mbhc_zdet_param zdet_param[] = {
 		{4, 0, 4, 0x08, 0x14, 0x18}, /* < 32ohm */
 		{2, 0, 3, 0x18, 0x7C, 0x90}, /* 32ohm < Z < 400ohm */
 		{3, 4, 3, 0x18, 0x7C, 0x90}, /* 400ohm < Z < 1200ohm */
 		{3, 6, 6, 0x18, 0x7C, 0x90}, /* >1200ohm */
 	};
+#endif
 	struct tasha_mbhc_zdet_param *zdet_param_ptr = NULL;
 	s16 d1_a[][4] = {
 		{0, 30, 90, 30},

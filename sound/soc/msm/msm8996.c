@@ -38,6 +38,15 @@
 #include "../codecs/wcd9335.h"
 #include "../codecs/wsa881x.h"
 
+#ifdef CONFIG_SND_SOC_ES9018
+#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_BOARD_REVISION
+#include <soc/qcom/lge/power/lge_board_revision.h>
+#include <soc/qcom/lge/power/lge_power_class.h>
+#else
+#include <soc/qcom/lge/board_lge.h>
+#endif
+#endif
+
 #define DRV_NAME "msm8996-asoc-snd"
 
 #define SAMPLING_RATE_8KHZ      8000
@@ -94,7 +103,7 @@ static int msm_tert_mi2s_tx_ch = 2;
 #ifdef CONFIG_SND_USE_QUAT_MI2S
 static int msm_quat_mi2s_tx_ch = 2;
 #endif
-#if defined(CONFIG_SND_SOC_ES9218P)
+#if defined(CONFIG_SND_SOC_ES9218P) || defined(CONFIG_SND_SOC_ES9018)
 bool enable_es9218p = false;
 #endif
 
@@ -3912,6 +3921,22 @@ static struct snd_soc_dai_link msm8996_lge_dai_links[] = {
 		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA2,
 	},
 #endif	/* CONFIG_SND_LGE_DSDP_DUAL_AUDIO */
+#if defined(CONFIG_SND_USE_SEC_MI2S) && defined(CONFIG_SND_SOC_ES9018)
+	{
+		.name = LPASS_BE_SEC_MI2S_RX,
+		.stream_name = "Secondary MI2S Playback",
+		.cpu_dai_name = "msm-dai-q6-mi2s.1",
+		.platform_name = "msm-pcm-routing",
+		.codec_name = "es9218-codec.6-0048",
+		.codec_dai_name = "es9218-hifi",
+		.no_pcm = 1,
+		.dpcm_playback = 1,
+		.be_id = MSM_BACKEND_DAI_SECONDARY_MI2S_RX,
+		.be_hw_params_fixup = msm_be_sec_mi2s_hw_params_fixup,
+		.ops = &msm8996_sec_mi2s_be_ops,
+		.ignore_suspend = 1,
+	},
+#else
 	/* DUMMY DAI Link 83 */
 	{
 		.name = "Dummy DAI 83",
@@ -3930,6 +3955,7 @@ static struct snd_soc_dai_link msm8996_lge_dai_links[] = {
 		.ignore_pmdown_time = 1,
 		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA2,
 	},
+#endif
 #ifdef CONFIG_SND_USE_TERT_MI2S
 	{
 		.name = LPASS_BE_TERT_MI2S_RX,
@@ -4003,7 +4029,7 @@ static struct snd_soc_dai_link msm8996_dummy_dai_link[] = {
 		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA2,
 	},
 };
-#ifdef CONFIG_SND_USE_SEC_MI2S
+#if defined(CONFIG_SND_USE_SEC_MI2S) && defined(CONFIG_SND_SOC_ES9218P)
 static struct snd_soc_dai_link msm8996_sec_mi2s_dai_link[] = {
 	{
 		.name = LPASS_BE_SEC_MI2S_RX,
@@ -4238,6 +4264,12 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 	struct snd_soc_dai_link *dailink;
 	int len_1, len_2, len_3, len_4;
 	const struct of_device_id *match;
+#if defined(CONFIG_SND_SOC_ES9018) && defined(CONFIG_LGE_PM_LGE_POWER_CLASS_BOARD_REVISION)
+	union lge_power_propval lge_val = {0,};
+	struct lge_power *lge_hw_rev_lpc = NULL;
+	int rc;
+	int hw_rev = HW_REV_EVB1;
+#endif
 
 	match = of_match_node(msm8996_asoc_machine_of_match, dev->of_node);
 	if (!match) {
@@ -4297,9 +4329,29 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 			}
 			card->num_links = LGE_DAI_LINK_ID_BASE;
 		}
+#ifdef CONFIG_SND_SOC_ES9018
+		enable_es9218p = true;
+#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_BOARD_REVISION
+		lge_hw_rev_lpc = lge_power_get_by_name("lge_hw_rev");
+		if (lge_hw_rev_lpc) {
+			rc = lge_hw_rev_lpc->get_property(lge_hw_rev_lpc,
+					LGE_POWER_PROP_HW_REV, &lge_val);
+			hw_rev = lge_val.intval;
+		} else {
+			pr_err("[SOUND] Failed to get hw_rev property\n");
+			hw_rev = HW_REV_EVB1;
+		}
+		if (hw_rev <= HW_REV_0_1) {
+#else
+    if (lge_get_board_revno() <= HW_REV_0_1) {
+#endif
+    	if (!strcmp(msm8996_lge_dai_links[3].codec_name, "es9018-codec.6-0048"))
+    		msm8996_lge_dai_links[3].codec_name = "es9018-codec.3-0048";
+    }
+#endif
 		memcpy(msm8996_tasha_dai_links + card->num_links,
 			   msm8996_lge_dai_links, sizeof(msm8996_lge_dai_links));
-		card->num_links += ARRAY_SIZE(msm8996_lge_dai_links);		
+		card->num_links += ARRAY_SIZE(msm8996_lge_dai_links);
 //set SEC_MI2S dai if ESS DAC DTSI is enabled
 #ifdef CONFIG_SND_SOC_ES9218P
 		if(of_property_read_bool(dev->of_node, "lge,es9218p-codec")) { //check ESS DAC DTSI is enabled
