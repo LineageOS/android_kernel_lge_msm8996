@@ -4984,13 +4984,14 @@ skip_current_for_non_sdp:
 }
 
 #ifdef CONFIG_LGE_PM_LGE_POWER_CORE
+#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_CABLE_DETECT
 static char *lge_cable_type_str[] = {
        "NOT INIT", "MHL 1K", "U_28P7K",
        "28P7K", "56K", "100K",  "130K",
        "180K", "200K", "220K",  "270K",
        "330K", "620K", "910K",  "OPEN"
 };
-
+#endif
 static void smbchg_external_lge_power_changed(struct power_supply *psy)
 {
 	struct smbchg_chip *chip

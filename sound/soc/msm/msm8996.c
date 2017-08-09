@@ -103,8 +103,10 @@ static int msm_tert_mi2s_tx_ch = 2;
 #ifdef CONFIG_SND_USE_QUAT_MI2S
 static int msm_quat_mi2s_tx_ch = 2;
 #endif
-#if defined(CONFIG_SND_SOC_ES9218P) || defined(CONFIG_SND_SOC_ES9018)
+#if defined(CONFIG_SND_SOC_ES9218P)
 bool enable_es9218p = false;
+#elif defined(CONFIG_SND_SOC_ES9018)
+bool enable_es9218p = true;
 #endif
 
 
@@ -2440,7 +2442,7 @@ static void *def_tasha_mbhc_cal(void)
 
 #define S(X, Y) ((WCD_MBHC_CAL_PLUG_TYPE_PTR(tasha_wcd_cal)->X) = (Y))
 	S(v_hs_max, 1500);
-#if defined(CONFIG_SND_SOC_ES9218P)
+#if defined(CONFIG_SND_SOC_ES9218P) || defined(CONFIG_SND_SOC_ES9018)
 	if(enable_es9218p){
 		S(v_hs_max, 2800);
 		pr_info("%s: set v_hs_max as 2800 installed es9218p chip\n", __func__);
@@ -4331,23 +4333,8 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 		}
 #ifdef CONFIG_SND_SOC_ES9018
 		enable_es9218p = true;
-#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_BOARD_REVISION
-		lge_hw_rev_lpc = lge_power_get_by_name("lge_hw_rev");
-		if (lge_hw_rev_lpc) {
-			rc = lge_hw_rev_lpc->get_property(lge_hw_rev_lpc,
-					LGE_POWER_PROP_HW_REV, &lge_val);
-			hw_rev = lge_val.intval;
-		} else {
-			pr_err("[SOUND] Failed to get hw_rev property\n");
-			hw_rev = HW_REV_EVB1;
-		}
-		if (hw_rev <= HW_REV_0_1) {
-#else
-    if (lge_get_board_revno() <= HW_REV_0_1) {
-#endif
-    	if (!strcmp(msm8996_lge_dai_links[3].codec_name, "es9018-codec.6-0048"))
-    		msm8996_lge_dai_links[3].codec_name = "es9018-codec.3-0048";
-    }
+		if (!strcmp(msm8996_lge_dai_links[3].codec_name, "es9018-codec.6-0048"))
+			   msm8996_lge_dai_links[3].codec_name = "es9018-codec.3-0048";
 #endif
 		memcpy(msm8996_tasha_dai_links + card->num_links,
 			   msm8996_lge_dai_links, sizeof(msm8996_lge_dai_links));
