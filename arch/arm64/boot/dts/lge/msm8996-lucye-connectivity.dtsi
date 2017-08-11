@@ -11,6 +11,14 @@
  * GNU General Public License for more details.
  */
 
+&blsp1_uart2 {
+  compatible = "qcom,msm-hsuart-v14-brcmbt";
+	interrupt-names = "core_irq", "bam_irq";
+	interrupts = <0 1>;
+	interrupt-map = <0 &intc 0 0 108 0
+	                 1 &intc 0 0 238 0>;
+};
+
 / {
 	/* BCMDHD for Wi-Fi */
 	bcmdhd_wifi {
@@ -20,63 +28,41 @@
 	};
 
 	bluesleep {
-		compatible = "qcom,bluesleep";
-		bt_host_wake = <&tlmm 24 0x00>; /* BT_HOST_WAKE */
-		bt_ext_wake = <&tlmm 92 0x00>; /* BT_DEV_WAKE */
+		compatible = "bcm,bluesleep";
+		bcm,bt_host_wake = <&tlmm 24 0x00>; /* BT_HOST_WAKE */
+		bcm,bt_ext_wake = <&tlmm 92 0x00>; /* BT_DEV_WAKE */
+		interrupt-controller;
 		interrupt-parent = <&tlmm>;
-		interrupts = <24 0>;
-		interrupt-names = "host_wake";
-		pinctrl-names = "default", "sleep";
-		pinctrl-0 = <&msm_gpio_24_active &msm_gpio_92>;
-		pinctrl-1 = <&msm_gpio_24_suspend &msm_gpio_92>;
+		//interrupts = <24 0>;
+		//interrupt-names = "host_wake";
 	};
 
 	bcm43xx {
 		compatible = "bcm,bcm43xx";
-                bcm,reg-on-gpio = <&pm8994_gpios 19 0x00>; /* BT_REG_ON */
-	};
+		bcm,bt-regon-gpio = <&pm8994_gpios 19 0x00>; /* BT_REG_ON */
+		pinctrl-names = "bt_wake_host_gpio_on", "bt_wake_host_gpio_off";
+		pinctrl-0 = <&bt_wake_host_gpio_on>;
+		pinctrl-1 = <&bt_wake_host_gpio_off>;
+  };
 };
 
 &tlmm {
-    /* GPIO_92 : BT_DEV_WAKE */
-    msm_gpio_92: msm_gpio_92 {
-        mux {
-            pins = "gpio92";
-            function = "gpio";
-        };
-
-        config {
-            pins = "gpio92";
-            drive-strength = <2>;
-            bias-disable;
-            output-low;
-        };
-    };
-
     /* GPIO_24 : BT_HOST_WAKE */
-    msm_gpio_24_active: msm_gpio_24_active {
-        mux {
-            pins = "gpio24";
-            function = "gpio";
-        };
+    bluetooth_wake_host_pin {
+			bt_wake_host_gpio_on: bt_wake_host_gpio_on {
+				config {
+					pins = "gpio24";
+					drive-strength = <2>;
+					bias-pull-up;
+				};
+			};
 
-        config {
-            pins = "gpio24";
-            drive-strength = <2>;
-            bias-disable;
-        };
-    };
-    msm_gpio_24_suspend: msm_gpio_24_suspend {
-        mux {
-            pins = "gpio24";
-            function = "gpio";
-        };
-
-        config {
-            pins = "gpio24";
-            drive-strength = <2>;
-            bias-pull-down;
-        };
-    };
-
+			bt_wake_host_gpio_off: bt_wake_host_gpio_off {
+				config {
+					pins = "gpio24";
+					drive-strength = <2>;
+					bias-pull-down;
+				};
+			};
+		};
 };
