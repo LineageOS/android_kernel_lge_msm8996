@@ -311,4 +311,11 @@ config BW_MONITOR
 
 source "drivers/platform/msm/spmi/Kconfig"
 
+config LGE_QPNP_HAPTIC_OV_RB
+	boolean "LGE Add DIRECT MODE Over Drive, Reverse Brake voltage"
+	depends on QPNP_HAPTIC
+	help
+	  LGE implements Over Drive and Reverse Brake voltage on Direct mode.
+
+	default n
 endmenu
