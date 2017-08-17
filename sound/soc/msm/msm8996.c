@@ -4266,12 +4266,6 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 	struct snd_soc_dai_link *dailink;
 	int len_1, len_2, len_3, len_4;
 	const struct of_device_id *match;
-#if defined(CONFIG_SND_SOC_ES9018) && defined(CONFIG_LGE_PM_LGE_POWER_CLASS_BOARD_REVISION)
-	union lge_power_propval lge_val = {0,};
-	struct lge_power *lge_hw_rev_lpc = NULL;
-	int rc;
-	int hw_rev = HW_REV_EVB1;
-#endif
 
 	match = of_match_node(msm8996_asoc_machine_of_match, dev->of_node);
 	if (!match) {
