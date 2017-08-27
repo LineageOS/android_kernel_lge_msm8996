@@ -146,6 +146,7 @@
 		};
 */
 //[ANNA_ISDBT_BRINGUP_E]
+#if IS_ENABLED(CONFIG_LINE_DISCIPLINE_DRIVER)
 		/* gpio pin mux for bluetooth host wake pin */
 		pmx_bt_default {
 			bt_default: bt_default {
@@ -161,6 +162,7 @@
 				};
 			};
 		};
+#endif
 //[H1_BT_BRINGUP_E]
 
 
