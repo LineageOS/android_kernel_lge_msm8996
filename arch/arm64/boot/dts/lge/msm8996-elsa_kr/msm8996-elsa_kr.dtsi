@@ -17,7 +17,7 @@
 #include "msm8996-elsa_kr-panel.dtsi"
 #include "msm8996-elsa_kr-pm.dtsi"
 #include "msm8996-elsa_kr-sound.dtsi"
-#include "msm8996-elsa_kr-connectivity.dtsi"
+#include "../msm8996-elsa-connectivity.dtsi"
 #include "msm8996-elsa_kr-nfc.dtsi"
 #include "msm8996-elsa_kr-tdmb.dtsi"
 #include "../msm8996-elsa-hdmi.dtsi"

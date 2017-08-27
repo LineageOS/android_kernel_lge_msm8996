@@ -17,7 +17,7 @@
 #include "msm8996-elsa_usc_us-panel.dtsi"
 #include "msm8996-elsa_usc_us-pm.dtsi"
 #include "msm8996-elsa_usc_us-sound.dtsi"
-#include "msm8996-elsa_usc_us-connectivity.dtsi"
+#include "../msm8996-elsa-connectivity.dtsi"
 #include "msm8996-elsa_usc_us-nfc.dtsi"
 #include "../msm8996-elsa-hdmi.dtsi"
 #include "../msm8996-fingerprint-fpc1022.dtsi"

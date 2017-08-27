@@ -17,7 +17,7 @@
 #include "msm8996-elsa_clr_pr-panel.dtsi"
 #include "msm8996-elsa_clr_pr-pm.dtsi"
 #include "msm8996-elsa_clr_pr-sound.dtsi"
-#include "msm8996-elsa_clr_pr-connectivity.dtsi"
+#include "../msm8996-elsa-connectivity.dtsi"
 #include "msm8996-elsa_clr_pr-nfc.dtsi"
 #include "../msm8996-elsa-hdmi.dtsi"
 #include "../msm8996-fingerprint-fpc1022.dtsi"
