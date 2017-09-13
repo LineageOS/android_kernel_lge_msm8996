@@ -20,7 +20,7 @@
 #include "msm_ois.h"
 #include "msm_ois_i2c.h"
 
-#define LAST_UPDATE "16-07-26, 16M LGIT OIS bu24333GWL"
+#define LAST_UPDATE "16-11-02, 16M LGIT OIS bu24333GWL ELSA S5K2P7"
 
 /*If changed FW, change below FW bin and Checksum information*/
 #define T0_MTM_ACTUATOR_FIRMWARE_VER_BIN_1     "bu24234_dl_program_Alice_MTMAct_K2G2IS_rev1_S_data1_0x03.bin"
@@ -47,7 +47,7 @@
 #define THIN_1226_LGIT_ACTUATOR_FIRMWARE_VER_CHECKSUM	0x00033FB5
 /*If changed FW, change above FW bin and Checksum information*/
 
-#define E2P_FIRST_ADDR			(0x0900)
+#define E2P_FIRST_ADDR			(0x0860)
 #define E2P_DATA_BYTE_FIRST		(44)
 #define E2P_MAP_VER_ADDR        (0x0770)
 
@@ -241,7 +241,7 @@ static struct ois_i2c_bin_list THIN_1226_LGIT_ACTUATOR_LGIT_VER16_REL_BIN_DATA =
 /*If changed FW, change above FW bin and Checksum information*/
 
 
-static int lgit_imx298_rohm_ois_poll_ready(int limit)
+static int lgit_s5k2p7_rohm_ois_poll_ready(int limit)
 {
 	uint8_t ois_status = 0;
 	int read_byte = 0;
@@ -268,7 +268,7 @@ static int lgit_imx298_rohm_ois_poll_ready(int limit)
 	}
 }
 
-int lgit_imx298_rohm_ois_bin_download(struct ois_i2c_bin_list bin_list)
+int lgit_s5k2p7_rohm_ois_bin_download(struct ois_i2c_bin_list bin_list)
 {
 	int rc = 0;
 	//int cnt = 0;
@@ -278,7 +278,7 @@ int lgit_imx298_rohm_ois_bin_download(struct ois_i2c_bin_list bin_list)
 	pr_err("%s:%d Enter\n", __func__, __LINE__);
 
 	/* check OIS ic is alive */
-	rc = lgit_imx298_rohm_ois_poll_ready(LIMIT_STATUS_POLLING);
+	rc = lgit_s5k2p7_rohm_ois_poll_ready(LIMIT_STATUS_POLLING);
 	if (rc < 0) {
 		pr_err("%s:%d, OIS_POLLING_ERROR\n", __func__, __LINE__);
 		return rc;
@@ -327,7 +327,7 @@ int lgit_imx298_rohm_ois_bin_download(struct ois_i2c_bin_list bin_list)
 	RegWriteA(OIS_COMPLETE_DL_ADDR, 0x00);
 
 	/* Read ois status */
-	rc = lgit_imx298_rohm_ois_poll_ready(LIMIT_STATUS_POLLING);
+	rc = lgit_s5k2p7_rohm_ois_poll_ready(LIMIT_STATUS_POLLING);
 	if (rc < 0) {
 		pr_err("%s:%d, OIS_POLLING_ERROR\n", __func__, __LINE__);
 		return rc;
@@ -339,7 +339,7 @@ int lgit_imx298_rohm_ois_bin_download(struct ois_i2c_bin_list bin_list)
 
 }
 
-int lgit_imx298_rohm_ois_init_cmd(int limit)
+int lgit_s5k2p7_rohm_ois_init_cmd(int limit)
 {
 	int rc = 0;
 	uint8_t ois_status = 0;
@@ -352,7 +352,7 @@ int lgit_imx298_rohm_ois_init_cmd(int limit)
 		RegWriteA(0x6020, 0x01);
 	}
 
-	rc = lgit_imx298_rohm_ois_poll_ready(LIMIT_STATUS_POLLING + limit);
+	rc = lgit_s5k2p7_rohm_ois_poll_ready(LIMIT_STATUS_POLLING + limit);
 	//do rc check after VCM Init for AF
 
 	//VCM Init Code
@@ -398,7 +398,7 @@ int lgit_imx298_rohm_ois_init_cmd(int limit)
 	RegReadA(0x6023, &ois_status);
 	CDBG("%s 2. 0x6023 0x%x \n", __func__, ois_status);
 
-	rc = lgit_imx298_rohm_ois_poll_ready(LIMIT_STATUS_POLLING);
+	rc = lgit_s5k2p7_rohm_ois_poll_ready(LIMIT_STATUS_POLLING);
 	if (rc < 0) {
 		pr_err("%s:%d, OIS_POLLING_ERROR\n", __func__, __LINE__);
 		return rc;
@@ -411,7 +411,7 @@ int lgit_imx298_rohm_ois_init_cmd(int limit)
 
 static struct msm_ois_func_tbl lgit_ois_func_tbl;
 
-int32_t lgit_imx298_rohm_ois_mode(struct msm_ois_ctrl_t *o_ctrl,
+int32_t lgit_s5k2p7_rohm_ois_mode(struct msm_ois_ctrl_t *o_ctrl,
 					   struct msm_ois_set_info_t *set_info)
 {
 	int cur_mode = lgit_ois_func_tbl.ois_cur_mode;
@@ -426,7 +426,7 @@ int32_t lgit_imx298_rohm_ois_mode(struct msm_ois_ctrl_t *o_ctrl,
 	if (cur_mode != OIS_MODE_CENTERING_ONLY) {
 		RegWriteA(0x6020, 0x01);
 
-		rc = lgit_imx298_rohm_ois_poll_ready(LIMIT_STATUS_POLLING);
+		rc = lgit_s5k2p7_rohm_ois_poll_ready(LIMIT_STATUS_POLLING);
 		if (rc < 0) {
 			pr_err("%s:%d, OIS_POLLING_ERROR\n", __func__, __LINE__);
 			return rc;
@@ -455,7 +455,7 @@ int32_t lgit_imx298_rohm_ois_mode(struct msm_ois_ctrl_t *o_ctrl,
 		pr_err("%s:%d, %d centering_only\n", __func__, mode, cur_mode);
 		RegWriteA(0x6020, 0x01);
 		usleep_range(10 * 1000, 10 * 1000 + 10); // 20151127 Rohm_LeeDJ_delay 10ms
-		rc = lgit_imx298_rohm_ois_poll_ready(LIMIT_STATUS_POLLING);
+		rc = lgit_s5k2p7_rohm_ois_poll_ready(LIMIT_STATUS_POLLING);
 		if (rc < 0) {
 			pr_err("%s:%d, OIS_POLLING_ERROR\n", __func__, __LINE__);
 			return rc;
@@ -465,7 +465,7 @@ int32_t lgit_imx298_rohm_ois_mode(struct msm_ois_ctrl_t *o_ctrl,
 		pr_err("%s:%d, %d centering_off\n", __func__, mode, cur_mode);
 		RegWriteA(0x6020, 0x00); /* lens centering off */
 		usleep_range(10 * 1000, 10 * 1000 + 10); // 20151127 Rohm_LeeDJ_delay 10ms
-		rc = lgit_imx298_rohm_ois_poll_ready(LIMIT_STATUS_POLLING);
+		rc = lgit_s5k2p7_rohm_ois_poll_ready(LIMIT_STATUS_POLLING);
 		if (rc < 0) {
 			pr_err("%s:%d, OIS_POLLING_ERROR\n", __func__, __LINE__);
 			return rc;
@@ -479,7 +479,7 @@ int32_t lgit_imx298_rohm_ois_mode(struct msm_ois_ctrl_t *o_ctrl,
 	return OIS_SUCCESS;
 }
 
-int lgit_imx298_rohm_ois_calibration(int ver)
+int lgit_s5k2p7_rohm_ois_calibration(int ver)
 {
 	int16_t gyro_offset_value_x, gyro_offset_value_y = 0;
 	uint8_t ois_status = 0;
@@ -497,7 +497,7 @@ int lgit_imx298_rohm_ois_calibration(int ver)
 			usleep_range(100 * 1000, 100 * 1000 + 10); // 20151127 Rohm_LeeDJ_delay 100ms
 	}
 
-	rc = lgit_imx298_rohm_ois_poll_ready(LIMIT_STATUS_POLLING);
+	rc = lgit_s5k2p7_rohm_ois_poll_ready(LIMIT_STATUS_POLLING);
 	if (rc < 0) {
 		pr_err("%s:%d, OIS_POLLING_ERROR\n", __func__, __LINE__);
 		return rc;
@@ -532,7 +532,7 @@ int lgit_imx298_rohm_ois_calibration(int ver)
 	RegReadA(0x6023, &ois_status);
 	CDBG("%s 2. 0x6023 0x%x \n", __func__, ois_status);
 
-	rc = lgit_imx298_rohm_ois_poll_ready(LIMIT_STATUS_POLLING);
+	rc = lgit_s5k2p7_rohm_ois_poll_ready(LIMIT_STATUS_POLLING);
 	if (rc < 0) {
 		pr_err("%s:%d, OIS_POLLING_ERROR\n", __func__, __LINE__);
 		return rc;
@@ -541,7 +541,7 @@ int lgit_imx298_rohm_ois_calibration(int ver)
 	/* Select Xch Gyro */
 	RegWriteA(0x6088, 0);
 
-	rc = lgit_imx298_rohm_ois_poll_ready(LIMIT_STATUS_POLLING);
+	rc = lgit_s5k2p7_rohm_ois_poll_ready(LIMIT_STATUS_POLLING);
 	if (rc < 0) {
 		pr_err("%s:%d, OIS_POLLING_ERROR\n", __func__, __LINE__);
 		return rc;
@@ -551,7 +551,7 @@ int lgit_imx298_rohm_ois_calibration(int ver)
 	RegReadB(0x608A, &gyro_offset_value_x);
 
 #if 0
-	rc = lgit_imx298_rohm_ois_poll_ready(LIMIT_STATUS_POLLING);
+	rc = lgit_s5k2p7_rohm_ois_poll_ready(LIMIT_STATUS_POLLING);
 	if (rc < 0) {
 		pr_err("%s:%d, OIS_POLLING_ERROR\n", __func__, __LINE__);
 		return rc;
@@ -561,7 +561,7 @@ int lgit_imx298_rohm_ois_calibration(int ver)
 	/* Select Ych Gyro */
 	RegWriteA(0x6088, 1);
 
-	rc = lgit_imx298_rohm_ois_poll_ready(LIMIT_STATUS_POLLING);
+	rc = lgit_s5k2p7_rohm_ois_poll_ready(LIMIT_STATUS_POLLING);
 	if (rc < 0) {
 		pr_err("%s:%d, OIS_POLLING_ERROR\n", __func__, __LINE__);
 		return rc;
@@ -572,7 +572,7 @@ int lgit_imx298_rohm_ois_calibration(int ver)
 	RegReadB(0x608A, &gyro_offset_value_y);
 
 #if 0
-	rc = lgit_imx298_rohm_ois_poll_ready(LIMIT_STATUS_POLLING);
+	rc = lgit_s5k2p7_rohm_ois_poll_ready(LIMIT_STATUS_POLLING);
 	if (rc < 0) {
 		pr_err("%s:%d, OIS_POLLING_ERROR\n", __func__, __LINE__);
 		return rc;
@@ -581,9 +581,9 @@ int lgit_imx298_rohm_ois_calibration(int ver)
 
 	/* If Change EEPROM MAP, change below */
 	/* Cal. Data to eeprom */
-	ois_i2c_e2p_write(0x0908, (uint16_t)(0xFFFF & gyro_offset_value_x), 2);
+	ois_i2c_e2p_write(0x0868, (uint16_t)(0xFFFF & gyro_offset_value_x), 2);
 	usleep_range(100 * 1000, 100 * 1000 + 10);
-	ois_i2c_e2p_write(0x090A, (uint16_t)(0xFFFF & gyro_offset_value_y), 2);
+	ois_i2c_e2p_write(0x086A, (uint16_t)(0xFFFF & gyro_offset_value_y), 2);
 	 /* gyro_offset_value_x -> gyro_offset_value_y*/
 
 	/* Cal. Data to OIS Driver */
@@ -604,7 +604,7 @@ int lgit_imx298_rohm_ois_calibration(int ver)
 	return OIS_SUCCESS;
 }
 
-int32_t lgit_imx298_init_set_rohm_ois(struct msm_ois_ctrl_t *o_ctrl,
+int32_t lgit_s5k2p7_init_set_rohm_ois(struct msm_ois_ctrl_t *o_ctrl,
 						   struct msm_ois_set_info_t *set_info)
 {
 	int32_t rc = OIS_SUCCESS;
@@ -623,36 +623,36 @@ int32_t lgit_imx298_init_set_rohm_ois(struct msm_ois_ctrl_t *o_ctrl,
 	ois_i2c_e2p_read(E2P_MAP_VER_ADDR, &map_ver, 1);
 	CDBG("%s cal_ver %x, map_ver %x, init ver %d\n", __func__, cal_ver, map_ver, ver);
 #else
-	CDBG("%s ver %x, init ver %d\n", __func__, cal_ver, ver);
+	CDBG("%s cal_ver %x, init ver %d\n", __func__, cal_ver, ver);
 #endif
 	switch (cal_ver) {
 	case 0x01:
 		pr_err("[CHECK] %s: Apply T0_MTM_ACTUATOR_LGIT_VER16_REL_BIN_DATA\n", __func__);
-		rc = lgit_imx298_rohm_ois_bin_download(T0_MTM_ACTUATOR_LGIT_VER16_REL_BIN_DATA);
+		rc = lgit_s5k2p7_rohm_ois_bin_download(T0_MTM_ACTUATOR_LGIT_VER16_REL_BIN_DATA);
 		break;
 	case 0x02:
 		pr_err("[CHECK] %s: Apply T0_LGIT_ACTUATOR_LGIT_VER16_REL_BIN_DATA\n", __func__);
-		rc = lgit_imx298_rohm_ois_bin_download(T0_LGIT_ACTUATOR_LGIT_VER16_REL_BIN_DATA);
+		rc = lgit_s5k2p7_rohm_ois_bin_download(T0_LGIT_ACTUATOR_LGIT_VER16_REL_BIN_DATA);
 		break;
 	case 0x1D:
 		pr_err("[CHECK] %s: Apply T1_MTM_ACTUATOR_LGIT_VER16_REL_BIN_DATA\n", __func__);
-		rc = lgit_imx298_rohm_ois_bin_download(T1_MTM_ACTUATOR_LGIT_VER16_REL_BIN_DATA);
+		rc = lgit_s5k2p7_rohm_ois_bin_download(T1_MTM_ACTUATOR_LGIT_VER16_REL_BIN_DATA);
 		break;
 	case 0x16:
 		pr_err("[CHECK] %s: Apply T1_LGIT_ACTUATOR_LGIT_VER16_REL_BIN_DATA\n", __func__);
-		rc = lgit_imx298_rohm_ois_bin_download(T1_LGIT_ACTUATOR_LGIT_VER16_REL_BIN_DATA);
+		rc = lgit_s5k2p7_rohm_ois_bin_download(T1_LGIT_ACTUATOR_LGIT_VER16_REL_BIN_DATA);
 		break;
 	case 0x34:
 		pr_err("[CHECK] %s: Apply THIN_1215_LGIT_ACTUATOR_LGIT_VER16_REL_BIN_DATA\n", __func__);
-		rc = lgit_imx298_rohm_ois_bin_download(THIN_1215_LGIT_ACTUATOR_LGIT_VER16_REL_BIN_DATA);
+		rc = lgit_s5k2p7_rohm_ois_bin_download(THIN_1215_LGIT_ACTUATOR_LGIT_VER16_REL_BIN_DATA);
 		break;
 	case 0x40:
 		pr_err("[CHECK] %s: Apply THIN_1226_LGIT_ACTUATOR_LGIT_VER16_REL_BIN_DATA, 14s\n", __func__);
-		rc = lgit_imx298_rohm_ois_bin_download(THIN_1226_LGIT_ACTUATOR_LGIT_VER16_REL_BIN_DATA);
+		rc = lgit_s5k2p7_rohm_ois_bin_download(THIN_1226_LGIT_ACTUATOR_LGIT_VER16_REL_BIN_DATA);
 		break;
 	case 0x41:
 		pr_err("[CHECK] %s: Apply THIN_1226_MTM_ACTUATOR_LGIT_VER16_REL_BIN_DATA, 14s\n", __func__);
-		rc = lgit_imx298_rohm_ois_bin_download(THIN_1226_MTM_ACTUATOR_LGIT_VER16_REL_BIN_DATA);
+		rc = lgit_s5k2p7_rohm_ois_bin_download(THIN_1226_MTM_ACTUATOR_LGIT_VER16_REL_BIN_DATA);
 		break;
 	default:
 		pr_err("[CHECK] %s: Apply Default : No Download BIN_DATA\n", __func__);
@@ -668,19 +668,19 @@ int32_t lgit_imx298_init_set_rohm_ois(struct msm_ois_ctrl_t *o_ctrl,
 	switch (ver) {
 	case OIS_VER_RELEASE:
 		CDBG("%s OIS_VER_RELEASE\n", __func__);
-		lgit_imx298_rohm_ois_init_cmd(LIMIT_OIS_ON_RETRY);
+		lgit_s5k2p7_rohm_ois_init_cmd(LIMIT_OIS_ON_RETRY);
 		break;
 	case OIS_VER_CALIBRATION:
 	case OIS_VER_DEBUG:
 		CDBG("%s OIS_VER_DEBUG\n", __func__);
-		lgit_imx298_rohm_ois_calibration(ver);
+		lgit_s5k2p7_rohm_ois_calibration(ver);
 
 		/* OIS ON */
 		RegWriteA(0x6021, 0x03);/* LGIT STILL & PAN ON MODE */
 		usleep_range(10 * 1000, 10 * 1000 + 10); // 20151127 Rohm_LeeDJ_delay 10ms
 		RegWriteA(0x6020, 0x02);/* OIS ON */
 
-		rc = lgit_imx298_rohm_ois_poll_ready(LIMIT_STATUS_POLLING);
+		rc = lgit_s5k2p7_rohm_ois_poll_ready(LIMIT_STATUS_POLLING);
 		if (rc < 0) {
 			pr_err("%s:%d, OIS_POLLING_ERROR\n", __func__, __LINE__);
 			return rc;
@@ -693,7 +693,7 @@ int32_t lgit_imx298_init_set_rohm_ois(struct msm_ois_ctrl_t *o_ctrl,
 	return rc;
 
 }
-int32_t	lgit_imx298_rohm_ois_on(struct msm_ois_ctrl_t *o_ctrl,
+int32_t	lgit_s5k2p7_rohm_ois_on(struct msm_ois_ctrl_t *o_ctrl,
 					 struct msm_ois_set_info_t *set_info)
 {
 	int32_t rc = OIS_SUCCESS;
@@ -708,7 +708,7 @@ int32_t	lgit_imx298_rohm_ois_on(struct msm_ois_ctrl_t *o_ctrl,
 	return rc;
 }
 
-void lgit_imx298_rohm_write_vcm(int16_t nDAC)
+void lgit_s5k2p7_rohm_write_vcm(int16_t nDAC)
 {
 	if (vcm_check == 1) {
 	CDBG("%s Enter\n", __func__);
@@ -728,9 +728,9 @@ void lgit_imx298_rohm_write_vcm(int16_t nDAC)
 		}
 }
 
-EXPORT_SYMBOL(lgit_imx298_rohm_write_vcm);
+EXPORT_SYMBOL(lgit_s5k2p7_rohm_write_vcm);
 
-int32_t	lgit_imx298_rohm_ois_off(struct msm_ois_ctrl_t *o_ctrl,
+int32_t	lgit_s5k2p7_rohm_ois_off(struct msm_ois_ctrl_t *o_ctrl,
 					  struct msm_ois_set_info_t *set_info)
 {
 	int rc = OIS_SUCCESS;
@@ -738,7 +738,7 @@ int32_t	lgit_imx298_rohm_ois_off(struct msm_ois_ctrl_t *o_ctrl,
 	pr_err("%s:%d Enter\n", __func__, __LINE__);
 
 	RegWriteA(0x6020, 0x01);
-	rc = lgit_imx298_rohm_ois_poll_ready(LIMIT_STATUS_POLLING);
+	rc = lgit_s5k2p7_rohm_ois_poll_ready(LIMIT_STATUS_POLLING);
 	if (rc < 0) {
 		pr_err("%s:%d, OIS_POLLING_ERROR\n", __func__, __LINE__);
 		return rc;
@@ -750,7 +750,7 @@ int32_t	lgit_imx298_rohm_ois_off(struct msm_ois_ctrl_t *o_ctrl,
 	return rc;
 }
 
-int32_t lgit_imx298_rohm_ois_stat(struct msm_ois_ctrl_t *o_ctrl,
+int32_t lgit_s5k2p7_rohm_ois_stat(struct msm_ois_ctrl_t *o_ctrl,
 					   struct msm_ois_set_info_t *set_info)
 {
 	struct msm_ois_info_t ois_stat;
@@ -784,7 +784,7 @@ int32_t lgit_imx298_rohm_ois_stat(struct msm_ois_ctrl_t *o_ctrl,
 	/* Hall Fail */
 	/* Read Hall X */
 	RegWriteA(0x6060, 0x00);
-	rc = lgit_imx298_rohm_ois_poll_ready(LIMIT_STATUS_POLLING);
+	rc = lgit_s5k2p7_rohm_ois_poll_ready(LIMIT_STATUS_POLLING);
 	if (rc < 0) {
 		pr_err("%s:%d, OIS_POLLING_ERROR\n", __func__, __LINE__);
 		return rc;
@@ -794,7 +794,7 @@ int32_t lgit_imx298_rohm_ois_stat(struct msm_ois_ctrl_t *o_ctrl,
 
 	/* Read Hall Y */
 	RegWriteA(0x6060, 0x01);
-	rc = lgit_imx298_rohm_ois_poll_ready(LIMIT_STATUS_POLLING);
+	rc = lgit_s5k2p7_rohm_ois_poll_ready(LIMIT_STATUS_POLLING);
 	if (rc < 0) {
 		pr_err("%s:%d, OIS_POLLING_ERROR\n", __func__, __LINE__);
 		return rc;
@@ -842,7 +842,7 @@ int32_t lgit_imx298_rohm_ois_stat(struct msm_ois_ctrl_t *o_ctrl,
 	return 0;
 }
 
-int32_t lgit_imx298_rohm_ois_move_lens(struct msm_ois_ctrl_t *o_ctrl,
+int32_t lgit_s5k2p7_rohm_ois_move_lens(struct msm_ois_ctrl_t *o_ctrl,
 							struct msm_ois_set_info_t *set_info)
 {
 
@@ -884,7 +884,7 @@ int32_t lgit_imx298_rohm_ois_move_lens(struct msm_ois_ctrl_t *o_ctrl,
 	RegReadA(0x6020, &result);
 	if (result != 0x01) {
 		RegWriteA(0x6020, 0x01);
-		rc = lgit_imx298_rohm_ois_poll_ready(LIMIT_STATUS_POLLING);
+		rc = lgit_s5k2p7_rohm_ois_poll_ready(LIMIT_STATUS_POLLING);
 		if (rc < 0) {
 			pr_err("%s:%d, OIS_POLLING_ERROR\n", __func__, __LINE__);
 			return rc;
@@ -900,7 +900,7 @@ int32_t lgit_imx298_rohm_ois_move_lens(struct msm_ois_ctrl_t *o_ctrl,
 
 	/* wait 100ms */
 	usleep_range(100000, 100010); //added rohm 0926 LeeDJ
-	rc = lgit_imx298_rohm_ois_poll_ready(LIMIT_STATUS_POLLING);
+	rc = lgit_s5k2p7_rohm_ois_poll_ready(LIMIT_STATUS_POLLING);
 	if (rc < 0) {
 		pr_err("%s:%d, OIS_POLLING_ERROR\n", __func__, __LINE__);
 		return rc;
@@ -918,21 +918,23 @@ int32_t lgit_imx298_rohm_ois_move_lens(struct msm_ois_ctrl_t *o_ctrl,
 }
 
 /* If changed Image Sensor Setting, change below settings (151017 copy from P+) */
-int32_t lgit_imx298_rohm_ois_pwm_mode(struct msm_ois_ctrl_t *o_ctrl,
+int32_t lgit_s5k2p7_rohm_ois_pwm_mode(struct msm_ois_ctrl_t *o_ctrl,
 							struct msm_ois_set_info_t *set_info)
 {
-	        uint8_t mode =0;
-                if (copy_from_user(&mode, (void *)set_info->setting, sizeof(uint8_t))) {
-                        pr_err("%s:%d failed to get mode\n", __func__, __LINE__);
-                        return OIS_FAIL;
-                }
+#if 1
+        uint8_t mode =0;
+            if (copy_from_user(&mode, (void *)set_info->setting, sizeof(uint8_t))) {
+                    pr_err("%s:%d failed to get mode\n", __func__, __LINE__);
+                    return OIS_FAIL;
+            }
+
 		switch (mode) {
 		case OIS_IMG_SENSOR_REG_A:
 			/* RES_0 Full-resolution 16M (4656x3492), 1329.60Mbps */
 			pr_err("%s OIS_IMG_SENSOR_REG_A(Res 0)\n", __func__);
 			RegWriteA(0x60D0, 0x00);  //added rohm 0926 LeeDJ
 			RegWriteA(0x60D1, 0x01);
-			RegWriteA(0x60D2, 0x50);
+			RegWriteA(0x60D2, 0x4A);
 			RegWriteA(0x60D3, 0x00);
 			RegWriteA(0x60D4, 0x0A);
 			RegWriteA(0x60D5, 0x00);
@@ -943,7 +945,7 @@ int32_t lgit_imx298_rohm_ois_pwm_mode(struct msm_ois_ctrl_t *o_ctrl,
 			pr_err("%s OIS_IMG_SENSOR_REG_B(Res 1)\n", __func__);
 			RegWriteA(0x60D0, 0x00);  //added rohm 0926 LeeDJ
 			RegWriteA(0x60D1, 0x01);
-			RegWriteA(0x60D2, 0x64);
+			RegWriteA(0x60D2, 0x4A);
 			RegWriteA(0x60D3, 0x00);
 			RegWriteA(0x60D4, 0x0A);
 			RegWriteA(0x60D5, 0x00);
@@ -953,8 +955,8 @@ int32_t lgit_imx298_rohm_ois_pwm_mode(struct msm_ois_ctrl_t *o_ctrl,
 			/* RES_2 Preview(2328x1746), 755.20Mbps 30fps*/
 			pr_err("%s OIS_IMG_SENSOR_REG_C(Res 2)\n", __func__);
 			RegWriteA(0x60D0, 0x00);  //added rohm 0926 LeeDJ
-			RegWriteA(0x60D1, 0x00);
-			RegWriteA(0x60D2, 0x4B);
+			RegWriteA(0x60D1, 0x01);
+			RegWriteA(0x60D2, 0x4A);
 			RegWriteA(0x60D3, 0x00);
 			RegWriteA(0x60D4, 0x0A);
 			RegWriteA(0x60D5, 0x00);
@@ -965,7 +967,7 @@ int32_t lgit_imx298_rohm_ois_pwm_mode(struct msm_ois_ctrl_t *o_ctrl,
 			pr_err("%s OIS_IMG_SENSOR_REG_D(Res 3)\n", __func__);
 			RegWriteA(0x60D0, 0x00);  //added rohm 0926 LeeDJ
 			RegWriteA(0x60D1, 0x01);
-			RegWriteA(0x60D2, 0x5A);
+			RegWriteA(0x60D2, 0x4A);
 			RegWriteA(0x60D3, 0x00);
 			RegWriteA(0x60D4, 0x0A);
 			RegWriteA(0x60D5, 0x00);
@@ -976,7 +978,7 @@ int32_t lgit_imx298_rohm_ois_pwm_mode(struct msm_ois_ctrl_t *o_ctrl,
 			pr_err("%s OIS_IMG_SENSOR_REG_E(Res 4)\n", __func__);
 			RegWriteA(0x60D0, 0x00);  //added rohm 0926 LeeDJ
 			RegWriteA(0x60D1, 0x01);
-			RegWriteA(0x60D2, 0x46);
+			RegWriteA(0x60D2, 0x4A);
 			RegWriteA(0x60D3, 0x00);
 			RegWriteA(0x60D4, 0x0A);
 			RegWriteA(0x60D5, 0x00);
@@ -987,7 +989,7 @@ int32_t lgit_imx298_rohm_ois_pwm_mode(struct msm_ois_ctrl_t *o_ctrl,
 			pr_err("%s OIS_IMG_SENSOR_REG_F(Res 5)\n", __func__);
 			RegWriteA(0x60D0, 0x00);  //added rohm 0926 LeeDJ
 			RegWriteA(0x60D1, 0x01);
-			RegWriteA(0x60D2, 0x46);
+			RegWriteA(0x60D2, 0x4A);
 			RegWriteA(0x60D3, 0x00);
 			RegWriteA(0x60D4, 0x0A);
 			RegWriteA(0x60D5, 0x00);
@@ -998,9 +1000,9 @@ int32_t lgit_imx298_rohm_ois_pwm_mode(struct msm_ois_ctrl_t *o_ctrl,
 			pr_err("%s OIS_IMG_SENSOR_REG_G(Res 6)\n", __func__);
 			RegWriteA(0x60D0, 0x00);  //added rohm 0926 LeeDJ
 			RegWriteA(0x60D1, 0x01);
-			RegWriteA(0x60D2, 0x2C);
-			RegWriteA(0x60D3, 0x01);
-			RegWriteA(0x60D4, 0x09);
+			RegWriteA(0x60D2, 0x4A);
+			RegWriteA(0x60D3, 0x00);
+			RegWriteA(0x60D4, 0x0A);
 			RegWriteA(0x60D5, 0x00);
 			RegWriteA(0x60D0, 0x01); //added rohm 0926 LeeDJ
 			break;
@@ -1008,18 +1010,19 @@ int32_t lgit_imx298_rohm_ois_pwm_mode(struct msm_ois_ctrl_t *o_ctrl,
 			pr_err("%s:not support %d\n", __func__, mode);
 			break;
 		}
+#endif
 		return OIS_SUCCESS;
 }
 
-void lgit_imx298_rohm_ois_init(struct msm_ois_ctrl_t *msm_ois_t)
+void lgit_s5k2p7_rohm_ois_init(struct msm_ois_ctrl_t *msm_ois_t)
 {
-	lgit_ois_func_tbl.ini_set_ois = lgit_imx298_init_set_rohm_ois;
-	lgit_ois_func_tbl.enable_ois = lgit_imx298_rohm_ois_on;
-	lgit_ois_func_tbl.disable_ois = lgit_imx298_rohm_ois_off;
-	lgit_ois_func_tbl.ois_mode = lgit_imx298_rohm_ois_mode;
-	lgit_ois_func_tbl.ois_stat = lgit_imx298_rohm_ois_stat;
-	lgit_ois_func_tbl.ois_move_lens = lgit_imx298_rohm_ois_move_lens;
-	lgit_ois_func_tbl.ois_pwm_mode = lgit_imx298_rohm_ois_pwm_mode;
+	lgit_ois_func_tbl.ini_set_ois = lgit_s5k2p7_init_set_rohm_ois;
+	lgit_ois_func_tbl.enable_ois = lgit_s5k2p7_rohm_ois_on;
+	lgit_ois_func_tbl.disable_ois = lgit_s5k2p7_rohm_ois_off;
+	lgit_ois_func_tbl.ois_mode = lgit_s5k2p7_rohm_ois_mode;
+	lgit_ois_func_tbl.ois_stat = lgit_s5k2p7_rohm_ois_stat;
+	lgit_ois_func_tbl.ois_move_lens = lgit_s5k2p7_rohm_ois_move_lens;
+	lgit_ois_func_tbl.ois_pwm_mode = lgit_s5k2p7_rohm_ois_pwm_mode;
 	lgit_ois_func_tbl.ois_cur_mode = OIS_MODE_CENTERING_ONLY;
 
 	msm_ois_t->sid_ois = 0x7C >> 1;
