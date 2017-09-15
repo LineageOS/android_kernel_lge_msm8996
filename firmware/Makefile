@@ -148,6 +148,38 @@ fw-shipped-$(CONFIG_LGE_USB_ANX7418) += anx7418/ocm_hamming_13.bin
 fw-shipped-$(CONFIG_LGE_USB_ANX7418) += anx7418/ocm_crc_08.bin
 fw-shipped-$(CONFIG_LGE_USB_ANX7688) += analogix/mi1_eeprom_20_8b.img
 
+# LG touch firmware
+
+ifdef CONFIG_MACH_MSM8996_H1
+fw-shipped-$(CONFIG_LGE_TOUCH_CORE_BASE) += \
+	touch/h1/H1_LG4945_0.01.img \
+	touch/h1/L0L53P1_1_14.img \
+	touch/h1/L0L53P1_1_22.img \
+	touch/h1/PLG468-V1.20-PR1901334-DS5.2.200.1.1002_50055194504C47343638.img \
+	touch/h1/h1_hdk_limit_mfts_curved.txt \
+	touch/h1/h1_hdk_limit_mfts_flat.txt \
+	touch/h1/h1_hdk_limit_mfts_folder.txt \
+	touch/h1/h1_limit.txt \
+	touch/h1/h1_limit_mfts.txt
+endif
+ifdef CONFIG_MACH_MSM8996_ELSA
+fw-shipped-$(CONFIG_LGE_TOUCH_CORE_BASE) += \
+	touch/elsa/L0L57P1_1_35.img \
+	touch/elsa/L0L57P1_2_00.img \
+	touch/elsa/L1L52P1_1_05.img \
+	touch/elsa/L1L57P1_1_07.img \
+	touch/elsa/elsa_limit.txt \
+	touch/elsa/elsa_limit_mfts.txt
+endif
+ifdef CONFIG_MACH_MSM8996_LUCYE
+fw-shipped-$(CONFIG_LGE_TOUCH_CORE_BASE) += \
+	touch/lucye/L1L57P1_8_23_SW49407_Lucy_VB.img \
+	touch/lucye/L1L57P2_1_00.img \
+	touch/lucye/L1L57P2_1_03.img \
+	touch/lucye/lucye_limit.txt \
+	touch/lucye/lucye_limit_mfts.txt
+endif
+
 fw-shipped-all := $(fw-shipped-y) $(fw-shipped-m) $(fw-shipped-)
 
 quiet_cmd_ihex  = IHEX    $@
