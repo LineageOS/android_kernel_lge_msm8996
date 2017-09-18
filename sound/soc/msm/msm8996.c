@@ -270,7 +270,11 @@ static struct wcd_mbhc_config wcd_mbhc_cfg = {
 	.key_code[6] = 0,
 	.key_code[7] = 0,
 	.linein_th = 5000,
+#ifdef CONFIG_SND_SOC_ES9018
+	.moist_cfg = { false, false },
+#else
 	.moist_cfg = { V_45_MV, I_3P0_UA },
+#endif
 	.mbhc_micbias = MIC_BIAS_2,
 	.anc_micbias = MIC_BIAS_2,
 	.enable_anc_mic_detect = false,
