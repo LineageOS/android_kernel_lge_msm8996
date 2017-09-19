@@ -38,7 +38,7 @@ config BCMDHD_OEM_HEADER_PATH
 config BCMDHD_FW_PATH
 	depends on BCMDHD
 	string "Firmware path"
-	default "/vendor/etc/firmware/fw_bcmdhd.bin"
+	default "/vendor/firmware/fw_bcmdhd.bin"
 	---help---
 	  Path to the firmware file.
 
