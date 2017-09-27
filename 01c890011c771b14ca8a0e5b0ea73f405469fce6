@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "84c66422_87d76c0a",
+        "filename": "drivers/media/platform/msm/camera_v2/sensor/ois/Makefile",
+        "patchSetId": 1
+      },
+      "lineNbr": 8,
+      "author": {
+        "id": 14737
+      },
+      "writtenOn": "2017-09-27T21:28:11Z",
+      "side": 1,
+      "message": "Should this be split then down a line too?",
+      "revId": "01c890011c771b14ca8a0e5b0ea73f405469fce6",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
