@@ -436,7 +436,7 @@ static int msm_ois_init(struct msm_ois_ctrl_t *o_ctrl)
 			imt_imx258_rohm_ois_init(o_ctrl);
 			local_msm_ois_t->sid_ois = o_ctrl->sid_ois;
 			rc = ois_i2c_e2p_read(CAL_VERSION, &cal_ver, 2); // for check vcm
-				if (cal_ver != 0x41 && cal_ver != 0x0406 && cal_ver != 0x0507) {
+				if (cal_ver != 0x41 && cal_ver != 0x0406 && cal_ver != 0x0507 && cal_ver != 0x0608) {
 				printk("%s: kernel ois not supported, rc(%d) cal_ver(%d) \n", __func__, rc, cal_ver);
 				return OIS_INIT_NOT_SUPPORTED;
 				}
