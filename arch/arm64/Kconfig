@@ -1105,15 +1105,6 @@ endchoice
 config CMDLINE_SEARCHREPLACE
         bool
 
-config CMDLINE_SAR_VERIFY_GREEN
-	bool "Override passed-in value for androidboot.verifiedbootstate"
-	select CMDLINE_SEARCHREPLACE
-	help
-	  Replaces the value of androidboot.verifiedbootstate with "green",
-	  no matter what was passed-in.  This is valuable for Android devices
-	  whose kernel signing keys cannot be replaced in order to report all
-	  is well.  Please do not use this for mischief.
-
 config CMDLINE_SAR_ENABLE0
 	bool "Enable search/replace pair 0"
 	select CMDLINE_SEARCHREPLACE
