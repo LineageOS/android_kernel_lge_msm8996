@@ -961,9 +961,6 @@ static const char *const config_cmdline __initconst = "";
 /* the for the Real(tm) command-line magic */
 #ifdef CONFIG_CMDLINE_SEARCHREPLACE
 static const char *const cmdline_searchreplace_list[][2] __initconst = {
-#ifdef CONFIG_CMDLINE_SAR_VERIFY_GREEN
-{" androidboot.verifiedbootstate=",     " androidboot.verifiedbootstate=green "},
-#endif
 #ifdef CONFIG_CMDLINE_SAR_ENABLE0
 {CONFIG_CMDLINE_SAR_SEARCH0,		CONFIG_CMDLINE_SAR_REPLACE0},
 #endif
