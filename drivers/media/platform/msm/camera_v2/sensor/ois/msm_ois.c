@@ -53,7 +53,6 @@ extern void imt_imx258_rohm_ois_init(struct msm_ois_ctrl_t *msm_ois_t);
 extern void lc898122a_af_vcm_code(int16_t UsVcmCod);
 #else
 #define OIS_MAKER_ID_ADDR	(0x700)
-
 #define EEPROM_SLAVE_ID (0x54) //0xA8 >> 1
 
 #if defined(CONFIG_IMX234)
@@ -65,7 +64,10 @@ extern void lc898122a_af_vcm_code(int16_t UsVcmCod);
 
 #if defined(CONFIG_MACH_MSM8996_ELSA) && !defined(CONFIG_IMX234)
 extern void lgit_imx298_rohm_ois_init(struct msm_ois_ctrl_t *msm_ois_t);
+extern void lgit_s5k2p7_rohm_ois_init(struct msm_ois_ctrl_t *msm_ois_t);
 extern void lc898122a_af_vcm_code(int16_t UsVcmCod);
+#define EEPROM_MAP_ADDR (0x770)
+uint16_t map_ver = 0;
 #endif
 #endif
 #endif
@@ -434,7 +436,7 @@ static int msm_ois_init(struct msm_ois_ctrl_t *o_ctrl)
 			imt_imx258_rohm_ois_init(o_ctrl);
 			local_msm_ois_t->sid_ois = o_ctrl->sid_ois;
 			rc = ois_i2c_e2p_read(CAL_VERSION, &cal_ver, 2); // for check vcm
-				if (cal_ver != 0x41 && cal_ver != 0x0406 && cal_ver != 0x0507) {
+				if (cal_ver != 0x41 && cal_ver != 0x0406 && cal_ver != 0x0507 && cal_ver != 0x0608) {
 				printk("%s: kernel ois not supported, rc(%d) cal_ver(%d) \n", __func__, rc, cal_ver);
 				return OIS_INIT_NOT_SUPPORTED;
 				}
@@ -479,16 +481,22 @@ static int msm_ois_init(struct msm_ois_ctrl_t *o_ctrl)
 		case 0x01:
 		case 0x02:
 		case 0x05:
-			lgit_imx298_rohm_ois_init(o_ctrl);
-			local_msm_ois_t->sid_ois = o_ctrl->sid_ois;
-			rc = ois_i2c_e2p_read(0x92E, &vcm_ver, 2); // for check vcm
-			if (vcm_ver != 0x01 && vcm_ver != 0x02 && vcm_ver != 0x1D && vcm_ver != 0x16
-				&& vcm_ver != 0x34 && vcm_ver != 0x40 && vcm_ver != 0x41) {
-				printk("%s: kernel ois not supported, rc(%d) vcm_ver(%d) \n", __func__, rc, vcm_ver);
-				return OIS_INIT_NOT_SUPPORTED;
-			}
-			printk("%s : LGIT rohm i2c shift addr 0x%x!\n", __func__, o_ctrl->sid_ois);
-			break;
+			ois_i2c_e2p_read(EEPROM_MAP_ADDR, &map_ver, 1);
+			if(map_ver == 0x03){
+				lgit_s5k2p7_rohm_ois_init(o_ctrl);
+			    rc = ois_i2c_e2p_read(0x88E, &vcm_ver, 2); // for check vcm
+			    }else{
+			    lgit_imx298_rohm_ois_init(o_ctrl);
+				rc = ois_i2c_e2p_read(0x92E, &vcm_ver, 2); // for check vcm
+				}
+				local_msm_ois_t->sid_ois = o_ctrl->sid_ois;
+				if (vcm_ver != 0x01 && vcm_ver != 0x02 && vcm_ver != 0x1D && vcm_ver != 0x16
+					&& vcm_ver != 0x34 && vcm_ver != 0x40 && vcm_ver != 0x41) {
+					printk("%s: kernel ois not supported, rc(%d) vcm_ver(%d) \n", __func__, rc, vcm_ver);
+					return OIS_INIT_NOT_SUPPORTED;
+				}
+				printk("%s : LGIT rohm i2c shift addr 0x%x!\n", __func__, o_ctrl->sid_ois);
+				break;
 #endif
 
 	case 0x03:

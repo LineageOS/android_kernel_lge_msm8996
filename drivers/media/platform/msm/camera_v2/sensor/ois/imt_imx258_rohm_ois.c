@@ -20,7 +20,7 @@
 #include "msm_ois.h"
 #include "msm_ois_i2c.h"
 
-#define LAST_UPDATE "16-12-15, 13M IMT CLAF OIS bu24235"
+#define LAST_UPDATE "17-01-16, 13M IMT CLAF OIS bu24235"
 
 /*If changed FW, change below FW bin and Checksum information*/
 #define LUCY_1202_MTM_ACTUATOR_FIRMWARE_VER_4S_BIN_1 "bu24235_dl_program_Lucy_MTMAct_ICG1020S_rev4_S_data1.bin"
@@ -29,10 +29,13 @@
 #define LUCY_1208_MTM_ACTUATOR_FIRMWARE_VER_6S_BIN_2 "bu24235_dl_program_Lucy_MTMAct_ICG1020S_rev6_S_data2.bin"
 #define LUCY_1215_MTM_ACTUATOR_FIRMWARE_VER_7S_BIN_1 "bu24235_dl_program_Lucy_MTMAct_ICG1020S_rev7_S_data1.bin"
 #define LUCY_1215_MTM_ACTUATOR_FIRMWARE_VER_7S_BIN_2 "bu24235_dl_program_Lucy_MTMAct_ICG1020S_rev7_S_data2.bin"
+#define LUCY_0116_MTM_ACTUATOR_FIRMWARE_VER_8S_BIN_1 "bu24235_dl_program_Lucy_MTMAct_ICG1020S_rev8_S_data1.bin"
+#define LUCY_0116_MTM_ACTUATOR_FIRMWARE_VER_8S_BIN_2 "bu24235_dl_program_Lucy_MTMAct_ICG1020S_rev8_S_data2.bin"
 
 #define LUCY_1202_MTM_ACTUATOR_FIRMWARE_VER_4S_CHECKSUM	0x0001333D
 #define LUCY_1208_MTM_ACTUATOR_FIRMWARE_VER_6S_CHECKSUM	0x00013321
 #define LUCY_1215_MTM_ACTUATOR_FIRMWARE_VER_7S_CHECKSUM	0x000135B2
+#define LUCY_0116_MTM_ACTUATOR_FIRMWARE_VER_8S_CHECKSUM	0x0001348B
 
 /*If changed FW, change above FW bin and Checksum information*/
 
@@ -136,8 +139,30 @@ static struct ois_i2c_bin_list LUCY_1215_MTM_ACTUATOR_FIRMWARE_VER_7S_BIN_DATA =
 	.checksum = LUCY_1215_MTM_ACTUATOR_FIRMWARE_VER_7S_CHECKSUM
 };
 
-/*If changed FW, change above FW bin and Checksum information*/
+static struct ois_i2c_bin_list LUCY_0116_MTM_ACTUATOR_FIRMWARE_VER_8S_BIN_DATA = {
+	.files = 2,
+	.entries = {
+		{
+			.filename = LUCY_0116_MTM_ACTUATOR_FIRMWARE_VER_8S_BIN_1,
+			.filesize = 0x0324, //804byte
+			.blocks = 1,
+			.addrs = {
+				{0x0000, 0x0323, 0x0000},
+			}
+		},
+		{
+			.filename = LUCY_0116_MTM_ACTUATOR_FIRMWARE_VER_8S_BIN_2,
+			.filesize = 0x01C0,
+			.blocks = 1,
+			.addrs = {
+				{0x0000, 0x01BF, 0x1C00},
+			}
+		},
+	},
+	.checksum = LUCY_0116_MTM_ACTUATOR_FIRMWARE_VER_8S_CHECKSUM
+};
 
+/*If changed FW, change above FW bin and Checksum information*/
 
 static int imt_imx258_rohm_ois_poll_ready(int limit)
 {
@@ -266,7 +291,7 @@ int imt_imx258_rohm_ois_init_cmd(int limit)
 		return rc;
 	}
 
-	if (cal_ver == 0x41 || cal_ver == 0x0406 || cal_ver == 0x0507) {
+	if (cal_ver == 0x41 || cal_ver == 0x0406 || cal_ver == 0x0507 || cal_ver == 0x0608) {
 		CDBG("%s 1. 0x6023 0x%x \n", __func__, ois_status);
 		RegWriteA(0x6023, 0x00);
 	}
@@ -380,7 +405,7 @@ int imt_imx258_rohm_ois_calibration(int ver)
 	}
 
 	/* Gyro On */
-	if (cal_ver == 0x41 || cal_ver == 0x0406 || cal_ver == 0x0507) {
+	if (cal_ver == 0x41 || cal_ver == 0x0406 || cal_ver == 0x0507 || cal_ver == 0x0608) {
 		RegWriteA(0x6023, 0x00);
 	}
 
@@ -479,13 +504,9 @@ int32_t imt_imx258_init_set_rohm_ois(struct msm_ois_ctrl_t *o_ctrl,
 	CDBG("%s chipid %x, cal_ver %x, map_ver %x, init ver %d\n", __func__, eeprom_slave_id, cal_ver, map_ver, ver);
 
 	switch (cal_ver) {
-		case 0x00: //temp
+		case 0x41:
 			pr_err("[CHECK] %s: Apply LUCY_1202_MTM_ACTUATOR_FIRMWARE_VER_BIN_DATA, 4s\n", __func__);
 			rc = imt_imx258_rohm_ois_bin_download(LUCY_1202_MTM_ACTUATOR_FIRMWARE_VER_4S_BIN_DATA);
-			break;
-		case 0x41: //temp
-			pr_err("[CHECK] %s: Apply LUCY_1215_MTM_ACTUATOR_FIRMWARE_VER_BIN_DATA, 7s\n", __func__);
-			rc = imt_imx258_rohm_ois_bin_download(LUCY_1215_MTM_ACTUATOR_FIRMWARE_VER_7S_BIN_DATA);
 			break;
 		case 0x0406:
 			pr_err("[CHECK] %s: Apply LUCY_1208_MTM_ACTUATOR_FIRMWARE_VER_BIN_DATA, 6s\n", __func__);
@@ -494,6 +515,10 @@ int32_t imt_imx258_init_set_rohm_ois(struct msm_ois_ctrl_t *o_ctrl,
 		case 0x0507:
 			pr_err("[CHECK] %s: Apply LUCY_1215_MTM_ACTUATOR_FIRMWARE_VER_BIN_DATA, 7s\n", __func__);
 			rc = imt_imx258_rohm_ois_bin_download(LUCY_1215_MTM_ACTUATOR_FIRMWARE_VER_7S_BIN_DATA);
+			break;
+		case 0x0608:
+			pr_err("[CHECK] %s: Apply LUCY_0116_MTM_ACTUATOR_FIRMWARE_VER_BIN_DATA, 8s\n", __func__);
+			rc = imt_imx258_rohm_ois_bin_download(LUCY_0116_MTM_ACTUATOR_FIRMWARE_VER_8S_BIN_DATA);
 			break;
 		default:
 			pr_err("[CHECK] %s: Apply Default : No Download BIN_DATA\n", __func__);
@@ -703,6 +728,7 @@ int32_t imt_imx258_rohm_ois_move_lens(struct msm_ois_ctrl_t *o_ctrl,
 		case 0x41:
 		case 0x0406:
 		case 0x0507:
+		case 0x0608:
 			hallx =  offset[0] * GYRO_GAIN_MTM / HALL_SCALE_FACTOR;
 			hally =  offset[1] * GYRO_GAIN_MTM / HALL_SCALE_FACTOR;
 			break;
