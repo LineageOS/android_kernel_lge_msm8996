@@ -93,12 +93,12 @@
 };
 
 /{
-        lge_batterydata: qcom,battery-data {
-                qcom,batt-id-range-pct = <30>;
-                #include "../LGE_BLT32_QDM_2260mAh.dtsi"
-                #include "../LGE_BLT32_Tocad_3300mAh.dtsi"
-                #include "../LGE_BLT32_LGC_3300mAh.dtsi"
-        };
+	lge_batterydata: qcom,battery-data {
+		qcom,batt-id-range-pct = <30>;
+		#include "../LGE_BLT32_QDM_2260mAh.dtsi"
+		#include "../LGE_BLT32_Tocad_3300mAh.dtsi"
+		#include "../LGE_BLT32_LGC_3300mAh.dtsi"
+	};
 };
 
 &pmi8994_fg {

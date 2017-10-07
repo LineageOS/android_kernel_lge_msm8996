@@ -162,11 +162,11 @@
 };
 
 &i2c_6 {
-    p1_dsv@3e {
-        status = "ok";
-        compatible = "p1_dsv";
-        reg = <0x3e>;
-    };
+	p1_dsv@3e {
+		status = "ok";
+		compatible = "p1_dsv";
+		reg = <0x3e>;
+	};
 };
 
 /* pinctrl for Display function
@@ -239,12 +239,12 @@
 };
 
 &pmi8994_charger {
-    lge,cable-adc-useset  = <3>;
-    lge,cable-adc-muxset  = <0x79>;
+	lge,cable-adc-useset  = <3>;
+	lge,cable-adc-muxset  = <0x79>;
 };
 
 &sdhc_2 {
-    cd-gpios = <&tlmm 60 0x1>; /* 1: Active-Low, 0: Active-High */
+	cd-gpios = <&tlmm 60 0x1>; /* 1: Active-Low, 0: Active-High */
 };
 
 &soc {

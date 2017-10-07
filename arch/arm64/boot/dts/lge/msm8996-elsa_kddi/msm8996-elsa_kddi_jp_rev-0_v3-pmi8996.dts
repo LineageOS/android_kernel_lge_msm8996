@@ -184,8 +184,8 @@
 };
 
 &pmi8994_charger {
-    lge,lge_otp_enable;
-    qcom,float-voltage-mv = <4350>;
+	lge,lge_otp_enable;
+	qcom,float-voltage-mv = <4350>;
 };
 
 &pmi8994_fg {

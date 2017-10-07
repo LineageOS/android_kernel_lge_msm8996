@@ -31,11 +31,11 @@
 			 qcom,s3-debounce = <128>;
 			 qcom,s3-src = "kpdpwr-and-resin";
 			 qcom,pon_1 {  /* KPD_PWR_N */
-				  status = "ok";
-				  qcom,support-reset = <1>;
-				  qcom,s1-timer = <6720>;
-				  qcom,s2-timer = <2000>;
-				  qcom,s2-type = <7>;
+				status = "ok";
+				qcom,support-reset = <1>;
+				qcom,s1-timer = <6720>;
+				qcom,s2-timer = <2000>;
+				qcom,s2-type = <7>;
 			 };
 		 };
 	};
@@ -158,7 +158,7 @@
 };
 
 &pmi8994_charger {
-    lge,lge_otp_enable;
+	lge,lge_otp_enable;
 };
 
 &pmi8994_fg {
@@ -166,7 +166,7 @@
 };
 
 &sdhc_2 {
-    cd-gpios = <&tlmm 95 0x1>; /* 1: Active-Low, 0: Active-High */
+	cd-gpios = <&tlmm 95 0x1>; /* 1: Active-Low, 0: Active-High */
 };
 
 /* set unused gpio to off */

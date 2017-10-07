@@ -120,19 +120,19 @@
 		/delete-property/ wake-gpio;
 	};
 
-        blsp1_uart6 {
-                status = "ok";
-        };
+	blsp1_uart6 {
+		status = "ok";
+	};
 
-    blsp1_uart6:serial@07574000 {
-        compatible = "qcom,msm-lsuart-v14";
-        reg = <0x7574000 0x100>;
-        interrupts = <0 112 0>;
-        status = "ok";
-        clock-names = "core_clk", "iface_clk";
-        clocks = <&clock_gcc clk_gcc_blsp1_uart6_apps_clk>,
-        <&clock_gcc clk_gcc_blsp1_ahb_clk>;
-    };
+	blsp1_uart6:serial@07574000 {
+		compatible = "qcom,msm-lsuart-v14";
+		reg = <0x7574000 0x100>;
+		interrupts = <0 112 0>;
+		status = "ok";
+		clock-names = "core_clk", "iface_clk";
+		clocks = <&clock_gcc clk_gcc_blsp1_uart6_apps_clk>,
+			<&clock_gcc clk_gcc_blsp1_ahb_clk>;
+	};
 
 	uei_irrc {
 		compatible = "uei,irrc";

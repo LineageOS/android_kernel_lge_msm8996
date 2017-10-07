@@ -155,9 +155,9 @@
 };
 
 &pmi8994_charger {
-    lge,lge_otp_enable;
-    lge,cable-adc-useset  = <3>;
-    lge,cable-adc-muxset  = <0x79>;
+	lge,lge_otp_enable;
+	lge,cable-adc-useset  = <3>;
+	lge,cable-adc-muxset  = <0x79>;
 };
 
 &pmi8994_fg {
@@ -165,9 +165,9 @@
 };
 
 &sdhc_2 {
-    pinctrl-0 = <&sdc2_clk_on  &sdc2_cmd_on &sdc2_data_on &sdc2_cd_rev_0_1_on>;
-    pinctrl-1 = <&sdc2_clk_off &sdc2_cmd_off &sdc2_data_off &sdc2_cd_rev_0_1_off>;
-    cd-gpios = <&tlmm 112 0x1>;
+	pinctrl-0 = <&sdc2_clk_on  &sdc2_cmd_on &sdc2_data_on &sdc2_cd_rev_0_1_on>;
+	pinctrl-1 = <&sdc2_clk_off &sdc2_cmd_off &sdc2_data_off &sdc2_cd_rev_0_1_off>;
+	cd-gpios = <&tlmm 112 0x1>;
 };
 
 &soc {

@@ -76,16 +76,16 @@
 };
 
 /{
-        lge_batterydata: qcom,battery-data {
-                #include "../LGE_PMI8996_2000mAh_Test_Battery_Profile_Aug26th2015_PMI8996GUI00012.dtsi"
-                #include "../LGE_PMI8994_2000mAh_Test_Battery_Profile_Aug26th2015_PMI8994GUI2168.dtsi"
-                #include "../LGE_BLT16_3000mAh_averaged_MasterSlave_Aug6th2015_PMI8994GUI2168.dtsi"
-                #include "../LGE_BLT16_3000mAh_averaged_MasterSlave_Aug6th2015_PMI8996GUI00012.dtsi"
-                #include "../LGE_BL42D1F_1600mAh_averaged_MasterSlave_Oct12th2015_PMI8996GUI1014.dtsi"
-                #include "../Generic_2810mAh_Sept9th2015_PMI8996GUI1004.dtsi"
-                #include "../LGE_BL42D1_Tocad_2800mAh_averaged_MasterSlave_Nov23rd2015_PMI8996GUI1100.dtsi"
-                #include "../LGE_BL42D1F_2800mAh_averaged_MasterSlave_Nov30th2015_PMI8996GUI1100.dtsi"
-        };
+	lge_batterydata: qcom,battery-data {
+		#include "../LGE_PMI8996_2000mAh_Test_Battery_Profile_Aug26th2015_PMI8996GUI00012.dtsi"
+		#include "../LGE_PMI8994_2000mAh_Test_Battery_Profile_Aug26th2015_PMI8994GUI2168.dtsi"
+		#include "../LGE_BLT16_3000mAh_averaged_MasterSlave_Aug6th2015_PMI8994GUI2168.dtsi"
+		#include "../LGE_BLT16_3000mAh_averaged_MasterSlave_Aug6th2015_PMI8996GUI00012.dtsi"
+		#include "../LGE_BL42D1F_1600mAh_averaged_MasterSlave_Oct12th2015_PMI8996GUI1014.dtsi"
+		#include "../Generic_2810mAh_Sept9th2015_PMI8996GUI1004.dtsi"
+		#include "../LGE_BL42D1_Tocad_2800mAh_averaged_MasterSlave_Nov23rd2015_PMI8996GUI1100.dtsi"
+		#include "../LGE_BL42D1F_2800mAh_averaged_MasterSlave_Nov30th2015_PMI8996GUI1100.dtsi"
+	};
 };
 
 &pmi8994_fg {
@@ -137,16 +137,16 @@
 			 qcom,s3-debounce = <128>;
 			 qcom,s3-src = "kpdpwr-and-resin";
 			 qcom,pon_1 {  /* KPD_PWR_N */
-				  status = "ok";
-				  qcom,support-reset = <0>;
+				status = "ok";
+				qcom,support-reset = <0>;
 			 };
 			 qcom,pon_2 {  /* RESIN_N */
-				  status = "ok";
-				  qcom,support-reset = <0>;
+				status = "ok";
+				qcom,support-reset = <0>;
 			 };
 			 qcom,pon_3 {  /* KPD_PWR_N AND RESIN_N */
-				  status = "ok";
-				  qcom,support-reset = <0>;
+				status = "ok";
+				qcom,support-reset = <0>;
 			 };
 		 };
 	};

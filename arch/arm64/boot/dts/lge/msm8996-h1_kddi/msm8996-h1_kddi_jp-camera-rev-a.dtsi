@@ -312,8 +312,8 @@
 		qcom,gpio-req-tbl-num   = <0 1 2>;
 		qcom,gpio-req-tbl-flags = <1 0 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK0",
-								  "CAM_RESET0",
-								  "OIS_RESET";
+			"CAM_RESET0",
+			"OIS_RESET";
 
 		qcom,cam-power-seq-type    = "sensor_vreg";
 		qcom,cam-power-seq-val     = "cam_vio";
@@ -354,8 +354,8 @@
 		pinctrl-1 = <&cam_sensor_mclk0_suspend &cam_sensor_rear_suspend>;
 
 		gpios = <&tlmm 13 0>,  //CAM_MCLK
-		        <&tlmm 30 0>,  //CAM_RESET
-		        <&tlmm 93 0>,  //OIS_RESET
+			<&tlmm 30 0>,  //CAM_RESET
+			<&tlmm 93 0>,  //OIS_RESET
 			<&tlmm 80 1>;	// LDAF_EN
 
 		qcom,gpio-no-mux    = <0>;
@@ -366,9 +366,9 @@
 		qcom,gpio-req-tbl-num   = <0 1 2 3>;
 		qcom,gpio-req-tbl-flags = <1 0 0 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK0",
-		                          "CAM_RESET0",
-		                          "OIS_RESET",
-					  				"LDAF_EN";
+					"CAM_RESET0",
+					"OIS_RESET",
+					"LDAF_EN";
 
 		qcom,sensor-position = <0>;
 		qcom,sensor-mode = <0>;
@@ -405,8 +405,8 @@
 		pinctrl-1 = <&cam_sensor_mclk1_suspend &cam_sensor_rear2_suspend>;
 
 		gpios = <&tlmm 14 0>,  //CAM_MCLK1
-		        <&tlmm 29 0>,  //CAM_RESET1
-		        <&tlmm 74 0>;  //8M_IOVDD_EN
+			<&tlmm 29 0>,  //CAM_RESET1
+			<&tlmm 74 0>;  //8M_IOVDD_EN
 
 		qcom,gpio-no-mux    = <0>;
 		qcom,gpio-reset     = <1>;
@@ -415,8 +415,8 @@
 		qcom,gpio-req-tbl-num   = <0 1 2>;
 		qcom,gpio-req-tbl-flags = <1 0 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK1",
-		                          "CAM_RESET1",
-		                          "8M_CAM_IOVDD";
+					"CAM_RESET1",
+					"8M_CAM_IOVDD";
 
 		qcom,sensor-position = <0>;
 		qcom,sensor-mode = <0>;
@@ -465,7 +465,7 @@
 		qcom,gpio-req-tbl-num   = <0 1>;
 		qcom,gpio-req-tbl-flags = <1 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK2",
-								  "CAM_RESET2";
+			"CAM_RESET2";
 
 		qcom,cam-power-seq-type    = "sensor_vreg";
 		qcom,cam-power-seq-val     = "cam_vio";
@@ -506,7 +506,7 @@
 		qcom,gpio-req-tbl-num   = <0 1>;
 		qcom,gpio-req-tbl-flags = <1 0>;
 		qcom,gpio-req-tbl-label = "CAMIF_MCLK2",
-								  "CAM_RESET2";
+			"CAM_RESET2";
 
 		qcom,sensor-position = <1>; //FRONT_CAMERA_B
 		qcom,sensor-mode     = <1>; //CAMERA_MODE_2D_B

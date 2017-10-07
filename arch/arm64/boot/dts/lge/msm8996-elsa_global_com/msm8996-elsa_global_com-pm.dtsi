@@ -80,10 +80,10 @@
 };
 
 /{
-        lge_batterydata: qcom,battery-data {
-                #include "../LGE_BL44E1F_LGC_3200mAh.dtsi"
-                #include "../LGE_BL44E1F_Tocad_3200mAh.dtsi"
-        };
+	lge_batterydata: qcom,battery-data {
+		#include "../LGE_BL44E1F_LGC_3200mAh.dtsi"
+		#include "../LGE_BL44E1F_Tocad_3200mAh.dtsi"
+	};
 };
 
 &pmi8994_fg {
@@ -137,16 +137,16 @@
 			 qcom,s3-debounce = <128>;
 			 qcom,s3-src = "kpdpwr-and-resin";
 			 qcom,pon_1 {  /* KPD_PWR_N */
-				  status = "ok";
-				  qcom,support-reset = <0>;
+				status = "ok";
+				qcom,support-reset = <0>;
 			 };
 			 qcom,pon_2 {  /* RESIN_N */
-				  status = "ok";
-				  qcom,support-reset = <0>;
+				status = "ok";
+				qcom,support-reset = <0>;
 			 };
 			 qcom,pon_3 {  /* KPD_PWR_N AND RESIN_N */
-				  status = "ok";
-				  qcom,support-reset = <1>;
+				status = "ok";
+				qcom,support-reset = <1>;
 			 };
 		 };
 	};

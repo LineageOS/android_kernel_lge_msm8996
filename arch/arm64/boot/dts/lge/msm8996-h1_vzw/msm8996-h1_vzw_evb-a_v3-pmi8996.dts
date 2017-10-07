@@ -149,11 +149,11 @@
 };
 
 &pmi8994_charger {
-    lge,lge_otp_enable;
+	lge,lge_otp_enable;
 };
 
 &sdhc_2 {
-    cd-gpios = <&tlmm 95 0x1>; /* 1: Active-Low, 0: Active-High */
+	cd-gpios = <&tlmm 95 0x1>; /* 1: Active-Low, 0: Active-High */
 };
 
 /* set unused gpio to off */

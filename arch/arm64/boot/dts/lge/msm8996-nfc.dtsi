@@ -28,33 +28,33 @@
 };
 
 &tlmm {
-    i2c_8 {
-        i2c_8_active: i2c_8_active {
-            mux {
-                pins = "gpio6", "gpio7";
-                function = "blsp_i2c8";
-            };
+	i2c_8 {
+		i2c_8_active: i2c_8_active {
+			mux {
+				pins = "gpio6", "gpio7";
+				function = "blsp_i2c8";
+			};
 
-            config {
-                pins = "gpio6", "gpio7";
-                drive-strength = <2>;
-                bias-disable;
-            };
-        };
+			config {
+				pins = "gpio6", "gpio7";
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
 
-        i2c_8_sleep: i2c_8_sleep {
-            mux {
-                pins = "gpio6", "gpio7";
-                function = "blsp_i2c8";
-            };
+		i2c_8_sleep: i2c_8_sleep {
+			mux {
+				pins = "gpio6", "gpio7";
+				function = "blsp_i2c8";
+			};
 
-            config {
-                pins = "gpio6", "gpio7";
-                drive-strength = <2>;
-                bias-pull-up;
-            };
-        };
-    };
+			config {
+				pins = "gpio6", "gpio7";
+				drive-strength = <2>;
+				bias-pull-up;
+			};
+		};
+	};
 
 	nfc_mux {
 		nfc_active: nfc_active {

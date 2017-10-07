@@ -11,8 +11,8 @@
  */
 
 &mdss_mdp {
-    dsi_sw49408_dsc_1440_2880_cmd: qcom,mdss_dsi_sw49408_dsc_1440_2880_cmd {
-        qcom,mdss-dsi-panel-name = "SW49408 1440 2880 cmd mode dsc dsi panel";
+	dsi_sw49408_dsc_1440_2880_cmd: qcom,mdss_dsi_sw49408_dsc_1440_2880_cmd {
+		qcom,mdss-dsi-panel-name = "SW49408 1440 2880 cmd mode dsc dsi panel";
 		qcom,mdss-dsi-panel-type = "dsi_cmd_mode";
 		qcom,mdss-dsi-panel-framerate = <60>;
 		qcom,mdss-dsi-virtual-channel-id = <0>;
@@ -55,7 +55,7 @@
 			22 1E 07 08 04 03 04 a0
 			22 1E 07 08 04 03 04 a0
 			22 18 07 08 04 03 04 a0			/* Clk lane */
-			];
+		];
 		qcom,mdss-dsi-reset-sequence = <1 10>, <0 10>, <1 10>;
 		qcom,mdss-dsi-t-clk-post = <0x0D>;
 		qcom,mdss-dsi-t-clk-pre = <0x2C>;
@@ -540,16 +540,16 @@
 };
 &spmi_bus {
 	qcom,pmi8994@3 {
-			labibb: qpnp-labibb-regulator {
-				ibb_regulator: qcom,ibb@dc00 {
-					qcom,qpnp-ibb-init-voltage = <5500000>;
-					qcom,qpnp-ibb-init-lcd-voltage = <5500000>;
-				};
-				lab_regulator: qcom,lab@de00 {
-					qcom,qpnp-lab-init-voltage = <5500000>;
-					qcom,qpnp-lab-init-lcd-voltage = <5500000>;
-				};
+		labibb: qpnp-labibb-regulator {
+			ibb_regulator: qcom,ibb@dc00 {
+				qcom,qpnp-ibb-init-voltage = <5500000>;
+				qcom,qpnp-ibb-init-lcd-voltage = <5500000>;
 			};
+			lab_regulator: qcom,lab@de00 {
+				qcom,qpnp-lab-init-voltage = <5500000>;
+				qcom,qpnp-lab-init-lcd-voltage = <5500000>;
+			};
+		};
 	};
 };
 

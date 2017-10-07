@@ -145,7 +145,7 @@
 };
 
 &pmi8994_charger {
-    lge,lge_otp_enable;
+	lge,lge_otp_enable;
 };
 
 /* set unused gpio to off */

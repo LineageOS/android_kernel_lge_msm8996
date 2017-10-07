@@ -68,9 +68,9 @@
 		/delete-property/ wake-gpio;
 	};
 
-        blsp1_uart6 {
-                status = "ok";
-        };
+	blsp1_uart6 {
+		status = "ok";
+	};
 
 	uei_irrc {
 		compatible = "uei,irrc";

@@ -11,8 +11,8 @@
  */
 
 &pmi8994_charger {
-        qcom,external-typec;
-        qcom,typec-psy-name = "usb_pd";
+	qcom,external-typec;
+	qcom,typec-psy-name = "usb_pd";
 };
 
 &i2c_6 {

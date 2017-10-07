@@ -91,7 +91,7 @@
 	};
 
 	rpm-regulator-ldoa29 {
-		status = "okay";
+	status = "okay";
 		pm8994_l29: regulator-l29 {
 			regulator-min-microvolt = <2800000>;
 			regulator-max-microvolt = <2800000>;
