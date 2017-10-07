@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  */
 
-#include "../../../../../../include/generated/autoconf.h"
+#include <linux/kconfig.h>
 
 #include "msm8996-elsa_global_livedummy-pinctrl.dtsi"
 #include "msm8996-elsa_global_livedummy-misc.dtsi"
