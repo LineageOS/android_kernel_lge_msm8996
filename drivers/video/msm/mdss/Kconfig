@@ -346,3 +346,10 @@ config LGE_DP_UNSUPPORT_NOTIFY
 	---help---
 	This config is for notification to framework unsupported
 	Displayport
+
+config FB_MSM_MDSS_KCAL_CTRL
+	depends on FB_MSM_MDSS
+	bool "MDSS color control"
+	---help---
+	  Enable sysfs for post-processing control of mdss-mdp5 display
+	  controllers in MDSS.
