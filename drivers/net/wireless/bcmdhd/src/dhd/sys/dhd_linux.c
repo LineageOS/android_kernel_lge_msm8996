@@ -11685,7 +11685,7 @@ const void  *data, uint32 len, int *send_evt_bytes)
 {
 	dhd_info_t *dhd = *(dhd_info_t **)netdev_priv(dev);
 
-	return dhd_process_full_gscan_result(&dhd->pub, data, send_evt_byteslen,
+	return dhd_process_full_gscan_result(&dhd->pub, data, len,
 			send_evt_bytes);
 }
 
