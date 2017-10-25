@@ -6453,24 +6453,6 @@ static void set_resume_soc_work(struct work_struct *work)
 #define RSLOW_COMP_C1_OFFSET		0
 #define RSLOW_COMP_C2_OFFSET		2
 #define BATT_PROFILE_OFFSET		0x4C0
-static void get_default_rslow_comp_settings(struct fg_chip *chip)
-{
-	int offset;
-
-	offset = RSLOW_CFG_REG + RSLOW_CFG_OFFSET - BATT_PROFILE_OFFSET;
-	memcpy(&chip->rslow_comp.rslow_cfg, chip->batt_profile + offset, 1);
-
-	offset = RSLOW_THRESH_REG + RSLOW_THRESH_OFFSET - BATT_PROFILE_OFFSET;
-	memcpy(&chip->rslow_comp.rslow_thr, chip->batt_profile + offset, 1);
-
-	offset = TEMP_RS_TO_RSLOW_REG + RS_TO_RSLOW_CHG_OFFSET -
-		BATT_PROFILE_OFFSET;
-	memcpy(&chip->rslow_comp.rs_to_rslow, chip->batt_profile + offset, 2);
-
-	offset = RSLOW_COMP_REG + RSLOW_COMP_C1_OFFSET - BATT_PROFILE_OFFSET;
-	memcpy(&chip->rslow_comp.rslow_comp, chip->batt_profile + offset, 4);
-}
-
 static int populate_system_data(struct fg_chip *chip)
 {
 	u8 buffer[24];
