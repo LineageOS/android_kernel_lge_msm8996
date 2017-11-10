@@ -37,6 +37,8 @@
 #include "pil-q6v5.h"
 #include "pil-msa.h"
 
+#include "dirtysanta_fixup.h"
+
 #define MAX_VDD_MSS_UV		1150000
 #define PROXY_TIMEOUT_MS	10000
 #define MAX_SSR_REASON_LEN	81U
@@ -229,6 +231,8 @@ static int pil_subsys_init(struct modem_data *drv,
 		ret = -ENOMEM;
 		goto err_ramdump;
 	}
+
+	dirtysanta_attach(&pdev->dev);
 
 	return 0;
 
