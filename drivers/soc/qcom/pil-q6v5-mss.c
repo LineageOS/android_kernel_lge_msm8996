@@ -37,6 +37,8 @@
 #include "pil-q6v5.h"
 #include "pil-msa.h"
 
+#include "dirtysanta_fixup.h"
+
 #define MAX_VDD_MSS_UV		1150000
 #define PROXY_TIMEOUT_MS	10000
 #define MAX_SSR_REASON_LEN	130U
@@ -238,6 +240,8 @@ static int pil_subsys_init(struct modem_data *drv,
 		goto err_minidump;
 	}
 
+	dirtysanta_attach(&pdev->dev);
+
 	return 0;
 
 err_minidump:
@@ -420,6 +424,8 @@ static int pil_mss_driver_probe(struct platform_device *pdev)
 static int pil_mss_driver_exit(struct platform_device *pdev)
 {
 	struct modem_data *drv = platform_get_drvdata(pdev);
+
+	dirtysanta_detach(&pdev->dev);
 
 	subsys_unregister(drv->subsys);
 	destroy_ramdump_device(drv->ramdump_dev);
