@@ -905,4 +905,11 @@ source "drivers/soc/qcom/memshare/Kconfig"
 
 source "drivers/soc/qcom/lge/Kconfig"
 
+config DIRTYSANTA_FIXUP_SYSFS
+	boolean "Include sysfs interface for DirtySanta fixup"
+	depends on DIRTYSANTA_FIXUP
+	default y
+	help
+	  Include sysfs interface for DirtySanta modem fixup.
+
 endif # ARCH_MSM
