@@ -872,4 +872,11 @@ config DIRTYSANTA_FIXUP_SIMCOUNT
 	  used.  This should be the correct value, assuming the kernel
 	  command-line is correct or has been corrected somehow.
 
+config DIRTYSANTA_FIXUP_SYSFS
+	boolean "Include sysfs interface for DirtySanta fixup"
+	depends on DIRTYSANTA_FIXUP
+	default y
+	help
+	  Include sysfs interface for DirtySanta modem fixup.
+
 endif # ARCH_MSM
