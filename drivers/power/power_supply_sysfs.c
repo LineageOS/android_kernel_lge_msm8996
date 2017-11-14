@@ -19,6 +19,10 @@
 
 #include "power_supply.h"
 
+#ifdef CONFIG_LGE_PM_PSEUDO_BATTERY
+#include <soc/qcom/lge/lge_pseudo_batt.h>
+#endif
+
 /*
  * This is because the name "current" breaks the device attr macro.
  * The "current" word resolves to "(get_current())" so instead of
@@ -38,16 +42,40 @@
 	.store = power_supply_store_property,				\
 }
 
+#ifdef CONFIG_LGE_PM_PSEUDO_BATTERY
+#define PSEUDO_BATT_ATTR(_name)                                         \
+{                                                                       \
+	.attr = { .name = #_name, .mode = 0644},                        \
+	.show = pseudo_batt_show_property,                              \
+	.store = pseudo_batt_store_property,                            \
+}
+#endif
+
+#ifdef CONFIG_LGE_PM_LLK_MODE
+#define STORE_DEMO_ENABLED_ATTR(_name)				\
+{													\
+	.attr = { .name = #_name, .mode = 0644},		\
+	.show =  power_supply_show_property,			\
+	.store =  power_supply_store_property,			\
+}
+#endif
+
 static struct device_attribute power_supply_attrs[];
 
 static ssize_t power_supply_show_property(struct device *dev,
 					  struct device_attribute *attr,
 					  char *buf) {
-	static const char * const type_text[] = {
-		"Unknown", "Battery", "UPS", "Mains", "USB", "USB_DCP",
-		"USB_CDP", "USB_ACA", "USB_HVDCP", "USB_HVDCP_3", "USB_PD",
-		"Wireless", "USB_FLOAT", "BMS", "Parallel", "Main", "Wipower",
-		"TYPEC", "TYPEC_UFP", "TYPEC_DFP", "TYPEC_PD"
+	static char *type_text[] = {
+		"Unknown", "Battery", "UPS", "Mains", "USB",
+		"USB_DCP", "USB_CDP", "USB_ACA",
+		"USB_HVDCP", "USB_HVDCP_3", "Wireless", "BMS", "USB_Parallel",
+		"Wipower", "TYPEC", "TYPEC_UFP", "TYPEC_DFP",
+#ifdef CONFIG_LGE_USB_TYPE_C
+		"USB_C", "USB_PD",
+#endif
+#ifdef CONFIG_BATTERY_MAX17050
+		"EXT_FG"
+#endif
 	};
 	static char *status_text[] = {
 		"Unknown", "Charging", "Discharging", "Not charging", "Full"
@@ -60,7 +88,7 @@ static ssize_t power_supply_show_property(struct device *dev,
 		"Unknown", "Good", "Overheat", "Dead", "Over voltage",
 		"Unspecified failure", "Cold", "Watchdog timer expire",
 		"Safety timer expire",
-		"Warm", "Cool", "Hot"
+		"Warm", "Cool"
 	};
 	static char *technology_text[] = {
 		"Unknown", "NiMH", "Li-ion", "Li-poly", "LiFe", "NiCd",
@@ -71,17 +99,6 @@ static ssize_t power_supply_show_property(struct device *dev,
 	};
 	static char *scope_text[] = {
 		"Unknown", "System", "Device"
-	};
-	static const char * const typec_text[] = {
-		"Nothing attached", "Sink attached", "Powered cable w/ sink",
-		"Debug Accessory", "Audio Adapter", "Powered cable w/o sink",
-		"Source attached (default current)",
-		"Source attached (medium current)",
-		"Source attached (high current)",
-		"Non compliant",
-	};
-	static const char * const typec_pr_text[] = {
-		"none", "dual power role", "sink", "source"
 	};
 	ssize_t ret = 0;
 	struct power_supply *psy = dev_get_drvdata(dev);
@@ -118,18 +135,6 @@ static ssize_t power_supply_show_property(struct device *dev,
 		return sprintf(buf, "%s\n", type_text[value.intval]);
 	else if (off == POWER_SUPPLY_PROP_SCOPE)
 		return sprintf(buf, "%s\n", scope_text[value.intval]);
-	else if (off == POWER_SUPPLY_PROP_TYPEC_MODE)
-		return snprintf(buf, PAGE_SIZE,
-					"%s\n", typec_text[value.intval]);
-	else if (off == POWER_SUPPLY_PROP_TYPEC_POWER_ROLE)
-		return snprintf(buf, PAGE_SIZE,
-					"%s\n", typec_pr_text[value.intval]);
-	else if (off == POWER_SUPPLY_PROP_DIE_HEALTH)
-		return snprintf(buf, PAGE_SIZE,
-					"%s\n", health_text[value.intval]);
-	else if (off == POWER_SUPPLY_PROP_CONNECTOR_HEALTH)
-		return snprintf(buf, PAGE_SIZE,
-					"%s\n", health_text[value.intval]);
 	else if (off >= POWER_SUPPLY_PROP_MODEL_NAME)
 		return sprintf(buf, "%s\n", value.strval);
 
@@ -161,6 +166,64 @@ static ssize_t power_supply_store_property(struct device *dev,
 
 	return count;
 }
+
+#ifdef CONFIG_LGE_PM_PSEUDO_BATTERY
+static ssize_t pseudo_batt_show_property(struct device *dev,
+		struct device_attribute *attr,
+		char *buf)
+{
+	ssize_t ret;
+	struct power_supply *psy = dev_get_drvdata(dev);
+	const ptrdiff_t off = attr - power_supply_attrs;
+	union power_supply_propval value;
+
+	static char *pseudo_batt[] = {
+		"NORMAL", "PSEUDO",
+	};
+
+	ret = psy->get_property(psy, off, &value);
+
+	if (ret < 0) {
+		if (ret != -ENODEV)
+			dev_err(dev, "failed to report `%s' property\n",
+					attr->attr.name);
+		return ret;
+	}
+	if (off == POWER_SUPPLY_PROP_PSEUDO_BATT)
+		return sprintf(buf, "[%s]\nusage: echo [modei] [ID]"
+				"[therm] [temp] [volt] [cap] [charging]"
+				"> pseudo_batt\n",
+				pseudo_batt[value.intval]);
+
+	return 0;
+}
+
+static ssize_t pseudo_batt_store_property(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	int ret = -EINVAL;
+	struct pseudo_batt_info_type info;
+
+	if (sscanf(buf, "%d %d %d %d %d %d %d",
+				&info.mode, &info.id,
+				&info.therm, &info.temp,
+				&info.volt, &info.capacity,
+				&info.charging) != 7) {
+		if (info.mode == 1) {
+			pr_err("usage : echo [mode] [ID] [therm]"
+					"[temp] [volt] [cap] [charging]"
+					"> pseudo_batt");
+			goto out;
+		}
+	}
+	set_pseudo_batt_info(&info);
+	ret = count;
+
+out:
+	return ret;
+}
+#endif
 
 /* Must be in the same order as POWER_SUPPLY_PROP_* */
 static struct device_attribute power_supply_attrs[] = {
@@ -233,17 +296,14 @@ static struct device_attribute power_supply_attrs[] = {
 	/* Local extensions */
 	POWER_SUPPLY_ATTR(usb_hc),
 	POWER_SUPPLY_ATTR(usb_otg),
+	POWER_SUPPLY_ATTR(charge_enabled),
 	POWER_SUPPLY_ATTR(battery_charging_enabled),
 	POWER_SUPPLY_ATTR(charging_enabled),
-	POWER_SUPPLY_ATTR(step_charging_enabled),
-	POWER_SUPPLY_ATTR(step_charging_step),
-	POWER_SUPPLY_ATTR(pin_enabled),
 	POWER_SUPPLY_ATTR(input_suspend),
 	POWER_SUPPLY_ATTR(input_voltage_regulation),
 	POWER_SUPPLY_ATTR(input_current_max),
 	POWER_SUPPLY_ATTR(input_current_trim),
 	POWER_SUPPLY_ATTR(input_current_settled),
-	POWER_SUPPLY_ATTR(input_voltage_settled),
 	POWER_SUPPLY_ATTR(bypass_vchg_loop_debouncer),
 	POWER_SUPPLY_ATTR(charge_counter_shadow),
 	POWER_SUPPLY_ATTR(hi_power),
@@ -254,6 +314,21 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(resistance),
 	POWER_SUPPLY_ATTR(resistance_capacitive),
 	POWER_SUPPLY_ATTR(resistance_id),
+#ifdef CONFIG_LGE_PM_PSEUDO_BATTERY
+	PSEUDO_BATT_ATTR(pseudo_batt),
+#endif
+#ifdef CONFIG_LGE_PM_USB_CURRENT_MAX_MODE
+	POWER_SUPPLY_ATTR(usb_current_max_mode),
+#endif
+#ifdef CONFIG_LGE_PM_CHARGING_CONTROLLER
+	POWER_SUPPLY_ATTR(tdmb_mode_on),
+#endif
+#ifdef CONFIG_LGE_PM_VZW_REQ
+	POWER_SUPPLY_ATTR(vzw_chg),
+#endif
+#ifdef CONFIG_LGE_PM_LLK_MODE
+	STORE_DEMO_ENABLED_ATTR(store_demo_enabled),
+#endif
 	POWER_SUPPLY_ATTR(resistance_now),
 	POWER_SUPPLY_ATTR(flash_current_max),
 #ifdef CONFIG_LGE_PM_MAXIM_EVP_CONTROL
@@ -266,8 +341,6 @@ static struct device_attribute power_supply_attrs[] = {
 #endif
 	POWER_SUPPLY_ATTR(update_now),
 	POWER_SUPPLY_ATTR(esr_count),
-	POWER_SUPPLY_ATTR(buck_freq),
-	POWER_SUPPLY_ATTR(boost_current),
 	POWER_SUPPLY_ATTR(safety_timer_enabled),
 	POWER_SUPPLY_ATTR(charge_done),
 	POWER_SUPPLY_ATTR(flash_active),
@@ -276,9 +349,6 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(dp_dm),
 	POWER_SUPPLY_ATTR(input_current_limited),
 	POWER_SUPPLY_ATTR(input_current_now),
-	POWER_SUPPLY_ATTR(charge_qnovo_enable),
-	POWER_SUPPLY_ATTR(current_qnovo),
-	POWER_SUPPLY_ATTR(voltage_qnovo),
 	POWER_SUPPLY_ATTR(rerun_aicl),
 	POWER_SUPPLY_ATTR(cycle_count_id),
 	POWER_SUPPLY_ATTR(safety_timer_expired),
@@ -288,42 +358,63 @@ static struct device_attribute power_supply_attrs[] = {
 	POWER_SUPPLY_ATTR(batt_id),
 	POWER_SUPPLY_ATTR(valid_batt_id),
 #endif
+#ifdef CONFIG_LGE_PM_CHARGERLOGO_WAIT_FOR_FG_INIT
+	POWER_SUPPLY_ATTR(first_soc_est_done),
+#endif
+#ifdef CONFIG_LGE_PM_BATTERY_SWAP
+	POWER_SUPPLY_ATTR(manual_swap),
+	POWER_SUPPLY_ATTR(swap_enable),
+	POWER_SUPPLY_ATTR(swap_status),
+#endif
 #ifdef CONFIG_LGE_USB_TYPE_C
 	POWER_SUPPLY_ATTR(dp_alr_mode),
+#endif
+#ifdef CONFIG_LGE_USB_FLOATED_CHARGER_DETECT
+	POWER_SUPPLY_ATTR(apsd_return_need),
+	POWER_SUPPLY_ATTR(incompatible_chg),
+#endif
+#ifdef CONFIG_LGE_PM_CHARGING_CONTROLLER
+	POWER_SUPPLY_ATTR(usb_non_drive),
+#endif
+#ifdef CONFIG_LGE_PM
+	POWER_SUPPLY_ATTR(fastchg),
+#endif
+#if defined(CONFIG_BATTERY_MAX17050) || defined(CONFIG_LGE_PM_FG_AGE)
+	POWER_SUPPLY_ATTR(battery_condition),
+	POWER_SUPPLY_ATTR(battery_age),
+#endif
+	POWER_SUPPLY_ATTR(current_capability),
+	POWER_SUPPLY_ATTR(typec_mode),
+#ifdef CONFIG_LGE_APPS_PORT_FRIENDS
+	POWER_SUPPLY_ATTR(friends_detect),
+	POWER_SUPPLY_ATTR(friends_vpwr_sw),
+	POWER_SUPPLY_ATTR(friends_type),
+#ifdef CONFIG_LGE_APPS_PORT_FRIENDS_ONE_WIRE
+	POWER_SUPPLY_ATTR(friends_command),
+#endif
+	POWER_SUPPLY_ATTR(friends_usb_enable),
 #endif
 #if defined(CONFIG_LGE_USB_FLOATED_CHARGER_DETECT) && defined(CONFIG_LGE_USB_TYPE_C)
 	POWER_SUPPLY_ATTR(ctype_charger),
 #endif
-	POWER_SUPPLY_ATTR(current_capability),
-	POWER_SUPPLY_ATTR(typec_mode),
+#if defined(CONFIG_LGE_USB_ANX7688_OVP) || defined(CONFIG_LGE_USB_TUSB422)
+	POWER_SUPPLY_ATTR(ctype_rp),
+#endif
 	POWER_SUPPLY_ATTR(allow_hvdcp3),
 	POWER_SUPPLY_ATTR(max_pulse_allowed),
-	POWER_SUPPLY_ATTR(enable_aicl),
 	POWER_SUPPLY_ATTR(soc_reporting_ready),
 	POWER_SUPPLY_ATTR(ignore_false_negative_isense),
 	POWER_SUPPLY_ATTR(enable_jeita_detection),
+#ifdef CONFIG_LGE_PM_CHARGING_SCENARIO
+	POWER_SUPPLY_ATTR(jeita_charging_enabled),
+#endif
+#ifdef CONFIG_LGE_PM_RESTORE_BATT_INFO
 	POWER_SUPPLY_ATTR(battery_info),
 	POWER_SUPPLY_ATTR(battery_info_id),
-	POWER_SUPPLY_ATTR(typec_cc_orientation),
-	POWER_SUPPLY_ATTR(typec_power_role),
-	POWER_SUPPLY_ATTR(pd_allowed),
-	POWER_SUPPLY_ATTR(pd_active),
-	POWER_SUPPLY_ATTR(pd_in_hard_reset),
-	POWER_SUPPLY_ATTR(pd_current_max),
-	POWER_SUPPLY_ATTR(pd_usb_suspend_supported),
-	POWER_SUPPLY_ATTR(charger_temp),
-	POWER_SUPPLY_ATTR(charger_temp_max),
-	POWER_SUPPLY_ATTR(parallel_disable),
-	POWER_SUPPLY_ATTR(pe_start),
-	POWER_SUPPLY_ATTR(set_ship_mode),
-	POWER_SUPPLY_ATTR(debug_battery),
-	POWER_SUPPLY_ATTR(fcc_delta),
-	POWER_SUPPLY_ATTR(icl_reduction),
-	POWER_SUPPLY_ATTR(parallel_mode),
-	POWER_SUPPLY_ATTR(ctm_current_max),
-	POWER_SUPPLY_ATTR(die_health),
-	POWER_SUPPLY_ATTR(connector_health),
-	POWER_SUPPLY_ATTR(hw_current_max),
+#endif
+#ifdef CONFIG_LGE_PM_CYCLE_BASED_CHG_VOLTAGE
+	POWER_SUPPLY_ATTR(battery_cycle),
+#endif
 	/* Local extensions of type int64_t */
 	POWER_SUPPLY_ATTR(charge_counter_ext),
 	/* Properties of type `const char *' */

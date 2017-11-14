@@ -21,6 +21,9 @@
 #include <linux/thermal.h>
 #include "power_supply.h"
 
+#ifdef CONFIG_LGE_PM_LGE_POWER_CORE
+#include <soc/qcom/lge/power/lge_power_class.h>
+#endif
 /* exported for the APM Power driver, APM emulation */
 struct class *power_supply_class;
 EXPORT_SYMBOL_GPL(power_supply_class);
@@ -286,6 +289,67 @@ int power_supply_set_dp_dm(struct power_supply *psy, int value)
 }
 EXPORT_SYMBOL(power_supply_set_dp_dm);
 
+#ifdef CONFIG_LGE_PM_LGE_POWER_CORE
+static bool __lge_power_is_supplied_by(struct power_supply *supplier,
+					 struct lge_power *supply)
+{
+	int i;
+
+	if (!supply->supplied_from && !supplier->lge_power_supplied_to)
+		return false;
+
+	/* Support both supplied_to and supplied_from modes */
+	if (supply->supplied_from) {
+		if (!supplier->name)
+			return false;
+		for (i = 0; i < supply->num_supplies; i++)
+			if (!strcmp(supplier->name, supply->supplied_from[i]))
+				return true;
+	}
+	if (supplier->lge_power_supplied_to){
+		if (!supply->name)
+			return false;
+		for (i = 0; i < supplier->num_lge_power_supplicants; i++)
+			if (!strcmp(supplier->lge_power_supplied_to[i], supply->name))
+				return true;
+	}
+
+	return false;
+}
+
+static int
+__power_supply_changed_for_lge_power_work(struct device *dev, void *data)
+{
+	struct power_supply *psy = (struct power_supply *)data;
+	struct lge_power *pst = dev_get_drvdata(dev);
+	if (__lge_power_is_supplied_by(psy, pst)) {
+		if (pst->external_power_changed)
+			pst->external_power_changed(pst);
+#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_UEVENT
+		if (pst->external_power_changed_with_psy)
+			pst->external_power_changed_with_psy(pst, psy);
+#endif
+	}
+
+	return 0;
+}
+
+int power_supply_do_i_have_property(struct power_supply *psy,
+					enum power_supply_property psp)
+{
+	int idx = 0;
+	for (idx=0;idx < psy->num_properties;idx++)
+	{
+		if (psp == psy->properties[idx])
+		{
+			return 1;
+		}
+	}
+	return 0;
+}
+EXPORT_SYMBOL_GPL(power_supply_do_i_have_property);
+#endif
+
 static int __power_supply_changed_work(struct device *dev, void *data)
 {
 	struct power_supply *psy = data;
@@ -298,6 +362,20 @@ static int __power_supply_changed_work(struct device *dev, void *data)
 
 	return 0;
 }
+
+#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_UEVENT
+static int init_power_supply_property_data(struct power_supply *psy)
+{
+	int ret = 0;
+
+	psy->property_data = devm_kzalloc(psy->dev,
+			psy->num_properties*sizeof(enum power_supply_property),
+			GFP_KERNEL);
+	psy->update_uevent = 1;
+	ret = 1;
+	return ret;
+}
+#endif
 
 static void power_supply_changed_work(struct work_struct *work)
 {
@@ -318,12 +396,25 @@ static void power_supply_changed_work(struct work_struct *work)
 	if (likely(psy->changed)) {
 		psy->changed = false;
 		spin_unlock_irqrestore(&psy->changed_lock, flags);
+#ifdef CONFIG_LGE_PM_LGE_POWER_CORE
+		class_for_each_device(lge_power_class, NULL, psy,
+				      __power_supply_changed_for_lge_power_work);
+#endif
 		class_for_each_device(power_supply_class, NULL, psy,
 				      __power_supply_changed_work);
 		power_supply_update_leds(psy);
 		atomic_notifier_call_chain(&power_supply_notifier,
 				PSY_EVENT_PROP_CHANGED, psy);
+#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_UEVENT
+		if (psy->update_uevent == 1) {
+			kobject_uevent(&psy->dev->kobj, KOBJ_CHANGE);
+			pr_debug("%s UEVENT UPDATE!!!!\n", psy->name);
+		} else {
+			pr_debug("%s UEVENT skip!!!!\n", psy->name);
+		}
+#else
 		kobject_uevent(&psy->dev->kobj, KOBJ_CHANGE);
+#endif
 		spin_lock_irqsave(&psy->changed_lock, flags);
 	}
 
@@ -544,9 +635,7 @@ EXPORT_SYMBOL_GPL(power_supply_is_system_supplied);
 
 int power_supply_set_battery_charged(struct power_supply *psy)
 {
-	if (atomic_read(&psy->use_cnt) >= 0 &&
-			psy->type == POWER_SUPPLY_TYPE_BATTERY &&
-			psy->set_charged) {
+	if (psy->type == POWER_SUPPLY_TYPE_BATTERY && psy->set_charged) {
 		psy->set_charged(psy);
 		return 0;
 	}
@@ -597,47 +686,6 @@ struct power_supply *power_supply_get_by_phandle(struct device_node *np,
 }
 EXPORT_SYMBOL_GPL(power_supply_get_by_phandle);
 #endif /* CONFIG_OF */
-
-int power_supply_get_property(struct power_supply *psy,
-				enum power_supply_property psp,
-				union power_supply_propval *val)
-{
-	if (atomic_read(&psy->use_cnt) <= 0)
-		return -ENODEV;
-
-	return psy->get_property(psy, psp, val);
-}
-EXPORT_SYMBOL_GPL(power_supply_get_property);
-
-int power_supply_set_property(struct power_supply *psy,
-				enum power_supply_property psp,
-				const union power_supply_propval *val)
-{
-	if (atomic_read(&psy->use_cnt) <= 0 || !psy->set_property)
-		return -ENODEV;
-
-	return psy->set_property(psy, psp, val);
-}
-EXPORT_SYMBOL_GPL(power_supply_set_property);
-
-int power_supply_property_is_writeable(struct power_supply *psy,
-				enum power_supply_property psp)
-{
-	if (atomic_read(&psy->use_cnt) <= 0 || !psy->property_is_writeable)
-		return -ENODEV;
-
-	return psy->property_is_writeable(psy, psp);
-}
-EXPORT_SYMBOL_GPL(power_supply_property_is_writeable);
-
-void power_supply_external_power_changed(struct power_supply *psy)
-{
-	if (atomic_read(&psy->use_cnt) <= 0 || !psy->external_power_changed)
-		return;
-
-	psy->external_power_changed(psy);
-}
-EXPORT_SYMBOL_GPL(power_supply_external_power_changed);
 
 int power_supply_powers(struct power_supply *psy, struct device *dev)
 {
@@ -826,7 +874,6 @@ static int __power_supply_register(struct device *parent,
 	dev->release = power_supply_dev_release;
 	dev_set_drvdata(dev, psy);
 	psy->dev = dev;
-	atomic_inc(&psy->use_cnt);
 
 	rc = dev_set_name(dev, "%s", psy->name);
 	if (rc)
@@ -861,6 +908,10 @@ static int __power_supply_register(struct device *parent,
 	if (rc)
 		goto create_triggers_failed;
 
+#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_UEVENT
+	rc = init_power_supply_property_data(psy);
+#endif
+
 	power_supply_changed(psy);
 
 	return 0;
@@ -893,7 +944,6 @@ EXPORT_SYMBOL_GPL(power_supply_register_no_ws);
 
 void power_supply_unregister(struct power_supply *psy)
 {
-	WARN_ON(atomic_dec_return(&psy->use_cnt));
 	cancel_work_sync(&psy->changed_work);
 	sysfs_remove_link(&psy->dev->kobj, "powers");
 	power_supply_remove_triggers(psy);
@@ -903,12 +953,6 @@ void power_supply_unregister(struct power_supply *psy)
 	device_unregister(psy->dev);
 }
 EXPORT_SYMBOL_GPL(power_supply_unregister);
-
-void *power_supply_get_drvdata(struct power_supply *psy)
-{
-	return psy->drv_data;
-}
-EXPORT_SYMBOL_GPL(power_supply_get_drvdata);
 
 static int __init power_supply_class_init(void)
 {

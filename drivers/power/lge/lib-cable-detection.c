@@ -318,10 +318,10 @@ int cable_detection_decision_chg_current(
         }
 
         switch (usb_c_type) {
-            case POWER_SUPPLY_TYPE_TYPEC :
+            case POWER_SUPPLY_TYPE_CTYPE :
                 set_chg_current(CABLE_TYPE_TYPEC);
                 break;
-            case POWER_SUPPLY_TYPE_TYPEC_PD :
+            case POWER_SUPPLY_TYPE_CTYPE_PD :
                 set_chg_current(CABLE_TYPE_TYPEC_PD);
                 break;
             default :
