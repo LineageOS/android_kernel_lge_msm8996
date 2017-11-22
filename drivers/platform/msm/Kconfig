@@ -215,42 +215,6 @@ config MSM_EXT_DISPLAY
 	  External Display driver was added to support the communication
 	  between external display driver and its couterparts.
 
-config DIRTYSANTA_FIXUP
-	boolean "Do fixups for problems caused by DirtySanta bootloader"
-	help
-	  Workaround problems cause by the unlocked LGE V20 "DirtySanta"
-	  bootloader.
-	default n
-
-config DIRTYSANTA_FIXUP_DEVICENAME
-	string "Device name to use for VENDOR0 smem area"
-	depends on DIRTYSANTA_FIXUP
-	default ""
-	help
-	  This string is used to modify the VENDOR0 structure of the smem area.
-	  This identifies the device name, and therefore what type of modem
-	  chip is expected to be present on the device.  Known values include
-	  "LG-H990", "LG-H990ds", and "LG-H990N".  Evidence exists the values
-	  "LG-H990AR", "LG-H990K", "LG-H990T", "LG-H990TR", "LG-H990V", and
-	  "LG-H998" may be planned for use.
-
-	  If unset the value from the kernel parameter "model.name" will be
-	  used.  This should be the correct value, assuming the kernel
-	  command-line is correct or has been corrected somehow.
-
-config DIRTYSANTA_FIXUP_SIMCOUNT
-	int "Indicate SIM count for VENDOR0 smem area"
-	depends on DIRTYSANTA_FIXUP
-	default "0"
-	help
-	  This value is used to modify the VENDOR0 structure of the smem area.
-	  This specifies how many SIM slots should be present on the modem of
-	  the device.  Generally 1 or 2.
-
-	  If unset the value from the kernel parameter "lge.sim_num" will be
-	  used.  This should be the correct value, assuming the kernel
-	  command-line is correct or has been corrected somehow.
-
 source "drivers/platform/msm/qcn/Kconfig"
 
 endmenu
