@@ -1,0 +1,38 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "34e563f6_956052da",
+        "filename": "drivers/soc/qcom/dirtysanta_fixup.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 197,
+      "author": {
+        "id": 18177
+      },
+      "writtenOn": "2017-12-18T00:30:09Z",
+      "side": 1,
+      "message": "Further testing indicates there is some sort of problem on this line.  This line results in \"Unhandled fault: alignment fault\".\n\nProblem is, how the heck does that happen?  memcpy() is supposed to handle unaligned accesses (as long as they are non-overlapping).  Even then buf is generally page-aligned and ptr-\u003elg_model_name is likely to have at least 4-byte alignment, yet the panic still occurs.",
+      "revId": "467b8a6848fcc606f25a01f8f256c05563713874",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "75ce6677_d093f447",
+        "filename": "drivers/soc/qcom/dirtysanta_fixup.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 201,
+      "author": {
+        "id": 18177
+      },
+      "writtenOn": "2017-12-18T00:30:09Z",
+      "side": 1,
+      "message": "One can legitimately criticize this interface.  Indications are \"lg_model_name\" may well be restricted to printable characters (even then, spaces and most punctuation are likely excluded).\n\nIn that case one can argue for stripping control characters (notably \u0027\\n\u0027) before saving this.  I\u0027m kind of wondering whether to cater to users who want `echo LG-H990 \u003e dirtysanta_lg_model_name` to work.",
+      "revId": "467b8a6848fcc606f25a01f8f256c05563713874",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
