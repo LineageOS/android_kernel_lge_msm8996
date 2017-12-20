@@ -302,8 +302,13 @@ void rect_copy_mdp_to_mdss(struct mdp_rect *mdp, struct mdss_rect *mdss)
  */
 int mdss_rect_cmp(struct mdss_rect *rect1, struct mdss_rect *rect2)
 {
+#ifdef CONFIG_LGE_DISABLE_SECOND_SCREEN
+	/* Skip the vertical checking due to the 160px offset */
+	return rect1->x == rect2->x && rect1->w == rect2->w;
+#else
 	return rect1->x == rect2->x && rect1->y == rect2->y &&
 	       rect1->w == rect2->w && rect1->h == rect2->h;
+#endif
 }
 
 /*
