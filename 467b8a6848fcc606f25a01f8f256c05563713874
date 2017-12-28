@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "739fbfab_e05442e3",
+        "filename": "drivers/soc/qcom/dirtysanta_fixup.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 197,
+      "author": {
+        "id": 18177
+      },
+      "writtenOn": "2017-12-28T06:13:17Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "34e563f6_956052da",
+      "revId": "467b8a6848fcc606f25a01f8f256c05563713874",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "75ce6677_d093f447",
         "filename": "drivers/soc/qcom/dirtysanta_fixup.c",
         "patchSetId": 5
@@ -30,6 +48,24 @@
       "writtenOn": "2017-12-18T00:30:09Z",
       "side": 1,
       "message": "One can legitimately criticize this interface.  Indications are \"lg_model_name\" may well be restricted to printable characters (even then, spaces and most punctuation are likely excluded).\n\nIn that case one can argue for stripping control characters (notably \u0027\\n\u0027) before saving this.  I\u0027m kind of wondering whether to cater to users who want `echo LG-H990 \u003e dirtysanta_lg_model_name` to work.",
+      "revId": "467b8a6848fcc606f25a01f8f256c05563713874",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "0c490a79_11471115",
+        "filename": "drivers/soc/qcom/dirtysanta_fixup.c",
+        "patchSetId": 5
+      },
+      "lineNbr": 201,
+      "author": {
+        "id": 18177
+      },
+      "writtenOn": "2017-12-28T06:13:17Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "75ce6677_d093f447",
       "revId": "467b8a6848fcc606f25a01f8f256c05563713874",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
