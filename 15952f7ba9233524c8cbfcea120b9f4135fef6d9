@@ -1,0 +1,55 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "bd677dd2_df811f97",
+        "filename": "drivers/soc/qcom/dirtysanta_fixup.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 18177
+      },
+      "writtenOn": "2017-12-28T06:13:17Z",
+      "side": 1,
+      "message": "The SysFS access to these values can now be completely compiled out.  This might be desirable for someone who wanted the leanest possible kernel (bit silly, but I allow for the possibility).",
+      "revId": "15952f7ba9233524c8cbfcea120b9f4135fef6d9",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "c538c425_17bb9395",
+        "filename": "drivers/soc/qcom/dirtysanta_fixup.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 218,
+      "author": {
+        "id": 18177
+      },
+      "writtenOn": "2017-12-28T06:13:17Z",
+      "side": 1,
+      "message": "This works around people doing `echo LG-H990 \u003e dirtysanta_lg_model_name`.\n\nThe problem is these include an extra \u0027\\n\u0027.  This is really more meant as an interface for a special program providing the value to the kernel, but working about users attacking seems like a Good Idea(tm).\n\n`echo` behaves appropriately for writing into a pipe.  A zero return means the program should retry the write.  As such a bit more severe indication of failure is needed, otherwise we end up with an infinite loop.\n\nThe other option is to return the full length, telling userspace we took the whole value, but that isn\u0027t actually true.\n\nI\u0027ll take other suggestions, but this seems best right now.",
+      "revId": "15952f7ba9233524c8cbfcea120b9f4135fef6d9",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "114f3451_e7be9409",
+        "filename": "drivers/soc/qcom/dirtysanta_fixup.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 227,
+      "author": {
+        "id": 18177
+      },
+      "writtenOn": "2017-12-28T06:13:17Z",
+      "side": 1,
+      "message": "This is how this problem fell out.  Apparently there is a fairly urgent need for an updated GCC for LineageOS.  GCC 4.9 screws up memcpy().  Luckily the kernel captures these screwed up accesses and quietly pastes over them, but this is still rather Bad(tm).  The cost may potentially be rather large...\n\nThen I find out the kernel build scripts aren\u0027t okay with minor warnings provided by #warning.  Yuck.",
+      "revId": "15952f7ba9233524c8cbfcea120b9f4135fef6d9",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
