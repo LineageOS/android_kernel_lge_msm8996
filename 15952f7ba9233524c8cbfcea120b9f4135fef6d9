@@ -19,6 +19,24 @@
     },
     {
       "key": {
+        "uuid": "72622730_8e081fb8",
+        "filename": "drivers/soc/qcom/dirtysanta_fixup.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 48,
+      "author": {
+        "id": 18177
+      },
+      "writtenOn": "2017-12-28T06:20:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "bd677dd2_df811f97",
+      "revId": "15952f7ba9233524c8cbfcea120b9f4135fef6d9",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
         "uuid": "c538c425_17bb9395",
         "filename": "drivers/soc/qcom/dirtysanta_fixup.c",
         "patchSetId": 7
@@ -47,6 +65,24 @@
       "writtenOn": "2017-12-28T06:13:17Z",
       "side": 1,
       "message": "This is how this problem fell out.  Apparently there is a fairly urgent need for an updated GCC for LineageOS.  GCC 4.9 screws up memcpy().  Luckily the kernel captures these screwed up accesses and quietly pastes over them, but this is still rather Bad(tm).  The cost may potentially be rather large...\n\nThen I find out the kernel build scripts aren\u0027t okay with minor warnings provided by #warning.  Yuck.",
+      "revId": "15952f7ba9233524c8cbfcea120b9f4135fef6d9",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "26d70954_52787dab",
+        "filename": "drivers/soc/qcom/dirtysanta_fixup.c",
+        "patchSetId": 7
+      },
+      "lineNbr": 227,
+      "author": {
+        "id": 18177
+      },
+      "writtenOn": "2017-12-28T06:20:47Z",
+      "side": 1,
+      "message": "Done",
+      "parentUuid": "114f3451_e7be9409",
       "revId": "15952f7ba9233524c8cbfcea120b9f4135fef6d9",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
