@@ -22,6 +22,7 @@
 #include "msm8996-lucye_spr_us-fingerprint.dtsi"
 #include "msm8996-lucye_spr_us-usb.dtsi"
 #include "msm8996-lucye_spr_us-pkm.dtsi"
+#include "../msm8996-lineage.dtsi"
 
 / {
 	reserved-memory {

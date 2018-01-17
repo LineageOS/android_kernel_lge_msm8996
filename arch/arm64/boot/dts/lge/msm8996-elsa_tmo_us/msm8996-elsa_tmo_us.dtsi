@@ -23,6 +23,7 @@
 #include "msm8996-elsa_tmo_us-fingerprint.dtsi"
 #include "msm8996-elsa_tmo_us-usb.dtsi"
 #include "msm8996-elsa_tmo_us-pkm.dtsi"
+#include "../msm8996-lineage.dtsi"
 
 / {
 	reserved-memory {

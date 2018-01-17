@@ -23,6 +23,7 @@
 #include "msm8996-elsa_vzw-fingerprint.dtsi"
 #include "msm8996-elsa_vzw-usb.dtsi"
 #include "msm8996-elsa_vzw-pkm.dtsi"
+#include "../msm8996-lineage.dtsi"
 
 / {
 	reserved-memory {

@@ -23,6 +23,7 @@
 #include "msm8996-h1_global_esa-hdmi.dtsi"
 #include "msm8996-h1_global_esa-fingerprint.dtsi"
 #include "msm8996-h1_global_esa-usb.dtsi"
+#include "../msm8996-lineage.dtsi"
 
 / {
 	reserved-memory {

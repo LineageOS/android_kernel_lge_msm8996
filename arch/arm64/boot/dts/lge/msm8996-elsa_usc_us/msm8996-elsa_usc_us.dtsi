@@ -22,6 +22,7 @@
 #include "msm8996-elsa_usc_us-hdmi.dtsi"
 #include "msm8996-elsa_usc_us-fingerprint.dtsi"
 #include "msm8996-elsa_usc_us-usb.dtsi"
+#include "../msm8996-lineage.dtsi"
 
 / {
 	reserved-memory {

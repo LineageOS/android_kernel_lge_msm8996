@@ -22,6 +22,7 @@
 #include "msm8996-h1_att-hdmi.dtsi"
 #include "msm8996-h1_att-fingerprint.dtsi"
 #include "msm8996-h1_att-usb.dtsi"
+#include "../msm8996-lineage.dtsi"
 
 / {
 	reserved-memory {

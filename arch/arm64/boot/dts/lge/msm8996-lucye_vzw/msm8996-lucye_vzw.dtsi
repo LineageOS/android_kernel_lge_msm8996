@@ -22,6 +22,7 @@
 #include "msm8996-lucye_vzw-fingerprint.dtsi"
 #include "msm8996-lucye_vzw-usb.dtsi"
 #include "msm8996-lucye_vzw-pkm.dtsi"
+#include "../msm8996-lineage.dtsi"
 
 / {
 	reserved-memory {

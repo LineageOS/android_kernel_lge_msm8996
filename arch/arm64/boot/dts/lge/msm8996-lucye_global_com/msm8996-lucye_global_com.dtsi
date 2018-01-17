@@ -21,6 +21,7 @@
 #include "msm8996-lucye_global_com-hdmi.dtsi"
 #include "msm8996-lucye_global_com-fingerprint.dtsi"
 #include "msm8996-lucye_global_com-usb.dtsi"
+#include "../msm8996-lineage.dtsi"
 
 / {
 	reserved-memory {
