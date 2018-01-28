@@ -78,7 +78,7 @@ void core_tmr_release_req(struct se_tmr_req *tmr)
 	kfree(tmr);
 }
 
-static void core_tmr_handle_tas_abort(struct se_cmd *cmd, int tas)
+static int core_tmr_handle_tas_abort(struct se_cmd *cmd, int tas)
 {
 	unsigned long flags;
 	bool remove = true, send_tas;
@@ -94,7 +94,7 @@ static void core_tmr_handle_tas_abort(struct se_cmd *cmd, int tas)
 		transport_send_task_abort(cmd);
 	}
 
-	transport_cmd_finish_abort(cmd, remove);
+	return transport_cmd_finish_abort(cmd, remove);
 }
 
 static int target_check_cdb_and_preempt(struct list_head *list,
@@ -136,6 +136,15 @@ static bool __target_check_io_state(struct se_cmd *se_cmd,
 			se_cmd->se_tfo->get_task_tag(se_cmd));
 		spin_unlock(&se_cmd->t_state_lock);
 		return false;
+	}
+	if (se_cmd->transport_state & CMD_T_PRE_EXECUTE) {
+		if (se_cmd->scsi_status) {
+			pr_debug("Attempted to abort io tag: %u early failure"
+				 " status: 0x%02x\n", se_cmd->se_tfo->get_task_tag(se_cmd),
+				 se_cmd->scsi_status);
+			spin_unlock(&se_cmd->t_state_lock);
+			return false;
+		}
 	}
 	if (sess->sess_tearing_down || se_cmd->cmd_wait_set) {
 		pr_debug("Attempted to abort io tag: %u already shutdown,"
@@ -190,8 +199,8 @@ void core_tmr_abort_task(
 		cancel_work_sync(&se_cmd->work);
 		transport_wait_for_tasks(se_cmd);
 
-		transport_cmd_finish_abort(se_cmd, true);
-		target_put_sess_cmd(se_cmd);
+		if (!transport_cmd_finish_abort(se_cmd, true))
+			target_put_sess_cmd(se_cmd);
 
 		printk("ABORT_TASK: Sending TMR_FUNCTION_COMPLETE for"
 				" ref_tag: %d\n", ref_tag);
@@ -291,8 +300,8 @@ static void core_tmr_drain_tmr_list(
 		cancel_work_sync(&cmd->work);
 		transport_wait_for_tasks(cmd);
 
-		transport_cmd_finish_abort(cmd, 1);
-		target_put_sess_cmd(cmd);
+		if (!transport_cmd_finish_abort(cmd, 1))
+			target_put_sess_cmd(cmd);
 	}
 }
 
@@ -390,8 +399,8 @@ static void core_tmr_drain_state_list(
 		cancel_work_sync(&cmd->work);
 		transport_wait_for_tasks(cmd);
 
-		core_tmr_handle_tas_abort(cmd, tas);
-		target_put_sess_cmd(cmd);
+		if (!core_tmr_handle_tas_abort(cmd, tas))
+			target_put_sess_cmd(cmd);
 	}
 }
 

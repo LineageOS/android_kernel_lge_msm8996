@@ -44,7 +44,7 @@ EXPORT_SYMBOL_GPL(ipv6_proxy_select_ident);
 
 int ip6_find_1stfragopt(struct sk_buff *skb, u8 **nexthdr)
 {
-	u16 offset = sizeof(struct ipv6hdr);
+	unsigned int offset = sizeof(struct ipv6hdr);
 	unsigned int packet_len = skb_tail_pointer(skb) -
 		skb_network_header(skb);
 	int found_rhdr = 0;
@@ -78,6 +78,8 @@ int ip6_find_1stfragopt(struct sk_buff *skb, u8 **nexthdr)
 		exthdr = (struct ipv6_opt_hdr *)(skb_network_header(skb) +
 						 offset);
 		offset += ipv6_optlen(exthdr);
+		if (offset > IPV6_MAXPLEN)
+			return -EINVAL;
 		*nexthdr = &exthdr->nexthdr;
 	}
 
