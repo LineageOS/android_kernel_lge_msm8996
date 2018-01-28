@@ -26,6 +26,8 @@
 #include <linux/usb/gadget.h>
 #include <linux/usb/composite.h>
 
+#include <soc/qcom/lge/board_lge.h>
+
 #undef dev_dbg
 #define dev_dbg dev_info
 

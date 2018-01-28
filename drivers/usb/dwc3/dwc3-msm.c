@@ -710,8 +710,10 @@ static void dwc3_cable_adc_work(struct work_struct *w)
 	if(lge_pm_get_cable_type() == CABLE_910K &&
 		(boot_mode == LGE_BOOT_MODE_QEM_56K ||
 		boot_mode == LGE_BOOT_MODE_QEM_130K) &&
-		(lge_smem_cable_type() != 11 || !firstboot_check) &&
-		!lge_get_laf_mode()
+		(lge_smem_cable_type() != 11 || !firstboot_check)
+#ifdef CONFIG_LGE_USB_G_LAF
+		&&!lge_get_laf_mode()
+#endif
 #if defined(CONFIG_SLIMPORT_COMMON) || defined(CONFIG_LGE_DP_ANX7688)
 		&&!slimport_is_connected()
 #endif

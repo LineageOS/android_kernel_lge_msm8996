@@ -273,7 +273,6 @@ void lge_uart_console_set_ready(unsigned int ready)
 
 #endif /* CONFIG_LGE_EARJACK_DEBUGGER */
 
-#ifdef CONFIG_LGE_USB_FACTORY
 /* get boot mode information from cmdline.
  * If any boot mode is not specified,
  * boot mode is normal type.
@@ -336,6 +335,7 @@ int lge_get_factory_boot(void)
 	return res;
 }
 
+#ifdef CONFIG_LGE_USB_FACTORY
 int get_factory_cable(void)
 {
 	int res = 0;

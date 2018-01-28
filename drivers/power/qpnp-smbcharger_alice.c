@@ -5608,9 +5608,11 @@ static int smbchg_change_usb_supply_type(struct smbchg_chip *chip,
 		current_limit_ma = DEFAULT_CDP_MA;
 #ifdef CONFIG_LGE_PM_CHARGING_CONTROLLER
 	else if (type == POWER_SUPPLY_TYPE_USB_HVDCP) {
+#ifdef CONFIG_LGE_PM_MAXIM_EVP_CONTROL
 		if (chip->is_evp_ta)
 			current_limit_ma = smbchg_default_dcp_icl_ma;
 		else
+#endif
 			current_limit_ma = smbchg_default_hvdcp_icl_ma;
 	}
 #else

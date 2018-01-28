@@ -91,7 +91,7 @@ struct pre_selfd_platform_data {
 	int (*get_values) (int *r, int *g, int *b);
 };
 #endif
-#ifdef CONFIG_LGE_USB_FACTORY
+
 enum lge_boot_mode_type {
 	LGE_BOOT_MODE_NORMAL = 0,
 	LGE_BOOT_MODE_CHARGER,
@@ -106,8 +106,11 @@ enum lge_boot_mode_type {
 };
 
 enum lge_boot_mode_type lge_get_boot_mode(void);
-int lge_get_android_dlcomplete(void);
+
 int lge_get_factory_boot(void);
+
+#ifdef CONFIG_LGE_USB_FACTORY
+int lge_get_android_dlcomplete(void);
 int get_lge_frst_status(void);
 #endif
 

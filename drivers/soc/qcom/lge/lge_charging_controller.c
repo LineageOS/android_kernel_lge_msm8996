@@ -368,12 +368,14 @@ static bool lgcc_check_llk_mode(int usb_present)
 		return false;
 	}
 
+#ifdef CONFIG_LGE_PM_CHARGERLOGO_WAIT_FOR_FG_INIT
 	bms_psy->get_property(bms_psy,
 			POWER_SUPPLY_PROP_FIRST_SOC_EST_DONE, &pval);
 	if (pval.intval == false) {
 		pr_err("first soc is not estimated\n");
 		return false;
 	}
+#endif
 
 	rc = the_controller->batt_psy->get_property(the_controller->batt_psy,
 			POWER_SUPPLY_PROP_CAPACITY, &pval);
