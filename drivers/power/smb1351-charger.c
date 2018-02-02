@@ -532,7 +532,9 @@ struct smb1351_charger {
 	int			slave_fcc_ma_before_esr;
 	int			workaround_flags;
 
+#ifdef CONFIG_MACH_MSM8996_LUCYE
 	struct mutex		parallel_config_lock;
+#endif
 	int			parallel_pin_polarity_setting;
 	bool			is_slave;
 	bool			use_external_fg;
@@ -2602,18 +2604,22 @@ static int smb1351_parallel_set_property(struct power_supply *psy,
 				pr_err("%suspend charger failed\n",
 						val->intval ? "Un-s" : "S");
 		}
-#ifdef CONFIG_LGE_PM_PARALLEL_CHARGING
+#if defined(CONFIG_LGE_PM_PARALLEL_CHARGING) && defined(CONFIG_MACH_MSM8996_LUCYE)
 		else
 			chip->usb_suspended_status &= ~USER;
 #endif
 		break;
 	case POWER_SUPPLY_PROP_PRESENT:
+#ifdef CONFIG_MACH_MSM8996_LUCYE
 		mutex_lock(&chip->parallel_config_lock);
+#endif
 		rc = smb1351_parallel_set_chg_present(chip, val->intval);
 		if (rc)
 			pr_err("Set charger %spresent failed\n",
 					val->intval ? "" : "un-");
+#ifdef CONFIG_MACH_MSM8996_LUCYE
 		mutex_unlock(&chip->parallel_config_lock);
+#endif
 		break;
 	case POWER_SUPPLY_PROP_CONSTANT_CHARGE_CURRENT_MAX:
 		if (chip->parallel_charger_present) {
@@ -3053,11 +3059,13 @@ static void smb1351_chg_remove_work(struct work_struct *work)
 	if (!(reg & IRQ_SOURCE_DET_BIT)) {
 		pr_debug("chg removed\n");
 		chip->chg_present = false;
+#ifdef CONFIG_MACH_MSM8996_LUCYE
 		/* clear parallel slave PRESENT */
 		if (parallel_psy && chip->parallel.slave_detected) {
 			pr_debug("set parallel charger un-present!\n");
 			power_supply_set_present(parallel_psy, false);
 		}
+#endif
 		power_supply_set_supply_type(chip->usb_psy,
 						POWER_SUPPLY_TYPE_UNKNOWN);
 		power_supply_set_present(chip->usb_psy,
@@ -3066,6 +3074,13 @@ static void smb1351_chg_remove_work(struct work_struct *work)
 		power_supply_set_dp_dm(chip->usb_psy,
 				POWER_SUPPLY_DP_DM_DPR_DMR);
 		chip->apsd_rerun = false;
+#ifndef CONFIG_MACH_MSM8996_LUCYE
+		/* clear parallel slave PRESENT */
+		if (parallel_psy && chip->parallel.slave_detected) {
+			pr_debug("set parallel charger un-present!\n");
+			power_supply_set_present(parallel_psy, false);
+		}
+#endif
 	} else if (!chip->chg_remove_work_scheduled) {
 		chip->chg_remove_work_scheduled = true;
 		goto reschedule;
@@ -3115,15 +3130,22 @@ static int smb1351_usbin_uv_handler(struct smb1351_charger *chip, u8 status)
 			}
 		} else {
 			chip->chg_present = false;
+#ifdef CONFIG_MACH_MSM8996_LUCYE
 			/* clear parallel slave PRESENT */
 			if (parallel_psy && chip->parallel.slave_detected)
 				power_supply_set_present(parallel_psy, false);
+#endif
 			power_supply_set_supply_type(chip->usb_psy,
 						POWER_SUPPLY_TYPE_UNKNOWN);
 			power_supply_set_present(chip->usb_psy,
 						chip->chg_present);
 			pr_debug("updating usb_psy present=%d\n",
 							chip->chg_present);
+#ifndef CONFIG_MACH_MSM8996_LUCYE
+			/* clear parallel slave RESENT */
+			if (parallel_psy && chip->parallel.slave_detected)
+				power_supply_set_present(parallel_psy, false);
+#endif
 		}
 		return 0;
 	}
@@ -3167,12 +3189,19 @@ static int smb1351_usbin_ov_handler(struct smb1351_charger *chip, u8 status)
 	if (status != 0) {
 		chip->chg_present = false;
 		chip->usbin_ov = true;
+#ifdef CONFIG_MACH_MSM8996_LUCYE
 		/* clear parallel slave PRESENT */
 		if (parallel_psy && chip->parallel.slave_detected)
 			power_supply_set_present(parallel_psy, false);
+#endif
 		power_supply_set_supply_type(chip->usb_psy,
 						POWER_SUPPLY_TYPE_UNKNOWN);
 		power_supply_set_present(chip->usb_psy, chip->chg_present);
+#ifndef CONFIG_MACH_MSM8996_LUCYE
+		/* clear parallel slave PRESENT */
+		if (parallel_psy && chip->parallel.slave_detected)
+			power_supply_set_present(parallel_psy, false);
+#endif
 	} else {
 		chip->usbin_ov = false;
 		if (reg & IRQ_USBIN_UV_BIT)
@@ -3921,13 +3950,19 @@ static void smb1351_external_power_changed(struct power_supply *psy)
 {
 	struct smb1351_charger *chip = container_of(psy,
 				struct smb1351_charger, batt_psy);
+#ifdef CONFIG_MACH_MSM8996_LUCYE
 	struct power_supply *parallel_psy =
 				smb1351_get_parallel_slave(chip);
+#endif
 	union power_supply_propval prop = {0,};
-	int rc, online = 0, slave_present = 0;
+	int rc, online = 0;
+#ifdef CONFIG_MACH_MSM8996_LUCYE
+	int slave_present = 0;
+#endif
 
 	battery_soc_changed(chip);
 
+#ifdef CONFIG_MACH_MSM8996_LUCYE
 	if (parallel_psy) {
 		parallel_psy->get_property(parallel_psy,
 				POWER_SUPPLY_PROP_PRESENT, &prop);
@@ -3939,6 +3974,7 @@ static void smb1351_external_power_changed(struct power_supply *psy)
 			return;
 		}
 	}
+#endif
 
 	rc = chip->usb_psy->get_property(chip->usb_psy,
 				POWER_SUPPLY_PROP_ONLINE, &prop);
@@ -4709,7 +4745,9 @@ static int smb1351_parallel_slave_probe(struct i2c_client *client,
 				EN_BY_PIN_HIGH_ENABLE : EN_BY_PIN_LOW_ENABLE;
 
 	i2c_set_clientdata(client, chip);
+#ifdef CONFIG_MACH_MSM8996_LUCYE
 	mutex_init(&chip->parallel_config_lock);
+#endif
 
 	chip->parallel_psy.name		= "usb-parallel";
 	chip->parallel_psy.type		= POWER_SUPPLY_TYPE_USB_PARALLEL;
@@ -4742,7 +4780,9 @@ fail_register_psy:
 	wakeup_source_trash(&chip->smb1351_ws.source);
 	mutex_destroy(&chip->irq_complete);
 	mutex_destroy(&chip->fcc_lock);
+#ifdef CONFIG_MACH_MSM8996_LUCYE
 	mutex_destroy(&chip->parallel_config_lock);
+#endif
 	return rc;
 }
 
@@ -4766,7 +4806,9 @@ static int smb1351_charger_remove(struct i2c_client *client)
 	mutex_destroy(&chip->irq_complete);
 	mutex_destroy(&chip->fcc_lock);
 	if (is_parallel_slave(client)) {
+#ifdef CONFIG_MACH_MSM8996_LUCYE
 		mutex_destroy(&chip->parallel_config_lock);
+#endif
 		mutex_destroy(&chip->parallel.lock);
 	}
 	debugfs_remove_recursive(chip->debug_root);
