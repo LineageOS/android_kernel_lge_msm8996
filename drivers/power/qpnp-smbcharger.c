@@ -566,10 +566,12 @@ enum enable_voters {
 	 */
 	FAKE_BATTERY_EN_VOTER,
 #ifdef CONFIG_LGE_PM_CHARGING_SCENARIO
+#ifdef CONFIG_MACH_MSM8996_LUCYE
         /*
          * In the DISCHG state of OTP, suspend charge path
          */
 	JEITA_EN_VOTER,
+#endif
 #endif
 #ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_VZW_REQ
 	VZW_REQ_USB_EN_VOTER,
@@ -8246,7 +8248,9 @@ static enum power_supply_property smbchg_battery_properties[] = {
 #endif
 	POWER_SUPPLY_PROP_MAX_PULSE_ALLOWED,
 #ifdef CONFIG_LGE_PM_CHARGING_SCENARIO
+#ifdef CONFIG_MACH_MSM8996_LUCYE
 	POWER_SUPPLY_PROP_JEITA_CHARGING_ENABLED,
+#endif
 #endif
 #ifdef CONFIG_LGE_PM_WATERPROOF_PROTECTION
 	POWER_SUPPLY_PROP_INPUT_SUSPEND,
@@ -8387,12 +8391,14 @@ static int smbchg_battery_set_property(struct power_supply *psy,
 		break;
 #endif
 #ifdef CONFIG_LGE_PM_CHARGING_SCENARIO
+#ifdef CONFIG_MACH_MSM8996_LUCYE
         case POWER_SUPPLY_PROP_JEITA_CHARGING_ENABLED:
                 rc = vote(chip->usb_suspend_votable, JEITA_EN_VOTER,
                                 !val->intval, 0);
                 rc = vote(chip->dc_suspend_votable, JEITA_EN_VOTER,
                                 !val->intval, 0);
                 break;
+#endif
 #endif
 #ifdef CONFIG_LGE_PM_WATERPROOF_PROTECTION
 	case POWER_SUPPLY_PROP_INPUT_SUSPEND :
@@ -8429,7 +8435,9 @@ static int smbchg_battery_is_writeable(struct power_supply *psy,
 #endif
 	case POWER_SUPPLY_PROP_ALLOW_HVDCP3:
 #ifdef CONFIG_LGE_PM_CHARGING_SCENARIO
+#ifdef CONFIG_MACH_MSM8996_LUCYE
 	case POWER_SUPPLY_PROP_JEITA_CHARGING_ENABLED:
+#endif
 #endif
 #ifdef CONFIG_LGE_PM_WATERPROOF_PROTECTION
 	case POWER_SUPPLY_PROP_INPUT_SUSPEND:
@@ -8593,10 +8601,12 @@ static int smbchg_battery_get_property(struct power_supply *psy,
 		val->intval = chip->max_pulse_allowed;
 		break;
 #ifdef CONFIG_LGE_PM_CHARGING_SCENARIO
+#ifdef CONFIG_MACH_MSM8996_LUCYE
 	case POWER_SUPPLY_PROP_JEITA_CHARGING_ENABLED:
 		val->intval = (!get_client_vote(chip->usb_suspend_votable, JEITA_EN_VOTER) &&
 			!get_client_vote(chip->dc_suspend_votable, JEITA_EN_VOTER));
 		break;
+#endif
 #endif
 #ifdef CONFIG_LGE_PM_WATERPROOF_PROTECTION
 	case POWER_SUPPLY_PROP_INPUT_SUSPEND :
