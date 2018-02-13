@@ -22,14 +22,41 @@
 #ifdef DEBUG_LCS
 /* For fake battery temp' debug */
 #ifdef DEBUG_LCS_DUMMY_TEMP
+#ifdef CONFIG_MACH_MSM8996_H1
+static int dummy_temp = 25;
+#else
 static int dummy_temp = 250;
+#endif
 static int time_order = 1;
 #endif
 #endif
 
+#ifdef CONFIG_MACH_MSM8996_H1
+#define CHG_MAXIDX	7
+#else
 #define CHG_MAXIDX	9
+#endif
 
 static struct batt_temp_table chg_temp_table[CHG_MAXIDX] = {
+#ifdef CONFIG_MACH_MSM8996_H1
+#ifdef CONFIG_LGE_PM_OTP_SCENARIO_FOR_SPRINT
+	{INT_MIN,        -6,    CHG_BATTEMP_BL_UT},
+	{     -5,        -3,    CHG_BATTEMP_M5_M3},
+	{     -2,        39,    CHG_BATTEMP_M2_39},
+	{     40,        42,    CHG_BATTEMP_40_42},
+	{     43,        50,    CHG_BATTEMP_43_50},
+	{     51,        52,    CHG_BATTEMP_51_OT},
+	{     53,   INT_MAX,    CHG_BATTEMP_AB_OT},
+#else
+	{INT_MIN,       -11,    CHG_BATTEMP_BL_UT},
+	{    -10,        -5,    CHG_BATTEMP_M10_M5},
+	{     -4,        39,    CHG_BATTEMP_M4_39},
+	{     40,        42,    CHG_BATTEMP_40_42},
+	{     43,        51,    CHG_BATTEMP_43_51},
+	{     52,        54,    CHG_BATTEMP_52_OT},
+	{     55,   INT_MAX,    CHG_BATTEMP_AB_OT},
+#endif
+#else
 #ifdef CONFIG_LGE_PM_OTP_SCENARIO_FOR_SPRINT
 	{INT_MIN,           0,    CHG_BATTEMP_BL_UT},
 	{       1,         30,    CHG_BATTEMP_0_3},
@@ -51,12 +78,14 @@ static struct batt_temp_table chg_temp_table[CHG_MAXIDX] = {
 	{     521,        550,    CHG_BATTEMP_52_OT},
 	{     551,   INT_MAX,    CHG_BATTEMP_AB_OT},
 #endif
+#endif
 };
 
 // TEMP < 0 or TEMP > 55, Extreme High or Low temp range.
 #define IS_TEMP_EXTREME_H_OR_L(battemp_st)	\
 	((battemp_st) == CHG_BATTEMP_AB_OT || (battemp_st) == CHG_BATTEMP_BL_UT) ? 1 : 0
 
+#ifndef CONFIG_MACH_MSM8996_H1
 // TEMP < 43, DISCHG to Normal (Under Warm Temp) range.
 #ifdef CONFIG_LGE_PM_OTP_SCENARIO_FOR_SPRINT
 #define IS_TEMP_UNDER_WARM(battemp_st)	\
@@ -101,12 +130,15 @@ static struct batt_temp_table chg_temp_table[CHG_MAXIDX] = {
 #define IS_TEMP_DECCUR_RANGE(battemp_st)	\
 	((battemp_st) > CHG_BATTEMP_0_3 && (battemp_st) < CHG_BATTEMP_52_OT) ? 1 : 0
 #endif
+#endif
 
 static enum lge_charging_states charging_state;
 static enum lge_states_changes states_change;
 static int change_charger;
 static int pseudo_chg_ui;
+#ifndef CONFIG_MACH_MSM8996_H1
 static int max_chg_voltage;
+#endif
 
 #ifdef CONFIG_LGE_THERMALE_CHG_CONTROL
 static int last_thermal_current;
@@ -116,14 +148,24 @@ static int last_thermal_current;
 #define MAX_BATT_TEMP_CHECK_COUNT 2
 static int adjust_batt_temp(int batt_temp)
 {
+#ifdef CONFIG_MACH_MSM8996_H1
+	static int prev_batt_temp = 25;
+#else
 	static int prev_batt_temp = 250;
+#endif
 	static int count = 1;
 
 	pr_info("before adjust batt_temp = %d\n", batt_temp);
 
+#ifdef CONFIG_MACH_MSM8996_H1
+	if (batt_temp >= 40 && batt_temp <= 50
+		&& batt_temp - prev_batt_temp > -2
+		&& batt_temp - prev_batt_temp < 3) {
+#else
 	if (batt_temp >= 400 && batt_temp <= 500
 		&& batt_temp - prev_batt_temp > -20
 		&& batt_temp - prev_batt_temp < 30) {
+#endif
 
 		if (batt_temp == prev_batt_temp)
 			count++;
@@ -179,9 +221,24 @@ determine_lge_charging_state(enum lge_battemp_states battemp_st, int batt_volt)
 			states_change = STS_CHE_NORMAL_TO_STPCHG;
 			next_state = CHG_BATT_STPCHG_STATE;
 			pseudo_chg_ui = 0;
+#ifdef CONFIG_MACH_MSM8996_H1
+#ifdef CONFIG_LGE_PM_OTP_SCENARIO_FOR_SPRINT
+		} else if ( battemp_st >= CHG_BATTEMP_43_50 ) {
+#else
+		} else if ( battemp_st >= CHG_BATTEMP_43_51 ) {
+#endif
+			if (batt_volt >= DC_IUSB_VOLTUV) {
+				states_change = STS_CHE_NORMAL_TO_STPCHG;
+				next_state = CHG_BATT_STPCHG_STATE;
+			} else {
+				states_change = STS_CHE_NORMAL_TO_DECCUR;
+				next_state = CHG_BATT_DECCUR_STATE;
+			}
+#else
 		} else if(IS_TEMP_WARM(battemp_st) || IS_TEMP_COOL(battemp_st)) {
 				states_change = STS_CHE_NORMAL_TO_DECCUR;
 				next_state = CHG_BATT_DECCUR_STATE;
+#endif
 				pseudo_chg_ui = 1;
 		} else {
 			pseudo_chg_ui = 1;
@@ -192,17 +249,59 @@ determine_lge_charging_state(enum lge_battemp_states battemp_st, int batt_volt)
 			states_change = STS_CHE_DECCUR_TO_STPCHG;
 			next_state = CHG_BATT_STPCHG_STATE;
 			pseudo_chg_ui = 0;
+#ifdef CONFIG_MACH_MSM8996_H1
+#ifdef CONFIG_LGE_PM_OTP_SCENARIO_FOR_SPRINT
+		} else if (battemp_st < CHG_BATTEMP_40_42) {
+#else
+		} else if (battemp_st < CHG_BATTEMP_40_42) {
+#endif
+			states_change = STS_CHE_DECCUR_TO_NORMAL;
+			next_state = CHG_BATT_NORMAL_STATE;
+			pseudo_chg_ui = 1;
+		} else if (batt_volt > DC_IUSB_VOLTUV) {
+			states_change = STS_CHE_DECCUR_TO_STPCHG;
+			next_state = CHG_BATT_STPCHG_STATE;
+			pseudo_chg_ui = 1;
+#else
 		} else if (IS_TEMP_NORMAL(battemp_st)) {
 			states_change = STS_CHE_DECCUR_TO_NORMAL;
 			next_state = CHG_BATT_NORMAL_STATE;
 			pseudo_chg_ui = 1;
 		}  else {
 			pseudo_chg_ui = 1;
+#endif
 		}
 		break;
 	case CHG_BATT_WARNIG_STATE:
 		break;
 	case CHG_BATT_STPCHG_STATE:
+#ifdef CONFIG_MACH_MSM8996_H1
+		if (IS_TEMP_EXTREME_H_OR_L(battemp_st)) {
+			pseudo_chg_ui = 0;
+		}
+#ifdef CONFIG_LGE_PM_OTP_SCENARIO_FOR_SPRINT
+		else if (battemp_st == CHG_BATTEMP_M2_39 ||
+			battemp_st == CHG_BATTEMP_40_42) {
+#else
+		else if (battemp_st == CHG_BATTEMP_M4_39) {
+#endif
+			states_change = STS_CHE_STPCHG_TO_NORMAL;
+			pseudo_chg_ui = 1;
+			next_state = CHG_BATT_NORMAL_STATE;
+		}
+#ifdef CONFIG_LGE_PM_OTP_SCENARIO_FOR_SPRINT
+		else if (battemp_st == CHG_BATTEMP_43_50) {
+#else
+		else if (battemp_st == CHG_BATTEMP_40_42 ||
+			battemp_st ==  CHG_BATTEMP_43_51) {
+#endif
+			if (batt_volt < DC_IUSB_VOLTUV) {
+				states_change = STS_CHE_STPCHG_TO_DECCUR;
+				next_state = CHG_BATT_DECCUR_STATE;
+			}
+			pseudo_chg_ui = 1;
+		}
+#else
 		if (IS_TEMP_DECCUR_RANGE(battemp_st)) {
 			if (IS_TEMP_NORMAL(battemp_st)) {
 				states_change = STS_CHE_STPCHG_TO_NORMAL;
@@ -216,6 +315,7 @@ determine_lge_charging_state(enum lge_battemp_states battemp_st, int batt_volt)
 		} else {
 			pseudo_chg_ui = 0;
 		}
+#endif
 		break;
 	default:
 		pr_err("unknown charging status. %d\n", charging_state);
@@ -235,12 +335,22 @@ void lge_monitor_batt_temp(struct charging_info req, struct charging_rsp *res)
 #ifdef DEBUG_LCS
 #ifdef DEBUG_LCS_DUMMY_TEMP
 	if (time_order == 1) {
+#ifdef CONFIG_MACH_MSM8996_H1
+		dummy_temp++;
+		if (dummy_temp > 65)
+#else
 		dummy_temp = dummy_temp + 10;
 		if (dummy_temp > 650)
+#endif
 			time_order = 0;
 	} else {
+#ifdef CONFIG_MACH_MSM8996_H1
+		dummy_temp--;
+		if (dummy_temp < -15)
+#else
 		dummy_temp = dummy_temp - 10;
 		if (dummy_temp < -150)
+#endif
 			time_order = 1;
 	}
 
@@ -261,8 +371,10 @@ void lge_monitor_batt_temp(struct charging_info req, struct charging_rsp *res)
 
 	pre_state = charging_state;
 
+#ifndef CONFIG_MACH_MSM8996_H1
 	if (req.max_chg_volt != DECCUR_FLOAT_VOLTAGE)
 		max_chg_voltage = req.max_chg_volt;
+#endif
 	battemp_state =
 		determine_batt_temp_state(req.batt_temp);
 	charging_state =
@@ -271,9 +383,11 @@ void lge_monitor_batt_temp(struct charging_info req, struct charging_rsp *res)
 	res->state = charging_state;
 	res->change_lvl = states_change;
 
+#ifndef CONFIG_MACH_MSM8996_H1
 	res->float_voltage =
 		(charging_state == CHG_BATT_DECCUR_STATE
 			&& IS_TEMP_WARM(battemp_state)) ? DECCUR_FLOAT_VOLTAGE : max_chg_voltage;
+#endif
 
 	if (charging_state == CHG_BATT_STPCHG_STATE){
 			res->disable_chg = true;
@@ -287,10 +401,18 @@ void lge_monitor_batt_temp(struct charging_info req, struct charging_rsp *res)
 		else
 			res->chg_current = req.chg_current_ma;
 	} else if (charging_state == CHG_BATT_DECCUR_STATE) {
+#ifdef CONFIG_MACH_MSM8996_H1
+		if (req.chg_current_te <= DC_IUSB_CURRENT)
+#else
 		if (req.chg_current_te <= (req.chg_current_ma / DECCUR_CHG_CURRENT_DIVIDER))
+#endif
 			res->chg_current = req.chg_current_te;
 		else
+#ifdef CONFIG_MACH_MSM8996_H1
+			res->chg_current = DC_IUSB_CURRENT;
+#else
 			res->chg_current = req.chg_current_ma / DECCUR_CHG_CURRENT_DIVIDER;
+#endif
 	} else {
 		res->chg_current = DC_CURRENT_DEF;
 	}
@@ -326,25 +448,38 @@ void lge_monitor_batt_temp(struct charging_info req, struct charging_rsp *res)
 	pr_err("DLCS : res -> change_lvl   = %d\n", res->change_lvl);
 	pr_err("DLCS : res -> force_update = %d\n", res->force_update ? 1 : 0);
 	pr_err("DLCS : res -> chg_disable  = %d\n", res->disable_chg ? 1 : 0);
+#ifndef CONFIG_MACH_MSM8996_H1
 	pr_err("DLCS : res -> float_voltage   = %d\n", res->float_voltage);
+#endif
 	pr_err("DLCS : res -> chg_current   = %d\n", res->chg_current);
 	pr_err("DLCS : res -> btm_state    = %d\n", res->btm_state);
 	pr_err("DLCS : res -> is_charger   = %d\n", req.is_charger);
 	pr_err("DLCS : res -> pseudo_chg_ui= %d\n", res->pseudo_chg_ui);
 #ifdef CONFIG_LGE_THERMALE_CHG_CONTROL
 	pr_err("DLCS : req -> chg_current_thermal  = %d\n", req.chg_current_te);
+#ifndef CONFIG_MACH_MSM8996_H1
 	pr_err("DLCS : req -> chg_current_max  = %d\n", req.chg_current_ma);
+#endif
 #endif
 	pr_err("DLCS ==============================================\n");
 #endif
 
 #ifdef CONFIG_LGE_THERMALE_CHG_CONTROL
+#ifdef CONFIG_MACH_MSM8996_H1
+	pr_err("LGE charging scenario : state %d -> %d(%d-%d),"\
+		" temp=%d, volt=%d, BTM=%d,"\
+		" charger=%d, cur_set=%d/%d, chg_cur = %d\n",
+#else
 	pr_err("LGE charging scenario : state %d -> %d(%d-%d),"\
 		" temp=%d, volt=%d, fl_volt=%d BTM=%d,"\
 		" charger=%d, cur_set=%d/%d, chg_cur = %d\n",
+#endif
 		pre_state, charging_state, res->change_lvl,
 		res->force_update ? 1 : 0,
-		req.batt_temp, req.batt_volt / 1000, res->float_voltage,
+		req.batt_temp, req.batt_volt / 1000,
+#ifndef CONFIG_MACH_MSM8996_H1
+		res->float_voltage,
+#endif
 		res->btm_state, req.is_charger,
 		req.chg_current_te, res->chg_current, req.current_now);
 #else
@@ -357,5 +492,3 @@ void lge_monitor_batt_temp(struct charging_info req, struct charging_rsp *res)
 		res->btm_state, req.is_charger, req.current_now);
 #endif
 }
-
-
