@@ -14,7 +14,7 @@
 #include "../dsi-panel-lgd-lg4945-dualmipi-qhd-cmd.dtsi"
 #include "../dsi-panel-lgd-lg4946-dualmipi-qhd-cmd.dtsi"
 #include "../dsi-panel-lgd-td4302-dualmipi-qhd-cmd.dtsi"
-#include "../dsi-panel-sw49407-dsc-qhd-cmd_old.dtsi"
+#include "../dsi-panel-sw49407-dsc-qhd-cmd-us_carrier.dtsi"
 #include "../dsi-panel-sw49407-dsc-qhd-video.dtsi"
 
 #include "../msm8992-panel-backlight-lm3697.dtsi"
