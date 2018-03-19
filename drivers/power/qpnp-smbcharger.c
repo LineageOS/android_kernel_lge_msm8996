@@ -6583,7 +6583,7 @@ static void smbchg_external_power_changed(struct power_supply *psy)
 		pr_err("Couldn't update USB PSY ICL vote rc=%d\n", rc);
 
 skip_current_for_non_sdp:
-#if defined(CONFIG_LGE_USB_ANX7688_OVP) && defined(CONFIG_LGE_USB_TYPE_C)
+#if defined(CONFIG_LGE_PM_LGE_POWER_CLASS_SIMPLE) && defined(CONFIG_LGE_USB_ANX7688_OVP) && defined(CONFIG_LGE_USB_TYPE_C)
 		if (!chip->typec_psy) {
 			chip->typec_psy = power_supply_get_by_name("usb_pd");
 			if (IS_ERR(chip->typec_psy))
