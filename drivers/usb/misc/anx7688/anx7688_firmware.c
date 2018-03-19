@@ -26,6 +26,11 @@
 
 int anx7688_fw_delay_ms = 4;
 
+// ADDED UNTIL CABLE WORKING
+#ifndef NO_INIT_CABLE
+int NO_INIT_CABLE = 0;
+#endif
+
 static bool is_factory_cable(void)
 {
 	unsigned int cable_info;
