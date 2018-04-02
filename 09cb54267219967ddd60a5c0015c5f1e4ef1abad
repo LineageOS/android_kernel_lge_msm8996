@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "c7b5acd6_233af60c",
+        "filename": "sound/soc/msm/msm8996.c",
+        "patchSetId": 12
+      },
+      "lineNbr": 4007,
+      "author": {
+        "id": 3962
+      },
+      "writtenOn": "2018-04-02T02:33:12Z",
+      "side": 1,
+      "message": "This makes me barf every time... Really need to bring back my dynamic handling for this",
+      "range": {
+        "startLine": 4004,
+        "startChar": 0,
+        "endLine": 4007,
+        "endChar": 5
+      },
+      "revId": "09cb54267219967ddd60a5c0015c5f1e4ef1abad",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": true
+    }
+  ]
+}
