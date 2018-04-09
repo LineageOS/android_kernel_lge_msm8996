@@ -31,6 +31,7 @@ static const char *conf_filename;
 static int conf_lineno, conf_warnings, conf_unsaved;
 
 const char conf_defname[] = "arch/$ARCH/defconfig";
+const char conf_path[] = "arch/$ARCH/configs";
 
 static void conf_warning(const char *fmt, ...)
 {
@@ -247,8 +248,15 @@ e_out:
 	*lineptr = line;
 	return -1;
 }
-
-int conf_read_simple(const char *name, int def)
+#define MAX_DEPTH (10)
+//prevent infinity in Cross-reference
+static int include_depth = MAX_DEPTH;
+static int conf_read_simple_recur(const char *name, int def, bool recursive);
+int conf_read_simple(const char *name, int def){
+	include_depth = MAX_DEPTH;
+	return conf_read_simple_recur(name, def, false);
+}
+static int conf_read_simple_recur(const char *name, int def, bool recursive)
 {
 	FILE *in = NULL;
 	char   *line = NULL;
@@ -289,28 +297,30 @@ int conf_read_simple(const char *name, int def)
 load:
 	conf_filename = name;
 	conf_lineno = 0;
-	conf_warnings = 0;
-	conf_unsaved = 0;
-
+	if (recursive == false ) {
+		conf_warnings = 0;
+		conf_unsaved = 0;
+	}
 	def_flags = SYMBOL_DEF << def;
-	for_all_symbols(i, sym) {
-		sym->flags |= SYMBOL_CHANGED;
-		sym->flags &= ~(def_flags|SYMBOL_VALID);
-		if (sym_is_choice(sym))
-			sym->flags |= def_flags;
-		switch (sym->type) {
-		case S_INT:
-		case S_HEX:
-		case S_STRING:
-			if (sym->def[def].val)
-				free(sym->def[def].val);
-			/* fall through */
-		default:
-			sym->def[def].val = NULL;
-			sym->def[def].tri = no;
+	if (recursive == false ) {
+		for_all_symbols(i, sym) {
+			sym->flags |= SYMBOL_CHANGED;
+			sym->flags &= ~(def_flags|SYMBOL_VALID);
+			if (sym_is_choice(sym))
+				sym->flags |= def_flags;
+			switch (sym->type) {
+			case S_INT:
+			case S_HEX:
+			case S_STRING:
+				if (sym->def[def].val)
+					free(sym->def[def].val);
+				/* fall through */
+			default:
+				sym->def[def].val = NULL;
+				sym->def[def].tri = no;
+			}
 		}
 	}
-
 	while (compat_getline(&line, &line_asize, in) != -1) {
 		conf_lineno++;
 		sym = NULL;
@@ -373,6 +383,34 @@ load:
 			}
 			if (conf_set_sym_val(sym, def, def_flags, p))
 				continue;
+		} else if (strncmp(line, "include", 7) == 0) {
+			char includename[PATH_MAX+1];
+			int lineno = conf_lineno ;
+			p = strchr(line + strlen("include"), ' ');
+
+			if (!p)
+				continue;
+			*p++ = 0;
+			p2 = strchr(p, '\n');
+			if (p2) {
+				*p2-- = 0;
+				if (*p2 == '\r')
+					*p2 = 0;
+			}
+			sprintf(includename, "%s/%s", conf_expand_value(conf_path), p);
+			conf_message("%s:%d include file %s",conf_filename,conf_lineno, includename);
+			if(include_depth-- <= 0) {
+				conf_message("Can't include file over %d",MAX_DEPTH);
+				exit (1);
+			}
+			if (conf_read_simple_recur(includename,def,true)){
+				conf_message("Can't find include file %s",includename);
+				exit (1);
+			}
+			include_depth++;
+			conf_filename = name;
+			conf_lineno = lineno;
+			continue;
 		} else {
 			if (line[0] != '\r' && line[0] != '\n')
 				conf_warning("unexpected data");
