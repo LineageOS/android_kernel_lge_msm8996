@@ -14,7 +14,13 @@
 	firmware: firmware {
 		android {
 			fstab {
+#ifdef CONFIG_LGE_MSM8996_ENABLE_VENDOR
+				vendor {
+                                        dev = "/dev/block/platform/soc/624000.ufshc/by-name/vendor";
+                                };
+#else
 				/delete-node/ vendor;
+#endif
 				system {
 					dev = "/dev/block/platform/soc/624000.ufshc/by-name/system";
 				};

@@ -26,4 +26,10 @@ config LGE_DIRTY_ABOOT_FIXUP
 	  Fixes screen tearing/static on V20 devices rooted with engineering
 	  bootloader. H918 and officially unlocked US996 doesn't need this.
 
+config LGE_MSM8996_ENABLE_VENDOR
+	bool "Enables using the vendor partition"
+	depends on MACH_LGE
+	help
+	  Enables the /vendor partition in device-tree fstab
+
 endmenu
