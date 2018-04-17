@@ -187,7 +187,12 @@ static int acm_port_disconnect(struct f_acm *acm)
 /* notification endpoint uses smallish and infrequent fixed-size messages */
 
 #define GS_NOTIFY_INTERVAL_MS		32
+#ifdef CONFIG_LGE_USB_G_ANDROID
+#define GS_NOTIFY_MAXPACKET		16	/* For LG host driver */
+#define GS_DESC_NOTIFY_MAXPACKET	64	/* For acm_hs_notify_desc */
+#else
 #define GS_NOTIFY_MAXPACKET		10	/* notification + 2 bytes */
+#endif
 
 /* interface and class descriptors: */
 
@@ -303,7 +308,11 @@ static struct usb_endpoint_descriptor acm_hs_notify_desc = {
 	.bDescriptorType =	USB_DT_ENDPOINT,
 	.bEndpointAddress =	USB_DIR_IN,
 	.bmAttributes =		USB_ENDPOINT_XFER_INT,
+#ifdef CONFIG_LGE_USB_G_ANDROID
+	.wMaxPacketSize =	cpu_to_le16(GS_DESC_NOTIFY_MAXPACKET),
+#else
 	.wMaxPacketSize =	cpu_to_le16(GS_NOTIFY_MAXPACKET),
+#endif
 	.bInterval =		USB_MS_TO_HS_INTERVAL(GS_NOTIFY_INTERVAL_MS),
 };
 
@@ -490,9 +499,15 @@ static int acm_setup(struct usb_function *f, const struct usb_ctrlrequest *ctrl)
 		 * that bit, we should return to that no-flow state.
 		 */
 		acm->port_handshake_bits = w_value;
+#ifdef CONFIG_LGE_USB_G_ANDROID
+		pr_info("%s: USB_CDC_REQ_SET_CONTROL_LINE_STATE: DTR:%d RTS:%d\n",
+				__func__, w_value & ACM_CTRL_DTR ? 1 : 0,
+				w_value & ACM_CTRL_RTS ? 1 : 0);
+#else
 		pr_debug("%s: USB_CDC_REQ_SET_CONTROL_LINE_STATE: DTR:%d RST:%d\n",
 				__func__, w_value & ACM_CTRL_DTR ? 1 : 0,
 				w_value & ACM_CTRL_RTS ? 1 : 0);
+#endif
 		if (acm->port.notify_modem) {
 			unsigned port_num =
 				gacm_ports[acm->port_num].client_port_num;
@@ -607,15 +622,26 @@ static int acm_cdc_notify(struct f_acm *acm, u8 type, u16 value,
 	struct usb_ep			*ep = acm->notify;
 	struct usb_request		*req;
 	struct usb_cdc_notification	*notify;
+#ifndef CONFIG_LGE_USB_G_ANDROID
 	const unsigned			len = sizeof(*notify) + length;
+#endif
 	void				*buf;
 	int				status;
 
+#ifdef CONFIG_LGE_USB_G_ANDROID
+	unsigned char noti_buf[GS_NOTIFY_MAXPACKET];
+
+	memset(noti_buf, 0, GS_NOTIFY_MAXPACKET);
+#endif
 	req = acm->notify_req;
 	acm->notify_req = NULL;
 	acm->pending = false;
 
+#ifdef CONFIG_LGE_USB_G_ANDROID
+	req->length = GS_NOTIFY_MAXPACKET;
+#else
 	req->length = len;
+#endif
 	notify = req->buf;
 	buf = notify + 1;
 
@@ -625,7 +651,12 @@ static int acm_cdc_notify(struct f_acm *acm, u8 type, u16 value,
 	notify->wValue = cpu_to_le16(value);
 	notify->wIndex = cpu_to_le16(acm->ctrl_id);
 	notify->wLength = cpu_to_le16(length);
+#ifdef CONFIG_LGE_USB_G_ANDROID
+	memcpy(noti_buf, data, length);
+	memcpy(buf, noti_buf, GS_NOTIFY_MAXPACKET);
+#else
 	memcpy(buf, data, length);
+#endif
 
 	/* ep_queue() can complete immediately if it fills the fifo... */
 	spin_unlock(&acm->lock);
@@ -689,6 +720,59 @@ static void acm_connect(struct gserial *port)
 	acm_notify_serial_state(acm);
 }
 
+#ifdef CONFIG_LGE_USB_G_ANDROID
+unsigned int acm_get_dtr(struct gserial *port)
+{
+	struct f_acm		*acm = port_to_acm(port);
+
+	if (acm->port_handshake_bits & ACM_CTRL_DTR)
+		return 1;
+	else
+		return 0;
+}
+
+unsigned int acm_get_rts(struct gserial *port)
+{
+	struct f_acm		*acm = port_to_acm(port);
+
+	if (acm->port_handshake_bits & ACM_CTRL_RTS)
+		return 1;
+	else
+		return 0;
+}
+
+unsigned int acm_send_carrier_detect(struct gserial *port, unsigned int yes)
+{
+	struct f_acm		*acm = port_to_acm(port);
+	u16			state;
+
+	pr_info("%s : ACM_CTRL_DCD is %s\n", __func__, (yes ? "yes" : "no"));
+	state = acm->serial_state;
+	state &= ~ACM_CTRL_DCD;
+	if (yes)
+		state |= ACM_CTRL_DCD;
+
+	acm->serial_state = state;
+	return acm_notify_serial_state(acm);
+
+}
+
+unsigned int acm_send_ring_indicator(struct gserial *port, unsigned int yes)
+{
+	struct f_acm		*acm = port_to_acm(port);
+	u16			state;
+
+	state = acm->serial_state;
+	state &= ~ACM_CTRL_RI;
+	if (yes)
+		state |= ACM_CTRL_RI;
+
+	acm->serial_state = state;
+	return acm_notify_serial_state(acm);
+
+}
+#endif
+
 static void acm_disconnect(struct gserial *port)
 {
 	struct f_acm		*acm = port_to_acm(port);
@@ -737,6 +821,9 @@ acm_bind(struct usb_configuration *c, struct usb_function *f)
 	 */
 
 	/* maybe allocate device-global string IDs, and patch descriptors */
+#ifdef CONFIG_LGE_USB_G_ANDROID
+	if(acm_control_interface_desc.iInterface == 0){
+#endif
 	us = usb_gstrings_attach(cdev, acm_strings,
 			ARRAY_SIZE(acm_string_defs));
 	if (IS_ERR(us))
@@ -744,6 +831,9 @@ acm_bind(struct usb_configuration *c, struct usb_function *f)
 	acm_control_interface_desc.iInterface = us[ACM_CTRL_IDX].id;
 	acm_data_interface_desc.iInterface = us[ACM_DATA_IDX].id;
 	acm_iad_descriptor.iFunction = us[ACM_IAD_IDX].id;
+#ifdef CONFIG_LGE_USB_G_ANDROID
+	}
+#endif
 
 	/* allocate instance-specific interface IDs, and patch descriptors */
 	status = usb_interface_id(c, f);
@@ -838,6 +928,39 @@ fail:
 	return status;
 }
 
+#ifdef CONFIG_LGE_USB_G_MULTIPLE_CONFIGURATION
+static int lge_acm_desc_change(struct usb_function *f, bool is_mac)
+{
+	struct usb_composite_dev *cdev = f->config->cdev;
+	struct usb_interface_descriptor *ss;
+	struct usb_interface_descriptor *hs;
+	struct usb_interface_descriptor *fs;
+	__u8 replaceClass;
+
+	if (is_mac == true)
+		replaceClass = USB_CLASS_VENDOR_SPEC;
+	else
+		replaceClass = USB_CLASS_COMM;
+
+	if (gadget_is_superspeed(cdev->gadget) && f->ss_descriptors) {
+		ss = (struct usb_interface_descriptor *)f->ss_descriptors[1];
+		ss->bInterfaceClass = replaceClass;
+	}
+	if (gadget_is_dualspeed(cdev->gadget) && f->hs_descriptors) {
+		hs = (struct usb_interface_descriptor *)f->hs_descriptors[1];
+		hs->bInterfaceClass = replaceClass;
+	}
+	fs = (struct usb_interface_descriptor *)f->fs_descriptors[1];
+	fs->bInterfaceClass = replaceClass;
+
+	pr_info("%s ACM bInterfaceClass change to fs:%u\n",
+		is_mac ? "MAC OS" : "WIN/LINUX",
+		((struct usb_interface_descriptor *)f->fs_descriptors[1])->bInterfaceClass);
+
+	return 0;
+}
+#endif
+
 static void acm_unbind(struct usb_configuration *c, struct usb_function *f)
 {
 	struct f_acm		*acm = func_to_acm(f);
@@ -874,6 +997,12 @@ static struct usb_function *acm_alloc_func(struct usb_function_instance *fi)
 
 	acm->transport = gacm_ports[opts->port_num].transport;
 	acm->port.connect = acm_connect;
+#ifdef CONFIG_LGE_USB_G_ANDROID
+	acm->port.get_dtr = acm_get_dtr;
+	acm->port.get_rts = acm_get_rts;
+	acm->port.send_carrier_detect = acm_send_carrier_detect;
+	acm->port.send_ring_indicator = acm_send_ring_indicator;
+#endif
 	acm->port.disconnect = acm_disconnect;
 	acm->port.send_break = acm_send_break;
 	acm->port.send_modem_ctrl_bits = acm_send_modem_ctrl_bits;
@@ -885,7 +1014,9 @@ static struct usb_function *acm_alloc_func(struct usb_function_instance *fi)
 	acm->port.func.set_alt = acm_set_alt;
 	acm->port.func.setup = acm_setup;
 	acm->port.func.disable = acm_disable;
-
+#ifdef CONFIG_LGE_USB_G_MULTIPLE_CONFIGURATION
+	acm->port.func.desc_change = lge_acm_desc_change;
+#endif
 	acm->port_num = opts->port_num;
 	acm->port.func.unbind = acm_unbind;
 	acm->port.func.free_func = acm_free_func;

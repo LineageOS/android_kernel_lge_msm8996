@@ -116,6 +116,9 @@ struct fsg_config {
 
 	char			can_stall;
 	unsigned int		fsg_num_buffers;
+#ifdef CONFIG_LGE_USB_G_AUTORUN
+	const char      *lun_name_format;
+#endif
 };
 
 static inline struct fsg_opts *
@@ -164,4 +167,9 @@ void fsg_config_from_params(struct fsg_config *cfg,
 			    unsigned int fsg_num_buffers);
 int fsg_sysfs_update(struct fsg_common *common, struct device *dev,
 				bool create);
+
+#ifdef CONFIG_LGE_USB_G_AUTORUN
+void fsg_common_set_thread_name(struct fsg_common *common, const char *tn);
+#endif
+
 #endif /* USB_F_MASS_STORAGE_H */
