@@ -11,6 +11,24 @@ Required Properties:
 - ti,rp-val - Source current advertisement: 0 = Default, 1 = 1.5A, 2 = 3.0A.
 - ti,flags - Option Flags: 0 = none, 1 = Try.SRC, 2 = Try.SNK.
 
+Required Properties for VDM support (ENABLE_VDM_SUPPORT must be defined in policy engine header file):
+ti,ufp-alt-mode-entry-timeout-enable - UFP Alternate Mode Entry Timeout Enable. True if defined, otherwise false.
+ti,multi-function-preferred - For DisplayPort Alt-Mode UFP only. Indicates a preference for simultaneous DP and USB3 signaling. True if defined, otherwise false.
+ti,id-header-vdo - ID Header VDO - 32-bit value as defined by USB-PD spec.
+ti,cert-stat-vdo - Cert Stat VDO - 32-bit XID assigned by USB-IF.
+ti,product-vdo - Product VDO - 32-bit value as defined by USB-PD spec.
+ti,num-product-type-vdos - Number of product type VDOs. Maximum of 3.
+ti,product-type-vdo-1 - The first product type VDO (if applicable).
+ti,product-type-vdo-2 - The second product type VDO (if applicable).
+ti,product-type-vdo-3 - The third product type VDO (if applicable).
+ti,num-svids - Number of SVIDs. Maximum of 3.
+ti,svid-1 - The first SVID (if applicable).
+ti,svid-2 - The second SVID (if applicable).
+ti,svid-3 - The third SVID (if applicable).
+ti,mode-1 - Mode supported by the first SVID. Currently limited to one mode per SVID.
+ti,mode-2 - Mode supported by the second SVID. Currently limited to one mode per SVID.
+ti,mode-3 - Mode supported by the third SVID. Currently limited to one mode per SVID.
+
 Optional Properties (true if defined, otherwise they are false):
 - ti,usb-comm-capable - Sink and/or source is capable of USB data communication.
 - ti,no-usb-suspend - Sink requests to continue its power contract during USB suspend.
@@ -58,6 +76,7 @@ Sink PDO Parameters:
 usb_power_dev: usb_power_dev@20 {
 	compatible = "ti,tusb422-usb-pd";
 	reg = <0x20>;
+        /* Config for TUSB422 EVM GPIOs */
 	ti,alert-gpio = <&gpio1 16 GPIO_ACTIVE_HIGH>;
 	ti,vbus-snk-gpio = <&gpio1 28 GPIO_ACTIVE_HIGH>;
 	ti,vbus-src-gpio = <&gpio3 21 GPIO_ACTIVE_HIGH>;
@@ -65,7 +84,7 @@ usb_power_dev: usb_power_dev@20 {
 	ti,vbus-hv-gpio = <&gpio1 17 GPIO_ACTIVE_HIGH>;
 	ti,vbus-5v-gpio = <&gpio0 7 GPIO_ACTIVE_HIGH>;
 
-	/* Port Config See the tusb422_common.h */
+	/* Port Config */
 	ti,usb-comm-capable;
 	ti,no-usb-suspend;
 	/* Uncomment the below tags to make them true for the driver
@@ -73,20 +92,38 @@ usb_power_dev: usb_power_dev@20 {
 	/* ti,usb-suspend-supported;
 	ti,externally-powered;
 	ti,dual-role-data;
-    ti,higher-capability;
-	ti,giveback-flag;
-    ti,auto-accept-swap-to-dfp;
+	ti,higher-capability;
+	ti,giveback-flag; */
+	ti,auto-accept-swap-to-dfp;
 	ti,auto-accept-swap-to-ufp;
 	ti,auto-accept-swap-to-source;
 	ti,auto-accept-swap-to-sink;
-    ti,auto-accept-vconn-swap; */
+	ti,auto-accept-vconn-swap;
 
-	ti,src-settling-time-ms = /bits/ 16 <50>;
+	ti,src-settling-time-ms = <50>;
 	ti,fast-role-swap-support = <0>;
 	ti,pdo-priority = <0>;
 	ti,role = <2>;    /* 0 = SRC, 1 = SNK, 2 = DRP */
 	ti,rp-val = <2>;  /* 0 = default, 1 = 1.5A, 2 = 3.0A */
 	ti,flags = <0>;   /* 0 = none, 1 = Try.SRC, 2 = Try.SNK */
+
+	/* Config for VDM */
+	/*ti,ufp-alt-mode-entry-timeout-enable;*/
+	/*ti,multi-function-preferred;*/
+	ti,id-header-vdo = <0xD50012D1>;
+	ti,cert-stat-vdo = <0x0>;
+	ti,product-vdo = <0x107E0000>;
+	ti,num-product-type-vdos = <0>;
+	ti,product-type-vdo-1 = <0>;
+	ti,product-type-vdo-2 = <0>;
+	ti,product-type-vdo-3 = <0>;
+	ti,num-svids = <1>;
+	ti,svid-1 = <0xFF01>; /* 0xFF01 = DisplayPort. Note ENABLE_DP_ALT_MODE_SUPPORT must be defined in policy engine header to support this SVID. */
+	ti,svid-2 = <0>;
+	ti,svid-3 = <0>;
+	ti,mode-1 = <0x1C46>; /* 0x1C46 = DFP_D, DP_v1.3, receptacle, USB 2 signaling may be required, DFP_D pin assignment C, D, E */
+	ti,mode-2 = <0>;
+	ti,mode-3 = <0>;
 
 	source@0 {
 		ti,current-flow = <0>; /* 0 for source, 1 for sink */

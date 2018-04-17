@@ -265,6 +265,11 @@ config USB_LINK_LAYER_TEST
 	  Layer Test Device. Say Y only when you want to conduct USB Super Speed
 	  Link Layer Test for host controllers.
 
+source "drivers/usb/misc/anx7418/Kconfig"
+source "drivers/usb/misc/anx7688/Kconfig"
+source "drivers/usb/misc/alice_friends/Kconfig"
+source "drivers/usb/misc/tusb422/Kconfig"
+
 config USB_QTI_KS_BRIDGE
 	tristate "USB QTI kick start bridge"
 	depends on USB

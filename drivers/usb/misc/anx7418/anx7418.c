@@ -723,6 +723,13 @@ set_dfp:
 				dual_role_changed = true;
 #endif
 			}
+		} else {
+			if (anx->pr == DUAL_ROLE_PROP_PR_SNK) {
+				if (rc & 0xCC) {
+					// Rp advertisement
+					schedule_delayed_work(&anx->chg.chg_work, 0);
+				}
+			}
 		}
 
 		irq &= ~CC_STATUS_CHG;

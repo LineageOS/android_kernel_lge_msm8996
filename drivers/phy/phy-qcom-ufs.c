@@ -21,6 +21,9 @@
 #define VDDA_PLL_MAX_UV            1800000
 #define VDDP_REF_CLK_MIN_UV        1200000
 #define VDDP_REF_CLK_MAX_UV        1200000
+#ifdef CONFIG_UFS_LGE_FEATURE
+#define MSM8996_PHY_TX_DRIVER_STR  0x00000c34
+#endif
 
 static int __ufs_qcom_phy_init_vreg(struct phy *, struct ufs_qcom_phy_vreg *,
 				    const char *, bool);
@@ -610,6 +613,20 @@ int ufs_qcom_phy_calibrate_phy(struct phy *generic_phy, bool is_rate_B)
 	return ret;
 }
 EXPORT_SYMBOL(ufs_qcom_phy_calibrate_phy);
+
+#ifdef CONFIG_UFS_LGE_FEATURE
+void ufs_qcom_phy_ctrl_tx_drv_strength(struct phy *phy, bool is_write, u32 *val)
+{
+	struct ufs_qcom_phy *ufs_qcom_phy = get_ufs_qcom_phy(phy);
+	if (is_write)
+		writel_relaxed(*val, ufs_qcom_phy->mmio + MSM8996_PHY_TX_DRIVER_STR);
+	else
+		*val = readl_relaxed(ufs_qcom_phy->mmio + MSM8996_PHY_TX_DRIVER_STR);
+	mb();
+	return;
+}
+EXPORT_SYMBOL(ufs_qcom_phy_ctrl_tx_drv_strength);
+#endif
 
 const char *ufs_qcom_phy_name(struct phy *phy)
 {

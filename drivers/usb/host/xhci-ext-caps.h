@@ -20,7 +20,11 @@
  * Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 /* Up to 16 ms to halt an HC */
+#if defined (CONFIG_MACH_MSM8996_ELSA) || defined (CONFIG_MACH_MSM8996_LUCYE) || defined (CONFIG_MACH_MSM8996_ANNA)
+#define XHCI_MAX_HALT_USEC	(24*1000)
+#else
 #define XHCI_MAX_HALT_USEC	(16*1000)
+#endif
 /* HC not running - set to 1 when run/stop bit is cleared. */
 #define XHCI_STS_HALT		(1<<0)
 
