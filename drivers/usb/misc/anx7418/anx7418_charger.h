@@ -6,8 +6,11 @@
 
 struct anx7418;
 
-#define ANX7418_CTYPE_CHARGER		1
-#define ANX7418_CTYPE_PD_CHARGER	2
+enum anx7418_charger_type {
+	ANX7418_UNKNOWN_CHARGER = 0,
+	ANX7418_CTYPE_CHARGER,
+	ANX7418_CTYPE_PD_CHARGER,
+};
 
 struct anx7418_charger {
 	struct anx7418 *anx;

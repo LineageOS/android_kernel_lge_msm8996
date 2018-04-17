@@ -1,17 +1,39 @@
 /*
- * Texas Instruments TUSB422 Power Delivery
+ * TUSB422 Power Delivery
  *
  * Author: Brian Quach <brian.quach@ti.com>
- * Copyright: (C) 2016 Texas Instruments, Inc.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+ * Copyright (C) 2016 Texas Instruments Incorporated - http://www.ti.com/
  *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions
+ *  are met:
+ *
+ *    Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ *    Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the
+ *    distribution.
+ *
+ *    Neither the name of Texas Instruments Incorporated nor the names of
+ *    its contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ *  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ *  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ *  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ *  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
 #ifndef __TCPM_H__
@@ -22,6 +44,11 @@
 #ifndef CONFIG_TUSB422
     #include <stdbool.h>
     #include <stdint.h>
+#endif
+
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECT
+#include <linux/time.h>
+#include <linux/power_supply.h>
 #endif
 
 /*
@@ -36,11 +63,18 @@
 #define VSAFE0V_MAX   MV_TO_25MV(800)   /* 0.80V max in 25mV units */
 #define VSAFE5V_MIN   MV_TO_25MV(4450)  /* 4.45V min in 25mV units */
 #ifdef CONFIG_LGE_USB_TYPE_C
-#define VDISCON_MAX   MV_TO_25MV(3600)  /* 3.60V min in 25mV units */
+#define VDISCON_MAX   VSAFE0V_MAX
 #else
 #define VDISCON_MAX   MV_TO_25MV(4000)  /* 4.00V min in 25mV units */
 #endif
 #define VSTOP_DISCHRG MV_TO_25MV(500)   /* Stop discharge threshold in 25mV units */
+
+/* assume default current of 500mA (USB2) */
+#ifdef CONFIG_LGE_USB_TYPE_C
+#define GET_SRC_CURRENT_MA(cc_adv) (((cc_adv) == CC_SNK_STATE_POWER30) ? 3000 : ((cc_adv) == CC_SNK_STATE_POWER15) ? 1500 : ((cc_adv) == CC_SNK_STATE_DEFAULT) ? 500 : 0)
+#else
+#define GET_SRC_CURRENT_MA(cc_adv) (((cc_adv) == CC_SNK_STATE_POWER30) ? 3000 : ((cc_adv) == CC_SNK_STATE_POWER15) ? 1500 : 500)
+#endif
 
 /* Sink with Accessory Support is NOT supported by the state machine */
 
@@ -62,19 +96,25 @@ typedef enum
 	TCPC_STATE_DEBUG_ACC_SNK,
 	TCPC_STATE_AUDIO_ACC,
 	TCPC_STATE_ERROR_RECOVERY,
-#ifdef CONFIG_LGE_USB_TYPE_C
-	TCPC_STATE_CC_FAULT_OV,
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECT
+	TCPC_STATE_CC_FAULT_CC_OV,
 	TCPC_STATE_CC_FAULT_SWING,
+	TCPC_STATE_CC_FAULT_SBU_OV,
+	TCPC_STATE_CC_FAULT_SBU_ADC,
+	TCPC_STATE_CC_FAULT_SBU_DRY_CHECK,
 	TCPC_STATE_CC_FAULT_TEST,
 #endif
 	TCPC_STATE_DISABLED,  /* no CC terminations */
 	TCPC_NUM_STATES
 } tcpc_state_t;
 
-#ifdef CONFIG_LGE_USB_TYPE_C
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECT
 #define IS_STATE_CC_FAULT(state) \
-	((state == TCPC_STATE_CC_FAULT_OV) || \
+	((state == TCPC_STATE_CC_FAULT_CC_OV) || \
 	 (state == TCPC_STATE_CC_FAULT_SWING) || \
+	 (state == TCPC_STATE_CC_FAULT_SBU_OV) || \
+	 (state == TCPC_STATE_CC_FAULT_SBU_ADC) || \
+	 (state == TCPC_STATE_CC_FAULT_SBU_DRY_CHECK) || \
 	 (state == TCPC_STATE_CC_FAULT_TEST))
 #endif
 
@@ -122,6 +162,9 @@ typedef struct
 	uint8_t             flags;
 
 	uint8_t             cc_status;
+#ifdef CONFIG_LGE_USB_TYPE_C
+	uint8_t             last_cc_status;
+#endif
 	bool				src_detected;  /* source detected for debounce period */
 
 	plug_polarity_t     plug_polarity;
@@ -133,8 +176,20 @@ typedef struct
 	uint8_t             vconn_ocp_cnt;
 #ifdef CONFIG_LGE_USB_TYPE_C
 	bool                debug_accessory_mode;
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECT
 	unsigned long       cc_swing_timeout;
 	uint8_t             cc_swing_cnt;
+	unsigned int        cc_swing_recheck_cnt;
+
+	struct timespec     cc_fault_timeout;
+	void                (*cc_fault_timeout_function)(unsigned int);
+	struct mutex        cc_fault_timer_lock;
+
+	bool                moisture_detect_disable;
+	bool                moisture_detect_use_sbu;
+
+	struct power_supply *typec_psy;
+#endif
 #endif
 } tcpc_device_t;
 
@@ -207,13 +262,15 @@ void tcpm_force_discharge(unsigned int port, uint16_t threshold_25mv);
 void tcpm_enable_bleed_discharge(unsigned int port);
 
 void tcpm_execute_error_recovery(unsigned int port);
+#ifdef CONFIG_LGE_USB_TYPE_C
+void tcpm_execute_shutdown(unsigned int port);
+#endif
 
 void tcpm_try_role_swap(unsigned int port);
 void tcpm_change_role(unsigned int port, tc_role_t new_role);
 
 void tcpm_src_vbus_disable(unsigned int port);
-void tcpm_src_vbus_5v_enable(unsigned int port);
-void tcpm_src_vbus_hi_volt_enable(unsigned int port);
+void tcpm_src_vbus_enable(unsigned int port, uint16_t mv);
 
 void tcpm_snk_vbus_enable(unsigned int port);
 void tcpm_snk_vbus_disable(unsigned int port);
@@ -230,12 +287,14 @@ void tcpm_cc_pin_control(unsigned int port, tc_role_t role);
 void tcpm_handle_power_role_swap(unsigned int port);
 void tcpm_update_msg_header_info(unsigned int port, uint8_t data_role, uint8_t power_role);
 void tcpm_set_rp_value(unsigned int port, tcpc_role_rp_val_t rp_val);
+void tcpm_snk_swap_standby(unsigned int port);
 
 void tcpm_register_dump(unsigned int port);
 
 #ifdef CONFIG_LGE_USB_TYPE_C
+void tcpm_cc_fault_timer(unsigned int port, bool enable);
+void tcpm_cc_fault_set(unsigned int port, tcpc_state_t state);
 void tcpm_cc_fault_test(unsigned int port, bool enable);
-bool tcpm_is_cc_fault(unsigned int port);
 #endif
 
 #endif //__TCPM_H__

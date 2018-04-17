@@ -48,6 +48,10 @@ struct __compat_mtp_event {
 						struct __compat_mtp_event)
 #define COMPAT_MTP_SEND_FILE_WITH_HEADER  _IOW('M', 4, \
 						struct __compat_mtp_file_range)
+#ifdef CONFIG_LGE_USB_G_ANDROID
+#define COMPAT_MTP_RECEIVE_CANCEL_EVENT   _IOW('M', 5, \
+						struct __compat_mtp_event)
+#endif
 #endif
 #endif
 #endif /* __LINUX_USB_F_MTP_H */

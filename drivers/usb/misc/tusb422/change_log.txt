@@ -1,3 +1,16 @@
+v0.90 - 18Jan2016
+-----------------
+- Added VDM and DP Alt-Mode support.
+- Modifications to make source code common with MCU code.
+- Build sink and source caps on request in case parameters change dynamically.
+
+
+v0.89 - 20Dec2016
+-----------------
+- Modified Type-C state machine to wait for vSafe0V before transitioning from AttachWait.SRC to Try.SNK.
+- Fixed potential disconnect during sink power role swap. (Ellisys TD.4.10.4)
+
+
 v0.88 - 02Dec2016
 -----------------
 - Fixed debounce time to exit TryWait.SRC state. (Ellisys TD.4.7.5)
@@ -10,7 +23,7 @@ v0.88 - 02Dec2016
 v0.87 - 22Nov2016
 -----------------
 - Added re-detection of Ra after a PD Hard Reset before sourcing VCONN.
-- Fixed intermittent disconnect during power role swap (Ellisys PD.CP.E3).
+- Fixed intermittent disconnect during power role swap. (Ellisys PD.CP.E3)
 
 
 v0.86 - 16Nov2016
@@ -24,7 +37,7 @@ v0.86 - 16Nov2016
 
 v0.85 - 14Nov2016
 -----------------
-- Fixed PDO transistion after power role swap to sink failure (Ellisys PD.PC.E7)
+- Fixed PDO transistion after power role swap to sink failure. (Ellisys PD.PC.E7)
 - Added state restrictions for policy engine voltage alarm handling to determine VBUS present after hard reset.
 
 

@@ -1540,6 +1540,10 @@ void init_request_from_bio(struct request *req, struct bio *bio)
 	if (bio->bi_rw & REQ_RAHEAD)
 		req->cmd_flags |= REQ_FAILFAST_MASK;
 
+#ifdef CONFIG_MACH_LGE
+	if(bio->bi_rw & REQ_PREEMPT)
+		req->cmd_flags |= REQ_PREEMPT;
+#endif
 	req->errors = 0;
 	req->__sector = bio->bi_iter.bi_sector;
 	req->ioprio = bio_prio(bio);

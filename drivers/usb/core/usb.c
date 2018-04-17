@@ -50,8 +50,13 @@ const char *usbcore_name = "usbcore";
 static bool nousb;	/* Disable USB when built into kernel image */
 
 #ifdef	CONFIG_PM_RUNTIME
+#ifdef CONFIG_LGE_USB_G_ANDROID
+static int usb_autosuspend_delay = -1;		/* Default delay value,
+						 * in seconds */
+#else
 static int usb_autosuspend_delay = 2;		/* Default delay value,
 						 * in seconds */
+#endif
 module_param_named(autosuspend, usb_autosuspend_delay, int, 0644);
 MODULE_PARM_DESC(autosuspend, "default autosuspend delay");
 
@@ -654,6 +659,54 @@ int usb_get_current_frame_number(struct usb_device *dev)
 	return usb_hcd_get_frame_number(dev);
 }
 EXPORT_SYMBOL_GPL(usb_get_current_frame_number);
+
+int usb_sec_event_ring_setup(struct usb_device *dev,
+	unsigned intr_num)
+{
+	if (dev->state == USB_STATE_NOTATTACHED)
+		return 0;
+
+	return usb_hcd_sec_event_ring_setup(dev, intr_num);
+}
+EXPORT_SYMBOL(usb_sec_event_ring_setup);
+
+int usb_sec_event_ring_cleanup(struct usb_device *dev,
+	unsigned intr_num)
+{
+	return usb_hcd_sec_event_ring_cleanup(dev, intr_num);
+}
+EXPORT_SYMBOL(usb_sec_event_ring_cleanup);
+
+dma_addr_t
+usb_get_sec_event_ring_dma_addr(struct usb_device *dev,
+	unsigned intr_num)
+{
+	if (dev->state == USB_STATE_NOTATTACHED)
+		return 0;
+
+	return usb_hcd_get_sec_event_ring_dma_addr(dev, intr_num);
+}
+EXPORT_SYMBOL(usb_get_sec_event_ring_dma_addr);
+
+dma_addr_t
+usb_get_dcba_dma_addr(struct usb_device *dev)
+{
+	if (dev->state == USB_STATE_NOTATTACHED)
+		return 0;
+
+	return usb_hcd_get_dcba_dma_addr(dev);
+}
+EXPORT_SYMBOL(usb_get_dcba_dma_addr);
+
+dma_addr_t usb_get_xfer_ring_dma_addr(struct usb_device *dev,
+	struct usb_host_endpoint *ep)
+{
+	if (dev->state == USB_STATE_NOTATTACHED)
+		return 0;
+
+	return usb_hcd_get_xfer_ring_dma_addr(dev, ep);
+}
+EXPORT_SYMBOL(usb_get_xfer_ring_dma_addr);
 
 /*-------------------------------------------------------------------*/
 /*

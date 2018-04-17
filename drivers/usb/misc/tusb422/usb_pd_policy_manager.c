@@ -1,17 +1,39 @@
 /*
- * Texas Instruments TUSB422 Power Delivery
+ * TUSB422 Power Delivery
  *
  * Author: Brian Quach <brian.quach@ti.com>
- * Copyright: (C) 2016 Texas Instruments, Inc.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+ * Copyright (C) 2016 Texas Instruments Incorporated - http://www.ti.com/
  *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions
+ *  are met:
+ *
+ *    Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ *    Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the
+ *    distribution.
+ *
+ *    Neither the name of Texas Instruments Incorporated nor the names of
+ *    its contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ *  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ *  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ *  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ *  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
 #include "tcpm.h"
@@ -24,6 +46,10 @@
 	#include <string.h>
 #else
 	#include <linux/string.h>
+#endif
+
+#if defined(CONFIG_LGE_USB_TYPE_C) && defined(CONFIG_DUAL_ROLE_USB_INTF)
+#include "tusb422_linux_dual_role.h"
 #endif
 
 #define PDO_DUAL_ROLE_POWER_BIT           ((uint32_t)0x01 << 29)
@@ -181,6 +207,9 @@ void usb_pd_pm_evaluate_src_caps(unsigned int port)
 		// Using get_data_object() instead of casting to 32-bit pointer
 		// in case pdo_data pointer is not 4-byte aligned.
 		pdo = get_data_object(&pdo_data[src_pdo_idx << 2]);
+#ifdef CONFIG_LGE_USB_TYPE_C
+		dev->offered_pdo[src_pdo_idx] = pdo;
+#endif
 
 		INFO("PDO[%u] = 0x%08x\n", src_pdo_idx, pdo);
 
@@ -319,6 +348,10 @@ void usb_pd_pm_evaluate_src_caps(unsigned int port)
 		dev->selected_snk_pdo_idx = 0;
 	}
 
+#if defined(CONFIG_LGE_USB_TYPE_C) && defined(CONFIG_DUAL_ROLE_USB_INTF)
+	dual_role_instance_changed(tusb422_dual_role_phy);
+#endif
+
 	CRIT("PDO-%u 0x%08x selected\n", dev->object_position, dev->selected_pdo);
 	DEBUG("selected_snk_pdo_idx: %u\n", dev->selected_snk_pdo_idx);
 
@@ -326,9 +359,10 @@ void usb_pd_pm_evaluate_src_caps(unsigned int port)
 }
 
 
-static void build_src_caps(unsigned int port, usb_pd_port_config_t *config)
+void build_src_caps(unsigned int port)
 {
 	unsigned int n;
+	usb_pd_port_config_t *config = &pd_port_config[port];
 	usb_pd_port_t *dev = usb_pd_pe_get_device(port);
 	tcpc_device_t *typec_dev = tcpm_get_device(port);
 
@@ -348,7 +382,7 @@ static void build_src_caps(unsigned int port, usb_pd_port_config_t *config)
 		dev->src_pdo[0] |= SRC_PDO_USB_SUSPEND_BIT;
 	}
 
-	if (config->externally_powered)
+	if (dev->externally_powered)
 	{
 		dev->src_pdo[0] |= PDO_EXTERNALLY_POWERED_BIT;
 	}
@@ -406,9 +440,10 @@ static void build_src_caps(unsigned int port, usb_pd_port_config_t *config)
 }
 
 
-static void build_snk_caps(unsigned int port, usb_pd_port_config_t *config)
+void build_snk_caps(unsigned int port)
 {
 	unsigned int n;
+	usb_pd_port_config_t *config = &pd_port_config[port];
 	usb_pd_port_t *dev = usb_pd_pe_get_device(port);
 	tcpc_device_t *typec_dev = tcpm_get_device(port);
 
@@ -428,7 +463,7 @@ static void build_snk_caps(unsigned int port, usb_pd_port_config_t *config)
 		dev->snk_pdo[0] |= SNK_PDO_HIGHER_CAPABILITY_BIT;
 	}
 
-	if (config->externally_powered)
+	if (dev->externally_powered)
 	{
 		dev->snk_pdo[0] |= PDO_EXTERNALLY_POWERED_BIT;
 	}
@@ -595,8 +630,6 @@ void usb_pd_init(const usb_pd_port_config_t *port_config)
 
 	for (port = 0; port < NUM_TCPC_DEVICES; port++)
 	{
-		build_src_caps(port, &pd_port_config[port]);
-		build_snk_caps(port, &pd_port_config[port]);
 		usb_pd_pe_init(port, &pd_port_config[port]);
 	}
 
