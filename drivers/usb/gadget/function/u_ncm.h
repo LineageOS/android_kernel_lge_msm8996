@@ -33,4 +33,12 @@ struct f_ncm_opts {
 	int				refcnt;
 };
 
+#ifdef CONFIG_LGE_USB_G_NCM
+int ncm_init(void);
+void ncm_cleanup(void);
+int ncm_ctrlrequest(struct usb_composite_dev *cdev,
+		const struct usb_ctrlrequest *ctrl);
+int get_ncm_start_requested(void);
+#endif
+
 #endif /* U_NCM_H */

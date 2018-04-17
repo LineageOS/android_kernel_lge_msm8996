@@ -1,0 +1,210 @@
+config LGE_USB_MOISTURE_DETECT
+	bool "enable usb moisture detect"
+	default n
+	help
+	  usb moisture detect
+
+config LGE_USB_HOST_SUPPORT_LIST_HID
+	bool "enable usb host compatible hid devices list"
+	default n
+	select HID
+	select UHID
+	select HID_GENERIC
+	select USB_HID
+	select USB_HIDDEV
+	select HID_A4TECH
+	select HID_ACRUX
+	select HID_ACRUX_FF
+	select HID_APPLE
+	select HID_BELKIN
+	select HID_CHERRY
+	select HID_CHICONY
+	select HID_PRODIKEYS
+	select HID_CYPRESS
+	select HID_DRAGONRISE
+	select DRAGONRISE_FF
+	select HID_EMS_FF
+	select HID_ELECOM
+	select HID_EZKEY
+	select HID_HOLTEK
+	select HID_KEYTOUCH
+	select HID_KYE
+	select HID_UCLOGIC
+	select HID_WALTOP
+	select HID_GYRATION
+	select HID_TWINHAN
+	select HID_KENSINGTON
+	select HID_LCPOWER
+	select HID_LOGITECH
+	select HID_LOGITECH_DJ
+	select LOGITECH_FF
+	select LOGIRUMBLEPAD2_FF
+	select LOGIG940_FF
+	select LOGIWHEELS_FF
+	select HID_MAGICMOUSE
+	select HID_MICROSOFT
+	select HID_MONTEREY
+	select HID_MULTITOUCH
+	select HID_NTRIG
+	select HID_ORTEK
+	select HID_PANTHERLORD
+	select PANTHERLORD_FF
+	select HID_PETALYNX
+	select HID_PICOLCD
+	select HID_PRIMAX
+	select HID_PS3REMOTE
+	select HID_ROCCAT
+	select HID_SAITEK
+	select HID_SAMSUNG
+	select HID_SONY
+	select HID_SPEEDLINK
+	select HID_STEELSERIES
+	select HID_SUNPLUS
+	select HID_GREENASIA
+	select GREENASIA_FF
+	select HID_SMARTJOYPLUS
+	select SMARTJOYPLUS_FF
+	select HID_TIVO
+	select HID_TOPSEED
+	select HID_THRUSTMASTER
+	select THRUSTMASTER_FF
+	select HID_WACOM
+	select HID_WACOM_POWER_SUPPLY
+	select HID_WIIMOTE
+	select HID_WIIMOTE_EXT
+	select HID_ZYDACRON
+	help
+	  hid devices include specials, change to yes here to support high
+	  compatiblily usb host devices.
+
+config LGE_USB_HOST_SUPPORT_LIST_NETWORK
+	bool "enable usb host compatible network devices list"
+	default n
+	select USB_USBNET
+        select USB_CATC
+#       select USB_KAWETH
+	select USB_PEGASUS
+	select USB_RTL8150
+	select USB_RTL8152
+	select USB_NET_AX8817X
+	select USB_NET_AX88179_178A
+	select USB_NET_CDCETHER
+	select USB_NET_CDC_EEM
+	select USB_NET_CDC_NCM
+	select USB_NET_CDC_MBIM
+	select USB_NET_DM9601
+	select USB_NET_SR9700
+	select USB_NET_SR9800
+	select USB_NET_SMSC75XX
+	select USB_NET_SMSC95XX
+	select USB_NET_GL620A
+	select USB_NET_NET1080
+	select USB_NET_PLUSB
+	select USB_NET_MCS7830
+	select USB_NET_RNDIS_HOST
+	select USB_NET_CDC_SUBSET
+	select USB_ALI_M5632
+	select USB_AN2720
+	select USB_BELKIN
+	select USB_ARMLINUX
+	select USB_EPSON2888
+	select USB_KC2190
+	select USB_NET_ZAURUS
+	select USB_NET_CX82310_ETH
+	select USB_NET_KALMIA
+	select USB_NET_QMI_WWAN
+	select USB_HSO
+	select USB_NET_INT51X1
+	select USB_IPHETH
+	select USB_SIERRA_NET
+	select USB_VL600
+	select MSM_RMNET_USB
+	help
+	  network devices include specials, change to yes here to support high
+	  compatiblily usb host devices.
+
+config LGE_USB_HOST_SUPPORT_LIST_INPUT
+	bool "enable usb host compatible input devices list"
+	default n
+	select INPUT_MOUSEDEV
+	select INPUT_EVDEV
+#	select INPUT_MOUSE
+	select MOUSE_APPLETOUCH
+	select MOUSE_BCM5974
+	select MOUSE_SYNAPTICS_USB
+	select INPUT_JOYSTICK
+	select JOYSTICK_IFORCE
+	select JOYSTICK_IFORCE_USB
+	select JOYSTICK_XPAD
+	select JOYSTICK_XPAD_FF
+	select JOYSTICK_XPAD_LEDS
+	select INPUT_TABLET
+	select TABLET_USB_ACECAD
+	select TABLET_USB_AIPTEK
+	select TABLET_USB_GTCO
+	select TABLET_USB_HANWANG
+	select TABLET_USB_KBTAB
+	select TABLET_USB_WACOM
+	help
+	  network devices include specials, change to yes here to support high
+	  compatiblily usb host devices.
+
+config LGE_USB_HOST_SUPPORT_LIST_SOUND
+	bool "enable usb host compatible sound devices list"
+        default n
+	select SND_USB
+	select SND_USB_AUDIO
+	select SND_USB_UA101
+	select SND_USB_CAIAQ
+	select SND_USB_6FIRE
+	help
+	  sound devices include specials, change to yes here to support high
+	  compatiblily usb host devices.
+
+config LGE_USB_HOST_SUPPORT_LIST_VIDEO
+	bool "enable usb host compatible video devices list"
+        default n
+	select MEDIA_USB_SUPPORT
+	select USB_VIDEO_CLASS
+	select USB_VIDEO_CLASS_INPUT_EVDEV
+	help
+	  sound devices include specials, change to yes here to support high
+	  compatiblily usb host devices
+
+config LGE_USB_HOST_SUPPORT_LIST_STORAGE
+	bool "enable usb host compatible storage devices list"
+	default n
+	select USB_STORAGE
+	select USB_STORAGE_REALTEK
+	select REALTEK_AUTOPM
+	select USB_STORAGE_DATAFAB
+	select USB_STORAGE_FREECOM
+	select USB_STORAGE_ISD200
+	select USB_STORAGE_USBAT
+	select USB_STORAGE_SDDR09
+	select USB_STORAGE_SDDR55
+	select USB_STORAGE_JUMPSHOT
+	select USB_STORAGE_ALAUDA
+	select USB_STORAGE_ONETOUCH
+	select USB_STORAGE_KARMA
+	select USB_STORAGE_CYPRESS_ATACB
+#	select USB_STORAGE_ENE_UB6250
+#	select USB_UAS
+	help
+	  sound devices include specials, change to yes here to support high
+	  compatiblily usb host devices
+
+config LGE_USB_HOST_SUPPORT_LIST_SERIAL
+	bool "enable usb host compatible storage devices list"
+	default n
+	select USB_SERIAL
+	select USB_SERIAL_GENERIC
+	select USB_SERIAL_FTDI_SIO
+	select USB_SERIAL_PL2303
+	help
+	  serial devices include specials, change to yes here to support high
+	  compatiblily usb host devices
+
+
+
+

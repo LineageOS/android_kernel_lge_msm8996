@@ -1,18 +1,18 @@
 /*
- * Texas Instruments TUSB422 Power Delivery
+ * TUSB422 Power Delivery
  *
  * Author: Brian Quach <brian.quach@ti.com>
  *
- * Copyright: (C) 2016 Texas Instruments, Inc.
+ * Copyright (C) 2016 Texas Instruments Incorporated - http://www.ti.com/
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation version 2.
  *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
+ * This program is distributed "as is" WITHOUT ANY WARRANTY of any
+ * kind, whether express or implied; without even the implied warranty
+ * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  */
 
 #ifndef __USB_PD_PAL_H__
@@ -38,6 +38,11 @@ void usb_pd_pal_data_role_swap(unsigned int port, uint8_t new_role);
 
 #if defined(CONFIG_LGE_USB_FACTORY) || defined(CONFIG_LGE_USB_DEBUGGER)
 void usb_pd_pal_debug_accessory_mode(unsigned int port, bool is_on);
+#endif
+
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECT
+int usb_pd_pal_get_sbu_adc(unsigned int port);
+int usb_pd_pal_set_moisture_detect_use_sbu(void);
 #endif
 
 #endif

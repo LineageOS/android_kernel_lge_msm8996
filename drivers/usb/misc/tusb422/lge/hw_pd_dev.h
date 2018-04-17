@@ -1,7 +1,7 @@
 #ifndef __HW_PD_DEV_H__
 #define __HW_PD_DEV_H__
 
-#include "../tusb422_linux.h"
+#include "tusb422_linux.h"
 
 #include <linux/kernel.h>
 #include <linux/device.h>
@@ -13,42 +13,34 @@
 #include <linux/of_gpio.h>
 #include <linux/gpio/consumer.h>
 
-#ifdef CONFIG_LGE_USB_DEBUGGER
+#include <linux/usb/class-dual-role.h>
+
+#include <soc/qcom/lge/board_lge.h>
+#include <soc/qcom/lge/power/lge_board_revision.h>
+
+#if defined(CONFIG_LGE_USB_DEBUGGER) || defined(CONFIG_LGE_USB_MOISTURE_DETECT)
 #include <soc/qcom/lge/power/lge_power_class.h>
 #include <soc/qcom/lge/power/lge_cable_detect.h>
 #endif
 
-#ifdef CONFIG_DUAL_ROLE_USB_INTF
-#include <linux/usb/class-dual-role.h>
-#else
-enum {
-	DUAL_ROLE_PROP_MODE_UFP = 0,
-	DUAL_ROLE_PROP_MODE_DFP,
-	DUAL_ROLE_PROP_MODE_FAULT,
-	DUAL_ROLE_PROP_MODE_NONE,
-	/*The following should be the last element*/
-	DUAL_ROLE_PROP_MODE_TOTAL,
-};
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECT
+#include <linux/interrupt.h>
 
-enum {
-	DUAL_ROLE_PROP_PR_SRC = 0,
-	DUAL_ROLE_PROP_PR_SNK,
-	DUAL_ROLE_PROP_PR_FAULT,
-	DUAL_ROLE_PROP_PR_NONE,
-	/*The following should be the last element*/
-	DUAL_ROLE_PROP_PR_TOTAL,
+/* must uncomment MOISTURE_DETECT_USE_SBU_TEST */
+//#define MOISTURE_DETECT_USE_SBU_TEST
 
-};
-
-enum {
-	DUAL_ROLE_PROP_DR_HOST = 0,
-	DUAL_ROLE_PROP_DR_DEVICE,
-	DUAL_ROLE_PROP_DR_FAULT,
-	DUAL_ROLE_PROP_DR_NONE,
-	/*The following should be the last element*/
-	DUAL_ROLE_PROP_DR_TOTAL,
-};
+#define SBU_WET_THRESHOLD \
+	(lge_get_board_rev_no() >= HW_REV_1_3 ? 1750000 : 1796000)	/* uV */
 #endif
+
+#ifdef CONFIG_LGE_USB_FACTORY
+#define IS_FACTORY_MODE \
+	(lge_get_factory_boot() || \
+	 lge_get_laf_mode() || \
+	 lge_get_laf_mid())
+#endif
+
+#define IS_CHARGERLOGO (lge_get_boot_mode() == LGE_BOOT_MODE_CHARGERLOGO)
 
 struct hw_pd_dev {
 	struct device *dev;
@@ -61,6 +53,7 @@ struct hw_pd_dev {
 	int dr;
 
 	struct gpio_desc *redriver_sel_gpio;
+	struct gpio_desc *usb_ss_en_gpio;
 
 	/* charger */
 	struct regulator *vbus_reg;
@@ -74,6 +67,7 @@ struct hw_pd_dev {
 	int curr_max;
 	int volt_max;
 	enum power_supply_type typec_mode;
+	int rp;
 
 #if defined(CONFIG_LGE_USB_FACTORY) || defined(CONFIG_LGE_USB_DEBUGGER)
 	bool is_debug_accessory;
@@ -82,6 +76,16 @@ struct hw_pd_dev {
 	struct work_struct usb_debugger_work;
 	struct lge_power *lge_power_cd;
 	struct gpio_desc *sbu_sel_gpio;
+	struct gpio_desc *sbu_en_gpio;
+#endif
+
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECT
+	bool moisture_detect_use_sbu;
+	struct gpio_desc *cc_protect_gpio;
+	int cc_protect_irq;
+	struct lge_power *lge_adc_lpc;
+	int sbu_ov_cnt;
+	bool is_sbu_ov;
 #endif
 };
 
@@ -95,6 +99,10 @@ enum pd_dpm_pe_evt {
 	PD_DPM_PE_EVT_PR_SWAP,
 #if defined(CONFIG_LGE_USB_FACTORY) || defined(CONFIG_LGE_USB_DEBUGGER)
 	PD_DPM_PE_EVT_DEBUG_ACCESSORY,
+#endif
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECT
+	PD_DPM_PE_EVENT_GET_SBU_ADC,
+	PD_DPM_PE_EVENT_SET_MOISTURE_DETECT_USE_SBU,
 #endif
 };
 
@@ -118,7 +126,9 @@ enum pd_dpm_typec {
 	PD_DPM_TYPEC_UNATTACHED,
 	PD_DPM_TYPEC_ATTACHED_SRC,
 	PD_DPM_TYPEC_ATTACHED_SNK,
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECT
 	PD_DPM_TYPEC_CC_FAULT,
+#endif
 };
 
 struct pd_dpm_typec_state {
