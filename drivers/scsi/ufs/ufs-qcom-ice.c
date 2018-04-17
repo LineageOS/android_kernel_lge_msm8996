@@ -65,6 +65,10 @@ static void ufs_qcom_ice_error_cb(void *host_ctrl, u32 error)
 
 	dev_err(qcom_host->hba->dev, "%s: Error in ice operation 0x%x",
 		__func__, error);
+#ifdef CONFIG_MACH_LGE
+	dev_err(qcom_host->hba->dev, " [CCAudit] %s: Error in ice operation 0x%x",
+		__func__, error);
+#endif
 
 	if (qcom_host->ice.state == UFS_QCOM_ICE_STATE_ACTIVE)
 		qcom_host->ice.state = UFS_QCOM_ICE_STATE_DISABLED;

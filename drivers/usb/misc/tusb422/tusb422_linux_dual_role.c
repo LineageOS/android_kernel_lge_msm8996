@@ -1,17 +1,18 @@
 /*
- * Texas Instruments TUSB422 Power Delivery
+ * TUSB422 Power Delivery
  *
  * Author: Brian Quach <brian.quach@ti.com>
- * Copyright: (C) 2016 Texas Instruments, Inc.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+ * Copyright (C) 2016 Texas Instruments Incorporated - http://www.ti.com/
  *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation version 2.
+ *
+ * This program is distributed "as is" WITHOUT ANY WARRANTY of any
+ * kind, whether express or implied; without even the implied warranty
+ * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  */
 
 #ifdef CONFIG_DUAL_ROLE_USB_INTF
@@ -40,6 +41,11 @@ static enum dual_role_property tusb422_dual_role_props[] = {
 #ifdef CONFIG_LGE_USB_TYPE_C
 	DUAL_ROLE_PROP_CC1,
 	DUAL_ROLE_PROP_CC2,
+	DUAL_ROLE_PROP_PDO1,
+	DUAL_ROLE_PROP_PDO2,
+	DUAL_ROLE_PROP_PDO3,
+	DUAL_ROLE_PROP_PDO4,
+	DUAL_ROLE_PROP_RDO,
 #endif
 };
 
@@ -60,12 +66,16 @@ static int tusb422_dual_role_get_prop(struct dual_role_phy_instance *dual_role,
 
 	switch (prop) {
 	case DUAL_ROLE_PROP_SUPPORTED_MODES:
+#ifdef CONFIG_LGE_USB_TYPE_C
+		*val = DUAL_ROLE_SUPPORTED_MODES_DFP_AND_UFP;
+#else
 		if ((tcpc_dev->role == ROLE_DRP) || (tcpc_dev->flags & TC_FLAGS_TEMP_ROLE))
 			*val = DUAL_ROLE_SUPPORTED_MODES_DFP_AND_UFP;
 		else if (tcpc_dev->role == ROLE_SRC)
 			*val = DUAL_ROLE_SUPPORTED_MODES_DFP;
 		else
 			*val = DUAL_ROLE_SUPPORTED_MODES_UFP;
+#endif
 		break;
 
 	case DUAL_ROLE_PROP_MODE:
@@ -75,7 +85,7 @@ static int tusb422_dual_role_get_prop(struct dual_role_phy_instance *dual_role,
 			*val = DUAL_ROLE_PROP_MODE_DFP;
 		else if (tcpc_dev->state == TCPC_STATE_ATTACHED_SNK)
 			*val = DUAL_ROLE_PROP_MODE_UFP;
-#ifdef CONFIG_LGE_USB_TYPE_C
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECT
 		else if (IS_STATE_CC_FAULT(tcpc_dev->state))
 			*val = DUAL_ROLE_PROP_MODE_FAULT;
 #endif
@@ -93,7 +103,7 @@ static int tusb422_dual_role_get_prop(struct dual_role_phy_instance *dual_role,
 				*val = DUAL_ROLE_PROP_PR_SNK;
 			else
 				*val = DUAL_ROLE_PROP_PR_SRC;
-#ifdef CONFIG_LGE_USB_TYPE_C
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECT
 		} else if (IS_STATE_CC_FAULT(tcpc_dev->state)) {
 			*val = DUAL_ROLE_PROP_PR_FAULT;
 #endif
@@ -111,7 +121,7 @@ static int tusb422_dual_role_get_prop(struct dual_role_phy_instance *dual_role,
 				*val = DUAL_ROLE_PROP_DR_DEVICE;
 			else
 				*val = DUAL_ROLE_PROP_DR_HOST;
-#ifdef CONFIG_LGE_USB_TYPE_C
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECT
 		} else if (IS_STATE_CC_FAULT(tcpc_dev->state)) {
 			*val = DUAL_ROLE_PROP_DR_FAULT;
 #endif
@@ -133,6 +143,13 @@ static int tusb422_dual_role_get_prop(struct dual_role_phy_instance *dual_role,
 #ifdef CONFIG_LGE_USB_TYPE_C
 	case DUAL_ROLE_PROP_CC1:
 	case DUAL_ROLE_PROP_CC2:
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECT
+		if (IS_STATE_CC_FAULT(tcpc_dev->state)) {
+			*val = DUAL_ROLE_PROP_CC_OPEN;
+			break;
+		}
+		else
+#endif
 		if (tcpc_dev->debug_accessory_mode) {
 			*val = DUAL_ROLE_PROP_CC_RD;
 			break;
@@ -173,6 +190,29 @@ static int tusb422_dual_role_get_prop(struct dual_role_phy_instance *dual_role,
 			}
 		}
 		break;
+	case DUAL_ROLE_PROP_PDO1:
+	case DUAL_ROLE_PROP_PDO2:
+	case DUAL_ROLE_PROP_PDO3:
+	case DUAL_ROLE_PROP_PDO4:
+		if (tcpc_dev->state != TCPC_STATE_UNATTACHED_SRC &&
+		    tcpc_dev->state != TCPC_STATE_UNATTACHED_SNK) {
+			if (pd_dev->power_role == PD_PWR_ROLE_SRC)
+				*val = pd_dev->src_pdo[prop - DUAL_ROLE_PROP_PDO1];
+			else
+				*val = pd_dev->offered_pdo[prop - DUAL_ROLE_PROP_PDO1];
+		} else
+			*val = 0;
+		break;
+	case DUAL_ROLE_PROP_RDO:
+		if (tcpc_dev->state != TCPC_STATE_UNATTACHED_SRC &&
+		    tcpc_dev->state != TCPC_STATE_UNATTACHED_SNK) {
+			if (pd_dev->power_role == PD_PWR_ROLE_SRC)
+				*val = pd_dev->offered_rdo;
+			else
+				*val = pd_dev->rdo;
+		} else
+			*val = 0;
+		break;
 #endif
 
 	default:
@@ -200,7 +240,7 @@ static int tusb422_dual_role_set_prop(struct dual_role_phy_instance *dual_role,
 			tcpm_try_role_swap(pd_dev->port);
 #endif
 		}
-#ifdef CONFIG_LGE_USB_TYPE_C
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECT
 		if (*val == DUAL_ROLE_PROP_PR_FAULT)
 			tcpm_cc_fault_test(0, true);
 		else if (*val == DUAL_ROLE_PROP_PR_NONE)
@@ -216,7 +256,7 @@ static int tusb422_dual_role_set_prop(struct dual_role_phy_instance *dual_role,
 				ret = -EBUSY;
 		}
 #endif
-#ifdef CONFIG_LGE_USB_TYPE_C
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECT
 		if (*val == DUAL_ROLE_PROP_DR_FAULT)
 			tcpm_cc_fault_test(0, true);
 		else if (*val == DUAL_ROLE_PROP_DR_NONE)
@@ -280,6 +320,9 @@ int tusb422_linux_dual_role_init(struct device *dev)
 	drp_desc->get_property = tusb422_dual_role_get_prop;
 	drp_desc->set_property = tusb422_dual_role_set_prop;
 	drp_desc->property_is_writeable = tusb422_dual_role_prop_is_writeable;
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECT
+	drp_desc->supported_modes = DUAL_ROLE_SUPPORTED_MODES_DFP_AND_UFP;
+#endif
 
 	tusb422_dual_role_phy = devm_dual_role_instance_register(dev, drp_desc);
 	if (IS_ERR(tusb422_dual_role_phy)) {

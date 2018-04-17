@@ -37,7 +37,9 @@ static int chg_get_property(struct power_supply *psy,
 {
 	struct anx7418_charger *chg = container_of(psy,
 			struct anx7418_charger, psy);
+	struct anx7418 *anx = chg->anx;
 	struct device *cdev = &chg->anx->client->dev;
+	int rc;
 
 	switch(prop) {
 	case POWER_SUPPLY_PROP_USB_OTG:
@@ -66,6 +68,22 @@ static int chg_get_property(struct power_supply *psy,
 		dev_dbg(cdev, "%s: type(%s)\n", __func__,
 				chg_to_string(chg->psy.type));
 		val->intval = chg->psy.type;
+		break;
+
+	case POWER_SUPPLY_PROP_TYPEC_MODE:
+#ifdef CONFIG_LGE_ALICE_FRIENDS
+		if (anx->friends == LGE_ALICE_FRIENDS_CM) {
+			val->intval = POWER_SUPPLY_TYPE_UNKNOWN;
+			break;
+		}
+#endif
+
+		rc = anx7418_read_reg(anx->client, CC_STATUS);
+		dev_dbg(cdev, "%s: CC_STATUS(%02X)\n", __func__, rc);
+
+		val->intval = (rc == 0x11) ?
+			POWER_SUPPLY_TYPE_CTYPE_DEBUG_ACCESSORY :
+			POWER_SUPPLY_TYPE_UNKNOWN;
 		break;
 
 #if defined(CONFIG_LGE_USB_TYPE_C) && defined(CONFIG_LGE_PM_CHARGING_CONTROLLER)
@@ -156,7 +174,7 @@ static int chg_set_property(struct power_supply *psy,
 			cancel_delayed_work(&chg->chg_work);
 			chg->curr_max = 0;
 			chg->volt_max = 0;
-			chg->ctype_charger = 0;
+			chg->ctype_charger = ANX7418_UNKNOWN_CHARGER;
 		}
 
 #ifdef CONFIG_LGE_ALICE_FRIENDS
@@ -192,6 +210,8 @@ static int chg_set_property(struct power_supply *psy,
 		switch (val->intval) {
 		case POWER_SUPPLY_TYPE_CTYPE:
 		case POWER_SUPPLY_TYPE_CTYPE_PD:
+		case POWER_SUPPLY_TYPE_USB_HVDCP:
+		case POWER_SUPPLY_TYPE_USB_HVDCP_3:
 			psy->type = val->intval;
 			break;
 		default:
@@ -314,6 +334,10 @@ static void chg_work(struct work_struct *w)
 	if (!atomic_read(&anx->pwr_on))
 		goto out;
 
+	if (chg->psy.type == POWER_SUPPLY_TYPE_USB_HVDCP ||
+	    chg->psy.type == POWER_SUPPLY_TYPE_USB_HVDCP_3)
+		goto out;
+
 	if (chg->ctype_charger != ANX7418_CTYPE_PD_CHARGER) {
 		/* check ctype charger */
 		rc = anx7418_read_reg(client, POWER_DOWN_CTRL);
@@ -321,20 +345,21 @@ static void chg_work(struct work_struct *w)
 		if (rc & (CC1_VRD_3P0 | CC2_VRD_3P0)) {
 			// 5V@3A
 			chg->volt_max = 5000;
-			chg->curr_max = 3000;
+			chg->curr_max = 2000;
 			chg->ctype_charger = ANX7418_CTYPE_CHARGER;
 
 		} else if (rc & (CC1_VRD_1P5 | CC2_VRD_1P5)) {
-			/* From the power team request, do not update 5v@1.5A */
-
 			// 5V@1.5A
-			//chg->volt_max = 5000;
-			//chg->curr_max = 1500;
-			//chg->ctype_charger = ANX7418_CTYPE_CHARGER;
+			chg->volt_max = 5000;
+			chg->curr_max = 1500;
+			chg->ctype_charger = ANX7418_CTYPE_CHARGER;
 
 		} else {
 			// Default USB Current
-			dev_dbg(cdev, "%s: Default USB Power\n", __func__);
+			dev_info(cdev, "%s: Default USB Power\n", __func__);
+			chg->volt_max = 5000;
+			chg->curr_max = 0;
+			chg->ctype_charger = ANX7418_UNKNOWN_CHARGER;
 		}
 	}
 

@@ -53,6 +53,9 @@
 #include <linux/pm_runtime.h>
 #include <asm/uaccess.h>
 #include <asm/unaligned.h>
+#ifdef CONFIG_USB_HOST_NOTIFY
+#include <linux/kthread.h>
+#endif
 
 #include <scsi/scsi.h>
 #include <scsi/scsi_cmnd.h>
@@ -1414,6 +1417,85 @@ static int media_not_present(struct scsi_disk *sdkp,
 	return 0;
 }
 
+#if defined(CONFIG_MACH_LGE) && defined(CONFIG_USB_HOST_NOTIFY)
+/**
+ *	sd_check_events - check media events
+ *	@disk: kernel device descriptor
+ *	@clearing: disk events currently being cleared
+ *
+ *	Returns mask of DISK_EVENT_*.
+ *
+ *	Note: this function is invoked from the block subsystem.
+ **/
+static unsigned int sd_check_events(struct gendisk *disk, unsigned int clearing)
+{
+	struct scsi_disk *sdkp = scsi_disk(disk);
+	struct scsi_device *sdp = sdkp->device;
+	struct scsi_sense_hdr *sshdr = NULL;
+	int retval;
+
+	printk("alex enter sd_check_events\n");
+
+	SCSI_LOG_HLQUEUE(3, sd_printk(KERN_INFO, sdkp, "sd_check_events\n"));
+
+	/*
+	 * If the device is offline, don't send any commands - just pretend as
+	 * if the command failed.  If the device ever comes back online, we
+	 * can deal with it then.  It is only because of unrecoverable errors
+	 * that we would ever take a device offline in the first place.
+	 */
+	if (!scsi_device_online(sdp)) {
+		set_media_not_present(sdkp);
+		goto out;
+	}
+
+	/*
+	 * Using TEST_UNIT_READY enables differentiation between drive with
+	 * no cartridge loaded - NOT READY, drive with changed cartridge -
+	 * UNIT ATTENTION, or with same cartridge - GOOD STATUS.
+	 *
+	 * Drives that auto spin down. eg iomega jaz 1G, will be started
+	 * by sd_spinup_disk() from sd_revalidate_disk(), which happens whenever
+	 * sd_revalidate() is called.
+	 */
+	retval = -ENODEV;
+
+	if (scsi_block_when_processing_errors(sdp)) {
+		sshdr  = kzalloc(sizeof(*sshdr), GFP_KERNEL);
+		retval = scsi_test_unit_ready(sdp, SD_TIMEOUT, SD_MAX_RETRIES,
+					      sshdr);
+	}
+
+	/* failed to execute TUR, assume media not present */
+	if (host_byte(retval)) {
+		set_media_not_present(sdkp);
+		goto out;
+	}
+
+	if (media_not_present(sdkp, sshdr))
+		goto out;
+
+	/*
+	 * For removable scsi disk we have to recognise the presence
+	 * of a disk in the drive.
+	 */
+	if (!sdkp->media_present)
+		sdp->changed = 1;
+	sdkp->media_present = 1;
+out:
+	/*
+	 * sdp->changed is set under the following conditions:
+	 *
+	 *	Medium present state has changed in either direction.
+	 *	Device has indicated UNIT_ATTENTION.
+	 */
+	kfree(sshdr);
+	retval = sdp->changed ? DISK_EVENT_MEDIA_CHANGE : 0;
+	sdp->changed = 0;
+	return retval;
+}
+#endif
+
 static int sd_sync_cache(struct scsi_disk *sdkp)
 {
 	int retries, res;
@@ -2721,6 +2803,9 @@ static int sd_revalidate_disk(struct gendisk *disk)
 	 * react badly if we do.
 	 */
 	if (sdkp->media_present) {
+#ifdef CONFIG_USB_HOST_NOTIFY
+		disk->media_present = 1;
+#endif
 		sd_read_capacity(sdkp, buffer);
 
 		if (sd_try_extended_inquiry(sdp)) {
@@ -2823,6 +2908,108 @@ static int sd_format_disk_name(char *prefix, int index, char *buf, int buflen)
 	return 0;
 }
 
+#ifdef CONFIG_USB_HOST_NOTIFY
+static void sd_media_state_emit(struct scsi_disk *sdkp)
+{
+	struct gendisk *gd = sdkp->disk;
+	struct device *ddev = disk_to_dev(gd);
+	int idx = 0;
+	char *envp[3];
+
+	envp[idx++] = "DISC_MEDIA_CHANGE=1";
+	envp[idx++] = NULL;
+
+	kobject_uevent_env(&ddev->kobj, KOBJ_CHANGE, envp);
+}
+
+static void sd_scanpartition_async(void *data, async_cookie_t cookie)
+{
+	struct scsi_disk *sdkp = data;
+	struct block_device *bdev;
+	struct gendisk *gd = sdkp->disk;
+	struct device *ddev = disk_to_dev(gd);
+	struct disk_part_iter piter;
+	struct hd_struct *part;
+	int err;
+
+	/* delay uevents, until we scanned partition table */
+	dev_set_uevent_suppress(ddev, 1);
+
+	/* No minors to use for partitions */
+	if (!disk_part_scan_enabled(gd)) {
+		sd_printk(KERN_NOTICE, sdkp, "No disc partitions\n");
+		goto exit;
+	}
+	bdev = bdget_disk(gd, 0);
+	if (!bdev) {
+		sd_printk(KERN_NOTICE, sdkp, "bdget_disk, bdev is NULL\n");
+		goto exit;
+	}
+	bdev->bd_invalidated = 1;
+	err = blkdev_get(bdev, FMODE_READ, NULL);
+	if (err < 0) {
+		sd_printk(KERN_NOTICE, sdkp, "no media, delete partition\n");
+		disk_part_iter_init(&piter, gd, DISK_PITER_INCL_EMPTY);
+		while ((part = disk_part_iter_next(&piter)))
+			delete_partition(gd, part->partno);
+		disk_part_iter_exit(&piter);
+
+		check_disk_size_change(gd, bdev);
+		bdev->bd_invalidated = 0;
+		goto exit;
+	}
+	blkdev_put(bdev, FMODE_READ);
+
+exit:
+	/* announce disk after possible partitions are created */
+	dev_set_uevent_suppress(ddev, 0);
+
+	/* announce disk change state */
+	sd_media_state_emit(sdkp);
+
+	/* announce possible partitions */
+	disk_part_iter_init(&piter, gd, 0);
+	while ((part = disk_part_iter_next(&piter)))
+		kobject_uevent(&part_to_dev(part)->kobj, KOBJ_ADD);
+	disk_part_iter_exit(&piter);
+
+	sdkp->async_end = 1;
+	wake_up_interruptible(&sdkp->delay_wait);
+}
+
+static int sd_media_scan_thread(void *__sdkp)
+{
+	struct scsi_disk *sdkp = __sdkp;
+	int ret;
+	sdkp->async_end = 1;
+	sdkp->device->changed = 0;
+	while (!kthread_should_stop()) {
+		wait_event_interruptible_timeout(sdkp->delay_wait,
+			(sdkp->thread_remove && sdkp->async_end), 3*HZ);
+		if (sdkp->thread_remove && sdkp->async_end)
+			break;
+#ifdef CONFIG_MACH_LGE
+		ret = sd_check_events(sdkp->disk, 0);
+#else
+		ret = 0;
+#endif
+
+		if (sdkp->prv_media_present
+				!= sdkp->media_present) {
+			sd_printk(KERN_NOTICE, sdkp,
+				"sd_check_ret=%d prv_media=%d media=%d\n",
+					ret, sdkp->prv_media_present
+							, sdkp->media_present);
+			sdkp->disk->media_present = 0;
+			sdkp->async_end = 0;
+			async_schedule(sd_scanpartition_async, sdkp);
+			sdkp->prv_media_present = sdkp->media_present;
+		}
+	}
+	sd_printk(KERN_NOTICE, sdkp, "sd_media_scan_thread exit\n");
+	complete_and_exit(&sdkp->scanning_done, 0);
+}
+#endif
 /*
  * The asynchronous part of sd_probe
  */
@@ -2871,8 +3058,17 @@ static void sd_probe_async(void *data, async_cookie_t cookie)
 	blk_pm_runtime_init(sdp->request_queue, dev);
 	if (sdp->autosuspend_delay >= 0)
 		pm_runtime_set_autosuspend_delay(dev, sdp->autosuspend_delay);
+#ifdef CONFIG_USB_HOST_NOTIFY
+	if (sdp->host->by_usb){
+		gd->interfaces = GENHD_IF_USB;
+		msleep(500);
+	}
+#endif
 
 	add_disk(gd);
+#ifdef CONFIG_USB_HOST_NOTIFY
+	sdkp->prv_media_present = sdkp->media_present;
+#endif
 	if (sdkp->capacity)
 		sd_dif_config_host(sdkp);
 
@@ -2880,6 +3076,12 @@ static void sd_probe_async(void *data, async_cookie_t cookie)
 
 	scsi_autopm_put_device(sdp);
 	put_device(&sdkp->dev);
+#ifdef CONFIG_USB_HOST_NOTIFY
+	if (sdp->host->by_usb) {
+		if (!IS_ERR(sdkp->th))
+			wake_up_process(sdkp->th);
+	}
+#endif
 }
 
 /**
@@ -2970,6 +3172,19 @@ static int sd_probe(struct device *dev)
 
 	get_device(dev);
 	dev_set_drvdata(dev, sdkp);
+#ifdef CONFIG_USB_HOST_NOTIFY
+	if (sdp->host->by_usb) {
+		init_waitqueue_head(&sdkp->delay_wait);
+		init_completion(&sdkp->scanning_done);
+		sdkp->thread_remove = 0;
+		sdkp->th = kthread_create(sd_media_scan_thread,
+				sdkp, "sd-media-scan");
+		if (IS_ERR(sdkp->th)) {
+			pr_err("Unable to start the device-scanning thread\n");
+			complete(&sdkp->scanning_done);
+		}
+	}
+#endif
 
 	get_device(&sdkp->dev);	/* prevent release before async_schedule */
 	async_schedule_domain(sd_probe_async, sdkp, &scsi_sd_probe_domain);
@@ -3008,6 +3223,15 @@ static int sd_remove(struct device *dev)
 	sdkp = dev_get_drvdata(dev);
 	devt = disk_devt(sdkp->disk);
 	scsi_autopm_get_device(sdkp->device);
+#ifdef CONFIG_USB_HOST_NOTIFY
+	sdkp->disk->media_present = 0;
+	if (sdkp->device->host->by_usb) {
+		sdkp->thread_remove = 1;
+		wake_up_interruptible(&sdkp->delay_wait);
+		wait_for_completion(&sdkp->scanning_done);
+		sd_printk(KERN_NOTICE, sdkp, "scan thread kill success\n");
+	}
+#endif
 
 	async_synchronize_full_domain(&scsi_sd_pm_domain);
 	async_synchronize_full_domain(&scsi_sd_probe_domain);

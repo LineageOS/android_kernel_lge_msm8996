@@ -23,10 +23,14 @@ static void usb_debugger_work(struct work_struct *w)
 			return;
 		}
 
+		if(dev->sbu_en_gpio)
+			gpiod_direction_output(dev->sbu_en_gpio,0);
 		gpiod_direction_output(dev->sbu_sel_gpio, 0);
 		lge_uart_console_on_earjack_debugger_in();
 		DEBUG("%s: uart debugger in\n", __func__);
 	} else {
+		if(dev->sbu_en_gpio)
+			gpiod_direction_output(dev->sbu_en_gpio, 1);
 		lge_uart_console_on_earjack_debugger_out();
 		DEBUG("%s: uart debugger out\n", __func__);
 	}
@@ -46,6 +50,13 @@ static int usb_debugger_init(struct hw_pd_dev *dev)
 	if (IS_ERR(dev->sbu_sel_gpio)) {
 		PRINT("failed to allocate sbu_sel gpio\n");
 		dev->sbu_sel_gpio = NULL;
+	}
+
+	dev->sbu_en_gpio = devm_gpiod_get(dev->dev, "ti,sbu-en",
+					  GPIOD_OUT_HIGH);
+	if (IS_ERR(dev->sbu_en_gpio)) {
+		PRINT("failed to allocate sbu_en gpio\n");
+		dev->sbu_en_gpio = NULL;
 	}
 
 	return 0;

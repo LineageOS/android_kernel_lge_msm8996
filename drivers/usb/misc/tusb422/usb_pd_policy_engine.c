@@ -1,17 +1,39 @@
 /*
- * Texas Instruments TUSB422 Power Delivery
+ * TUSB422 Power Delivery
  *
  * Author: Brian Quach <brian.quach@ti.com>
- * Copyright: (C) 2016 Texas Instruments, Inc.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+ * Copyright (C) 2016 Texas Instruments Incorporated - http://www.ti.com/
  *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions
+ *  are met:
+ *
+ *    Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ *    Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the
+ *    distribution.
+ *
+ *    Neither the name of Texas Instruments Incorporated nor the names of
+ *    its contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ *  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ *  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ *  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ *  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
 #include "usb_pd_policy_engine.h"
@@ -19,7 +41,6 @@
 #include "tusb422.h"
 #include "tusb422_common.h"
 #include "usb_pd.h"
-#include <linux/module.h>
 #ifdef CONFIG_TUSB422_PAL
 	#include "usb_pd_pal.h"
 #endif
@@ -33,11 +54,6 @@
 	#include <linux/usb/class-dual-role.h>
 #endif
 
-#define VDM_DISCOVER_IDENTITY
-#ifdef VDM_DISCOVER_IDENTITY
-#include "vdm.h"
-#endif
-
 /* PD Counter */
 #define N_CAPS_COUNT        50
 #define N_HARD_RESET_COUNT  2
@@ -47,6 +63,7 @@
 /* PD Time Values */
 #define T_NO_RESPONSE_MS            5000   /* 4.5 - 5.5 s */
 #define T_SENDER_RESPONSE_MS          25   /*  24 - 30 ms */
+#define T_VCONN_STABLE_MS             50   /* 50ms max from Type-C spec */
 #define T_SWAP_SOURCE_START_MS        40   /*  20 - ? ms*/
 #define T_TYPEC_SEND_SOURCE_CAP_MS   150   /* 100 - 200 ms */
 #define T_TYPEC_SINK_WAIT_CAP_MS     500   /* 310 - 620 ms */
@@ -65,6 +82,17 @@
 
 #define T_VBUS_5V_STABLIZE_MS         20   /* delay for VBUS to stablize after vSafe5V-min is reached */
 
+#ifdef ENABLE_VDM_SUPPORT
+#define T_DISCOVER_IDENTITY_MS        45   /* 40 - 50 ms */
+#define T_VDM_BUSY_MS                100   /* 50 - ? ms */
+//#define T_VDM_ENTER_MODE_MS           25   /* ?  - 25ms */
+//#define T_VDM_EXIT_MODE_MS            25   /* ?  - 25ms */
+#define T_VDM_SENDER_RESPONSE_MS      25   /* 24 - 30ms */
+#define T_VDM_WAIT_MODE_ENTRY_MS      45   /* 40 - 50 ms */
+#define T_VDM_WAIT_MODE_EXIT_MS       45   /* 40 - 50 ms */
+#define T_AME_TIMEOUT_MS            1000   /*  ? - 1 sec */
+#endif
+
 usb_pd_port_t pd[NUM_TCPC_DEVICES];
 static uint8_t buf[32];
 
@@ -72,8 +100,15 @@ extern void usb_pd_pm_evaluate_src_caps(unsigned int port);
 extern usb_pd_port_config_t* usb_pd_pm_get_config(unsigned int port);
 extern void build_rdo(unsigned int port);
 extern uint32_t get_data_object(uint8_t *obj_data);
+extern void build_src_caps(unsigned int port);
+extern void build_snk_caps(unsigned int port);
+
 #ifdef CONFIG_LGE_DP_UNSUPPORT_NOTIFY
 extern void tusb422_set_dp_notify_node(int val);
+#endif
+
+#ifdef ENABLE_VDM_SUPPORT
+static void usb_pd_pe_vdm_handler(usb_pd_port_t *dev);
 #endif
 
 const char * const pdstate2string[PE_NUM_STATES] =
@@ -150,6 +185,7 @@ const char * const pdstate2string[PE_NUM_STATES] =
 	"PRS_SEND_SWAP",
 	"PRS_EVALUATE_SWAP",
 	"PRS_REJECT_SWAP",
+	"PRS_WAIT_SWAP",
 	"PRS_ACCEPT_SWAP",
 	"PRS_TRANSITION_TO_OFF",
 	"PRS_ASSERT_RD",
@@ -168,7 +204,46 @@ const char * const pdstate2string[PE_NUM_STATES] =
 	"VCS_TURN_ON_VCONN",
 	"VCS_SEND_PS_RDY",
 
+#ifdef ENABLE_VDM_SUPPORT
+	/* VDM */
+	"SRC_VDM_IDENTITY_REQUEST",
+	"INIT_PORT_VDM_IDENTITY_REQUEST",
+	"INIT_VDM_SVIDS_REQUEST",
+	"INIT_VDM_MODES_REQUEST",
+	"INIT_VDM_ATTENTION_REQUEST",
+#ifdef ENABLE_DP_ALT_MODE_SUPPORT
+	"INIT_VDM_DP_STATUS_UPDATE",
+	"INIT_VDM_DP_CONFIG",
+#endif
+
+	"RESP_VDM_NAK",
+	"RESP_VDM_GET_IDENTITY",
+	"RESP_VDM_GET_SVIDS",
+	"RESP_VDM_GET_MODES",
+	"RCV_VDM_ATTENTION_REQUEST",
+#ifdef ENABLE_DP_ALT_MODE_SUPPORT
+	"RESP_VDM_DP_STATUS_UPDATE",
+	"RESP_VDM_DP_CONFIG",
+#endif
+
+	"DFP_VDM_MODE_ENTRY_REQUEST",
+	"DFP_VDM_MODE_EXIT_REQUEST",
+
+	"UFP_VDM_EVAL_MODE_ENTRY",
+	"UFP_VDM_MODE_EXIT"
+#endif
 };
+
+
+#ifdef ENABLE_DP_ALT_MODE_SUPPORT
+#define DP_PORT_CAPABILITY(vdo)  ((vdo) & 0x3)
+#define UFP_D_CAPABLE_BIT (1 << 0)
+#define DFP_D_CAPABLE_BIT (1 << 1)
+#define RECEPTACLE_INDICATION_BIT (1 << 6)
+#define DFP_D_PIN_ASSIGNMENTS(vdo)  (((vdo) >> 8) & 0xFF)
+#define UFP_D_PIN_ASSIGNMENTS(vdo)  (((vdo) >> 16) & 0xFF)
+#endif
+
 
 #ifndef CONFIG_TUSB422
 #if DEBUG_LEVEL >= 1
@@ -244,14 +319,12 @@ static void timer_start_no_response(usb_pd_port_t *dev)
 
 static void timer_cancel_no_response(usb_pd_port_t *dev)
 {
-#ifdef CONFIG_LGE_USB_TYPE_C
-	if (dev->timer2.function == timeout_no_response)
-		return;
-#endif
-
 	INFO("%s\n", __func__);
 
-	tusb422_lfo_timer_cancel(&dev->timer2);
+	if (dev->timer2.function == timeout_no_response)
+	{
+		tusb422_lfo_timer_cancel(&dev->timer2);
+	}
 
 	return;
 }
@@ -268,6 +341,8 @@ void usb_pd_pe_init(unsigned int port, usb_pd_port_config_t *config)
 	usb_pd_port_t *dev = &pd[port];
 	unsigned int i;
 
+	dev->tcpc_dev = tcpm_get_device(port);
+
 	pd[port].state_idx = 0;
 
 	for (i = 0; i < PD_STATE_HISTORY_LEN; i++)
@@ -282,22 +357,47 @@ void usb_pd_pe_init(unsigned int port, usb_pd_port_config_t *config)
 	dev->timer.data = port;
 	dev->timer2.data = port;
 
-	dev->src_settling_time = config->src_settling_time_ms;
+	dev->active_alt_modes = 0;
+
+	// Copy externally_powered from config as this parameter change dynamically.
+	dev->externally_powered = config->externally_powered;
 
 	return;
 }
 
+#ifdef ENABLE_VDM_SUPPORT
+
+static void timeout_alt_mode_entry(unsigned int port)
+{
+	CRIT("Alt-Mode entry timeout!\n");
+
+	// Enable billboard.
+
+	return;
+}
+#endif
 
 void usb_pd_pe_connection_state_change_handler(unsigned int port, tcpc_state_t state)
 {
 	usb_pd_port_t *dev = &pd[port];
+#ifdef ENABLE_VDM_SUPPORT
+	usb_pd_port_config_t *config = usb_pd_pm_get_config(port);
+#endif
 
 	switch (state)
 	{
 		case TCPC_STATE_UNATTACHED_SRC:
 		case TCPC_STATE_UNATTACHED_SNK:
-			timer_cancel_no_response(dev);
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECT
+		case TCPC_STATE_CC_FAULT_CC_OV:
+		case TCPC_STATE_CC_FAULT_SWING:
+		case TCPC_STATE_CC_FAULT_SBU_OV:
+		case TCPC_STATE_CC_FAULT_SBU_ADC:
+		case TCPC_STATE_CC_FAULT_SBU_DRY_CHECK:
+		case TCPC_STATE_CC_FAULT_TEST:
+#endif
 			timer_cancel(&dev->timer);
+			tusb422_lfo_timer_cancel(&dev->timer2);
 			pe_set_state(dev, PE_UNATTACHED);
 			break;
 
@@ -312,6 +412,12 @@ void usb_pd_pe_connection_state_change_handler(unsigned int port, tcpc_state_t s
 			dev->data_role = PD_DATA_ROLE_UFP;
 			dev->power_role = PD_PWR_ROLE_SNK;
 			dev->vbus_present = true;
+#ifdef ENABLE_VDM_SUPPORT
+			if (config->ufp_alt_mode_entry_timeout_enable)
+			{
+				tusb422_lfo_timer_start(&dev->timer2, T_AME_TIMEOUT_MS, timeout_alt_mode_entry);
+			}
+#endif
 			pe_set_state(dev, PE_SNK_STARTUP);
 			break;
 
@@ -345,11 +451,13 @@ static void usb_pd_pe_tx_data_msg(unsigned int port, msg_hdr_data_msg_type_t msg
 	{
 		if (msg_type == DATA_MSG_TYPE_SRC_CAPS)
 		{
+			build_src_caps(port);
 			pdo = dev->src_pdo;
 			ndo = config->num_src_pdos;
 		}
 		else /* SNK CAPS */
 		{
+			build_snk_caps(port);
 			pdo = dev->snk_pdo;
 			ndo = config->num_snk_pdos;
 		}
@@ -384,39 +492,6 @@ static void usb_pd_pe_tx_data_msg(unsigned int port, msg_hdr_data_msg_type_t msg
 	return;
 }
 
-#ifdef VDM_DISCOVER_IDENTITY
-static void usb_pd_pe_tx_vdm_msg(unsigned int port, vdm_cmd_t command)
-{
-	vdm_hdr_t *vdm = (vdm_hdr_t *)(&buf[3]);
-	uint8_t ndo = 0;
-
-	switch (command) {
-	case VDM_HDR_CMD_DISCOVER_IDENTITY:
-		ndo = 1;
-
-		vdm->CommandType = VDM_HDR_CMD_TYPE_REQ;
-		vdm->ObjectPosition = 0;
-		vdm->SVID = VDM_HDR_SVID_PD_SID;
-		break;
-
-	default:
-		CRIT("%s: command %u not supported.\n", __func__, command);
-		break;
-	}
-
-	if (ndo > 0)
-	{
-		vdm->Command = command;
-		vdm->Reserved1 = 0;
-		vdm->Reserved2 = 0;
-		vdm->StructedVDMVersion = VDM_HDR_VERSION_10;
-		vdm->VDMType = VDM_HDR_TYPE_STRUCTURED_VDM;
-
-		usb_pd_prl_tx_data_msg(port, buf, DATA_MSG_TYPE_VENDOR, TCPC_TX_SOP, ndo);
-	}
-}
-#endif
-
 static void pe_send_accept_entry(usb_pd_port_t *dev)
 {
 	usb_pd_prl_tx_ctrl_msg(dev->port, buf, CTRL_MSG_TYPE_ACCEPT, TCPC_TX_SOP);
@@ -426,6 +501,12 @@ static void pe_send_accept_entry(usb_pd_port_t *dev)
 static void pe_send_reject_entry(usb_pd_port_t *dev)
 {
 	usb_pd_prl_tx_ctrl_msg(dev->port, buf, CTRL_MSG_TYPE_REJECT, TCPC_TX_SOP);
+	return;
+}
+
+static void pe_send_wait_entry(usb_pd_port_t *dev)
+{
+	usb_pd_prl_tx_ctrl_msg(dev->port, buf, CTRL_MSG_TYPE_WAIT, TCPC_TX_SOP);
 	return;
 }
 
@@ -492,6 +573,24 @@ static void usb_pd_pe_ctrl_msg_rx_handler(usb_pd_port_t *dev)
 {
 	usb_pd_port_config_t *config = usb_pd_pm_get_config(dev->port);
 
+#ifdef ENABLE_VDM_SUPPORT
+	if (dev->vdm_in_progress)
+	{
+		// VDM is being interrupted.  Return to Ready state.
+		if (dev->power_role == PD_PWR_ROLE_SNK)
+		{
+			pe_set_state(dev, PE_SNK_READY);
+		}
+		else /* SRC */
+		{
+			pe_set_state(dev, PE_SRC_READY);
+		}
+
+		dev->state_change = false;
+		dev->vdm_in_progress = false;
+	}
+#endif
+
 	switch (dev->rx_msg_type)
 	{
 		case CTRL_MSG_TYPE_GOTO_MIN:
@@ -536,6 +635,7 @@ static void usb_pd_pe_ctrl_msg_rx_handler(usb_pd_port_t *dev)
 			{
 				// Stop sender response timer.
 				timer_cancel(&dev->timer);
+				dev->power_role_swap_in_progress = true;
 				pe_set_state(dev, PE_PRS_TRANSITION_TO_OFF);
 			}
 			else if (*dev->current_state == PE_VCS_SEND_SWAP)
@@ -664,7 +764,7 @@ static void usb_pd_pe_ctrl_msg_rx_handler(usb_pd_port_t *dev)
 			if ((*dev->current_state == PE_SNK_READY) ||
 				(*dev->current_state == PE_SRC_READY))
 			{
-				if (!dev->modal_operation)
+				if (!dev->active_alt_modes)
 				{
 					pe_set_state(dev, PE_DRS_EVALUATE_SWAP);
 				}
@@ -823,31 +923,13 @@ static void usb_pd_pe_data_msg_rx_handler(usb_pd_port_t *dev)
 			break;
 
 		case DATA_MSG_TYPE_VENDOR:
-#ifdef VDM_DISCOVER_IDENTITY
-		{
-			vdm_hdr_t *vdm = (vdm_hdr_t *)dev->rx_msg_buf;
-
-			if (vdm->Command == VDM_HDR_CMD_DISCOVER_IDENTITY &&
-			    vdm->CommandType == VDM_HDR_CMD_TYPE_ACK)
-			{
-				vdm_id_hdr_t *hdr = (vdm_id_hdr_t *)(&vdm[1]);
-
-				if (hdr->ProductTypeUFP == VDM_ID_HDR_PRODUCT_TYPE_UFP_AMC)
-				{
-					/* FIXME */
-					PRINT("Alternate Mode Adapter detected!\n");
-#ifdef CONFIG_LGE_DP_UNSUPPORT_NOTIFY
-					tusb422_set_dp_notify_node(1);
+#ifdef ENABLE_VDM_SUPPORT
+#ifdef CONFIG_LGE_USB_TYPE_C
+			if (dev->vdm_in_progress)
 #endif
-				}
-				break;
-			}
-		}
-#endif
-
-#if (PD_SPEC_REV == PD_REV30) && !defined(CABLE_PLUG)
-			// For USB_PD v3.0, DFP and UFP shall return Not_Supported msg if
-			// VDM is not supported.
+			usb_pd_pe_vdm_handler(dev);
+#elif (PD_SPEC_REV == PD_REV30) && !defined(CABLE_PLUG)
+			// For PD r3.0, DFP or UFP should return Not_Supported msg if not supported.
 			if (dev->power_role == PD_PWR_ROLE_SNK)
 			{
 				pe_set_state(dev, PE_SNK_SEND_NOT_SUPPORTED);
@@ -878,6 +960,1624 @@ static void usb_pd_pe_data_msg_rx_handler(usb_pd_port_t *dev)
 }
 
 
+#ifdef ENABLE_VDM_SUPPORT
+
+static void usb_pd_pe_tx_vendor_msg(unsigned int port, uint8_t ndo, tcpc_transmit_t sop_type)
+{
+	usb_pd_port_t *dev = &pd[port];
+	uint8_t *payload_ptr = &buf[3];
+	uint8_t vdo_idx;
+
+	for (vdo_idx = 0; vdo_idx < ndo; vdo_idx++)
+	{
+		*payload_ptr++ = (uint8_t)(dev->vdm_hdr_vdos[vdo_idx] & 0xFF);
+		*payload_ptr++ = (uint8_t)((dev->vdm_hdr_vdos[vdo_idx] & 0xFF00) >> 8);
+		*payload_ptr++ = (uint8_t)((dev->vdm_hdr_vdos[vdo_idx] & 0xFF0000) >> 16);
+		*payload_ptr++ = (uint8_t)((dev->vdm_hdr_vdos[vdo_idx] & 0xFF000000) >> 24);
+	}
+
+	dev->vdm_in_progress = true;
+
+	usb_pd_prl_tx_data_msg(port, buf, DATA_MSG_TYPE_VENDOR, sop_type, ndo);
+
+	return;
+}
+
+/* Send structured VDM with no VDOs */
+static void vdm_send_structured_cmd(unsigned int port, uint16_t svid, vdm_command_t cmd, uint8_t obj_pos, tcpc_transmit_t sop_type)
+{
+	usb_pd_port_t *dev = &pd[port];
+
+	dev->vdm_hdr_vdos[0] = USB_PD_VDM_HDR_GEN(svid, VDM_TYPE_STRUCTURED, obj_pos, VDM_INITIATOR, cmd);
+
+	usb_pd_pe_tx_vendor_msg(port, 1, sop_type);
+
+	return;
+}
+
+#define INVALID_SVID_INDEX  0xFF
+
+static uint8_t find_svid_index(usb_pd_port_t *dev, uint16_t svid)
+{
+	usb_pd_port_config_t *config = usb_pd_pm_get_config(dev->port);
+	uint8_t svid_idx;
+
+	for (svid_idx = 0; svid_idx < config->num_svids; svid_idx++)
+	{
+		if (svid == config->svids[svid_idx])
+		{
+			return svid_idx;
+		}
+	}
+
+	return INVALID_SVID_INDEX;
+}
+
+#ifdef ENABLE_DP_ALT_MODE_SUPPORT
+
+void usb_pd_pe_update_dp_status(unsigned int port, uint32_t status)
+{
+	usb_pd_port_t *dev = &pd[port];
+
+	dev->displayport_status = status;
+	pe_set_state(dev, PE_INIT_VDM_ATTENTION_REQUEST);
+	return;
+}
+
+static void vdm_send_dp_status(usb_pd_port_t *dev, vdm_command_type_t cmd_type, vdm_command_t cmd)
+{
+	usb_pd_port_config_t *config = usb_pd_pm_get_config(dev->port);
+	uint8_t svid_index = find_svid_index(dev, VDM_DISPLAYPORT_VID);
+
+	// Build header.
+	dev->vdm_hdr_vdos[0] = USB_PD_VDM_HDR_GEN(VDM_DISPLAYPORT_VID, VDM_TYPE_STRUCTURED, 1, cmd_type, cmd);
+
+	// Build status.
+	dev->vdm_hdr_vdos[1] = dev->displayport_status;
+
+	// Populate DFP_D/UFP_D connected status based on port capability.
+	// Assumption is that this is not a DP cable adapter and only supports UFP_D or DFP_D and not both.
+	// Otherwise, HPD and AUX should be used per DP Alt-Mode Spec section 4.2.4.2 for detection.
+	if (DP_PORT_CAPABILITY(config->modes[svid_index]))
+	{
+		dev->vdm_hdr_vdos[1] |= DP_PORT_CAPABILITY(~config->modes[svid_index]);
+	}
+
+	// If UFP_U, populate bits [6:2].
+	if (dev->data_role == PD_DATA_ROLE_UFP)
+	{
+		if (dev->vdm_hdr_vdos[1] & (UFP_D_CONNECTED | DFP_D_CONNECTED))
+		{
+			// Set DP functionality to enabled if anything is connected.
+			dev->vdm_hdr_vdos[1] |= ADAPTER_ENABLED;
+		}
+
+		if (config->multi_function_preferred)
+		{
+			dev->vdm_hdr_vdos[1] |= MULTIFUNC_PREFERRED;
+		}
+	}
+	else /* DFP */
+	{
+		// Clear UFP_U specific bits [6:2].
+		dev->vdm_hdr_vdos[1] &= 0x183;
+	}
+
+	// Tx length is 1 for the VDM header + 1 for the status.
+	usb_pd_pe_tx_vendor_msg(dev->port, 2, (tcpc_transmit_t)dev->rx_sop);
+
+	return;
+}
+
+
+static void pe_init_vdm_dp_status_update_entry(usb_pd_port_t *dev)
+{
+	usb_pd_port_config_t *config = usb_pd_pm_get_config(dev->port);
+
+	// Only a receptacle-based DFP_U can initiate messages other than Attention command.
+	if ((dev->active_alt_modes & DP_ALT_MODE) &&
+		(dev->data_role == PD_DATA_ROLE_DFP) &&
+		(config->modes[find_svid_index(dev, VDM_DISPLAYPORT_VID)] & RECEPTACLE_INDICATION_BIT))
+	{
+		// Send DP Status Update VDM.
+		vdm_send_dp_status(dev, VDM_INITIATOR, VDM_CMD_DP_STATUS_UPDATE);
+	}
+
+	return;
+}
+
+typedef enum
+{
+	PIN_ASSIGNMENT_A = 1,
+	PIN_ASSIGNMENT_B = (1 << 1),
+	PIN_ASSIGNMENT_C = (1 << 2),
+	PIN_ASSIGNMENT_D = (1 << 3),
+	PIN_ASSIGNMENT_E = (1 << 4),
+	PIN_ASSIGNMENT_F = (1 << 5)	  /* for DockPort 1.0a */
+} pin_assignment_supported_t;
+
+typedef enum
+{
+	DP_V1P3_RATE = 1,
+	DP_GEN2_RATE = 2
+} dp_signaling_rate_t;
+
+static void pe_init_vdm_dp_config_entry(usb_pd_port_t *dev)
+{
+	usb_pd_port_config_t *config = usb_pd_pm_get_config(dev->port);
+	uint16_t config_pin_assignment = 0;
+	uint8_t lane_cnt;
+
+	// Only a receptacle-based DFP_U can initiate messages other than Attention command.
+	if ((dev->active_alt_modes & DP_ALT_MODE) &&
+		(dev->data_role == PD_DATA_ROLE_DFP) &&
+		(config->modes[find_svid_index(dev, VDM_DISPLAYPORT_VID)] & RECEPTACLE_INDICATION_BIT))
+	{
+		// Build header.
+		dev->vdm_hdr_vdos[0] = USB_PD_VDM_HDR_GEN(VDM_DISPLAYPORT_VID, VDM_TYPE_STRUCTURED, 1, VDM_INITIATOR, VDM_CMD_DP_CONFIG);
+
+		// Build DP config.
+		dev->vdm_hdr_vdos[1] = 0;
+
+		dev->vdm_hdr_vdos[1] |= dev->displayport_config;
+
+		if (dev->displayport_config != CONFIG_FOR_USB)
+		{
+			// Select DP pin assignment. Give priority to higher DP data rate and then multifuction.
+			// Pin assignments A and B use DP Gen2 signaling.
+			// If multifunction is preferred, use Pin Assignment B, D, or F if possible.
+			if ((dev->displayport_matched_pin_assignments & PIN_ASSIGNMENT_A))
+			{
+				config_pin_assignment = PIN_ASSIGNMENT_A;
+
+				if (dev->active_cable)
+				{
+					lane_cnt = 2;
+				}
+				else
+				{
+					lane_cnt = 4;
+				}
+			}
+
+			if ((dev->displayport_matched_pin_assignments & PIN_ASSIGNMENT_B) &&
+				(dev->displayport_remote_status & MULTIFUNC_PREFERRED))
+			{
+				config_pin_assignment = PIN_ASSIGNMENT_B;
+
+				if (dev->active_cable)
+				{
+					lane_cnt = 1;
+				}
+				else
+				{
+					lane_cnt = 2;
+				}
+			}
+
+			// If assignment A or B was not selected.
+			if (!config_pin_assignment)
+			{
+				if ((dev->displayport_matched_pin_assignments & PIN_ASSIGNMENT_C))
+				{
+					config_pin_assignment = PIN_ASSIGNMENT_C;
+					lane_cnt = 4;
+				}
+
+				if ((dev->displayport_matched_pin_assignments & PIN_ASSIGNMENT_D) &&
+					(dev->displayport_remote_status & MULTIFUNC_PREFERRED))
+				{
+					config_pin_assignment = PIN_ASSIGNMENT_D;
+					lane_cnt = 2;
+				}
+			}
+
+			// If assignment A, B, C, or D was not selected.
+			if (!config_pin_assignment)
+			{
+				if ((dev->displayport_matched_pin_assignments & PIN_ASSIGNMENT_E))
+				{
+					config_pin_assignment = PIN_ASSIGNMENT_E;
+					lane_cnt = 4;
+				}
+
+				if ((dev->displayport_matched_pin_assignments & PIN_ASSIGNMENT_F) &&
+					(dev->displayport_remote_status & MULTIFUNC_PREFERRED))
+				{
+					config_pin_assignment = PIN_ASSIGNMENT_F;
+					lane_cnt = 2;
+				}
+			}
+
+			// Set pin assignment configuration field.
+			dev->vdm_hdr_vdos[1] |= (config_pin_assignment << 8);
+
+			// Set DP data rate field based on pin assignment.
+			if (config_pin_assignment & (PIN_ASSIGNMENT_A | PIN_ASSIGNMENT_B))
+			{
+				// DP Gen2 rate.
+				dev->vdm_hdr_vdos[1] |= DP_GEN2_RATE << 2;
+			}
+			else
+			{
+				// DP v1.3 rate.
+				dev->vdm_hdr_vdos[1] |= DP_V1P3_RATE << 2;
+			}
+
+			dev->displayport_selected_pin_assignment = config_pin_assignment;
+
+			if (lane_cnt != dev->displayport_lane_cnt)
+			{
+				// Place any Type-C pins to be reconfigured to in Safe state.
+				if (lane_cnt == 4)
+				{
+					tcpm_mux_control(dev->port, dev->data_role, MUX_DISABLE, dev->tcpc_dev->plug_polarity);
+				}
+				else /* 2-lane */
+				{
+					tcpm_mux_control(dev->port, dev->data_role, MUX_USB, dev->tcpc_dev->plug_polarity);
+				}
+
+				if (dev->displayport_lane_cnt)
+				{
+					// If changing the number of DP lanes, force HPD low and isolate SBU pins.
+					// Then ensure HPD is low for at least 3ms.
+					tcpm_hpd_out_control(dev->port, 0);
+					tcpm_msleep(3);
+				}
+
+				dev->displayport_lane_cnt = lane_cnt;
+			}
+		}
+		else /* Config for USB */
+		{
+			// Deassert HPD.
+			tcpm_hpd_out_control(dev->port, 0);
+
+			// Isolate any pins (including SBUs) previously configured for DP.
+			if (dev->displayport_lane_cnt == 4)
+			{
+				tcpm_mux_control(dev->port, dev->data_role, MUX_DISABLE, dev->tcpc_dev->plug_polarity);
+			}
+			else if (dev->displayport_lane_cnt == 2)
+			{
+				tcpm_mux_control(dev->port, dev->data_role, MUX_USB, dev->tcpc_dev->plug_polarity);
+			}
+
+			dev->displayport_lane_cnt = 0;
+		}
+
+		// Tx length is 1 for the VDM header + 1 for the configuration.
+		usb_pd_pe_tx_vendor_msg(dev->port, 2, (tcpc_transmit_t)dev->rx_sop);
+	}
+
+	return;
+}
+
+
+static void pe_resp_vdm_dp_status_update_entry(usb_pd_port_t *dev)
+{
+	vdm_send_dp_status(dev, VDM_RESP_ACK, VDM_CMD_DP_STATUS_UPDATE);
+	return;
+}
+
+static void pe_resp_vdm_dp_config_entry(usb_pd_port_t *dev)
+{
+	// Send ACK.
+	dev->vdm_hdr_vdos[0] = USB_PD_VDM_HDR_GEN(VDM_DISPLAYPORT_VID, VDM_TYPE_STRUCTURED, 1, VDM_RESP_ACK, VDM_CMD_DP_CONFIG);
+
+	// Tx length is 1 for the VDM header + number of VDOs.
+	usb_pd_pe_tx_vendor_msg(dev->port, 1, (tcpc_transmit_t)dev->rx_sop);
+
+	return;
+}
+
+static void timeout_vdm_dp_status_update_busy(unsigned int port)
+{
+	usb_pd_port_t *dev = &pd[port];
+
+	if ((*dev->current_state == PE_SRC_READY) ||
+		(*dev->current_state == PE_SNK_READY))
+	{
+		pe_set_state(dev, PE_INIT_VDM_DP_STATUS_UPDATE);
+	}
+	return;
+}
+
+static void vdm_handle_dp_status_update(usb_pd_port_t *dev, vdm_command_type_t cmd_type)
+{
+	if (cmd_type == VDM_INITIATOR)
+	{
+		// Only UFP responds to DP Status Update.
+		// UFP doesn't need to use any of the data sent by the DFP.
+		if (dev->data_role == PD_DATA_ROLE_UFP)
+		{
+			pe_set_state(dev, PE_RESP_VDM_DP_STATUS_UPDATE);
+		}
+	}
+	else if (*dev->current_state == PE_INIT_VDM_DP_STATUS_UPDATE)
+	{
+		if (cmd_type == VDM_RESP_ACK)
+		{
+			// Store the remote DP status.
+			dev->displayport_remote_status = get_data_object(dev->rx_msg_buf + 4);
+
+			if (dev->active_alt_modes & DP_ALT_MODE)
+			{
+				// Enter Mode completed.
+
+				if (!dev->displayport_alt_mode_configured)
+				{
+					// Set state to send DP Config if connected but not configured.
+					if (dev->displayport_remote_status & UFP_D_CONNECTED)
+					{
+						dev->displayport_config = CONFIG_UFP_U_AS_UFP_D;
+						pe_set_state(dev, PE_INIT_VDM_DP_CONFIG);
+					}
+					else if (dev->displayport_remote_status & DFP_D_CONNECTED)
+					{
+						dev->displayport_config = CONFIG_UFP_U_AS_DFP_D;
+						pe_set_state(dev, PE_INIT_VDM_DP_CONFIG);
+					}
+				}
+
+				if (dev->displayport_remote_status & HPD_STATE_HIGH)
+				{
+					// Assert HPD to DFP_D.
+					tcpm_hpd_out_control(dev->port, 1);
+
+					if (dev->displayport_remote_status & IRQ_HPD)
+					{
+						// If HPD high and IRQ are reported together, make sure HPD is high for at least 2ms.
+						tcpm_msleep(4);
+					}
+				}
+				else
+				{
+					// Deassert HPD to DFP_D.
+					tcpm_hpd_out_control(dev->port, 0);
+				}
+
+				if (dev->displayport_remote_status & IRQ_HPD)
+				{
+					// Pulse HPD pin low for 1ms.
+					tcpm_hpd_out_control(dev->port, 0);
+					tcpm_msleep(1);
+					tcpm_hpd_out_control(dev->port, 1);
+				}
+			}
+		}
+		else if (cmd_type == VDM_RESP_BUSY)
+		{
+			// Retry after tVDMBusy.
+			timer_start(&dev->timer, T_VDM_BUSY_MS, timeout_vdm_dp_status_update_busy);
+		}
+	}
+
+	return;
+}
+
+static void vdm_handle_dp_config(usb_pd_port_t *dev, vdm_command_type_t cmd_type)
+{
+	uint32_t dp_config;
+
+	if (cmd_type == VDM_INITIATOR)
+	{
+		// Only UFP responds to DP Config.
+		if (dev->data_role == PD_DATA_ROLE_UFP)
+		{
+			dp_config = get_data_object(dev->rx_msg_buf + 4);
+
+			// Configure pins.
+			if ((dp_config & CONFIG_MASK) == CONFIG_FOR_USB)
+			{
+				tcpm_mux_control(dev->port, dev->data_role, MUX_USB, dev->tcpc_dev->plug_polarity);
+			}
+			else /* CONFIG_UFP_U_AS_UFP_D or CONFIG_UFP_U_AS_DFP_D */
+			{
+				switch ((dp_config >> 8) & 0xFF)
+				{
+					case PIN_ASSIGNMENT_A:
+					case PIN_ASSIGNMENT_C:
+					case PIN_ASSIGNMENT_E:
+						// 4-lane.
+						tcpm_mux_control(dev->port, dev->data_role, MUX_DP_4LANE, dev->tcpc_dev->plug_polarity);
+						break;
+
+					case PIN_ASSIGNMENT_B:
+					case PIN_ASSIGNMENT_D:
+					case PIN_ASSIGNMENT_F: /* DFP_D only */
+						// 2-lane.
+						tcpm_mux_control(dev->port, dev->data_role, MUX_DP_2LANE, dev->tcpc_dev->plug_polarity);
+						break;
+
+					default:
+						PRINT("Invalid UFP_U pin assignment = 0x%x\n", (dp_config >> 8));
+						break;
+				}
+
+				// Check for HPD high.
+				if (tcpm_get_hpd_in(0))
+				{
+					dev->hpd_in_queue[dev->hpd_in_queue_idx++] = NOTIFY_HPD_HIGH;
+				}
+			}
+
+			pe_set_state(dev, PE_RESP_VDM_DP_CONFIG);
+		}
+	}
+	else if (*dev->current_state == PE_INIT_VDM_DP_CONFIG)
+	{
+		if (cmd_type == VDM_RESP_ACK)
+		{
+			dev->displayport_alt_mode_configured = true;
+
+			// Configure pins.
+			if (dev->displayport_config == CONFIG_FOR_USB)
+			{
+				tcpm_mux_control(dev->port, dev->data_role, MUX_USB, dev->tcpc_dev->plug_polarity);
+			}
+			else /* CONFIG_UFP_U_AS_UFP_D or CONFIG_UFP_U_AS_DFP_D */
+			{
+				switch (dev->displayport_selected_pin_assignment)
+				{
+					case PIN_ASSIGNMENT_A:
+					case PIN_ASSIGNMENT_C:
+					case PIN_ASSIGNMENT_E:
+						// 4-lane.
+						tcpm_mux_control(dev->port, dev->data_role, MUX_DP_4LANE, dev->tcpc_dev->plug_polarity);
+						break;
+
+					case PIN_ASSIGNMENT_B:
+					case PIN_ASSIGNMENT_D:
+					case PIN_ASSIGNMENT_F: /* DFP_D only */
+						// 2-lane.
+						tcpm_mux_control(dev->port, dev->data_role, MUX_DP_2LANE, dev->tcpc_dev->plug_polarity);
+						break;
+
+					default:
+						break;
+				}
+			}
+		}
+		else if (cmd_type == VDM_RESP_NACK)
+		{
+			// UFP was unable to set configuration.
+			// Try another config or give up?? - BQ
+		}
+	}
+
+	return;
+}
+
+static void usb_pd_pe_update_displayport_status(usb_pd_port_t *dev)
+{
+	if (dev->hpd_in_queue[dev->hpd_in_send_idx] != NOTIFY_HPD_NONE)
+	{
+		// Update the DisplayPort status.
+		if (dev->hpd_in_queue[dev->hpd_in_send_idx] == NOTIFY_HPD_LOW)
+		{
+			// If HPD is low, IRQ_HPD must also be low.
+			dev->displayport_status &= ~(HPD_STATE_HIGH | IRQ_HPD);
+		}
+		else if (dev->hpd_in_queue[dev->hpd_in_send_idx] == NOTIFY_HPD_HIGH)
+		{
+			dev->displayport_status |= HPD_STATE_HIGH;
+		}
+		else if (dev->hpd_in_queue[dev->hpd_in_send_idx] == NOTIFY_HPD_IRQ)
+		{
+			dev->displayport_status |= (HPD_STATE_HIGH | IRQ_HPD);
+		}
+
+		// Clear the item in the queue.
+		dev->hpd_in_queue[dev->hpd_in_send_idx] = NOTIFY_HPD_NONE;
+
+		dev->hpd_in_send_idx++;
+		if (dev->hpd_in_send_idx >= HPD_IN_QUEUE_SIZE)
+		{
+			dev->hpd_in_send_idx = 0;
+		}
+	}
+
+	return;
+}
+
+static void timeout_irq_hpd(unsigned int port)
+{
+	usb_pd_port_t *dev = &pd[port];
+
+	// Clear the timer callback function.
+	dev->timer2.function = NULL;
+
+	if ((*dev->current_state == PE_SNK_READY) ||
+		(*dev->current_state == PE_SRC_READY))
+	{
+		if (tcpm_get_hpd_in(port) == 0)
+		{
+			// HPD is still low, no IRQ_HPD.
+			dev->hpd_in_queue[dev->hpd_in_queue_idx++] = NOTIFY_HPD_LOW;
+			if (dev->hpd_in_queue_idx >= HPD_IN_QUEUE_SIZE)
+			{
+				dev->hpd_in_queue_idx = 0;
+			}
+
+			pe_set_state(dev, PE_INIT_VDM_ATTENTION_REQUEST);
+		}
+	}
+
+	return;
+}
+
+#define T_IRQ_HPD_MAX_MS  2
+
+void usb_pd_pe_hpd_in_event(unsigned int port, uint8_t val)
+{
+	usb_pd_port_t *dev = &pd[port];
+
+	if ((*dev->current_state == PE_SNK_READY) ||
+		(*dev->current_state == PE_SRC_READY))
+	{
+		dev->hpd_in_changed = true;
+		dev->hpd_in_value = val;
+	}
+
+	return;
+}
+
+#endif /* ENABLE_DP_ALT_MODE_SUPPORT */
+
+
+static void pe_init_vdm_svids_request_entry(usb_pd_port_t *dev)
+{
+	// Send Discover SVIDs VDM to port partner.
+	vdm_send_structured_cmd(dev->port, VDM_PD_SID, VDM_CMD_DISCOVER_SVIDS, 0, TCPC_TX_SOP);
+	return;
+}
+
+static void pe_init_vdm_modes_request_entry(usb_pd_port_t *dev)
+{
+#ifdef ENABLE_DP_ALT_MODE_SUPPORT
+	usb_pd_port_config_t *config = usb_pd_pm_get_config(dev->port);
+#endif
+
+	// Implement Alt-Modes here in order of priority.
+
+#ifdef ENABLE_DP_ALT_MODE_SUPPORT
+	// Only a receptacle-based DFP_U can initiate messages other than Attention command.
+	if ((dev->matched_alt_modes & DP_ALT_MODE) &&
+		(dev->data_role == PD_DATA_ROLE_DFP) &&
+		(config->modes[find_svid_index(dev, VDM_DISPLAYPORT_VID)] & RECEPTACLE_INDICATION_BIT))
+	{
+		// Send Discover Modes VDM to port partner.
+		vdm_send_structured_cmd(dev->port, VDM_DISPLAYPORT_VID, VDM_CMD_DISCOVER_MODES, 0, TCPC_TX_SOP);
+	}
+#endif
+	return;
+}
+
+
+/* used by UFP_U to signal change in status */
+static void pe_init_vdm_attention_request_entry(usb_pd_port_t *dev)
+{
+#ifdef ENABLE_DP_ALT_MODE_SUPPORT
+	// Only a UFP_U (plug or receptacle) can issue an Attention command in DP mode.
+	if ((dev->active_alt_modes & DP_ALT_MODE) &&
+		(dev->data_role == PD_DATA_ROLE_UFP))
+	{
+		usb_pd_pe_update_displayport_status(dev);
+
+		// Send Attention VDM to port partner.
+		vdm_send_dp_status(dev, VDM_INITIATOR, VDM_CMD_ATTENTION);
+	}
+#endif
+	return;
+}
+
+
+static void pe_resp_vdm_nak_entry(usb_pd_port_t *dev)
+{
+	uint32_t vdm_hdr = get_data_object(dev->rx_msg_buf);
+
+	// NACK if not supported.
+	dev->vdm_hdr_vdos[0] = USB_PD_VDM_HDR_GEN(USB_PD_VDM_HDR_GET_SVID(vdm_hdr),
+											  VDM_TYPE_STRUCTURED,
+											  USB_PD_VDM_HDR_GET_OBJ_POS(vdm_hdr),
+											  VDM_RESP_NACK,
+											  USB_PD_VDM_HDR_GET_CMD(vdm_hdr));
+
+	usb_pd_pe_tx_vendor_msg(dev->port, 1, (tcpc_transmit_t)dev->rx_sop);
+	return;
+}
+
+
+static void pe_resp_vdm_get_svids_entry(usb_pd_port_t *dev)
+{
+	usb_pd_port_config_t *config = usb_pd_pm_get_config(dev->port);
+	uint8_t i;
+	uint8_t num_vdos;
+	uint16_t *svid = (uint16_t*)&dev->vdm_hdr_vdos[1];
+
+	// Clear VDM buffer.
+	memset(dev->vdm_hdr_vdos, 0, sizeof(dev->vdm_hdr_vdos));
+
+	if (config->num_svids)
+	{
+		dev->vdm_hdr_vdos[0] = USB_PD_VDM_HDR_GEN(VDM_PD_SID, VDM_TYPE_STRUCTURED, 0, VDM_RESP_ACK, VDM_CMD_DISCOVER_SVIDS);
+
+		for (i = 0; i < config->num_svids; i++)
+		{
+			// Put odd number SVIDs in the lower 16-bits of the VDO
+			// and even number SVIDs i the upper 16-bits of the VDO.
+			if (i & 0x1)
+			{
+				svid[i-1] = config->svids[i];
+			}
+			else
+			{
+				svid[i+1] = config->svids[i];
+			}
+		}
+	}
+	else
+	{
+		// Return NAK if no SVIDs.
+		dev->vdm_hdr_vdos[0] = USB_PD_VDM_HDR_GEN(VDM_PD_SID, VDM_TYPE_STRUCTURED, 0, VDM_RESP_NACK, VDM_CMD_DISCOVER_SVIDS);
+	}
+
+	// Determine the number of data objects for the SVIDs.
+	num_vdos = (config->num_svids + 1) >> 1;
+
+	if (config->num_svids && !(config->num_svids & 0x01))
+	{
+		// If even number of SVIDs, we need to send an extra VDO with all zeros.
+		num_vdos++;
+	}
+
+	// Tx length is 1 for the VDM header + number of VDOs.
+	usb_pd_pe_tx_vendor_msg(dev->port, (1 + num_vdos), (tcpc_transmit_t)dev->rx_sop);
+
+	return;
+}
+
+static void pe_resp_vdm_get_modes_entry(usb_pd_port_t *dev)
+{
+	usb_pd_port_config_t *config = usb_pd_pm_get_config(dev->port);
+	uint8_t svid_idx;
+	uint8_t num_modes = 0;
+	uint16_t svid;
+	uint32_t vdm_hdr = get_data_object(dev->rx_msg_buf);
+
+	svid = USB_PD_VDM_HDR_GET_SVID(vdm_hdr);
+
+	// Search for matching SVID.
+	for (svid_idx = 0; svid_idx < config->num_svids; svid_idx++)
+	{
+		if (svid == config->svids[svid_idx])
+		{
+			// Currently, only one mode per SVID is supported.
+			dev->vdm_hdr_vdos[1] = config->modes[svid_idx];
+			num_modes = 1;
+			break;
+		}
+	}
+
+	// Build header.  Return NAK if no modes supported.
+	dev->vdm_hdr_vdos[0] = USB_PD_VDM_HDR_GEN(svid, VDM_TYPE_STRUCTURED, 0, (num_modes) ? VDM_RESP_ACK : VDM_RESP_NACK, VDM_CMD_DISCOVER_MODES);
+
+	// Tx length is 1 for the VDM header + number of modes.
+	usb_pd_pe_tx_vendor_msg(dev->port, (1 + num_modes), (tcpc_transmit_t)dev->rx_sop);
+
+	return;
+}
+
+static void pe_resp_vdm_get_identity_entry(usb_pd_port_t *dev)
+{
+	usb_pd_port_config_t *config = usb_pd_pm_get_config(dev->port);
+	uint8_t i;
+	uint32_t *prod_type_vdos = &dev->vdm_hdr_vdos[4];
+
+	dev->vdm_hdr_vdos[0] = USB_PD_VDM_HDR_GEN(VDM_PD_SID, VDM_TYPE_STRUCTURED, 0, VDM_RESP_ACK, VDM_CMD_DISCOVER_IDENTITY);
+	dev->vdm_hdr_vdos[1] = config->id_header_vdo;
+	dev->vdm_hdr_vdos[2] = config->cert_stat_vdo;
+	dev->vdm_hdr_vdos[3] = config->product_vdo;
+
+	for (i = 0; i < config->num_product_type_vdos; i++)
+	{
+		prod_type_vdos[i] = config->product_type_vdos[i];
+	}
+
+	usb_pd_pe_tx_vendor_msg(dev->port, (4 + config->num_product_type_vdos), (tcpc_transmit_t)dev->rx_sop);
+
+	return;
+}
+
+static void timeout_src_vdm_disc_identity_busy(unsigned int port)
+{
+	pe_set_state(&pd[port], PE_SRC_DISCOVERY);
+	return;
+}
+
+static void timeout_port_vdm_disc_identity_busy(unsigned int port)
+{
+	usb_pd_port_t *dev = &pd[port];
+
+	if ((*dev->current_state == PE_SRC_READY) ||
+		(*dev->current_state == PE_SNK_READY))
+	{
+		pe_set_state(dev, PE_INIT_PORT_VDM_IDENTITY_REQUEST);
+	}
+	return;
+}
+
+
+#define ID_HDR_GET_CABLE_PLUG_PROD_TYPE(id_hdr)  (((id_hdr) >> 27) & 0x7)
+#define ID_HDR_GET_UFP_PROD_TYPE(id_hdr)  (((id_hdr) >> 27) & 0x7)
+#define ID_HDR_GET_DFP_PROD_TYPE(id_hdr)  (((id_hdr) >> 23) & 0x7)
+
+typedef enum
+{
+	CABLE_PROD_TYPE_PASSIVE_CABLE = 3,
+	CABLE_PROD_TYPE_ACTIVE_CABLE = 4,
+} cable_product_type_t;
+
+#define CURRENT_CAP_5A_BIT      (1 << 6)
+#define VBUS_THROUGH_CABLE_BIT  (1 << 4)
+#define CABLE_VDO_GET_MAX_VBUS_VOLTAGE_MV(vdo)  (((((vdo) >> 9) & 0x3) * 10000) + 20000);
+
+typedef enum
+{
+	UFP_PROD_TYPE_PD_USB_HUB = 1,
+	UFP_PROD_TYPE_PD_USB_PERIPHERAL = 2,
+	UFP_PROD_TYPE_ALT_MODE_ADAPTER = 5,
+} ufp_prod_type_t;
+
+typedef enum
+{
+	DFP_PROD_TYPE_PD_USB_HUB = 1,
+	DFP_PROD_TYPE_PD_USB_HOST = 2,
+	DFP_PROD_TYPE_POWER_BRICK = 3,
+	DFP_PROD_TYPE_ALT_MODE_CTRL = 4,
+} dfp_prod_type_t;
+
+#define MODAL_OPERATION_SUPPORTED ((uint32_t)1 << 26)
+
+static void vdm_handle_discover_identity(usb_pd_port_t *dev, vdm_command_type_t cmd_type)
+{
+	uint32_t id_hdr;
+	uint32_t prod_type_vdo;
+
+	if ((*dev->current_state == PE_SRC_VDM_IDENTITY_REQUEST) &&
+		(dev->rx_sop == TCPC_TX_SOP_P))
+	{
+		dev->cable_id_req_complete = true;
+
+		// Handle Discovery Identity response from cable.
+		if (cmd_type == VDM_RESP_ACK)
+		{
+			// Interpret Cable VDO.
+			id_hdr = get_data_object(dev->rx_msg_buf + 4);
+			prod_type_vdo = get_data_object(dev->rx_msg_buf + 16);
+
+			if (ID_HDR_GET_CABLE_PLUG_PROD_TYPE(id_hdr) == CABLE_PROD_TYPE_PASSIVE_CABLE)
+			{
+				if (prod_type_vdo & CURRENT_CAP_5A_BIT)
+				{
+					dev->cable_max_current_ma = 5000;
+				}
+			}
+			else if (ID_HDR_GET_CABLE_PLUG_PROD_TYPE(id_hdr) == CABLE_PROD_TYPE_ACTIVE_CABLE)
+			{
+				dev->active_cable = true;
+
+				if (prod_type_vdo & VBUS_THROUGH_CABLE_BIT)
+				{
+					if (prod_type_vdo & CURRENT_CAP_5A_BIT)
+					{
+						dev->cable_max_current_ma = 5000;
+					}
+				}
+				else
+				{
+					dev->cable_max_current_ma = 0;
+				}
+			}
+
+			// Check cable SuperSpeed signaling support. - BQ
+
+
+			dev->cable_max_voltage_mv = CABLE_VDO_GET_MAX_VBUS_VOLTAGE_MV(prod_type_vdo);
+
+			CRIT("Cable supports %uV %uA\n", dev->cable_max_voltage_mv / 1000,
+				 dev->cable_max_current_ma / 1000);
+
+			pe_set_state(dev, PE_SRC_SEND_CAPS);
+		}
+		else if (cmd_type == VDM_RESP_BUSY)
+		{
+			if ((dev->discover_identity_cnt + 1) < N_DISCOVER_IDENTITY_COUNT)
+			{
+				// Retry after tVDMBusy.
+				timer_start(&dev->timer, T_VDM_BUSY_MS, timeout_src_vdm_disc_identity_busy);
+			}
+			else
+			{
+				// Go directly to PE_SRC_DISCOVERY which will start PE_SRC_SEND_CAPS.
+				pe_set_state(dev, PE_SRC_DISCOVERY);
+			}
+		}
+		else /* NACK */
+		{
+			pe_set_state(dev, PE_SRC_DISCOVERY);
+		}
+	}
+	else if ((*dev->current_state == PE_INIT_PORT_VDM_IDENTITY_REQUEST) &&
+			 (dev->rx_sop == TCPC_TX_SOP))
+	{
+		dev->port_partner_id_req_complete = true;
+
+		// Handle Discovery Identity response from cable.
+		if (cmd_type == VDM_RESP_ACK)
+		{
+			id_hdr = get_data_object(dev->rx_msg_buf + 4);
+
+			// If product type is alt mode adapter.
+			if (ID_HDR_GET_UFP_PROD_TYPE(id_hdr) & UFP_PROD_TYPE_ALT_MODE_ADAPTER)
+			{
+#ifdef CONFIG_LGE_USB_TYPE_C
+				PRINT("Alternate Mode Adapter detected!\n");
+#ifdef CONFIG_LGE_DP_UNSUPPORT_NOTIFY
+				tusb422_set_dp_notify_node(1);
+#endif
+#else
+				// Get AMA VDO.
+				prod_type_vdo = get_data_object(dev->rx_msg_buf + 16);
+
+				// Check AMA SuperSpeed signaling support. - BQ
+#endif
+			}
+
+#ifndef CONFIG_LGE_USB_TYPE_C
+			if (id_hdr & MODAL_OPERATION_SUPPORTED)
+			{
+				pe_set_state(dev, PE_INIT_VDM_SVIDS_REQUEST);
+			}
+#endif
+		}
+		else if (cmd_type == VDM_RESP_BUSY)
+		{
+			// Retry after tVDMBusy.
+			timer_start(&dev->timer, T_VDM_BUSY_MS, timeout_port_vdm_disc_identity_busy);
+		}
+	}
+	else if ((cmd_type == VDM_INITIATOR) &&
+			 (dev->rx_sop == TCPC_TX_SOP))
+	{
+		pe_set_state(dev, PE_RESP_VDM_GET_IDENTITY);
+	}
+
+	return;
+}
+
+
+static void timeout_vdm_disc_svids_busy(unsigned int port)
+{
+	usb_pd_port_t *dev = &pd[port];
+
+	if ((*dev->current_state == PE_SRC_READY) ||
+		(*dev->current_state == PE_SNK_READY))
+	{
+		pe_set_state(&pd[port], PE_INIT_VDM_SVIDS_REQUEST);
+	}
+	return;
+}
+
+static uint16_t get_svid(uint32_t vdo, uint8_t svid_num)
+{
+	return(svid_num == 0) ? (vdo >> 16) : (vdo & 0xFFFF);
+}
+
+static void vdm_handle_discover_svids(usb_pd_port_t *dev, vdm_command_type_t cmd_type)
+{
+	bool last_svid = false;
+	bool svid_matched = false;
+	uint16_t svid;
+	uint32_t vdo;
+	uint8_t *vdo_ptr = dev->rx_msg_buf + 4;
+	uint8_t num_vdos = (dev->rx_msg_data_len >> 2) - 1;
+	uint8_t svid_idx, vdo_idx, svid_num;
+	usb_pd_port_config_t *config = usb_pd_pm_get_config(dev->port);
+
+	if (cmd_type == VDM_INITIATOR)
+	{
+		if (dev->rx_sop == TCPC_TX_SOP)
+		{
+			pe_set_state(dev, PE_RESP_VDM_GET_SVIDS);
+		}
+	}
+	else if (*dev->current_state == PE_INIT_VDM_SVIDS_REQUEST)
+	{
+		if (cmd_type == VDM_RESP_ACK)
+		{
+			// Check SVIDs for any we support.
+			for (svid_idx = 0; (svid_idx < config->num_svids) && !last_svid; svid_idx++)
+			{
+				for (vdo_idx = 0; (vdo_idx < num_vdos) && !last_svid; vdo_idx++)
+				{
+					vdo = get_data_object(vdo_ptr + (vdo_idx << 2));
+
+					// Two SVIDs per VDO.
+					for (svid_num = 0; svid_num < 2; svid_num++)
+					{
+						svid = get_svid(vdo, svid_num);
+
+						INFO("SVID = 0x%04x\n", svid);
+
+						if (svid == 0)
+						{
+							last_svid = true;
+							break;
+						}
+						else if (svid == config->svids[svid_idx])
+						{
+							// Matched SVID to one we support.
+#ifdef ENABLE_DP_ALT_MODE_SUPPORT
+							if (svid == VDM_DISPLAYPORT_VID)
+							{
+								dev->matched_alt_modes |= DP_ALT_MODE;
+								svid_matched = true;
+							}
+#endif
+							// [VDM] Add more Alt modes here...
+						}
+					}
+				}
+			}
+
+			if (!last_svid)
+			{
+				pe_set_state(dev, PE_INIT_VDM_SVIDS_REQUEST);
+			}
+			else if (svid_matched)
+			{
+				pe_set_state(dev, PE_INIT_VDM_MODES_REQUEST);
+			}
+		}
+		else if (cmd_type == VDM_RESP_BUSY)
+		{
+			// Retry after tVDMBusy.
+			timer_start(&dev->timer, T_VDM_BUSY_MS, timeout_vdm_disc_svids_busy);
+		}
+	}
+
+	return;
+}
+
+static void timeout_vdm_disc_modes_busy(unsigned int port)
+{
+	usb_pd_port_t *dev = &pd[port];
+
+	if ((*dev->current_state == PE_SRC_READY) ||
+		(*dev->current_state == PE_SNK_READY))
+	{
+		pe_set_state(dev, PE_INIT_VDM_MODES_REQUEST);
+	}
+	return;
+}
+
+static void vdm_handle_discover_modes(usb_pd_port_t *dev, vdm_command_type_t cmd_type)
+{
+	uint32_t mode;
+	uint8_t *mode_ptr = dev->rx_msg_buf + 4; /* add 4 to skip VDM header */
+	uint8_t mode_idx;
+	uint8_t num_modes = (dev->rx_msg_data_len >> 2) - 1; /* subtract 1 for the VDM header */
+#ifdef ENABLE_DP_ALT_MODE_SUPPORT
+	usb_pd_port_config_t *config = usb_pd_pm_get_config(dev->port);
+	uint8_t remote_pin_assignments;
+#endif
+
+	INFO("num_modes = %u\n", num_modes);
+
+	if (cmd_type == VDM_INITIATOR)
+	{
+		if (dev->rx_sop == TCPC_TX_SOP)
+		{
+			pe_set_state(dev, PE_RESP_VDM_GET_MODES);
+		}
+	}
+	else if (*dev->current_state == PE_INIT_VDM_MODES_REQUEST)
+	{
+		if (cmd_type == VDM_RESP_ACK)
+		{
+			for (mode_idx = 0; mode_idx < num_modes; mode_idx++)
+			{
+				mode = get_data_object(mode_ptr + (mode_idx << 2));
+
+#ifdef ENABLE_DP_ALT_MODE_SUPPORT
+				if (config->svids[dev->svid_index] == VDM_DISPLAYPORT_VID)
+				{
+					dev->displayport_remote_caps = mode;
+
+					if (mode & RECEPTACLE_INDICATION_BIT)
+					{
+						remote_pin_assignments = UFP_D_PIN_ASSIGNMENTS(mode);
+					}
+					else
+					{
+						remote_pin_assignments = DFP_D_PIN_ASSIGNMENTS(mode);
+					}
+
+					// Check if UFP_U capabilities and at least one pin assignment matches ours.
+					// Assume we are DFP_D or UFP_D capable but not both.
+					if ((config->modes[dev->svid_index] & DFP_D_CAPABLE_BIT) &&
+						(mode & UFP_D_CAPABLE_BIT))
+					{
+						dev->displayport_matched_pin_assignments = DFP_D_PIN_ASSIGNMENTS(config->modes[dev->svid_index]) & remote_pin_assignments;
+					}
+					else if ((config->modes[dev->svid_index] & UFP_D_CAPABLE_BIT) &&
+							 (mode & DFP_D_CAPABLE_BIT))
+					{
+						dev->displayport_matched_pin_assignments = UFP_D_PIN_ASSIGNMENTS(config->modes[dev->svid_index]) & remote_pin_assignments;
+					}
+
+					if (dev->displayport_matched_pin_assignments)
+					{
+						pe_set_state(dev, PE_DFP_VDM_MODE_ENTRY_REQUEST);
+					}
+				}
+#endif
+				// [VDM] Add other supported modes here...
+			}
+		}
+		else if (cmd_type == VDM_RESP_BUSY)
+		{
+			// Retry after tVDMBusy.
+			timer_start(&dev->timer, T_VDM_BUSY_MS, timeout_vdm_disc_modes_busy);
+		}
+	}
+
+	return;
+}
+
+static void pe_dfp_vdm_mode_entry_request(usb_pd_port_t *dev)
+{
+#ifdef ENABLE_DP_ALT_MODE_SUPPORT
+	if (dev->matched_alt_modes & DP_ALT_MODE)
+	{
+		// Object position is 1.  No VDO for DP Alt Mode.
+		vdm_send_structured_cmd(dev->port, VDM_DISPLAYPORT_VID, VDM_CMD_ENTER_MODE, 1, TCPC_TX_SOP);
+	}
+#endif
+	// [VDM] Add other supported modes here...
+
+	return;
+}
+
+static void pe_dfp_vdm_mode_exit_request(usb_pd_port_t *dev)
+{
+#ifdef ENABLE_DP_ALT_MODE_SUPPORT
+	if (dev->active_alt_modes & DP_ALT_MODE)
+	{
+		// DFP_U shall only issue Exit Mode when the port is configured to be in USB Config.
+		if (dev->displayport_config != CONFIG_FOR_USB)
+		{
+			dev->mode_exit_pending = true;
+			dev->displayport_config = CONFIG_FOR_USB;
+			pe_set_state(dev, PE_INIT_VDM_DP_CONFIG);
+		}
+		else
+		{
+			// Object position is 1.
+			vdm_send_structured_cmd(dev->port, VDM_DISPLAYPORT_VID, VDM_CMD_EXIT_MODE, 1, TCPC_TX_SOP);
+		}
+	}
+#endif
+	// [VDM] Add other supported modes here...
+
+	return;
+}
+
+
+static void pe_ufp_vdm_eval_mode_entry(usb_pd_port_t *dev)
+{
+	bool mode_entry_ack = false;
+#ifdef ENABLE_DP_ALT_MODE_SUPPORT
+	uint32_t vdm_hdr = get_data_object(dev->rx_msg_buf);
+	usb_pd_port_config_t *config = usb_pd_pm_get_config(dev->port);
+#endif
+
+#ifdef ENABLE_DP_ALT_MODE_SUPPORT
+	// Object position must be 1 for DP Alt Mode.
+	if ((config->svids[dev->svid_index] == VDM_DISPLAYPORT_VID) &&
+		(USB_PD_VDM_HDR_GET_OBJ_POS(vdm_hdr) == 1))
+	{
+		// Reset HPD_IN queue.
+		dev->hpd_in_queue_idx = 0;
+		dev->hpd_in_send_idx = 0;
+		dev->hpd_in_queue[0] = NOTIFY_HPD_NONE;
+
+		dev->active_alt_modes |= DP_ALT_MODE;
+
+		// Populate the VDM header Object position is always 1.
+		dev->vdm_hdr_vdos[0] = USB_PD_VDM_HDR_GEN(VDM_DISPLAYPORT_VID, VDM_TYPE_STRUCTURED, 1, VDM_RESP_ACK, VDM_CMD_ENTER_MODE);
+
+		// Set flag so ACK will be sent.
+		mode_entry_ack = true;
+	}
+#endif
+	// [VDM] Add other supported modes here...
+
+	if (mode_entry_ack)
+	{
+		if (dev->timer2.function == timeout_alt_mode_entry)
+		{
+			// Cancel tAMETimeout.
+			tusb422_lfo_timer_cancel(&dev->timer2);
+		}
+
+		// Send the ACK. Tx length is 1 for the VDM header.
+		usb_pd_pe_tx_vendor_msg(dev->port, 1, (tcpc_transmit_t)dev->rx_sop);
+	}
+	else /* NACK */
+	{
+		// Respond with NACK if not supported.
+		pe_set_state(dev, PE_RESP_VDM_NAK);
+	}
+
+	return;
+}
+
+static void pe_ufp_vdm_mode_exit_entry(usb_pd_port_t *dev)
+{
+	bool mode_exit_ack = false;
+	uint32_t vdm_hdr = get_data_object(dev->rx_msg_buf);
+#ifdef ENABLE_DP_ALT_MODE_SUPPORT
+	usb_pd_port_config_t *config = usb_pd_pm_get_config(dev->port);
+#endif
+	uint8_t obj_pos;
+
+	obj_pos = USB_PD_VDM_HDR_GET_OBJ_POS(vdm_hdr);
+
+#ifdef ENABLE_DP_ALT_MODE_SUPPORT
+	if ((config->svids[dev->svid_index] == VDM_DISPLAYPORT_VID) &&
+		(dev->active_alt_modes & DP_ALT_MODE))
+	{
+		// DisplayPort has 1 mode so object position must be 1 or 7 (all modes).
+		if ((obj_pos == 1) || (obj_pos == 7))
+		{
+			// Configure pins for USB.
+			tcpm_mux_control(dev->port, dev->data_role, MUX_USB, dev->tcpc_dev->plug_polarity);
+
+			// Generate ACK.
+			dev->vdm_hdr_vdos[0] = USB_PD_VDM_HDR_GEN(VDM_DISPLAYPORT_VID,
+													  VDM_TYPE_STRUCTURED,
+													  obj_pos,
+													  VDM_RESP_ACK,
+													  VDM_CMD_EXIT_MODE);
+
+			dev->active_alt_modes &= ~DP_ALT_MODE;
+
+			mode_exit_ack = true;
+		}
+	}
+#endif
+	// [VDM] Add other supported modes here...
+
+	if (mode_exit_ack)
+	{
+		// Tx length is 1 for the VDM header.
+		usb_pd_pe_tx_vendor_msg(dev->port, 1, (tcpc_transmit_t)dev->rx_sop);
+	}
+	else
+	{
+		// Respond with NACK.
+		pe_set_state(dev, PE_RESP_VDM_NAK);
+	}
+
+	return;
+}
+
+static void vdm_handle_enter_mode(usb_pd_port_t *dev, vdm_command_type_t cmd_type, uint8_t obj_pos)
+{
+#ifdef ENABLE_DP_ALT_MODE_SUPPORT
+	usb_pd_port_config_t *config = usb_pd_pm_get_config(dev->port);
+#endif
+
+	if (cmd_type == VDM_INITIATOR)
+	{
+		// Only UFP and Cable Plug respond to Enter mode.
+		if (dev->data_role == PD_DATA_ROLE_UFP)
+		{
+			pe_set_state(dev, PE_UFP_VDM_EVAL_MODE_ENTRY);
+		}
+	}
+	else if (*dev->current_state == PE_DFP_VDM_MODE_ENTRY_REQUEST)
+	{
+#ifdef ENABLE_DP_ALT_MODE_SUPPORT
+		if (config->svids[dev->svid_index] == VDM_DISPLAYPORT_VID)
+		{
+			if (cmd_type == VDM_RESP_ACK)
+			{
+				// Configure pins for new mode.
+				// For DP Alt-Mode, pins are configured when sending DP Config command so don't configure here.
+
+				dev->active_alt_modes |= DP_ALT_MODE;
+
+				pe_set_state(dev, PE_INIT_VDM_DP_STATUS_UPDATE);
+			}
+		}
+#endif
+		// [VDM] Add other supported SVIDs here...
+	}
+
+	return;
+}
+
+static void timeout_vdm_mode_exit(unsigned int port)
+{
+	usb_pd_port_t *dev = &pd[port];
+
+	if (dev->power_role == PD_PWR_ROLE_SNK)
+	{
+		pe_set_state(dev, PE_SNK_HARD_RESET);
+	}
+	else
+	{
+		pe_set_state(dev, PE_SRC_HARD_RESET);
+	}
+
+	return;
+}
+
+
+static void vdm_handle_exit_mode(usb_pd_port_t *dev, vdm_command_type_t cmd_type, uint8_t obj_pos)
+{
+	if (cmd_type == VDM_INITIATOR)
+	{
+		// Only UFP and Cable Plug respond to Exit mode.
+		if (dev->data_role == PD_DATA_ROLE_UFP)
+		{
+			pe_set_state(dev, PE_UFP_VDM_MODE_EXIT);
+		}
+	}
+	else if (*dev->current_state == PE_DFP_VDM_MODE_EXIT_REQUEST)
+	{
+		if (cmd_type == VDM_RESP_ACK)
+		{
+			// Configure pins for USB mode.
+			tcpm_mux_control(dev->port, dev->data_role, MUX_USB, dev->tcpc_dev->plug_polarity);
+		}
+		else if (cmd_type == VDM_RESP_BUSY)
+		{
+			// Call timeout function to issue Hard Reset.
+			timeout_vdm_mode_exit(dev->port);
+		}
+	}
+
+	return;
+}
+
+static void vdm_handle_attention(usb_pd_port_t *dev, vdm_command_type_t cmd_type)
+{
+#ifdef ENABLE_DP_ALT_MODE_SUPPORT
+	usb_pd_port_config_t *config = usb_pd_pm_get_config(dev->port);
+#endif
+	uint8_t num_vdos = (dev->rx_msg_data_len >> 2) - 1;	/* subtract 1 for the VDM header */
+	uint8_t *vdo_ptr = dev->rx_msg_buf + 4;	/* add 4 to skip VDM header */
+	uint32_t vdo;
+#ifdef ENABLE_DP_ALT_MODE_SUPPORT
+	uint32_t connected_status;
+#endif
+
+	// Log dummy state change because there is no response for Attention command.
+	pe_set_state(dev, PE_RCV_VDM_ATTENTION_REQUEST);
+	dev->state_change = false;
+
+	if (cmd_type != VDM_INITIATOR)
+	{
+		return;
+	}
+
+	// Attention can have zero or one VDOs.
+	if (num_vdos)
+	{
+		vdo = get_data_object(vdo_ptr);
+	}
+
+#ifdef ENABLE_DP_ALT_MODE_SUPPORT
+	if ((config->svids[dev->svid_index] == VDM_DISPLAYPORT_VID) &&
+		(dev->active_alt_modes &= DP_ALT_MODE))
+	{
+		// Only DFP_U accept attention from UFP_U and there should be 1 VDO.
+		if ((dev->data_role == PD_DATA_ROLE_DFP) && num_vdos)
+		{
+			connected_status = vdo & (UFP_D_CONNECTED | DFP_D_CONNECTED);
+
+			// Check for connection status change to connected.
+			if ((connected_status != (dev->displayport_remote_status & (UFP_D_CONNECTED | DFP_D_CONNECTED))) &&
+				connected_status)
+			{
+				dev->displayport_config = (connected_status & UFP_D_CONNECTED) ? CONFIG_UFP_U_AS_UFP_D : CONFIG_UFP_U_AS_DFP_D;
+
+				pe_set_state(dev, PE_INIT_VDM_DP_CONFIG);
+			}
+
+			// Exit request trumps a connected status change.
+			if (vdo & REQ_DP_MODE_EXIT)
+			{
+				pe_set_state(dev, PE_DFP_VDM_MODE_EXIT_REQUEST);
+			}
+			else if (vdo & REQ_USB_CONFIG)
+			{
+				// USB config request trumps a DP config due to connected status change.
+				dev->displayport_config = CONFIG_FOR_USB;
+				pe_set_state(dev, PE_INIT_VDM_DP_CONFIG);
+			}
+
+			// DP alt mode is configured, handle HPD.
+			if (vdo & HPD_STATE_HIGH)
+			{
+				// Assert HPD to DFP_D.
+				tcpm_hpd_out_control(dev->port, 1);
+
+				if ((vdo & IRQ_HPD) && !(dev->displayport_remote_status & HPD_STATE_HIGH))
+				{
+					// If HPD high and IRQ are reported together, make sure HPD is high for at least 2ms.
+					tcpm_msleep(4);
+				}
+			}
+			else
+			{
+				// Deassert HPD to DFP_D.
+				tcpm_hpd_out_control(dev->port, 0);
+
+				// Ensure HPD is low for at least 3ms in case a HPD high event follows immediately.
+				tcpm_msleep(4);
+			}
+
+			if (vdo & IRQ_HPD)
+			{
+				// Pulse HPD pin low for 1ms.
+				tcpm_hpd_out_control(dev->port, 0);
+				tcpm_msleep(1);
+				tcpm_hpd_out_control(dev->port, 1);
+			}
+
+			// Save the new status.
+			dev->displayport_remote_status = vdo;
+		}
+	}
+#endif
+	// [VDM] Add other supported SVIDs here...
+
+	return;
+}
+
+
+static void usb_pd_pe_structured_vdm_handler(usb_pd_port_t *dev)
+{
+	bool valid_svid = false;
+	bool valid_cmd = true;
+	usb_pd_port_config_t *config = usb_pd_pm_get_config(dev->port);
+	uint8_t svid_idx;
+	uint32_t vdm_hdr = get_data_object(dev->rx_msg_buf);
+	vdm_command_type_t cmd_type;
+	uint8_t cmd;
+
+	cmd = USB_PD_VDM_HDR_GET_CMD(vdm_hdr);
+
+	// Stop any VDM timer running. (e.g. VDMResponseTimer, VDMModeEntryTimer, VDMModeExitTimer)
+	timer_cancel(&dev->timer);
+
+	if (!dev->explicit_contract &&
+		!((cmd == VDM_CMD_DISCOVER_IDENTITY) &&
+		  (dev->rx_sop == TCPC_TX_SOP_P)))
+	{
+		// Ignore if no explicit contract in place with the exception of
+		// Discovery Identity command sent to cable plug.
+		return;
+	}
+
+	// Validate SVID.
+	switch (cmd)
+	{
+		case VDM_CMD_DISCOVER_IDENTITY:
+		case VDM_CMD_DISCOVER_SVIDS:
+			if (USB_PD_VDM_HDR_GET_SVID(vdm_hdr) == VDM_PD_SID)
+			{
+				valid_svid = true;
+			}
+			break;
+
+		case VDM_CMD_DISCOVER_MODES:
+		case VDM_CMD_ENTER_MODE:
+		case VDM_CMD_EXIT_MODE:
+		case VDM_CMD_ATTENTION:
+#ifdef ENABLE_DP_ALT_MODE_SUPPORT
+		case VDM_CMD_DP_STATUS_UPDATE:
+		case VDM_CMD_DP_CONFIG:
+#endif
+			svid_idx = find_svid_index(dev, USB_PD_VDM_HDR_GET_SVID(vdm_hdr));
+			if (svid_idx < config->num_svids)
+			{
+				dev->svid_index = svid_idx;
+				valid_svid = true;
+
+				if (((cmd == VDM_CMD_DP_STATUS_UPDATE) || (cmd == VDM_CMD_DP_CONFIG)) &&
+					(config->svids[dev->svid_index] != VDM_DISPLAYPORT_VID))
+				{
+					valid_svid = false;
+				}
+			}
+			break;
+
+		default:
+			// Invalid command.
+			break;
+	}
+
+	if (valid_svid)
+	{
+		cmd_type = (vdm_command_type_t)USB_PD_VDM_HDR_GET_CMD_TYPE(vdm_hdr);
+
+		switch (cmd)
+		{
+			case VDM_CMD_DISCOVER_IDENTITY:
+				vdm_handle_discover_identity(dev, cmd_type);
+				break;
+
+			case VDM_CMD_DISCOVER_SVIDS:
+				vdm_handle_discover_svids(dev, cmd_type);
+				break;
+
+			case VDM_CMD_DISCOVER_MODES:
+				vdm_handle_discover_modes(dev, cmd_type);
+				break;
+
+			case VDM_CMD_ENTER_MODE:
+				vdm_handle_enter_mode(dev, cmd_type, USB_PD_VDM_HDR_GET_OBJ_POS(vdm_hdr));
+				break;
+
+			case VDM_CMD_EXIT_MODE:
+				vdm_handle_exit_mode(dev, cmd_type, USB_PD_VDM_HDR_GET_OBJ_POS(vdm_hdr));
+				break;
+
+			case VDM_CMD_ATTENTION:
+				vdm_handle_attention(dev, cmd_type);
+				break;
+
+#ifdef ENABLE_DP_ALT_MODE_SUPPORT
+			case VDM_CMD_DP_STATUS_UPDATE:
+				vdm_handle_dp_status_update(dev, cmd_type);
+				break;
+
+			case VDM_CMD_DP_CONFIG:
+				vdm_handle_dp_config(dev, cmd_type);
+				break;
+#endif
+
+			default:
+				valid_cmd = false;
+				break;
+		}
+	}
+
+	// Send NAK with original SVID, object position, and cmd if invalid SVID or invalid command.
+	if (!valid_svid || !valid_cmd)
+	{
+		pe_set_state(dev, PE_RESP_VDM_NAK);
+		return;
+	}
+
+	// Return to READY state if we haven't transitioned to new state.
+	if (!dev->state_change)
+	{
+#ifdef CABLE_PLUG
+		pe_set_state(dev, PE_CBL_READY);
+#else
+		if (dev->power_role == PD_PWR_ROLE_SNK)
+		{
+			pe_set_state(dev, PE_SNK_READY);
+		}
+		else
+		{
+			pe_set_state(dev, PE_SRC_READY);
+		}
+#endif
+	}
+
+	return;
+}
+
+static void usb_pd_pe_unstructured_vdm_handler(usb_pd_port_t *dev)
+{
+	// Prior to establishing an Explicit Contract, Unstructured VDMs
+	// shall not be sent and shall be ignored if received.
+	if (!dev->explicit_contract)
+	{
+		return;
+	}
+
+	// Only a DFP shall be an initiator.
+	// Only a UFP or cable plug shall be a responder.
+
+	// Unstructured VDM are currently unsupported.
+	// For PD r2.0, DFP or UFP should ignore the msg if not supported.
+	// For PD r3.0, DFP or UFP should return Not_Supported msg if not supported.
+#if (PD_SPEC_REV == PD_REV30) && !defined(CABLE_PLUG)
+	if (!dev->state_change)
+	{
+		if (dev->power_role == PD_PWR_ROLE_SNK)
+		{
+			pe_set_state(dev, PE_SNK_SEND_NOT_SUPPORTED);
+		}
+		else
+		{
+			pe_set_state(dev, PE_SRC_SEND_NOT_SUPPORTED);
+		}
+	}
+#endif
+
+	return;
+}
+
+
+static void usb_pd_pe_vdm_handler(usb_pd_port_t *dev)
+{
+	uint32_t vdm_hdr = get_data_object(dev->rx_msg_buf);
+
+	// All VDM message sequences involve a response for each command
+	// so we can clear the vdm_in_progress flag here.
+	dev->vdm_in_progress = false;
+
+	if (USB_PD_VDM_IS_STRUCT_TYPE(vdm_hdr))
+	{
+		usb_pd_pe_structured_vdm_handler(dev);
+	}
+	else /* Unstructured VDM */
+	{
+		usb_pd_pe_unstructured_vdm_handler(dev);
+	}
+
+	return;
+}
+
+static void timeout_vconn_stable(unsigned int port)
+{
+	pe_set_state(&pd[port], PE_SRC_VDM_IDENTITY_REQUEST);
+	return;
+}
+
+
+static void timeout_vdm_mode_entry(unsigned int port)
+{
+	usb_pd_port_t *dev = &pd[port];
+
+	// Restore USB operation.
+
+	// Notify DPM.
+
+	if (dev->power_role == PD_PWR_ROLE_SNK)
+	{
+		pe_set_state(dev, PE_SNK_READY);
+	}
+	else
+	{
+		pe_set_state(dev, PE_SRC_READY);
+	}
+
+	return;
+}
+
+#endif /* ENABLE_VDM_SUPPORT */
+
+#if !defined ENABLE_VDM_SUPPORT || !defined ENABLE_DP_ALT_MODE_SUPPORT
+/* Dummy function to prevent compiler error when VDM or DP alt mode support disabled. */
+void usb_pd_pe_hpd_in_event(unsigned int port, uint8_t val)
+{
+	return;
+}
+#endif
+
 static void timeout_vbus_5v_stabilize(unsigned int port)
 {
 	usb_pd_port_t *dev = &pd[port];
@@ -896,7 +2596,19 @@ static void timeout_vbus_5v_stabilize(unsigned int port)
 
 static void timeout_swap_source_start(unsigned int port)
 {
-	pe_set_state(&pd[port], PE_SRC_SEND_CAPS);
+	usb_pd_port_t *dev = &pd[port];
+
+#ifdef ENABLE_VDM_SUPPORT
+	if (!dev->cable_id_req_complete && tcpm_is_vconn_enabled(dev->port))
+	{
+		pe_set_state(dev, PE_SRC_VDM_IDENTITY_REQUEST);
+	}
+	else
+#endif
+	{
+		pe_set_state(dev, PE_SRC_SEND_CAPS);
+	}
+
 	return;
 }
 
@@ -1008,25 +2720,129 @@ static void pe_src_startup_entry(usb_pd_port_t *dev)
 	}
 	else
 	{
-		// Wait for VBUS to stablize before transitioning to SRC_SEND_CAPS.
-		timer_start(&dev->timer, T_VBUS_5V_STABLIZE_MS, timeout_vbus_5v_stabilize);
+#ifdef ENABLE_VDM_SUPPORT
+		if (!dev->cable_id_req_complete && tcpm_is_vconn_enabled(dev->port))
+		{
+			timer_start(&dev->timer, T_VCONN_STABLE_MS, timeout_vconn_stable);
+		}
+		else
+#endif
+		{
+			// Wait for VBUS to stablize before transitioning to SRC_SEND_CAPS.
+			timer_start(&dev->timer, T_VBUS_5V_STABLIZE_MS, timeout_vbus_5v_stabilize);
+		}
 	}
 
 	return;
 }
 
+#ifdef ENABLE_VDM_SUPPORT
+
+static void timeout_vdm_sender_response(unsigned int port)
+{
+	usb_pd_port_t *dev = &pd[port];
+
+	if (*dev->current_state == PE_SRC_VDM_IDENTITY_REQUEST)
+	{
+		pe_set_state(dev, PE_SRC_DISCOVERY);
+	}
+	else
+	{
+		if (*dev->current_state == PE_INIT_PORT_VDM_IDENTITY_REQUEST)
+		{
+			dev->port_partner_id_req_complete = true;
+		}
+
+		if (dev->power_role == PD_PWR_ROLE_SNK)
+		{
+			pe_set_state(dev, PE_SNK_READY);
+		}
+		else
+		{
+			pe_set_state(dev, PE_SRC_READY);
+		}
+	}
+
+	return;
+}
+
+
+static void pe_src_vdm_identity_request_entry(usb_pd_port_t *dev)
+{
+	dev->discover_identity_cnt++;
+
+	// Send Discover Identity VDM to local cable plug.
+	vdm_send_structured_cmd(dev->port, VDM_PD_SID, VDM_CMD_DISCOVER_IDENTITY, 0, TCPC_TX_SOP_P);
+
+	return;
+}
+
+static void pe_init_port_vdm_identity_request_entry(usb_pd_port_t *dev)
+{
+	// Send Discover Identity VDM to port partner.
+	vdm_send_structured_cmd(dev->port, VDM_PD_SID, VDM_CMD_DISCOVER_IDENTITY, 0, TCPC_TX_SOP);
+
+	return;
+}
+
+
+#endif
+
 static void pe_src_discovery_entry(usb_pd_port_t *dev)
 {
-	// Start SourceCapabilityTimer.
-	timer_start(&dev->timer, T_TYPEC_SEND_SOURCE_CAP_MS, timeout_typec_send_source_cap);
+#ifdef ENABLE_VDM_SUPPORT
+	if (tcpm_is_vconn_enabled(dev->port))
+	{
+		if (!dev->cable_id_req_complete &&
+			(dev->discover_identity_cnt < N_DISCOVER_IDENTITY_COUNT))
+		{
+			pe_set_state(dev, PE_SRC_VDM_IDENTITY_REQUEST);
+		}
+		else
+		{
+			if (dev->caps_cnt == 0)
+			{
+				// Send SRC CAPS immediately.
+				timeout_typec_send_source_cap(dev->port);
+			}
+			else
+			{
+				// Start SourceCapabilityTimer.
+				timer_start(&dev->timer, T_TYPEC_SEND_SOURCE_CAP_MS, timeout_typec_send_source_cap);
+			}
+		}
+	}
+	else
+#endif
+	{
+		// Start SourceCapabilityTimer.
+		timer_start(&dev->timer, T_TYPEC_SEND_SOURCE_CAP_MS, timeout_typec_send_source_cap);
+	}
+
+	return;
+}
+
+static void usb_pd_pe_handle_snk_src_default_state(usb_pd_port_t *dev)
+{
+	// Disable VCONN.
+	tcpm_set_vconn_enable(dev->port, false);
+
+	dev->explicit_contract = false;
+	dev->active_alt_modes = 0;
+
+#ifdef ENABLE_VDM_SUPPORT
+	dev->port_partner_id_req_complete = false;
+#ifdef ENABLE_DP_ALT_MODE_SUPPORT
+	tcpm_hpd_out_control(dev->port, 0);
+#endif
+#endif
 
 	return;
 }
 
 static void pe_src_transition_to_default_entry(usb_pd_port_t *dev)
 {
-	// Disable VCONN.
-	tcpm_set_vconn_enable(dev->port, false);
+	usb_pd_pe_handle_snk_src_default_state(dev);
 
 	// Remove Rp from VCONN pin.
 	tcpm_vconn_pin_rp_control(dev->port, false);
@@ -1036,8 +2852,6 @@ static void pe_src_transition_to_default_entry(usb_pd_port_t *dev)
 
 	// Force VBUS discharge.
 	tcpm_force_discharge(dev->port, VSTOP_DISCHRG);
-
-	dev->explicit_contract = false;
 
 	// Wait until VBUS drops to vSafe0V before checking data role and starting source recover timer.
 	tcpm_set_voltage_alarm_lo(dev->port, VSAFE0V_MAX);
@@ -1051,7 +2865,7 @@ static void pe_src_transition_to_default_exit(usb_pd_port_t *dev)
 	tcpm_vconn_pin_rp_control(dev->port, true);
 
 	// Restore vSafe5V.
-	tcpm_src_vbus_5v_enable(dev->port);
+	tcpm_src_vbus_enable(dev->port, 5000);
 
 	// After a Hard Reset, the sink must respond to SRC_CAPS within tNoResponse.
 	timer_start_no_response(dev);
@@ -1084,6 +2898,12 @@ static void pe_src_negotiate_capability_entry(usb_pd_port_t *dev)
 
 	// BQ - Battery RDO not supported.
 
+#ifdef CONFIG_LGE_USB_TYPE_C
+	dev->offered_rdo = rdo;
+#ifdef CONFIG_DUAL_ROLE_USB_INTF
+	dual_role_instance_changed(tusb422_dual_role_phy);
+#endif
+#endif
 	dev->object_position = (rdo >> 28) & 0x07;
 	operating_current = (rdo >> 10) & 0x3FF;
 
@@ -1146,16 +2966,17 @@ static void pe_src_transition_supply_exit(usb_pd_port_t *dev)
 
 #define V_SRC_VALID_MV  500  /* +/- 500 mV */
 
+/* returns min threshold in 25mV units */
 static uint16_t pd_power_enable_non_default_src_vbus(usb_pd_port_t *dev)
 {
 	uint16_t v_threshold;
 	usb_pd_port_config_t *config = usb_pd_pm_get_config(dev->port);
 
-	// If supporting more than one voltage, check PDO to determine voltage.
-	tcpm_src_vbus_hi_volt_enable(dev->port);
-
 	// Get PDO min voltage in 50mV units.
 	v_threshold = PDO_MIN_VOLTAGE(dev->src_pdo[dev->object_position - 1]);
+
+	// If supporting more than one voltage, check PDO to determine voltage.
+	tcpm_src_vbus_enable(dev->port, PDO_VOLT_TO_MV(v_threshold));
 
 	// If fixed PDO, multiply by 0.95 to get min vSrcNew.
 	if (config->src_caps[dev->object_position - 1].SupplyType == SUPPLY_TYPE_FIXED)
@@ -1271,6 +3092,71 @@ static void pe_src_capability_response_entry(usb_pd_port_t *dev)
 	// BQ - Send Wait not supported.
 }
 
+static void usb_pd_pe_handle_snk_src_ready_state(usb_pd_port_t *dev)
+{
+#ifdef CONFIG_TUSB422_PAL
+	usb_pd_pal_notify_pd_state(dev->port, *dev->current_state);
+#endif
+
+	if (tcpm_is_vconn_enabled(dev->port))
+	{
+		// Enable PD receive for SOP/SOP'/SOP".
+		tcpm_enable_pd_receive(dev->port, true, true);
+	}
+
+	if (dev->data_role == PD_DATA_ROLE_DFP)
+	{
+		if (tcpm_is_vconn_enabled(dev->port) && dev->cable_plug_comm_required)
+		{
+			// If this is a DFP which needs to establish communication with a Cable Plug,
+			// then the Policy Engine shall initialize and run the DiscoverIdentityTimer. - BQ
+			// timer_start(&dev->timer, T_DISCOVER_IDENTITY_MS, timeout_func);
+		}
+#ifdef ENABLE_VDM_SUPPORT
+#ifdef CONFIG_LGE_USB_TYPE_C
+		else if (!dev->port_partner_id_req_complete)
+		{
+			timer_start(&dev->timer, T_VDM_BUSY_MS, timeout_port_vdm_disc_identity_busy);
+		}
+#else
+		else if (USB_PD_VDM_MODAL_OPERATION(config->id_header_vdo) &&
+				 !dev->port_partner_id_req_complete)
+		{
+			timer_start(&dev->timer, T_VDM_BUSY_MS, timeout_port_vdm_disc_identity_busy);
+		}
+		else if (dev->mode_exit_pending)
+		{
+			dev->mode_exit_pending = false;
+			pe_set_state(dev, PE_DFP_VDM_MODE_EXIT_REQUEST);
+		}
+#ifdef ENABLE_DP_ALT_MODE_SUPPORT
+		else if ((dev->active_alt_modes & DP_ALT_MODE) &&
+				 (dev->hpd_in_queue[dev->hpd_in_send_idx] != NOTIFY_HPD_NONE))
+		{
+			usb_pd_pe_update_displayport_status(dev);
+
+			// Send Status Update VDM to port partner.
+			pe_set_state(dev, PE_INIT_VDM_DP_STATUS_UPDATE);
+		}
+#endif
+#endif
+#endif
+	}
+	else /* UFP */
+	{
+#ifdef ENABLE_VDM_SUPPORT
+#ifdef ENABLE_DP_ALT_MODE_SUPPORT
+		if ((dev->active_alt_modes & DP_ALT_MODE) &&
+			(dev->hpd_in_queue[dev->hpd_in_send_idx] != NOTIFY_HPD_NONE))
+		{
+			pe_set_state(dev, PE_INIT_VDM_ATTENTION_REQUEST);
+		}
+#endif
+#endif
+	}
+
+	return;
+}
 
 static void pe_src_ready_entry(usb_pd_port_t *dev)
 {
@@ -1283,28 +3169,7 @@ static void pe_src_ready_entry(usb_pd_port_t *dev)
 	// Set Rp value to 3.0A for collision avoidance.
 	tcpm_set_rp_value(dev->port, RP_HIGH_CURRENT);
 
-#ifdef CONFIG_TUSB422_PAL
-	usb_pd_pal_notify_pd_state(dev->port, PE_SRC_READY);
-#endif
-
-	if (tcpm_is_vconn_enabled(dev->port))
-	{
-		// Enable PD receive for SOP/SOP'/SOP".
-		tcpm_enable_pd_receive(dev->port, true, true);
-
-		// If VCONN source, start DiscoveryIdentity timer and negotiate PD with cable plug. - BQ
-		//T_DISCOVER_IDENTITY_MS
-	}
-
-
-#ifdef VDM_DISCOVER_IDENTITY
-	if (dev->discover_identity_cnt == 0)
-	{
-		// Send Discover Identity.
-		usb_pd_pe_tx_vdm_msg(dev->port, VDM_HDR_CMD_DISCOVER_IDENTITY);
-		dev->discover_identity_cnt++;
-	}
-#endif
+	usb_pd_pe_handle_snk_src_ready_state(dev);
 
 	return;
 }
@@ -1427,6 +3292,11 @@ static void pe_drs_change_role_entry(usb_pd_port_t *dev)
 		pe_set_state(dev, PE_SRC_READY);
 	}
 
+#ifdef ENABLE_VDM_SUPPORT
+	// Data Role Swap shall reset the DiscoverIdentityCounter to zero.
+	dev->discover_identity_cnt = 0;
+#endif
+
 	return;
 }
 
@@ -1434,14 +3304,7 @@ static void pe_prs_send_swap_entry(usb_pd_port_t *dev)
 {
 	if (dev->power_role == PD_PWR_ROLE_SNK)
 	{
-		// Disable AutoDischargeDisconnect per TCPC spec.
-		tcpm_set_autodischarge_disconnect(dev->port, false);
-
-		// Disable sink VBUS per TCPC spec.
-		tcpm_snk_vbus_disable(dev->port);
-
-		// Disable VBUS present detection.
-		tcpm_disable_vbus_detect(dev->port);
+		tcpm_snk_swap_standby(dev->port);
 	}
 
 	usb_pd_prl_tx_ctrl_msg(dev->port, buf, CTRL_MSG_TYPE_PR_SWAP, TCPC_TX_SOP);
@@ -1451,15 +3314,14 @@ static void pe_prs_send_swap_entry(usb_pd_port_t *dev)
 static void pe_prs_evaluate_swap_entry(usb_pd_port_t *dev)
 {
 	usb_pd_port_config_t *config = usb_pd_pm_get_config(dev->port);
-	tcpc_device_t *tc_dev = tcpm_get_device(dev->port);
 
 	dev->non_interruptable_ams = true;
 
 	if (dev->power_role == PD_PWR_ROLE_SNK)
 	{
-		if (tc_dev->silicon_revision == 0)
+		if (dev->tcpc_dev->silicon_revision == 0)
 		{
-			// PG1.0 cannot support SNK->SRC swap because PD will be disabled.
+			/*** TUSB422 PG1.0 cannot support SNK->SRC swap because PD will be disabled (CDDS #60) ***/
 			pe_set_state(dev, PE_PRS_REJECT_SWAP);
 		}
 		else
@@ -1477,19 +3339,25 @@ static void pe_prs_evaluate_swap_entry(usb_pd_port_t *dev)
 
 		if (*dev->current_state == PE_PRS_ACCEPT_SWAP)
 		{
-			// Disable AutoDischargeDisconnect per TCPC spec.
-			tcpm_set_autodischarge_disconnect(dev->port, false);
-
-			// Disable VBUS present detection.
-			tcpm_disable_vbus_detect(dev->port);
+#ifdef CONFIG_LGE_USB_TYPE_C
+			dev->power_role_swap_in_progress = true;
+#endif
+			tcpm_snk_swap_standby(dev->port);
 		}
 	}
 	else /* SRC */
 	{
-		// Only auto accept swap to sink if not externally powered.
-		if (/*!config->externally_powered &&*/ config->auto_accept_swap_to_sink)
+		if (config->auto_accept_swap_to_sink)
 		{
-			pe_set_state(dev, PE_PRS_ACCEPT_SWAP);
+//			// Respond with Wait if we are currently externally powered.
+//			if (dev->externally_powered)
+//			{
+//				pe_set_state(dev, PE_PRS_WAIT_SWAP);
+//			}
+//			else
+//			{
+				pe_set_state(dev, PE_PRS_ACCEPT_SWAP);
+//			}
 		}
 		else
 		{
@@ -1512,8 +3380,6 @@ static void timeout_ps_source(unsigned int port)
 
 static void pe_prs_transition_to_off_entry(usb_pd_port_t *dev)
 {
-	dev->power_role_swap_in_progress = true;
-
 	if (dev->power_role == PD_PWR_ROLE_SNK)
 	{
 		// Start PSSourceOff timer.
@@ -1586,8 +3452,8 @@ static void pe_prs_assert_rp_entry(usb_pd_port_t *dev)
 
 static void pe_prs_source_on_entry(usb_pd_port_t *dev)
 {
-	// Enable source VBUS.
-	tcpm_src_vbus_5v_enable(dev->port);
+	// Enable source VBUS vSafe5V.
+	tcpm_src_vbus_enable(dev->port, 5000);
 
 	// Wait until VBUS rises to vSafe5V before sending PS_RDY.
 	tcpm_set_voltage_alarm_hi(dev->port, VSAFE5V_MIN);
@@ -1643,12 +3509,9 @@ static void pe_vcs_evaluate_swap_entry(usb_pd_port_t *dev)
 static void timeout_vconn_source_on(unsigned int port)
 {
 	usb_pd_port_t *dev = &pd[port];
-	tcpc_device_t *tc_dev;
 
 	// Hard reset based on CC state.
-	tc_dev = tcpm_get_device(port);
-
-	if (tc_dev->cc_status & CC_STATUS_CONNECT_RESULT)
+	if (dev->tcpc_dev->cc_status & CC_STATUS_CONNECT_RESULT)
 	{
 		// Rd asserted (Consumer/Provider)
 		pe_set_state(dev, PE_SNK_HARD_RESET);
@@ -1796,12 +3659,11 @@ static void pe_snk_discovery_entry(usb_pd_port_t *dev)
 
 static void pe_snk_wait_for_caps_entry(usb_pd_port_t *dev)
 {
-	// Disable sink disconnect threshold.
-	tcpm_set_sink_disconnect_threshold(dev->port, 0);
+	// VBUS = 5V.
 
 	// Re-enable AutoDischargeDisconnect.
 	// (May have been disabled due to hard reset or power role swap)
-//	tcpm_set_autodischarge_disconnect(dev->port, true);  // BQ - removed so we don't disconnect after a hard reset.
+	tcpm_set_autodischarge_disconnect(dev->port, true);
 
 	timer_start(&dev->timer, T_TYPEC_SINK_WAIT_CAP_MS, timeout_sink_wait_cap);
 	return;
@@ -1831,12 +3693,21 @@ static void pe_snk_evaluate_capability_entry(usb_pd_port_t *dev)
 
 static void pe_snk_select_capability_entry(usb_pd_port_t *dev)
 {
+	uint16_t threshold_25mv;
+
 	if (dev->explicit_contract)
 	{
 		if (PDO_MIN_VOLTAGE(dev->selected_pdo) < PDO_MIN_VOLTAGE(dev->prev_selected_pdo))
 		{
-			// Disable sink disconnect threshold.
-			tcpm_set_sink_disconnect_threshold(dev->port, 0);
+			// Calculate threshold equal to 80% of new min voltage.
+			threshold_25mv = (PDO_MIN_VOLTAGE(dev->selected_pdo) * 16) / 10;
+
+			// Set new lower threshold to start discharge when AUTO_DISCHARGE_DISCONNECT is enabled.
+			tcpm_set_sink_disconnect_threshold(dev->port, threshold_25mv);
+#ifdef USE_VOLTAGE_ALARM_FOR_SINK_DISCONNECT
+			// Set voltage alarm low to new threshold to prevent disconnect.
+			tcpm_set_voltage_alarm_lo(dev->port, threshold_25mv);
+#endif
 		}
 	}
 
@@ -1855,15 +3726,11 @@ static void pe_snk_select_capability_entry(usb_pd_port_t *dev)
 
 static void pe_snk_transition_sink_entry(usb_pd_port_t *dev)
 {
-#ifdef CONFIG_TUSB422_PAL
 	uint16_t rdo_operational_curr_or_pwr;
-#endif
 
 	timer_start(&dev->timer, T_PS_TRANSITION_MS, timeout_ps_transition);
 
 	// Request policy manager to transition to new power level and wait for PS_RDY from source.
-#ifdef CONFIG_TUSB422_PAL
-
 	if (dev->snk_goto_min)
 	{
 		rdo_operational_curr_or_pwr = RDO_MIN_OPERATIONAL_CURRENT_OR_POWER(dev->rdo);
@@ -1875,25 +3742,24 @@ static void pe_snk_transition_sink_entry(usb_pd_port_t *dev)
 
 	if (PDO_SUPPLY_TYPE(dev->selected_pdo) == SUPPLY_TYPE_FIXED)
 	{
-		usb_pd_pal_sink_vbus(dev->port, true,
-							 PDO_VOLT_TO_MV(PDO_MIN_VOLTAGE(dev->selected_pdo)),
-							 PDO_CURR_TO_MA(rdo_operational_curr_or_pwr));
+		tcpm_sink_vbus(dev->port, true,
+					   PDO_VOLT_TO_MV(PDO_MIN_VOLTAGE(dev->selected_pdo)),
+					   PDO_CURR_TO_MA(rdo_operational_curr_or_pwr));
 	}
 	else if (PDO_SUPPLY_TYPE(dev->selected_pdo) == SUPPLY_TYPE_VARIABLE)
 	{
-		usb_pd_pal_sink_vbus_vari(dev->port,
-								  PDO_VOLT_TO_MV(PDO_MIN_VOLTAGE(dev->selected_pdo)),
-								  PDO_VOLT_TO_MV(PDO_MAX_VOLTAGE(dev->selected_pdo)),
-								  PDO_CURR_TO_MA(rdo_operational_curr_or_pwr));
+		tcpm_sink_vbus_vari(dev->port,
+							PDO_VOLT_TO_MV(PDO_MIN_VOLTAGE(dev->selected_pdo)),
+							PDO_VOLT_TO_MV(PDO_MAX_VOLTAGE(dev->selected_pdo)),
+							PDO_CURR_TO_MA(rdo_operational_curr_or_pwr));
 	}
 	else /* Battery source */
 	{
-		usb_pd_pal_sink_vbus_batt(dev->port,
-								  PDO_VOLT_TO_MV(PDO_MIN_VOLTAGE(dev->selected_pdo)),
-								  PDO_VOLT_TO_MV(PDO_MAX_VOLTAGE(dev->selected_pdo)),
-								  PDO_PWR_TO_MW(rdo_operational_curr_or_pwr));
+		tcpm_sink_vbus_batt(dev->port,
+							PDO_VOLT_TO_MV(PDO_MIN_VOLTAGE(dev->selected_pdo)),
+							PDO_VOLT_TO_MV(PDO_MAX_VOLTAGE(dev->selected_pdo)),
+							PDO_PWR_TO_MW(rdo_operational_curr_or_pwr));
 	}
-#endif
 
 	return;
 }
@@ -1926,7 +3792,7 @@ static void pe_snk_ready_entry(usb_pd_port_t *dev)
 		// Set Sink Disconnect Threshold to VDISCON_MAX.
 		threshold = VDISCON_MAX;
 #else
-		// Set Sink Disconnect Threshold to zero to disable.
+		// Set Sink Disconnect Threshold to zero.
 		threshold = 0;
 #endif
 	}
@@ -1935,37 +3801,24 @@ static void pe_snk_ready_entry(usb_pd_port_t *dev)
 		// Set Sink Disconnect Threshold to 80% of min voltage.
 		threshold = (min_voltage * 8) / 10;
 		DEBUG("SNK VBUS Disconn Thres = %u mV.\n", threshold * 25);
+#ifdef USE_VOLTAGE_ALARM_FOR_SINK_DISCONNECT
+		// Set voltage alarm low to new threshold.
+		tcpm_set_voltage_alarm_lo(dev->port, threshold);
+#endif
 	}
 
+	// Set non-zero value to specify threshold for AUTO_DISCHARGE_DISCONNECT.
+	// Use zero value to use VBUS_PRESENT for AUTO_DISCHARGE_DISCONNECT.
 	tcpm_set_sink_disconnect_threshold(dev->port, threshold);
 
-	if (tcpm_is_vconn_enabled(dev->port))
-	{
-		// Enable PD receive for SOP/SOP'/SOP".
-		tcpm_enable_pd_receive(dev->port, true, true);
-
-		if (dev->data_role == PD_DATA_ROLE_DFP)
-		{
-			// On entry to the PE_SNK_Ready state if this is a DFP which needs to establish communication
-			// with a Cable Plug, then the Policy Engine shall initialize and run the DiscoverIdentityTimer - BQ
-			// T_DISCOVER_IDENTITY_MS
-		}
-	}
-
-#ifdef CONFIG_TUSB422_PAL
-	usb_pd_pal_notify_pd_state(dev->port, PE_SNK_READY);
-#endif
+	usb_pd_pe_handle_snk_src_ready_state(dev);
 
 	return;
 }
 
 static void pe_snk_hard_reset_entry(usb_pd_port_t *dev)
 {
-	// Disable AutoDischargeDisconnect per TCPC spec.
-	tcpm_set_autodischarge_disconnect(dev->port, false);
-
-	// Disable sink VBUS per TCPC spec. Sink must draw < 2.5mA.
-//	tcpm_snk_vbus_disable(dev->port);  // BQ - Remove this to fix phone reboot issue with PD charger.
+	tcpm_snk_swap_standby(dev->port);
 
 	dev->hard_reset_cnt++;
 	tcpm_transmit(dev->port, NULL, TCPC_TX_HARD_RESET);
@@ -1984,11 +3837,12 @@ static void pe_snk_not_supported_received_entry(usb_pd_port_t *dev)
 static void pe_snk_transition_to_default_entry(usb_pd_port_t *dev)
 {
 #ifdef CONFIG_TUSB422_PAL
-	tcpc_device_t* tc_dev = tcpm_get_device(dev->port);;
+	tcpc_device_t* tc_dev = tcpm_get_device(dev->port);
 #endif
+	usb_pd_pe_handle_snk_src_default_state(dev);
 
 	// Notify policy manager sink shall transition to default.
-	tcpm_hal_vbus_enable(dev->port, VBUS_SNK);
+	tcpm_snk_vbus_enable(dev->port);
 
 	// Request policy manager to set data role to UFP.
 	if (dev->data_role != PD_DATA_ROLE_UFP)
@@ -1999,14 +3853,10 @@ static void pe_snk_transition_to_default_entry(usb_pd_port_t *dev)
 
 #ifdef CONFIG_TUSB422_PAL
 		// BQ - should we notify in PE_SNK_Wait_for_Capabilities when VBUS is present instead?
-		usb_pd_pal_notify_connect_state(dev->port, tc_dev->state, tc_dev->plug_polarity);
+		usb_pd_pal_notify_connect_state(dev->port, dev->tcpc_dev->state, tc_dev->plug_polarity);
 //        usb_pd_pal_data_role_swap(dev->port, PD_DATA_ROLE_UFP);
 #endif
 	}
-
-	// Disable VCONN.
-	tcpm_set_vconn_enable(dev->port, false);
-	dev->explicit_contract = false;
 
 	// After a Hard Reset, the sink must receive SRC_CAPS within tNoResponse.
 	timer_start_no_response(dev);
@@ -2077,9 +3927,7 @@ static void pe_error_recovery_entry(usb_pd_port_t *dev)
 
 static void pe_dr_src_give_sink_caps_entry(usb_pd_port_t *dev)
 {
-	tcpc_device_t *tc_dev = tcpm_get_device(dev->port);
-
-	if (tc_dev->role == ROLE_DRP)
+	if (dev->tcpc_dev->role == ROLE_DRP)
 	{
 		usb_pd_pe_tx_data_msg(dev->port, DATA_MSG_TYPE_SNK_CAPS, TCPC_TX_SOP);
 	}
@@ -2094,9 +3942,7 @@ static void pe_dr_src_give_sink_caps_entry(usb_pd_port_t *dev)
 
 static void pe_dr_snk_give_source_caps_entry(usb_pd_port_t *dev)
 {
-	tcpc_device_t *tc_dev = tcpm_get_device(dev->port);
-
-	if (tc_dev->role == ROLE_DRP)
+	if (dev->tcpc_dev->role == ROLE_DRP)
 	{
 		usb_pd_pe_tx_data_msg(dev->port, DATA_MSG_TYPE_SRC_CAPS, TCPC_TX_SOP);
 	}
@@ -2110,8 +3956,8 @@ static void pe_dr_snk_give_source_caps_entry(usb_pd_port_t *dev)
 
 static void pe_unattached_entry(usb_pd_port_t *dev)
 {
-#ifdef CONFIG_DUAL_ROLE_USB_INTF
-	tcpc_device_t *tcpc_dev = tcpm_get_device(dev->port);
+#ifdef CONFIG_LGE_USB_TYPE_C
+	uint8_t offered_pdo_idx;
 #endif
 
 	dev->swap_source_start = false;
@@ -2120,18 +3966,47 @@ static void pe_unattached_entry(usb_pd_port_t *dev)
 	dev->no_response_timed_out = false;
 	dev->vbus_present = false;
 	dev->power_role_swap_in_progress = false;
-	dev->modal_operation = false;
-
+	dev->active_alt_modes = 0;
+	dev->active_cable = false;
 	dev->request_goto_min = false;
 	dev->hard_reset_cnt = 0;
 	dev->vconn_source = false;
 
-	dev->high_pwr_cable = false;
+	/* Set defaults for cable voltage and current limits - 20V 3A */
+	dev->cable_max_voltage_mv = 20000;
+	dev->cable_max_current_ma = 3000;
 
+	dev->cable_plug_comm_required = false;
+
+#ifdef ENABLE_VDM_SUPPORT
+	dev->port_partner_id_req_complete = false;
 	dev->discover_identity_cnt = 0;
+	dev->cable_id_req_complete = false;
+	dev->vdm_in_progress = false;
+	dev->matched_alt_modes = 0;
+	dev->mode_exit_pending = false;
+#ifdef ENABLE_DP_ALT_MODE_SUPPORT
+	dev->displayport_alt_mode_configured = false;
+	dev->displayport_status = 0;
+	dev->displayport_remote_status = 0;
+	dev->displayport_matched_pin_assignments = 0;
+	dev->displayport_lane_cnt = 0;
+	dev->hpd_in_changed = false;
+
+	// Deassert HPD for all ports.
+	tcpm_hpd_out_control(0, 0);
+#endif
+#endif
+
+#ifdef CONFIG_LGE_USB_TYPE_C
+	for (offered_pdo_idx = 0; offered_pdo_idx < PD_MAX_PDO_NUM; offered_pdo_idx++)
+		dev->offered_pdo[offered_pdo_idx] = 0;
+	dev->offered_rdo = 0;
+	dev->rdo = 0;
+#endif
 
 #ifdef CONFIG_DUAL_ROLE_USB_INTF
-	if (!(tcpc_dev->flags & TC_FLAGS_TEMP_ROLE))
+	if (!(dev->tcpc_dev->flags & TC_FLAGS_TEMP_ROLE))
 	{
 		dual_role_instance_changed(tusb422_dual_role_phy);
 	}
@@ -2215,6 +4090,7 @@ static const state_entry_fptr pe_state_entry[PE_NUM_STATES] =
 	pe_prs_send_swap_entry,				  /* PE_PRS_SEND_SWAP              */
 	pe_prs_evaluate_swap_entry,			  /* PE_PRS_EVALUATE_SWAP          */
 	pe_send_reject_entry,				  /* PE_PRS_REJECT_SWAP            */
+	pe_send_wait_entry,					  /* PE_PRS_WAIT_SWAP              */
 	pe_send_accept_entry,				  /* PE_PRS_ACCEPT_SWAP            */
 	pe_prs_transition_to_off_entry,		  /* PE_PRS_TRANSITION_TO_OFF      */
 	pe_prs_assert_rd_entry,				  /* PE_PRS_ASSERT_RD              */
@@ -2232,6 +4108,33 @@ static const state_entry_fptr pe_state_entry[PE_NUM_STATES] =
 	pe_vcs_turn_on_vconn_entry,			  /* PE_VCS_TURN_ON_VCONN          */
 	pe_vcs_send_ps_rdy_entry,			  /* PE_VCS_SEND_PS_RDY            */
 
+#ifdef ENABLE_VDM_SUPPORT
+	pe_src_vdm_identity_request_entry,	  /* PE_SRC_VDM_IDENTITY_REQUEST   */
+	pe_init_port_vdm_identity_request_entry,  /* PE_INIT_PORT_VDM_IDENTITY_REQUEST  */
+	pe_init_vdm_svids_request_entry,	  /* PE_INIT_VDM_SVIDS_REQUEST     */
+	pe_init_vdm_modes_request_entry,	  /* PE_INIT_VDM_MODES_REQUEST     */
+	pe_init_vdm_attention_request_entry,  /* PE_INIT_VDM_ATTENTION_REQUEST */
+#ifdef ENABLE_DP_ALT_MODE_SUPPORT
+	pe_init_vdm_dp_status_update_entry,	  /* PE_INIT_VDM_DP_STATUS_UPDATE  */
+	pe_init_vdm_dp_config_entry,		  /* PE_INIT_VDM_DP_CONFIG         */
+#endif
+
+	pe_resp_vdm_nak_entry,				  /* PE_RESP_VDM_NAK               */
+	pe_resp_vdm_get_identity_entry,		  /* PE_RESP_VDM_GET_IDENTITY      */
+	pe_resp_vdm_get_svids_entry,		  /* PE_RESP_VDM_GET_SVIDS         */
+	pe_resp_vdm_get_modes_entry,		  /* PE_RESP_VDM_GET_MODES         */
+	pe_dummy_state_entry,				  /* PE_RCV_VDM_ATTENTION_REQUEST  */
+#ifdef ENABLE_DP_ALT_MODE_SUPPORT
+	pe_resp_vdm_dp_status_update_entry,	  /* PE_RESP_VDM_DP_STATUS_UPDATE  */
+	pe_resp_vdm_dp_config_entry,		  /* PE_RESP_VDM_DP_CONFIG         */
+#endif
+
+	pe_dfp_vdm_mode_entry_request,		  /* PE_DFP_VDM_MODE_ENTRY_REQUEST */
+	pe_dfp_vdm_mode_exit_request,		  /* PE_DFP_VDM_MODE_EXIT_REQUEST  */
+
+	pe_ufp_vdm_eval_mode_entry,			  /* PE_UFP_VDM_EVAL_MODE_ENTRY    */
+	pe_ufp_vdm_mode_exit_entry,			  /* PE_UFP_VDM_MODE_EXIT          */
+#endif
 };
 
 
@@ -2239,8 +4142,38 @@ void usb_pd_pe_state_machine(unsigned int port)
 {
 	usb_pd_port_t *dev = &pd[port];
 
-	if (!dev->state_change)
-		return;
+#if defined ENABLE_VDM_SUPPORT && defined ENABLE_DP_ALT_MODE_SUPPORT
+	if ((dev->active_alt_modes & DP_ALT_MODE) && dev->hpd_in_changed)
+	{
+		dev->hpd_in_changed = false;
+
+		if (dev->hpd_in_value == 0)
+		{
+			// Start timer to see if this is an HPD IRQ.
+			tusb422_lfo_timer_start(&dev->timer2, T_IRQ_HPD_MAX_MS, timeout_irq_hpd);
+		}
+		else /* HPD high */
+		{
+			if (dev->timer2.function == timeout_irq_hpd)
+			{
+				// Timer did not expire. IRQ_HPD occured.
+				tusb422_lfo_timer_cancel(&dev->timer2);
+				dev->hpd_in_queue[dev->hpd_in_queue_idx++] = NOTIFY_HPD_IRQ;
+			}
+			else
+			{
+				dev->hpd_in_queue[dev->hpd_in_queue_idx++] = NOTIFY_HPD_HIGH;
+			}
+
+			if (dev->hpd_in_queue_idx >= HPD_IN_QUEUE_SIZE)
+			{
+				dev->hpd_in_queue_idx = 0;
+			}
+
+			pe_set_state(dev, PE_INIT_VDM_ATTENTION_REQUEST);
+		}
+	}
+#endif
 
 	while (dev->state_change)
 	{
@@ -2268,11 +4201,7 @@ void usb_pd_pe_notify(unsigned int port, usb_pd_prl_alert_t prl_alert)
 
 			if (dev->power_role == PD_PWR_ROLE_SNK)
 			{
-				// Disable AutoDischargeDisconnect.
-				tcpm_set_autodischarge_disconnect(port, false);
-
-				// Disable sink VBUS.
-				tcpm_snk_vbus_disable(port);
+				tcpm_snk_swap_standby(dev->port);
 
 				pe_set_state(dev, PE_SNK_TRANSITION_TO_DEFAULT);
 			}
@@ -2365,6 +4294,7 @@ void usb_pd_pe_notify(unsigned int port, usb_pd_prl_alert_t prl_alert)
 					break;
 
 				case PE_PRS_ACCEPT_SWAP:
+					dev->power_role_swap_in_progress = true;
 					pe_set_state(dev, PE_PRS_TRANSITION_TO_OFF);
 					break;
 
@@ -2379,7 +4309,48 @@ void usb_pd_pe_notify(unsigned int port, usb_pd_prl_alert_t prl_alert)
 					}
 					break;
 
+#ifdef ENABLE_VDM_SUPPORT
+				case PE_SRC_VDM_IDENTITY_REQUEST:
+				case PE_INIT_PORT_VDM_IDENTITY_REQUEST:
+				case PE_INIT_VDM_SVIDS_REQUEST:
+				case PE_INIT_VDM_MODES_REQUEST:
+#ifdef ENABLE_DP_ALT_MODE_SUPPORT
+				case PE_INIT_VDM_DP_STATUS_UPDATE:
+				case PE_INIT_VDM_DP_CONFIG:
+#endif
+					// Start VDMResponseTimer.
+					timer_start(&dev->timer, T_VDM_SENDER_RESPONSE_MS, timeout_vdm_sender_response);
+					break;
+
+				case PE_DFP_VDM_MODE_ENTRY_REQUEST:
+					// Start VDMModeEntryTimer.
+					timer_start(&dev->timer, T_VDM_WAIT_MODE_ENTRY_MS, timeout_vdm_mode_entry);
+					break;
+
+				case PE_DFP_VDM_MODE_EXIT_REQUEST:
+					// Start VDMModeExitTimer.
+					timer_start(&dev->timer, T_VDM_WAIT_MODE_EXIT_MS, timeout_vdm_mode_exit);
+					break;
+
+				case PE_INIT_VDM_ATTENTION_REQUEST:
+#ifdef ENABLE_DP_ALT_MODE_SUPPORT
+					// IRQ_HPD is has been sent, clear the status.
+					dev->displayport_status &= ~IRQ_HPD;
+					// Fall through...
+				case PE_RESP_VDM_DP_STATUS_UPDATE:
+				case PE_RESP_VDM_DP_CONFIG:
+#endif
+				case PE_RESP_VDM_GET_IDENTITY:
+				case PE_RESP_VDM_GET_SVIDS:
+				case PE_RESP_VDM_GET_MODES:
+				case PE_RESP_VDM_NAK:
+				case PE_UFP_VDM_EVAL_MODE_ENTRY: /* for ACK Resp */
+				case PE_UFP_VDM_MODE_EXIT:       /* for ACK Resp */
+					dev->vdm_in_progress = false;
+					// Fall through...
+#endif
 				case PE_PRS_REJECT_SWAP:
+				case PE_PRS_WAIT_SWAP:
 				case PE_DRS_REJECT_SWAP:
 				case PE_VCS_REJECT_SWAP:
 				case PE_VCS_SEND_PS_RDY:
@@ -2442,6 +4413,13 @@ void usb_pd_pe_notify(unsigned int port, usb_pd_prl_alert_t prl_alert)
 				{
 					pe_set_state(dev, PE_SRC_DISCOVERY);
 				}
+#ifdef ENABLE_VDM_SUPPORT
+				else if (*dev->current_state == PE_SRC_VDM_IDENTITY_REQUEST)
+				{
+					// VDM Discover Identity msg failed.
+					pe_set_state(dev, PE_SRC_DISCOVERY);
+				}
+#endif
 				else if (*dev->current_state != PE_UNATTACHED)
 				{
 					// Failure to see a GoodCRC when a port pair
@@ -2502,6 +4480,10 @@ int usb_pd_policy_manager_request(unsigned int port, pd_policy_manager_request_t
 		{
 			pe_set_state(dev, PE_VCS_SEND_SWAP);
 		}
+		else if (req == PD_POLICY_MNGR_REQ_HARD_RESET)
+		{
+			pe_set_state(dev, PE_SRC_HARD_RESET);
+		}
 		else
 		{
 			status = STATUS_REQUEST_NOT_SUPPORTED_IN_CURRENT_STATE;
@@ -2536,6 +4518,10 @@ int usb_pd_policy_manager_request(unsigned int port, pd_policy_manager_request_t
 		{
 			pe_set_state(dev, PE_VCS_SEND_SWAP);
 		}
+		else if (req == PD_POLICY_MNGR_REQ_HARD_RESET)
+		{
+			pe_set_state(dev, PE_SNK_HARD_RESET);
+		}
 		else
 		{
 			status = STATUS_REQUEST_NOT_SUPPORTED_IN_CURRENT_STATE;
@@ -2545,6 +4531,8 @@ int usb_pd_policy_manager_request(unsigned int port, pd_policy_manager_request_t
 	{
 		status = STATUS_REQUEST_NOT_SUPPORTED_IN_CURRENT_STATE;
 	}
+
+	usb_pd_pe_state_machine(0);
 
 	return status;
 }
@@ -2563,9 +4551,10 @@ static void timeout_src_settling(unsigned int port)
 void usb_pd_pe_voltage_alarm_handler(unsigned int port, bool hi_voltage)
 {
 	usb_pd_port_t *dev = &pd[port];
+	usb_pd_port_config_t *config = usb_pd_pm_get_config(port);
 	uint16_t v_threshold;
 #ifdef CONFIG_TUSB422_PAL
-	tcpc_device_t *tc_dev = tcpm_get_device(port);
+	tcpc_device_t* tc_dev = tcpm_get_device(dev->port);
 #endif
 
 	if (hi_voltage)
@@ -2573,7 +4562,7 @@ void usb_pd_pe_voltage_alarm_handler(unsigned int port, bool hi_voltage)
 		if (*dev->current_state == PE_SRC_TRANSITION_SUPPLY)
 		{
 			// Start power supply settling timeout.
-			timer_start(&dev->timer, dev->src_settling_time, timeout_src_settling);
+			timer_start(&dev->timer, config->src_settling_time_ms, timeout_src_settling);
 		}
 		else if (*dev->current_state == PE_PRS_SOURCE_ON)
 		{
@@ -2606,7 +4595,7 @@ void usb_pd_pe_voltage_alarm_handler(unsigned int port, bool hi_voltage)
 				tcpm_update_msg_header_info(dev->port, dev->data_role, dev->power_role);
 
 #ifdef CONFIG_TUSB422_PAL
-				usb_pd_pal_notify_connect_state(dev->port, tc_dev->state, tc_dev->plug_polarity);
+				usb_pd_pal_notify_connect_state(dev->port, dev->tcpc_dev->state, tc_dev->plug_polarity);
 //                usb_pd_pal_data_role_swap(dev->port, PD_DATA_ROLE_DFP);
 #endif
 			}
@@ -2625,8 +4614,8 @@ void usb_pd_pe_voltage_alarm_handler(unsigned int port, bool hi_voltage)
 			// Negative voltage transition complete.  Enable vSrcNew.
 			if (dev->object_position == 1)
 			{
-				// 5V.
-				tcpm_src_vbus_5v_enable(dev->port);
+				// Enable vSafe5V.
+				tcpm_src_vbus_enable(dev->port, 5000);
 
 				v_threshold = VSAFE5V_MIN;
 			}
@@ -2667,7 +4656,7 @@ void usb_pd_pe_current_change_handler(unsigned int port, tcpc_cc_snk_state_t cur
 	if (!dev->explicit_contract)
 	{
 		// Notify system of current change.
-		tcpm_snk_vbus_enable(dev->port);
+		tcpm_sink_vbus(port, false, 5000, GET_SRC_CURRENT_MA(dev->tcpc_dev->src_current_adv));
 	}
 
 	return;
