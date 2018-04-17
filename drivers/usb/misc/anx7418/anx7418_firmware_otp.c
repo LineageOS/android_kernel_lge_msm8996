@@ -531,7 +531,7 @@ static bool otp_update_needed(struct anx7418_firmware *fw, u8 ver)
 {
 	if (ver == 0x16 || ver == 0xB2 || ver == 0x10)
 		return true;
-#if defined(CONFIG_LGE_PM_CABLE_DETECTION) && defined(CONFIG_LGE_PM_FACTORY_CABLE)
+#ifdef CONFIG_LGE_PM_CABLE_DETECTION
 	else if (lge_is_factory_cable()) {
 		pr_info("%s: skip fw update for factory process\n", __func__);
 		return false;

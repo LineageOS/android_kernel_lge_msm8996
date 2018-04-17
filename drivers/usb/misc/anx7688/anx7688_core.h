@@ -54,6 +54,7 @@ struct anx7688_data {
 	int rstn_gpio;
 	int sbu_gpio;
 	int vconn_gpio;
+	int avdd33_gpio;
 	u32 pd_max_volt;
 	u32 pd_max_power;
 	u32 pd_min_power;
@@ -61,6 +62,7 @@ struct anx7688_data {
 	bool vconn_always_on;
 	int vsafe0v_level;
 	bool auto_pd_support;
+	bool avdd33_ext_ldo;
 };
 
 struct anx7688_chip {

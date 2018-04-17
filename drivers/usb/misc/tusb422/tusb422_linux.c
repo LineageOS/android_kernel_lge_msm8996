@@ -1,19 +1,18 @@
 /*
- * Texas Instruments TUSB422 Power Delivery
+ * TUSB422 Power Delivery
  *
- * Author: Dan Murphy <dmurphy@ti.com>
- *         Brian Quach <brian.quach@ti.com>
+ * Author: Brian Quach <brian.quach@ti.com>
  *
- * Copyright: (C) 2016 Texas Instruments, Inc.
+ * Copyright (C) 2016 Texas Instruments Incorporated - http://www.ti.com/
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation version 2.
  *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
+ * This program is distributed "as is" WITHOUT ANY WARRANTY of any
+ * kind, whether express or implied; without even the implied warranty
+ * of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  */
 
 #include "tusb422_linux.h"
@@ -50,6 +49,12 @@
 	#include "tusb422_linux_dual_role.h"
 	#include <linux/usb/class-dual-role.h>
 #endif
+
+#ifdef CONFIG_LGE_USB_TYPE_C
+#include <linux/reboot.h>
+#endif
+
+#define TUSB422_I2C_NAME "tusb422"
 
 //#define TUSB422_USE_POLLING
 
@@ -468,7 +473,7 @@ void tusb422_wake_lock_detach(void)
 
 int tusb422_set_vbus(int vbus_sel)
 {
-	if (vbus_sel == VBUS_SRC_5V) {
+	if (vbus_sel == VBUS_SEL_SRC_5V) {
 		/* Disable high voltage. */
 		gpiod_direction_output(tusb422_pd->vbus_hv_gpio, 0);
 		/* Enable 5V. */
@@ -476,7 +481,7 @@ int tusb422_set_vbus(int vbus_sel)
 		/* Enable SRC switch. */
 		gpiod_direction_output(tusb422_pd->vbus_src_gpio, 0);
 	}
-	else if (vbus_sel == VBUS_SRC_HI_VOLT) {
+	else if (vbus_sel == VBUS_SEL_SRC_HI_VOLT) {
 		/* Disable 5v */
 		gpiod_direction_output(tusb422_pd->vbus_5v_gpio, 0);
 		/* Enable high voltage. */
@@ -484,7 +489,7 @@ int tusb422_set_vbus(int vbus_sel)
 		/* Enable SRC switch. */
 		gpiod_direction_output(tusb422_pd->vbus_src_gpio, 0);
 	}
-	else if (vbus_sel == VBUS_SNK) {
+	else if (vbus_sel == VBUS_SEL_SNK) {
 		/* Enable SNK switch. */
 		gpiod_direction_output(tusb422_pd->vbus_snk_gpio, 0);
 	}
@@ -494,17 +499,17 @@ int tusb422_set_vbus(int vbus_sel)
 
 int tusb422_clr_vbus(int vbus_sel)
 {
-	if (vbus_sel == VBUS_SRC_5V) {
+	if (vbus_sel == VBUS_SEL_SRC_5V) {
 		/* Disable SRC switch. */
 		gpiod_direction_output(tusb422_pd->vbus_src_gpio, 1);
 		/* Disable 5V. */
 		gpiod_direction_output(tusb422_pd->vbus_5v_gpio, 0);
 	}
-	else if (vbus_sel == VBUS_SRC_HI_VOLT) {
+	else if (vbus_sel == VBUS_SEL_SRC_HI_VOLT) {
 		/* Disable high voltage. */
 		gpiod_direction_output(tusb422_pd->vbus_hv_gpio, 0);
 	}
-	else if (vbus_sel == VBUS_SNK) {
+	else if (vbus_sel == VBUS_SEL_SNK) {
 		/* Disable SNK switch. */
 		gpiod_direction_output(tusb422_pd->vbus_snk_gpio, 1);
 	}
@@ -525,10 +530,8 @@ static irqreturn_t tusb422_event_handler(int irq, void *data)
 	struct tusb422_pwr_delivery *tusb422_pwr = data;
 
 #if defined(CONFIG_WAKELOCK) && defined(CONFIG_LGE_USB_TYPE_C)
-	if (!tcpm_is_cc_fault(0)) {
-		wake_lock_timeout(&tusb422_pd->attach_wakelock,
-				  msecs_to_jiffies(WAKE_LOCK_TIMEOUT_MS));
-	}
+	wake_lock_timeout(&tusb422_pd->attach_wakelock,
+			  msecs_to_jiffies(WAKE_LOCK_TIMEOUT_MS));
 #endif
 
 	tusb422_schedule_work(&tusb422_pwr->work);
@@ -586,8 +589,8 @@ static int tusb422_pd_init(struct tusb422_pwr_delivery *tusb422_pd)
 	struct device_node *pp;
 	unsigned int supply_type;
 	unsigned int min_volt, current_flow, peak_current, pdo;
-	unsigned int max_volt, max_current, max_power, fast_role_swap_support;
-	unsigned int op_current, min_current, op_power, min_power, pdo_priority;
+	unsigned int max_volt, max_current, max_power, temp;
+	unsigned int op_current, min_current, op_power, min_power;
 	int ret;
 	int num_of_sink = 0, num_of_src = 0;
 	struct device *dev = tusb422_pd->dev;
@@ -596,6 +599,7 @@ static int tusb422_pd_init(struct tusb422_pwr_delivery *tusb422_pd)
 	if (!tusb422_pd->port_config)
 		return -ENOMEM;
 
+	/* General config */
 	if (of_property_read_bool(of_node, "ti,usb-comm-capable"))
 		tusb422_pd->port_config->usb_comm_capable = true;
 
@@ -635,33 +639,76 @@ static int tusb422_pd_init(struct tusb422_pwr_delivery *tusb422_pd)
 	if (of_property_read_bool(of_node, "ti,auto-accept-vconn-swap"))
 		tusb422_pd->port_config->auto_accept_vconn_swap = true;
 
-	ret = of_property_read_u16(of_node, "ti,src-settling-time-ms",
-							   &tusb422_pd->port_config->src_settling_time_ms);
-	if (ret)
-		pr_err("%s: Missing src-settling-time-ms\n", __func__);
+	if (of_property_read_u32(of_node, "ti,src-settling-time-ms", &temp) == 0)
+        tusb422_pd->port_config->src_settling_time_ms = (uint16_t)temp;
 
 	/* Mandate at least 50ms settling time */
-	if (tusb422_pd->port_config->src_settling_time_ms < 50)
+	if (tusb422_pd->port_config->src_settling_time_ms < 50) {
+		pr_err("%s: src-settling-time-ms = %u is invalid, using default of 50\n",
+			   __func__, tusb422_pd->port_config->src_settling_time_ms);
 		tusb422_pd->port_config->src_settling_time_ms = 50;
+	}
 
-	ret = of_property_read_u32(of_node, "ti,fast-role-swap-support",
-							   &fast_role_swap_support);
-	if (ret)
-		pr_err("%s: Missing fast-role-swap-support\n", __func__);
-	else
 #if defined(CONFIG_LGE_USB_TYPE_C) && (PD_SPEC_REV == PD_REV30)
-		tusb422_pd->port_config->fast_role_swap_support	= (fr_swap_current_t) fast_role_swap_support;
-#else
-		if (fast_role_swap_support)
-			pr_err("%s: PD2.0 does not support fast-role-swap\n", __func__);
+	if (of_property_read_u32(of_node, "ti,fast-role-swap-support", &temp) == 0)
+		tusb422_pd->port_config->fast_role_swap_support	= (fr_swap_current_t) temp;
 #endif
 
-	ret = of_property_read_u32(of_node, "ti,pdo-priority", &pdo_priority);
-	if (ret)
+	if (of_property_read_u32(of_node, "ti,pdo-priority", &temp))
 		pr_err("%s: Missing pdo-priority\n", __func__);
 	else
-		tusb422_pd->port_config->pdo_priority = (pdo_priority_t) pdo_priority;
+		tusb422_pd->port_config->pdo_priority = (pdo_priority_t) temp;
 
+	/* VDM parameters */
+	if (of_property_read_bool(of_node, "ti,ufp-alt-mode-entry-timeout-enable"))
+		tusb422_pd->port_config->ufp_alt_mode_entry_timeout_enable = true;
+
+	if (of_property_read_bool(of_node, "ti,multi-function-preferred"))
+		tusb422_pd->port_config->multi_function_preferred = true;
+
+	if (of_property_read_u32(of_node, "ti,id-header-vdo", &temp) == 0)
+		tusb422_pd->port_config->id_header_vdo = temp;
+
+	if (of_property_read_u32(of_node, "ti,cert-stat-vdo", &temp) == 0)
+		tusb422_pd->port_config->cert_stat_vdo = temp;
+
+	if (of_property_read_u32(of_node, "ti,product-vdo", &temp) == 0)
+		tusb422_pd->port_config->product_vdo = temp;
+
+	if (of_property_read_u32(of_node, "ti,num-product-type-vdos", &temp) == 0)
+		tusb422_pd->port_config->num_product_type_vdos = (uint8_t)temp;
+
+	if (of_property_read_u32(of_node, "ti,product-type-vdo-1", &temp) == 0)
+		tusb422_pd->port_config->product_type_vdos[0] = temp;
+
+	if (of_property_read_u32(of_node, "ti,product-type-vdo-2", &temp) == 0)
+		tusb422_pd->port_config->product_type_vdos[1] = temp;
+
+	if (of_property_read_u32(of_node, "ti,product-type-vdo-3", &temp) == 0)
+		tusb422_pd->port_config->product_type_vdos[2] = temp;
+
+	if (of_property_read_u32(of_node, "ti,num-svids", &temp) == 0)
+		tusb422_pd->port_config->num_svids = (uint8_t)temp;
+
+	if (of_property_read_u32(of_node, "ti,svid-1", &temp) == 0)
+		tusb422_pd->port_config->svids[0] = (uint16_t)temp;
+
+	if (of_property_read_u32(of_node, "ti,svid-2", &temp) == 0)
+		tusb422_pd->port_config->svids[1] = (uint16_t)temp;
+
+	if (of_property_read_u32(of_node, "ti,svid-3", &temp) == 0)
+		tusb422_pd->port_config->svids[2] = (uint16_t)temp;
+
+	if (of_property_read_u32(of_node, "ti,mode-1", &temp) == 0)
+		tusb422_pd->port_config->modes[0] = temp;
+
+	if (of_property_read_u32(of_node, "ti,mode-2", &temp) == 0)
+		tusb422_pd->port_config->modes[1] = temp;
+
+	if (of_property_read_u32(of_node, "ti,mode-3", &temp) == 0)
+		tusb422_pd->port_config->modes[2] = temp;
+
+	/* PDOs */
 	for_each_child_of_node(of_node, pp) {
 		ret = of_property_read_u32(pp, "ti,current-flow", &current_flow);
 		if (ret) {
@@ -875,10 +922,8 @@ static enum hrtimer_restart tusb422_timer_tasklet(struct hrtimer *hrtimer)
 	struct tusb422_pwr_delivery *tusb422_pwr = container_of(hrtimer, struct tusb422_pwr_delivery, timer);
 
 #if defined(CONFIG_WAKELOCK) && defined(CONFIG_LGE_USB_TYPE_C)
-	if (!tcpm_is_cc_fault(0)) {
-		wake_lock_timeout(&tusb422_pwr->attach_wakelock,
-				  msecs_to_jiffies(WAKE_LOCK_TIMEOUT_MS));
-	}
+	wake_lock_timeout(&tusb422_pwr->attach_wakelock,
+			  msecs_to_jiffies(WAKE_LOCK_TIMEOUT_MS));
 #endif
 
 	tusb422_pwr->timer_expired = true;
@@ -959,6 +1004,22 @@ static int tusb422_tcpm_init(struct tusb422_pwr_delivery *tusb422_pd)
 	tusb422_pd->configuration->rp_val = (tcpc_role_rp_val_t) rp_val;
 	tusb422_pd->configuration->slave_addr = tusb422_pd->client->addr;
 	tusb422_pd->configuration->intf = tusb422_pd->client->adapter->nr;
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECT
+#ifdef MOISTURE_DETECT_USE_SBU_TEST
+	tusb422_pd->configuration->moisture_detect_use_sbu = true;
+#else
+#ifdef CONFIG_LGE_USB_FACTORY
+	if (IS_FACTORY_MODE)
+		tusb422_pd->configuration->moisture_detect_disable = true;
+	else
+#endif
+	if (lge_get_board_rev_no() >= HW_REV_1_3)
+		tusb422_pd->configuration->moisture_detect_use_sbu = true;
+#endif
+#ifndef CONFIG_MACH_MSM8996_LUCYE_KR
+		tusb422_pd->configuration->moisture_detect_use_sbu = false;
+#endif
+#endif /* CONFIG_LGE_USB_MOISTURE_DETECT */
 
 	ret = tcpm_init(tusb422_pd->configuration);
 	if (ret)
@@ -966,6 +1027,24 @@ static int tusb422_tcpm_init(struct tusb422_pwr_delivery *tusb422_pd)
 
 	return ret;
 }
+
+#ifdef CONFIG_LGE_USB_TYPE_C
+static int tusb422_shutdown(struct notifier_block *nb, unsigned long cmd, void *p)
+{
+	PRINT("%s\n", __func__);
+
+	disable_irq(tusb422_pd->alert_irq);
+	hrtimer_cancel(&tusb422_pd->timer);
+	cancel_work_sync(&tusb422_pd->work);
+
+	tcpm_execute_shutdown(0);
+	return 0;
+}
+
+static struct notifier_block tusb422_reboot_notifier = {
+	.notifier_call  = tusb422_shutdown,
+};
+#endif
 
 static int tusb422_i2c_probe(struct i2c_client *client,
 							 const struct i2c_device_id *id)
@@ -996,6 +1075,9 @@ static int tusb422_i2c_probe(struct i2c_client *client,
 	}
 #endif
 
+#ifdef CONFIG_LGE_USB_TYPE_C
+	tusb422_sw_reset(0);
+#endif
 	if (!tusb422_is_present(0)) {
 		dev_err(dev, "%s: no TUSB422 device found\n", __func__);
 		ret = -ENODEV;
@@ -1008,6 +1090,9 @@ static int tusb422_i2c_probe(struct i2c_client *client,
 
 #ifndef TUSB422_USE_POLLING
 	if (tusb422_pd->alert_irq > 0) {
+#ifdef CONFIG_LGE_USB_TYPE_C
+		irq_set_status_flags(tusb422_pd->alert_irq, IRQ_NOAUTOEN);
+#endif
 		ret = devm_request_irq(dev,
 							   tusb422_pd->alert_irq,
 							   tusb422_event_handler,
@@ -1074,6 +1159,22 @@ static int tusb422_i2c_probe(struct i2c_client *client,
 #endif
 
 #ifdef CONFIG_LGE_USB_TYPE_C
+	ret = register_reboot_notifier(&tusb422_reboot_notifier);
+	if (ret) {
+		dev_err(dev, "cannot register reboot notifier: %d\n", ret);
+		goto err_reboot_notifier;
+	}
+
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECT
+#ifdef CONFIG_LGE_USB_FACTORY
+	if (!IS_FACTORY_MODE)
+#endif
+	if (tusb422_pd->configuration->moisture_detect_use_sbu)
+		usb_pd_pal_set_moisture_detect_use_sbu();
+#endif
+
+	enable_irq(tusb422_pd->alert_irq);
+
 	/* Run USB Type-C init state machine */
 	tcpm_connection_state_machine(0);
 #endif
@@ -1082,6 +1183,9 @@ static int tusb422_i2c_probe(struct i2c_client *client,
 
 	return 0;
 
+#ifdef CONFIG_LGE_USB_TYPE_C
+err_reboot_notifier:
+#endif
 err_sysfs:
 #ifdef CONFIG_DUAL_ROLE_USB_INTF
 	devm_dual_role_instance_unregister(dev, tusb422_dual_role_phy);
@@ -1123,6 +1227,9 @@ static int tusb422_remove(struct i2c_client *client)
 #endif
 #ifdef CONFIG_DUAL_ROLE_USB_INTF
 	devm_dual_role_instance_unregister(&client->dev, tusb422_dual_role_phy);
+#endif
+#ifdef CONFIG_LGE_USB_TYPE_C
+	unregister_reboot_notifier(&tusb422_reboot_notifier);
 #endif
 	i2c_set_clientdata(client, NULL);
 

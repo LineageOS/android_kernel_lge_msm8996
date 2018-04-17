@@ -11,8 +11,8 @@
  */
 
 &pmi8994_charger {
-	qcom,external-typec;
-	qcom,typec-psy-name = "usb_pd";
+        qcom,external-typec;
+        qcom,typec-psy-name = "usb_pd";
 };
 
 &i2c_6 {
@@ -21,12 +21,14 @@
 		reg = <0x20>;
 
 		interrupt-parent = <&tlmm>;
-		interrupts = <46 0x0>;
+		interrupts = <26 0>, <46 0>;
 		vbus-supply = <&smbcharger_charger_otg>;
-		ti,alert-gpio = <&tlmm 46 0x1>;		/* CC_CTRL_INT_N from TUSB422 */
+		ti,cc-protect-gpio = <&tlmm 26 0>;	/* CC_PROTECT_INT from FUSB252 */
+		ti,alert-gpio = <&tlmm 46 0>;		/* CC_CTRL_INT_N from TUSB422 */
 		ti,redriver-sel-gpio = <&tlmm 96 0>;	/* REDRIVER_SEL from TUSB542 */
 		ti,vconn-en-gpio = <&pm8994_gpios 1 0>;
 		ti,sbu-sel-gpio = <&pm8994_gpios 3 0>;
+		ti,sbu-en-gpio = <&tlmm 90 0>;			/* SBU_EN */
 
 		pinctrl-names = "default", "sleep";
 		pinctrl-0 = <&redriver_sel_active &alert_gpio_active>;
@@ -49,7 +51,8 @@
 		//ti,externally-powered;
 		ti,dual-role-data;
 		//ti,higher-capability;
-		ti,giveback-flag;
+    /* giveback flag not set for kddi pd charger */
+		//ti,giveback-flag;
 		ti,auto-accept-swap-to-dfp;
 		ti,auto-accept-swap-to-ufp;
 		ti,auto-accept-swap-to-source;

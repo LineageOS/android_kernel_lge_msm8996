@@ -2186,6 +2186,17 @@ void usb_disconnect(struct usb_device **pdev)
         }
 #endif
 
+#ifdef CONFIG_LGE_ALICE_FRIENDS
+	if (udev->product) {
+	       if (!strcmp(udev->product, "HM")) {
+		       if (IS_ALICE_FRIENDS_HM_ON())
+			       alice_friends_hm_reset();
+
+		       alice_friends_hm_earjack = false;
+	       }
+	}
+#endif
+
 	/* mark the device as inactive, so any further urb submissions for
 	 * this device (and any of its children) will fail immediately.
 	 * this quiesces everything except pending urbs.
@@ -2348,7 +2359,6 @@ static int usb_enumerate_device_otg(struct usb_device *udev)
 #endif
 	return err;
 }
-
 
 /**
  * usb_enumerate_device - Read device configs/intfs/otg (usbcore-internal)
@@ -2727,8 +2737,15 @@ static int hub_port_wait_reset(struct usb_hub *hub, int port1,
 		if (ret < 0)
 			return ret;
 
-		/* The port state is unknown until the reset completes. */
-		if (!(portstatus & USB_PORT_STAT_RESET))
+		/*
+		 * The port state is unknown until the reset completes.
+		 *
+		 * On top of that, some chips may require additional time
+		 * to re-establish a connection after the reset is complete,
+		 * so also wait for the connection to be re-established.
+		 */
+		if (!(portstatus & USB_PORT_STAT_RESET) &&
+		    (portstatus & USB_PORT_STAT_CONNECTION))
 			break;
 
 		/* switch to the long delay after two short delay failures */

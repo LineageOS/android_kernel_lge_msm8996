@@ -614,14 +614,14 @@ int xhci_run(struct usb_hcd *hcd)
 		return xhci_run_finished(xhci);
 
 	xhci_dbg_trace(xhci, trace_xhci_dbg_init, "xhci_run");
-
+#ifndef CONFIG_LGE_USB_G_ANDROID
 	xhci_dbg(xhci, "Calling HCD init\n");
 	/* Initialize HCD and host controller data structures. */
 	ret = xhci_init(hcd);
 	if (ret)
 		return ret;
 	xhci_dbg(xhci, "Called HCD init\n");
-
+#endif
 	ret = xhci_try_enable_msi(hcd);
 	if (ret)
 		return ret;
@@ -4976,12 +4976,75 @@ int xhci_gen_setup(struct usb_hcd *hcd, xhci_get_quirks_t get_quirks)
 		dma_set_coherent_mask(dev, DMA_BIT_MASK(64));
 	}
 
+#ifdef CONFIG_LGE_USB_G_ANDROID
+	xhci_dbg(xhci, "Calling HCD init\n");
+	/* Initialize HCD and host controller data structures. */
+	retval = xhci_init(hcd);
+	if (retval)
+		goto error;
+	xhci_dbg(xhci, "Called HCD init\n");
+#endif
 	return 0;
 error:
 	kfree(xhci);
 	return retval;
 }
 EXPORT_SYMBOL_GPL(xhci_gen_setup);
+
+dma_addr_t xhci_get_sec_event_ring_dma_addr(struct usb_hcd *hcd,
+	unsigned intr_num)
+{
+	struct xhci_hcd *xhci = hcd_to_xhci(hcd);
+
+	if (intr_num > xhci->max_interrupters) {
+		xhci_err(xhci, "intr num %d > max intrs %d\n", intr_num,
+			xhci->max_interrupters);
+		return 0;
+	}
+
+	if (!(xhci->xhc_state & XHCI_STATE_HALTED) &&
+		xhci->sec_event_ring && xhci->sec_event_ring[intr_num]
+		&& xhci->sec_event_ring[intr_num]->first_seg)
+		return xhci->sec_event_ring[intr_num]->first_seg->dma;
+
+	return 0;
+}
+
+dma_addr_t xhci_get_dcba_dma_addr(struct usb_hcd *hcd,
+	struct usb_device *udev)
+{
+	struct xhci_hcd *xhci = hcd_to_xhci(hcd);
+
+	if (!(xhci->xhc_state & XHCI_STATE_HALTED) && xhci->dcbaa)
+		return xhci->dcbaa->dev_context_ptrs[udev->slot_id];
+
+	return 0;
+}
+
+dma_addr_t xhci_get_xfer_ring_dma_addr(struct usb_hcd *hcd,
+	struct usb_device *udev, struct usb_host_endpoint *ep)
+{
+	int ret;
+	unsigned int ep_index;
+	struct xhci_virt_device *virt_dev;
+
+	struct xhci_hcd *xhci = hcd_to_xhci(hcd);
+
+	ret = xhci_check_args(hcd, udev, ep, 1, true, __func__);
+	if (ret <= 0) {
+		xhci_err(xhci, "%s: invalid args\n", __func__);
+		return 0;
+	}
+
+	virt_dev = xhci->devs[udev->slot_id];
+	ep_index = xhci_get_endpoint_index(&ep->desc);
+
+	if (virt_dev->eps[ep_index].ring &&
+		virt_dev->eps[ep_index].ring->first_seg)
+		return virt_dev->eps[ep_index].ring->first_seg->dma;
+
+	return 0;
+}
 
 static const struct hc_driver xhci_hc_driver = {
 	.description =		"xhci-hcd",
@@ -5042,6 +5105,11 @@ static const struct hc_driver xhci_hc_driver = {
 	.enable_usb3_lpm_timeout =	xhci_enable_usb3_lpm_timeout,
 	.disable_usb3_lpm_timeout =	xhci_disable_usb3_lpm_timeout,
 	.find_raw_port_number =	xhci_find_raw_port_number,
+	.sec_event_ring_setup =		xhci_sec_event_ring_setup,
+	.sec_event_ring_cleanup =	xhci_sec_event_ring_cleanup,
+	.get_sec_event_ring_dma_addr =	xhci_get_sec_event_ring_dma_addr,
+	.get_xfer_ring_dma_addr =	xhci_get_xfer_ring_dma_addr,
+	.get_dcba_dma_addr =		xhci_get_dcba_dma_addr,
 };
 
 void xhci_init_driver(struct hc_driver *drv, int (*setup_fn)(struct usb_hcd *))
