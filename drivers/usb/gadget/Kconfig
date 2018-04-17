@@ -485,4 +485,165 @@ config LGE_USB_EMBEDDED_BATTERY
 config LGE_USB_MAXIM_EVP
        boolean "EVP charger support"
 
+config LGE_USB_G_ANDROID
+	boolean "LGE Android Gadget for LG PC host Driver"
+	depends on USB_G_ANDROID
+	help
+	  Customized Android Gadget USB framework for
+	  LGE United PC host USB driver.
+
+	default n
+
+config LGE_USB_G_AUTORUN
+	boolean "Common autorun support in LGE Android"
+	depends on LGE_USB_G_ANDROID
+	help
+	  Autorun is LGE specific feature which is able to install PC host
+	  USB driver automatically on Autorun-enabled OS(Ex. Windows). For this,
+	  virtual-cdrom device is provided on LGE Android powered device.
+
+	default n
+
+config LGE_USB_G_CDROM_MAC_SUPPORT
+	boolean "USB CDROM support patch of LGE Android on Mac OS-X"
+	depends on LGE_USB_G_AUTORUN
+	help
+	  This feature is based on Roger Quadros' patch as following;
+
+	  - usb:gadget:storage: Make CD-ROM emulation work with Mac OS-X
+	  - usb:gadget:f_mass_storage: Make CD-ROM emulation work with Mac OS-X
+
+	  ref: https://lkml.org/lkml/2011/4/5/190
+
+	  - Here is comment of committer:
+
+	  Mac OS-X expects CD-ROM TOC in raw format (i.e. format:2). It also
+	  sends the READ_TOC CDB in old style SFF8020i format. i.e. 2 format bits
+	  are encoded in MSBs of CDB byte 9.
+
+	  The first patch introduces a fsg_get_toc() helper which builds the
+	  Table of Contents (TOC) that can be used for the READ_TOC command.
+	  The remaining two patches simply make file_storage gadget and mass_storage
+	  gadget use the new helper function.
+
+	  Say y if this feature must be used.
+
+	default y
+
+config LGE_USB_G_AUTORUN_VZW
+	boolean "VZW specific autorun support in LGE Android"
+	depends on LGE_USB_G_AUTORUN
+	help
+	  It supports VZW specific autorun feature. note that this
+	  must be used in VZW devices.
+
+	  Say y if this must be needed.
+
+	default n
+
+config LGE_USB_G_MULTIPLE_CONFIGURATION
+	boolean "LGE Multiple Configuration"
+	depends on LGE_USB_G_ANDROID
+	help
+	  Support multiple mtp functions in multiple configuration.
+	  Add another descriptor for 2nd mtp function.
+
+	  Say y if this must be needed.
+
+	default n
+
+config LGE_USB_G_NCM
+	boolean "LGE specific mirror link support in LGE Android"
+	depends on LGE_USB_G_ANDROID
+	help
+	 It supports LGE specific mirror link feature.
+
+	 Say y if this must be needed.
+
+	default n
+
+config LGE_USB_G_LAF
+	boolean "LGE specific LAF support in LGE Android"
+	depends on LGE_USB_G_ANDROID
+	help
+	  It supports LGE specific LAF feature.
+
+	  Say y if this must be needed.
+
+	default y
+
+config LGE_USB_FACTORY
+	boolean "Force full speed support if pif is connected in LGE Android"
+	depends on LGE_USB_G_ANDROID && LGE_PM
+	help
+	   This feature is that USB set forcely full speed if pif cable is
+	   connected. It is only for PIF cable, not normal USB cable.
+
+	   Say y if this must be needed.
+
+	default y
+
+config LGE_USB_DIAG_LOCK
+	boolean "feature for usb diag access lock"
+	depends on LGE_USB_G_ANDROID
+	help
+	  this feature should be applied to meet usb diag lock requirement
+
+	  Say y if this must be needed.
+
+	default y
+
+config LGE_USB_DIAG_LOCK_SPR
+	boolean "feature for usb diag access lock"
+	depends on LGE_USB_DIAG_LOCK
+	help
+	  this feature should be applied to meet SPR requirement
+
+	  Say y if this must be needed.
+
+	default n
+
+config LGE_USB_DIAG_LOCK_TRF
+	boolean "feature for usb diag access lock"
+	depends on LGE_USB_DIAG_LOCK
+	help
+	  this feature should be applied to meet TRF requirement
+
+	  Say y if this must be needed.
+
+	default n
+
+
+config LGE_USB_EMBEDDED_BATTERY
+	boolean "power cycle when factory cable is connected"
+	help
+	  In case of the phone with embedded battery, power cycle is implemented
+          when factory cable is connected.
+
+	  Say y if this must be needed.
+
+	default n
+
+config LGE_USB_DIAG_LOCK_VZW
+	boolean "feature for usb diag access lock"
+	depends on LGE_USB_DIAG_LOCK
+	help
+	  this feature should be applied to meet VZW requirement
+
+	  Say y if this must be needed.
+
+	default n
+
+config LGE_USB_TYPE_C
+	bool "USB Type-C support"
+	help
+	  Say Y here to add support for USB Type-C.
+
+config LGE_USB_MAXIM_EVP
+       boolean "EVP charger support"
+
+config LGE_USB_COMPLIANCE_TEST
+	bool "USB Compliance test"
+	select LGE_USB_BC_12_VZW
+
 endif # USB_GADGET

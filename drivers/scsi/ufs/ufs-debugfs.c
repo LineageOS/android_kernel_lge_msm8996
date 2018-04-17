@@ -25,6 +25,10 @@
 enum field_width {
 	BYTE	= 1,
 	WORD	= 2,
+#ifdef CONFIG_UFS_LGE_FEATURE
+	DWORD   = 4,
+	LONG	= 8,
+#endif
 };
 
 struct desc_field_offset {
@@ -847,6 +851,453 @@ static const struct file_operations ufsdbg_host_regs_fops = {
 	.read		= seq_read,
 };
 
+#ifdef CONFIG_UFS_LGE_FEATURE
+static int array_to_hex_val(u8 *array, int size)
+{
+	int i;
+	int ret = 0;
+	for (i=0; i<size; i++){
+		ret = ret*0x100;
+		ret += array[i];
+	}
+	return ret;
+}
+
+
+static int ufsdbg_dump_device_desc_show(struct seq_file *file, void *data)
+{
+	int err = 0, i;
+	int buff_len = QUERY_DESC_DEVICE_MAX_SIZE;
+	u8 desc_buf[QUERY_DESC_DEVICE_MAX_SIZE];
+	struct ufs_hba *hba = (struct ufs_hba *)file->private;
+	struct desc_field_offset *tmp;
+
+	struct desc_field_offset device_desc_field_name[] = {
+		{"bLength",		0x00, BYTE},
+		{"bDescriptorType",	0x01, BYTE},
+		{"bDevice",		0x02, BYTE},
+		{"bDeviceClass",	0x03, BYTE},
+		{"bDeviceSubClass",	0x04, BYTE},
+		{"bProtocol",		0x05, BYTE},
+		{"bNumberLU",		0x06, BYTE},
+		{"bNumberWLU",		0x07, BYTE},
+		{"bBootEnable",		0x08, BYTE},
+		{"bDescrAccessEn",	0x09, BYTE},
+		{"bInitPowerMode",	0x0A, BYTE},
+		{"bHighPriorityLUN",	0x0B, BYTE},
+		{"bSecureRemovalType",	0x0C, BYTE},
+		{"bSecurityLU",		0x0D, BYTE},
+		{"Reserved",		0x0E, BYTE},
+		{"bInitActiveICCLevel",	0x0F, BYTE},
+		{"wSpecVersion",	0x10, WORD},
+		{"wManufactureDate",	0x12, WORD},
+		{"iManufactureName",	0x14, BYTE},
+		{"iProductName",	0x15, BYTE},
+		{"iSerialNumber",	0x16, BYTE},
+		{"iOemID",		0x17, BYTE},
+		{"wManufactureID",	0x18, WORD},
+		{"bUD0BaseOffset",	0x1A, BYTE},
+		{"bUDConfigPLength",	0x1B, BYTE},
+		{"bDeviceRTTCap",	0x1C, BYTE},
+		{"wPeriodicRTCUpdate",	0x1D, WORD}
+	};
+
+	pm_runtime_get_sync(hba->dev);
+	err = ufshcd_read_device_desc(hba, desc_buf, buff_len);
+	pm_runtime_put_sync(hba->dev);
+
+	if (!err) {
+		for (i = 0; i < ARRAY_SIZE(device_desc_field_name); ++i) {
+			tmp = &device_desc_field_name[i];
+			seq_printf(file,
+					"Device Descriptor[Byte offset 0x%x]: %s = 0x%x\n",
+					tmp->offset,
+					tmp->name,
+					array_to_hex_val(&desc_buf[tmp->offset], tmp->width_byte));
+		}
+	} else {
+		seq_printf(file, "Reading Device Descriptor failed. err = %d\n",
+			   err);
+	}
+
+	return err;
+}
+
+static int ufsdbg_dump_geo_desc_show(struct seq_file *file, void *data)
+{
+	int err = 0, i;
+	int buff_len = QUERY_DESC_GEOMETRY_MAZ_SIZE;
+	u8 desc_buf[QUERY_DESC_GEOMETRY_MAZ_SIZE];
+	struct ufs_hba *hba = (struct ufs_hba *)file->private;
+	struct desc_field_offset *tmp;
+
+	struct desc_field_offset geo_desc_field_name[] = {
+		{"bLength",			0x00, BYTE},
+		{"bDescriptorType",		0x01, BYTE},
+		{"bMediaTechnology",		0x02, BYTE},
+		{"qTotalRawDeviceCapacity",	0x04, LONG},
+		{"dSegmentSize",		0x0D, DWORD},
+		{"bAllocationUnitSize",		0x11, BYTE},
+		{"bMinAddrBlockSize",		0x12, BYTE},
+		{"bOptimalReadBlockSize",	0x13, BYTE},
+		{"bOptimalWriteBlockSize",	0x14, BYTE},
+		{"bMaxInBufferSize",		0x15, BYTE},
+		{"bMaxOutBufferSize",		0x16, BYTE},
+		{"bRPMB_ReadWriteSize",		0x17, BYTE},
+		{"bDataOrdering",		0x19, BYTE},
+		{"bMaxCountexIDNumber",		0x1A, BYTE},
+		{"bSysDataTagUnitSize",		0x1B, BYTE},
+		{"bSysDataTagResSize",		0x1C, BYTE},
+		{"bSupportedSecRTypes",		0x1D, BYTE},
+		{"wSupportedMemoryTypes",	0x1E, WORD},
+		{"dSystemCodeMaxNAllocU",	0x20, DWORD},
+		{"wSystemCodeCapAdjFac",	0x24, WORD},
+		{"dNonPersistMaxNAllocU",	0x26, DWORD},
+		{"wNonPersistCapAdjFac",	0x2A, WORD},
+		{"dEnhanced1MaxNAllocU",	0x2C, DWORD},
+		{"wEnhanced1CapAdjFac",		0x30, WORD},
+		{"dEnhanced2MaxNAllocU",	0x32, DWORD},
+		{"wEnhanced2CapAdjFac",		0x36, WORD},
+		{"dEnhanced3MaxNAllocU",	0x38, DWORD},
+		{"wEnhanced3CapAdjFac",		0x3C, WORD},
+		{"dEnhanced4MaxNAllocU",	0x3E, DWORD},
+		{"wEnhanced4CapAdjFac",		0x42, WORD},
+	};
+
+	pm_runtime_get_sync(hba->dev);
+	err = ufshcd_read_geo_desc(hba, desc_buf, buff_len);
+	pm_runtime_put_sync(hba->dev);
+
+	if(!err) {
+		for (i = 0; i < ARRAY_SIZE(geo_desc_field_name); ++i){
+			tmp = & geo_desc_field_name[i];
+			seq_printf(file,
+					"Geometry Descriptor[Byte offset 0x%x]: %s = 0x%x\n",
+					tmp->offset,
+					tmp->name,
+					array_to_hex_val(&desc_buf[tmp->offset], tmp->width_byte));
+		}
+	} else {
+		seq_printf(file, "Reading Geometry Descriptor failed. err = %d\n",
+				err);
+	}
+
+	return err;
+}
+
+static int ufsdbg_dump_health_desc_show(struct seq_file *file, void *data)
+{
+	int err = 0, i;
+	int buff_len = QUERY_DESC_DEVICE_HEALTH_MAX_SIZE;
+	u8 desc_buf[QUERY_DESC_DEVICE_HEALTH_MAX_SIZE];
+	struct ufs_hba *hba = (struct ufs_hba *)file->private;
+	struct desc_field_offset *tmp;
+
+	struct desc_field_offset health_desc_field_name[] = {
+		{"bLength",			0x00, BYTE},
+		{"bDescriptorIDN",		0x01, BYTE},
+		{"bPreEOLInfo",		0x02, BYTE},
+		{"bDeviceLifeTimeEstA",	0x03, BYTE},
+		{"bDeviceLifeTimeEstB",		0x04, BYTE},
+	};
+
+	pm_runtime_get_sync(hba->dev);
+	err = ufshcd_read_health_desc(hba, desc_buf, buff_len);
+	pm_runtime_put_sync(hba->dev);
+
+	if(!err) {
+		for (i = 0; i < ARRAY_SIZE(health_desc_field_name); ++i){
+			tmp = & health_desc_field_name[i];
+			seq_printf(file,
+					"HEALTH DESCRIPTOR Descriptor[Byte offset 0x%x]: %s = 0x%x\n",
+					tmp->offset,
+					tmp->name,
+					array_to_hex_val(&desc_buf[tmp->offset], tmp->width_byte));
+		}
+	} else {
+		seq_printf(file, "HEALTH DESCRIPTOR Descriptor failed. err = %d\n",
+				err);
+	}
+
+	return err;
+}
+
+static int ufsdbg_dump_string_desc_show(struct seq_file *file, void *data)
+{
+	int err=0;
+	struct ufs_hba *hba = (struct ufs_hba *)file->private;
+	int i;
+	u8 index;
+	u8 str_desc_buf[QUERY_DESC_STRING_MAX_SIZE + 1];
+	u8 desc_buf[QUERY_DESC_DEVICE_MAX_SIZE];
+	u8 get_str_buf[QUERY_DESC_STRING_MAX_SIZE + 1];
+	char *str_name[4] = {"Manufacturer Name", "Product Name", "Serial Number", "Oem ID"};
+
+	pm_runtime_get_sync(hba->dev);
+	err = ufshcd_read_device_desc(hba, desc_buf,
+			QUERY_DESC_DEVICE_MAX_SIZE);
+	pm_runtime_put_sync(hba->dev);
+
+	if (err){
+		seq_printf(file, "Reading Device Descriptor failed. err =%d\n", err);
+		goto out;
+	}
+
+
+	for (i=0; i<4; i++) {
+		index = desc_buf[DEVICE_DESC_PARAM_MANF_NAME+i];
+		memset(str_desc_buf, 0, QUERY_DESC_STRING_MAX_SIZE);
+		memset(get_str_buf, 0, QUERY_DESC_DEVICE_MAX_SIZE);
+		pm_runtime_get_sync(hba->dev);
+		err = ufshcd_read_string_desc(hba, index, str_desc_buf,
+				QUERY_DESC_STRING_MAX_SIZE, ASCII_STD);
+		pm_runtime_put_sync(hba->dev);
+		if (err) {
+			seq_printf(file, "Reading String Descriptor failed. err =%d\n", err);
+			goto out;
+		}
+		str_desc_buf[QUERY_DESC_STRING_MAX_SIZE] = '\0';
+		strlcpy(get_str_buf, (str_desc_buf + QUERY_DESC_HDR_SIZE),
+				(QUERY_DESC_STRING_MAX_SIZE - QUERY_DESC_HDR_SIZE));
+		get_str_buf[QUERY_DESC_DEVICE_MAX_SIZE - QUERY_DESC_HDR_SIZE] = '\0';
+		seq_printf(file,
+				"String Descriptor[%d. %s]: %s\n", i+1, str_name[i], get_str_buf);
+	}
+
+out:
+	return err;
+}
+
+static int ufsdbg_dump_config_desc_show(struct seq_file *file, void *data)
+{
+	int err = 0, i, j, offset, s_offset;
+	int buff_len = QUERY_DESC_CONFIGURAION_MAX_SIZE;
+	u8 config_buf[QUERY_DESC_CONFIGURAION_MAX_SIZE];
+	struct ufs_hba *hba = (struct ufs_hba *)file->private;
+	struct desc_field_offset *tmp;
+	u8 desc_buf[QUERY_DESC_DEVICE_MAX_SIZE];
+	struct desc_field_offset config_device_field_name[] = {
+		{"bLength",			0x00, BYTE},
+		{"bDescriptorType",		0x01, BYTE},
+		{"bBootEnable",			0x03, BYTE},
+		{"bDescrAccessEn",		0x04, BYTE},
+		{"bInitPowerMode",		0x05, BYTE},
+		{"bHighPriorityLUN",		0x06, BYTE},
+		{"bSecureRemovalType",		0x07, BYTE},
+		{"bInitActiveICCLevel",		0x08, BYTE},
+		{"wPeriodicRTCUpdate",		0x09, WORD},
+	};
+
+	struct desc_field_offset config_unit_field_name[] = {
+		{"bLUEnable",			0x00, BYTE},
+		{"bBootLunID",			0x01, BYTE},
+		{"bLUWriteProtect",		0x02, BYTE},
+		{"bMemoryType",			0x03, BYTE},
+		{"dNumAllocUnits",		0x04, DWORD},
+		{"bDataReliability",		0x08, BYTE},
+		{"bLogicalBlockSize",		0x09, BYTE},
+		{"bProvisioningType",		0x0A, BYTE},
+		{"wContextCapabilities",	0x0B, WORD},
+	};
+
+	pm_runtime_get_sync(hba->dev);
+	err = ufshcd_read_device_desc(hba, desc_buf,
+			QUERY_DESC_DEVICE_MAX_SIZE);
+	pm_runtime_put_sync(hba->dev);
+
+	if (err){
+		seq_printf(file, "Reading Device Descriptor failed. err =%d\n", err);
+		goto out;
+	}
+
+	pm_runtime_get_sync(hba->dev);
+	err = ufshcd_read_config_desc(hba, config_buf, buff_len);
+	pm_runtime_put_sync(hba->dev);
+
+	if(!err) {
+		for (i=0; i<ARRAY_SIZE(config_device_field_name); ++i){
+			tmp = &config_device_field_name[i];
+			seq_printf(file,
+					"Config head and Device configurable parameters[Byte offset 0x%x]: %s = 0x%x\n",
+					tmp->offset,
+					tmp->name,
+					array_to_hex_val(&config_buf[tmp->offset], tmp->width_byte));
+		}
+		for (i=0; i<8; i++){
+			s_offset = desc_buf[DEVICE_DESC_PARAM_UD_OFFSET] + i*desc_buf[DEVICE_DESC_PARAM_UD_LEN];
+			for (j=0; j<ARRAY_SIZE(config_unit_field_name); ++j){
+				tmp = &config_unit_field_name[j];
+				offset = s_offset + tmp->offset;
+				seq_printf(file,
+						"Unit Descriptor %d configurable parameters[Byte offset 0x%x]: %s = 0x%x\n",
+						i,
+						offset,
+						tmp->name,
+						array_to_hex_val(&config_buf[offset], tmp->width_byte));
+			}
+		}
+	} else {
+		seq_printf(file, "Reading Configuration Descriptor failed. err = %d\n",
+				err);
+	}
+
+out:
+	return err;
+}
+static int ufsdbg_dump_unit_desc_show(struct seq_file *file, void *data)
+{
+	int err = 0, i, j;
+	int buff_len = QUERY_DESC_UNIT_MAX_SIZE;
+	u8 unit_buf[QUERY_DESC_UNIT_MAX_SIZE];
+	struct ufs_hba *hba = (struct ufs_hba *)file->private;
+	struct desc_field_offset *tmp;
+
+	struct desc_field_offset unit_desc_field_name[] = {
+		{"bLength",			0x00, BYTE},
+		{"bDescriptorType",		0x01, BYTE},
+		{"bUnitIndex",			0x02, BYTE},
+		{"bLUEnable",			0x03, BYTE},
+		{"bBootLunID",			0x04, BYTE},
+		{"bLUWriteProtect",		0x05, BYTE},
+		{"bLUQueueDepth",		0x06, BYTE},
+		{"bMemoryType",			0x08, BYTE},
+		{"bDataReliability",		0x09, BYTE},
+		{"bLogicalBlockSize",		0x0A, BYTE},
+		{"qLogicalBlockCount",		0x0B, LONG},
+		{"qEraseBlockSize",		0x13, DWORD},
+		{"bProvisioningType",		0x17, BYTE},
+		{"qPhyMemResourceCount",	0x18, LONG},
+		{"wContextCapabilities",	0x20, WORD},
+		{"bLargeUnitGranularity_M1",	0x22, BYTE},
+	};
+	struct desc_field_offset unit_rpmb_desc_field_name[] = {
+		{"bLength",			0x00, BYTE},
+		{"bDescriptorType",		0x01, BYTE},
+		{"bUnitIndex",			0x02, BYTE},
+		{"bLUEnable",			0x03, BYTE},
+		{"bBootLunID",			0x04, BYTE},
+		{"bLUWriteProtect",		0x05, BYTE},
+		{"bLUQueueDepth",		0x06, BYTE},
+		{"bMemoryType",			0x08, BYTE},
+		{"bLogicalBlockSize",		0x0A, BYTE},
+		{"qLogicalBlockCount",		0x0B, LONG},
+		{"qEraseBlockSize",		0x13, DWORD},
+		{"bProvisioningType",		0x17, BYTE},
+		{"qPhyMemResourceCount",	0x18, LONG},
+	};
+
+	/* 1. Unit Descriptor */
+	for(i=0; i<8; i++){
+		pm_runtime_get_sync(hba->dev);
+		err = ufshcd_read_unit_desc(hba, i, unit_buf, buff_len);
+		pm_runtime_put_sync(hba->dev);
+		if (err) {
+			seq_printf(file,
+					"Reading %d UNIT Descriptor failed. err = %d\n", i, err);
+			goto out;
+		}
+		for(j=0; j<ARRAY_SIZE(unit_desc_field_name); ++j) {
+			tmp = &unit_desc_field_name[j];
+			seq_printf(file,
+					"%d UNIT Descriptor[Byte offset 0x%x]: %s = 0x%x\n",
+					i,
+					tmp->offset,
+					tmp->name,
+					array_to_hex_val(&unit_buf[tmp->offset], tmp->width_byte));
+		}
+	}
+
+	/* 2. RPMB Unit Descriptor */
+	pm_runtime_get_sync(hba->dev);
+	err = ufshcd_read_unit_desc(hba, 0xC4, unit_buf, buff_len);
+	pm_runtime_put_sync(hba->dev);
+	if (err) {
+		seq_printf(file,
+				"Reading RPMB UNIT Descriptor failed. err = %d\n", err);
+		goto out;
+	}
+	for(i=0; i<ARRAY_SIZE(unit_rpmb_desc_field_name); ++i) {
+		tmp = &unit_desc_field_name[i];
+		seq_printf(file,
+				"RPMB UNIT Descriptor[Byte offset 0x%x]: %s = 0x%x\n",
+				tmp->offset,
+				tmp->name,
+				array_to_hex_val(&unit_buf[tmp->offset], tmp->width_byte));
+	}
+out:
+	return err;
+
+}
+
+static int ufsdbg_dump_inter_desc_show(struct seq_file *file, void *data)
+{
+	int err = 0, i;
+	int buff_len = QUERY_DESC_INTERCONNECT_MAX_SIZE;
+	u8 inter_desc_buf[QUERY_DESC_INTERCONNECT_MAX_SIZE];
+	struct ufs_hba *hba = (struct ufs_hba *)file->private;
+	struct desc_field_offset *tmp;
+
+	struct desc_field_offset inter_desc_field_name[] = {
+		{"bLength",			0x00, BYTE},
+		{"bDescriptorType",		0x01, BYTE},
+		{"bcdUniProVersion",		0x02, WORD},
+		{"bcdMphyVersion",		0x04, WORD},
+	};
+
+	pm_runtime_get_sync(hba->dev);
+	err = ufshcd_read_inter_desc(hba, inter_desc_buf, buff_len);
+	pm_runtime_put_sync(hba->dev);
+
+	if(!err) {
+		for (i=0; i<ARRAY_SIZE(inter_desc_field_name); ++i) {
+			tmp = &inter_desc_field_name[i];
+			seq_printf(file,
+					"Interconnect Descriptor[Byte offset 0x%x]: %s = 0x%x\n",
+					tmp->offset,
+					tmp->name,
+					array_to_hex_val(&inter_desc_buf[tmp->offset], tmp->width_byte));
+		}
+	} else {
+		seq_printf(file, "Reading Interconnect Descriptor failed. err = %d\n", err);
+	}
+	return err;
+}
+
+static int ufsdbg_dump_power_desc_show(struct seq_file *file, void *data)
+{
+	int err = 0, i;
+	int buff_len = QUERY_DESC_POWER_MAX_SIZE;
+	u8 power_desc_buf[QUERY_DESC_POWER_MAX_SIZE];
+	struct ufs_hba *hba = (struct ufs_hba *)file->private;
+	struct desc_field_offset *tmp;
+
+	struct desc_field_offset power_desc_field_name[] = {
+		{"bLength",			0x00, BYTE},
+		{"bDescriptorType",		0x01, BYTE},
+		{"wActiveICCLevelsVCC",		0x02, 32},
+		{"wActiveICCLevelsVCCQ",	0x22, 32},
+		{"wActiveICCLevelsVCCQ2",	0x42, 32},
+	};
+
+	pm_runtime_get_sync(hba->dev);
+	err = ufshcd_read_power_desc(hba, power_desc_buf, buff_len);
+	pm_runtime_put_sync(hba->dev);
+
+	if(!err) {
+		for (i=0; i<ARRAY_SIZE(power_desc_field_name); ++i) {
+			tmp = &power_desc_field_name[i];
+			seq_printf(file,
+					"Power Parameters Descriptor[Byte offset 0x%x]: %s = 0x%x\n",
+					tmp->offset,
+					tmp->name,
+					array_to_hex_val(&power_desc_buf[tmp->offset], tmp->width_byte));
+		}
+	} else {
+		seq_printf(file, "Reading Power Parameters Descriptor failed. err = %d\n", err);
+	}
+	return err;
+}
+#else
 static int ufsdbg_dump_device_desc_show(struct seq_file *file, void *data)
 {
 	int err = 0;
@@ -919,6 +1370,7 @@ static int ufsdbg_dump_device_desc_show(struct seq_file *file, void *data)
 
 	return err;
 }
+#endif
 
 static int ufsdbg_show_hba_show(struct seq_file *file, void *data)
 {
@@ -973,6 +1425,85 @@ static const struct file_operations ufsdbg_dump_device_desc = {
 	.open		= ufsdbg_dump_device_desc_open,
 	.read		= seq_read,
 };
+
+#ifdef CONFIG_UFS_LGE_FEATURE
+static int ufsdbg_dump_geo_desc_open(struct inode *inode, struct file *file)
+{
+	return single_open(file,
+			ufsdbg_dump_geo_desc_show, inode->i_private);
+}
+
+static const struct file_operations ufsdbg_dump_geo_desc = {
+	.open		= ufsdbg_dump_geo_desc_open,
+	.read		= seq_read,
+};
+
+static int ufsdbg_dump_string_desc_open(struct inode *inode, struct file *file)
+{
+	return single_open(file,
+			ufsdbg_dump_string_desc_show, inode->i_private);
+}
+
+static const struct file_operations ufsdbg_dump_string_desc = {
+	.open		= ufsdbg_dump_string_desc_open,
+	.read		= seq_read,
+};
+
+static int ufsdbg_dump_config_desc_open(struct inode *inode, struct file *file)
+{
+	return single_open(file,
+			ufsdbg_dump_config_desc_show, inode->i_private);
+}
+
+static const struct file_operations ufsdbg_dump_config_desc = {
+	.open		= ufsdbg_dump_config_desc_open,
+	.read		= seq_read,
+};
+
+static int ufsdbg_dump_unit_desc_open(struct inode *inode, struct file *file)
+{
+	return single_open(file,
+			ufsdbg_dump_unit_desc_show, inode->i_private);
+}
+
+static const struct file_operations ufsdbg_dump_unit_desc = {
+	.open		= ufsdbg_dump_unit_desc_open,
+	.read		=seq_read,
+};
+
+static int ufsdbg_dump_inter_desc_open(struct inode *inode, struct file *file)
+{
+	return single_open(file,
+			ufsdbg_dump_inter_desc_show, inode->i_private);
+}
+
+static const struct file_operations ufsdbg_dump_inter_desc = {
+	.open		= ufsdbg_dump_inter_desc_open,
+	.read		=seq_read,
+};
+
+static int ufsdbg_dump_power_desc_open(struct inode *inode, struct file *file)
+{
+	return single_open(file,
+			ufsdbg_dump_power_desc_show, inode->i_private);
+}
+
+static const struct file_operations ufsdbg_dump_power_desc = {
+	.open		= ufsdbg_dump_power_desc_open,
+	.read		=seq_read,
+};
+
+static int ufsdbg_dump_health_desc_open(struct inode *inode, struct file *file)
+{
+	return single_open(file,
+			ufsdbg_dump_health_desc_show, inode->i_private);
+}
+
+static const struct file_operations ufsdbg_dump_health_desc = {
+	.open		= ufsdbg_dump_health_desc_open,
+	.read		= seq_read,
+};
+#endif
 
 static int ufsdbg_power_mode_show(struct seq_file *file, void *data)
 {
@@ -1569,6 +2100,77 @@ void ufsdbg_add_debugfs(struct ufs_hba *hba)
 			"%s:  NULL dump_device_desc file, exiting", __func__);
 		goto err;
 	}
+#ifdef CONFIG_UFS_LGE_FEATURE
+	hba->debugfs_files.dump_geo_desc =
+		debugfs_create_file("dump_geo_desc", S_IRUSR,
+				hba->debugfs_files.debugfs_root, hba,
+				&ufsdbg_dump_geo_desc);
+	if(!hba->debugfs_files.dump_geo_desc){
+		dev_err(hba->dev,
+			"%s:  NULL dump_geo_desc file, exiting", __func__);
+		goto err;
+	}
+
+	hba->debugfs_files.dump_string_desc =
+		debugfs_create_file("dump_string_desc", S_IRUSR,
+				hba->debugfs_files.debugfs_root, hba,
+				&ufsdbg_dump_string_desc);
+	if(!hba->debugfs_files.dump_string_desc){
+	       dev_err(hba->dev,
+		       "%s:  NULL dump_string_desc file, exiting", __func__);
+	       goto err;
+	}
+
+	hba->debugfs_files.dump_config_desc =
+		debugfs_create_file("dump_config_desc", S_IRUSR,
+				hba->debugfs_files.debugfs_root, hba,
+				&ufsdbg_dump_config_desc);
+	if(!hba->debugfs_files.dump_config_desc){
+		dev_err(hba->dev,
+			"%s:  NULL dump_config_desc file, exiting", __func__);
+		goto err;
+	}
+
+	hba->debugfs_files.dump_unit_desc =
+		debugfs_create_file("dump_unit_desc", S_IRUSR,
+				hba->debugfs_files.debugfs_root, hba,
+				&ufsdbg_dump_unit_desc);
+	if(!hba->debugfs_files.dump_unit_desc){
+		dev_err(hba->dev,
+			"%s:  NULL dump_unit_desc file, exiting", __func__);
+		goto err;
+	}
+
+	hba->debugfs_files.dump_inter_desc =
+		debugfs_create_file("dump_inter_desc", S_IRUSR,
+				hba->debugfs_files.debugfs_root, hba,
+				&ufsdbg_dump_inter_desc);
+	if(!hba->debugfs_files.dump_inter_desc){
+		dev_err(hba->dev,
+			"%s:  NULL dump_inter_desc file, exiting", __func__);
+		goto err;
+	}
+
+	hba->debugfs_files.dump_power_desc =
+		debugfs_create_file("dump_power_desc", S_IRUSR,
+				hba->debugfs_files.debugfs_root, hba,
+				&ufsdbg_dump_power_desc);
+	if(!hba->debugfs_files.dump_power_desc){
+		dev_err(hba->dev,
+			"%s:  NULL dump_power_desc file, exiting", __func__);
+		goto err;
+	}
+
+	hba->debugfs_files.dump_health_desc =
+		debugfs_create_file("dump_health_desc", S_IRUSR,
+				hba->debugfs_files.debugfs_root, hba,
+				&ufsdbg_dump_health_desc);
+	if(!hba->debugfs_files.dump_health_desc){
+		dev_err(hba->dev,
+			"%s:  NULL dump_health_desc file, exiting", __func__);
+		goto err;
+	}
+#endif
 
 	hba->debugfs_files.power_mode =
 		debugfs_create_file("power_mode", S_IRUSR | S_IWUSR,

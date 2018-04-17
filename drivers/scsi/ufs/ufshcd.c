@@ -52,6 +52,16 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/ufs.h>
 
+#ifdef CONFIG_UFS_LGE_CARD_RESET
+#include "ufs-reset-gpio.h"
+#endif
+
+#ifdef LGE_UFS_THERM_TWEAK
+#include <soc/qcom/lge/power/lge_power_class.h>
+#define LGE_UFS_THERM_TWEAK_BORDER  (-5)
+static void ufs_qcom_ctrl_clk_scaling_by_therm(struct work_struct *work);
+#endif
+
 #ifdef CONFIG_DEBUG_FS
 
 static int ufshcd_tag_req_type(struct request *rq)
@@ -245,6 +255,7 @@ static u32 ufs_query_desc_max_size[] = {
 	QUERY_DESC_RFU_MAX_SIZE,
 	QUERY_DESC_GEOMETRY_MAZ_SIZE,
 	QUERY_DESC_POWER_MAX_SIZE,
+	QUERY_DESC_DEVICE_HEALTH_MAX_SIZE,
 	QUERY_DESC_RFU_MAX_SIZE,
 };
 
@@ -2421,7 +2432,9 @@ void ufshcd_prepare_utp_scsi_cmd_upiu(struct ufshcd_lrb *lrbp, u32 upiu_flags)
 
 	ucd_req_ptr->sc.exp_data_transfer_len =
 		cpu_to_be32(lrbp->cmd->sdb.length);
-
+#ifdef CONFIG_LGE_MSM8996_ISB_WA
+	asm volatile ("isb\n");
+#endif
 	cdb_len = min_t(unsigned short, lrbp->cmd->cmd_len, MAX_CDB_SIZE);
 	memcpy(ucd_req_ptr->sc.cdb, lrbp->cmd->cmnd, cdb_len);
 	if (cdb_len < MAX_CDB_SIZE)
@@ -3371,17 +3384,53 @@ static inline int ufshcd_read_desc(struct ufs_hba *hba,
 	return ufshcd_read_desc_param(hba, desc_id, desc_index, 0, buf, size);
 }
 
+#ifdef CONFIG_UFS_LGE_FEATURE
+int ufshcd_read_power_desc(struct ufs_hba *hba,
+					 u8 *buf,
+					 u32 size)
+{
+	return ufshcd_read_desc(hba, QUERY_DESC_IDN_POWER, 0, buf, size);
+}
+#else
 static inline int ufshcd_read_power_desc(struct ufs_hba *hba,
 					 u8 *buf,
 					 u32 size)
 {
 	return ufshcd_read_desc(hba, QUERY_DESC_IDN_POWER, 0, buf, size);
 }
+#endif
 
 int ufshcd_read_device_desc(struct ufs_hba *hba, u8 *buf, u32 size)
 {
 	return ufshcd_read_desc(hba, QUERY_DESC_IDN_DEVICE, 0, buf, size);
 }
+
+#ifdef CONFIG_UFS_LGE_FEATURE
+int ufshcd_read_geo_desc(struct ufs_hba *hba, u8 *buf, u32 size)
+{
+	return ufshcd_read_desc(hba, QUERY_DESC_IDN_GEOMETRY, 0, buf, size);
+}
+
+int ufshcd_read_config_desc(struct ufs_hba *hba, u8 *buf, u32 size)
+{
+	return ufshcd_read_desc(hba, QUERY_DESC_IDN_CONFIGURAION, 0, buf, size);
+}
+
+int ufshcd_read_unit_desc(struct ufs_hba *hba, int u_index, u8 *buf, u32 size)
+{
+	return ufshcd_read_desc(hba, QUERY_DESC_IDN_UNIT, u_index, buf, size);
+}
+
+int ufshcd_read_inter_desc(struct ufs_hba *hba, u8 *buf, u32 size)
+{
+	return ufshcd_read_desc(hba, QUERY_DESC_IDN_INTERCONNECT, 0, buf, size);
+}
+
+int ufshcd_read_health_desc(struct ufs_hba *hba, u8 *buf, u32 size)
+{
+	return ufshcd_read_desc(hba, QUERY_DESC_IDN_DEVICE_HEALTH, 0, buf, size);
+}
+#endif
 
 /**
  * ufshcd_read_string_desc - read string descriptor
@@ -3950,6 +3999,27 @@ int ufshcd_wait_for_doorbell_clr(struct ufs_hba *hba, u64 wait_timeout_us)
 		dev_err(hba->dev,
 			"%s: timedout waiting for doorbell to clear (tm=0x%x, tr=0x%x)\n",
 			__func__, tm_doorbell, tr_doorbell);
+#ifdef CONFIG_MACH_LGE
+		if(hweight32(tr_doorbell) >= 16)
+		{
+			hba->ufshcd_state = UFSHCD_STATE_RESET;
+			ufshcd_set_eh_in_progress(hba);
+
+			spin_unlock_irqrestore(hba->host->host_lock, flags);
+			ufshcd_release_all(hba);
+			up_write(&hba->clk_scaling_lock);
+			ufshcd_scsi_unblock_requests(hba);
+
+			ufshcd_reset_and_restore(hba);
+
+			ufshcd_scsi_block_requests(hba);
+			down_write(&hba->clk_scaling_lock);
+			ufshcd_hold_all(hba);
+			spin_lock_irqsave(hba->host->host_lock, flags);
+
+			ufshcd_clear_eh_in_progress(hba);
+		}
+#endif
 		ret = -EBUSY;
 	}
 out:
@@ -4012,7 +4082,6 @@ static int ufshcd_link_recovery(struct ufs_hba *hba)
 		flush_work(&hba->eh_work);
 	} while (1);
 
-
 	/*
 	 * we don't know if previous reset had really reset the host controller
 	 * or not. So let's force reset here to be sure.
@@ -4051,7 +4120,8 @@ static int __ufshcd_uic_hibern8_enter(struct ufs_hba *hba)
 	trace_ufshcd_profile_hibern8(dev_name(hba->dev), "enter",
 			     ktime_to_us(ktime_sub(ktime_get(), start)), ret);
 
-	if (ret) {
+	if (ret || hba->do_full_init) {
+		hba->do_full_init = false;
 		ufshcd_update_error_stats(hba, UFS_ERR_HIBERN8_ENTER);
 		dev_err(hba->dev, "%s: hibern8 enter failed. ret = %d",
 			__func__, ret);
@@ -4060,6 +4130,7 @@ static int __ufshcd_uic_hibern8_enter(struct ufs_hba *hba)
 		 * don't retry the hibern8 enter again.
 		 */
 		ret = ufshcd_link_recovery(hba);
+		dev_err(hba->dev, "%s: ufshcd_link_recovery Completed. ret = %d", __func__, ret);
 	} else {
 		dev_dbg(hba->dev, "%s: Hibern8 Enter at %lld us", __func__,
 			ktime_to_us(ktime_get()));
@@ -4092,7 +4163,8 @@ static int ufshcd_uic_hibern8_exit(struct ufs_hba *hba)
 	trace_ufshcd_profile_hibern8(dev_name(hba->dev), "exit",
 			     ktime_to_us(ktime_sub(ktime_get(), start)), ret);
 
-	if (ret) {
+	if (ret || hba->do_full_init) {
+		hba->do_full_init = false;
 		ufshcd_update_error_stats(hba, UFS_ERR_HIBERN8_EXIT);
 		dev_err(hba->dev, "%s: hibern8 exit failed. ret = %d",
 			__func__, ret);
@@ -5772,7 +5844,7 @@ static void ufshcd_update_uic_error(struct ufs_hba *hba)
 	reg = ufshcd_readl(hba, REG_UIC_ERROR_CODE_PHY_ADAPTER_LAYER);
 	/* Ignore LINERESET indication, as this is not an error */
 	if ((reg & UIC_PHY_ADAPTER_LAYER_ERROR) &&
-			(reg & UIC_PHY_ADAPTER_LAYER_LANE_ERR_MASK)) {
+			(reg & UIC_PHY_ADAPTER_LAYER_ERROR_CODE_MASK)) {
 		/*
 		 * To know whether this error is fatal or not, DB timeout
 		 * must be checked but this error is handled separately.
@@ -5780,6 +5852,16 @@ static void ufshcd_update_uic_error(struct ufs_hba *hba)
 		dev_dbg(hba->dev, "%s: UIC Lane error reported, reg 0x%x\n",
 				__func__, reg);
 		ufshcd_update_uic_reg_hist(&hba->ufs_stats.pa_err, reg);
+
+		if (reg & 0x10) {
+			if (hba->active_uic_cmd &&
+			((hba->active_uic_cmd->command == UIC_CMD_DME_HIBER_ENTER)
+			 || (hba->active_uic_cmd->command == UIC_CMD_DME_HIBER_EXIT))) {
+				dev_err(hba->dev, "%s: UIC Line-reset reported during hibern8 operation, reg 0x%x\n",
+				__func__, reg);
+				hba->do_full_init = true;
+			}
+		}
 	}
 
 	/* PA_INIT_ERROR is fatal and needs UIC reset */
@@ -6310,6 +6392,12 @@ static int ufshcd_host_reset_and_restore(struct ufs_hba *hba)
 	ufshcd_hba_stop(hba, false);
 	spin_unlock_irqrestore(hba->host->host_lock, flags);
 
+#ifdef CONFIG_UFS_LGE_CARD_RESET
+	if (UFSHCD_STATE_RESET == hba->ufshcd_state && ufshcd_eh_in_progress(hba)) {
+		ufs_card_reset(hba, false);
+	}
+#endif
+
 	/* scale up clocks to max frequency before full reinitialization */
 	ufshcd_set_clk_freq(hba, true);
 
@@ -6365,7 +6453,10 @@ static int ufshcd_reset_and_restore(struct ufs_hba *hba)
 
 		err = ufshcd_host_reset_and_restore(hba);
 	} while (err && --retries);
-
+#ifdef CONFIG_MACH_LGE
+	if(err && retries <=0)
+		BUG_ON(1);
+#endif
 	/*
 	 * After reset the door-bell might be cleared, complete
 	 * outstanding requests in s/w here.
@@ -7022,6 +7113,7 @@ static int ufshcd_query_ioctl(struct ufs_hba *hba, u8 lun, void __user *buffer)
 		case QUERY_DESC_IDN_INTERCONNECT:
 		case QUERY_DESC_IDN_GEOMETRY:
 		case QUERY_DESC_IDN_POWER:
+		case QUERY_DESC_IDN_DEVICE_HEALTH:
 			index = 0;
 			break;
 		case QUERY_DESC_IDN_UNIT:
@@ -7117,6 +7209,9 @@ static int ufshcd_query_ioctl(struct ufs_hba *hba, u8 lun, void __user *buffer)
 		case QUERY_FLAG_IDN_PURGE_ENABLE:
 		case QUERY_FLAG_IDN_FPHYRESOURCEREMOVAL:
 		case QUERY_FLAG_IDN_BUSY_RTC:
+#ifdef CONFIG_UFS_LGE_FEATURE
+		case QUERY_FLAG_IDN_PERMANENT_DIS_FWUPT:
+#endif
 			break;
 		default:
 			goto out_einval;
@@ -8172,10 +8267,17 @@ static int ufshcd_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 {
 	int ret;
 	enum uic_link_state old_link_state;
+#ifdef CONFIG_MACH_LGE
+	unsigned int retry_count = 1;
+	int err_bkops_check_status = 0;
+#endif
 
 	hba->pm_op_in_progress = 1;
 	old_link_state = hba->uic_link_state;
 
+#ifdef CONFIG_MACH_LGE
+resume_retry:
+#endif
 	ufshcd_hba_vreg_set_hpm(hba);
 	/* Make sure clocks are enabled before accessing controller */
 	ret = ufshcd_enable_clocks(hba);
@@ -8222,8 +8324,16 @@ static int ufshcd_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 
 	if (!ufshcd_is_ufs_dev_active(hba)) {
 		ret = ufshcd_set_dev_pwr_mode(hba, UFS_ACTIVE_PWR_MODE);
-		if (ret)
+		if (ret) {
+#ifdef CONFIG_MACH_LGE
+			if (0 < retry_count--) {
+				dev_err(hba->dev, "[RESUME:retry]%s(%d):ret(%d), retry_count(%d)\n",
+						__func__, __LINE__, ret, retry_count);
+				goto resume_retry;
+			}
+#endif
 			goto set_old_link_state;
+	}
 	}
 
 	if (ufshcd_keep_autobkops_enabled_except_suspend(hba))
@@ -8233,7 +8343,15 @@ static int ufshcd_resume(struct ufs_hba *hba, enum ufs_pm_op pm_op)
 		 * If BKOPs operations are urgently needed at this moment then
 		 * keep auto-bkops enabled or else disable it.
 		 */
+#ifdef CONFIG_MACH_LGE
+		err_bkops_check_status =
+#endif
 		ufshcd_urgent_bkops(hba);
+
+#ifdef CONFIG_MACH_LGE
+		if (err_bkops_check_status && retry_count==0)
+			BUG();
+#endif
 
 	hba->clk_gating.is_suspended = false;
 	hba->hibern8_on_idle.is_suspended = false;
@@ -8412,6 +8530,7 @@ int ufshcd_runtime_resume(struct ufs_hba *hba)
 		goto out;
 	else
 		ret = ufshcd_resume(hba, UFS_RUNTIME_PM);
+
 out:
 	trace_ufshcd_runtime_resume(dev_name(hba->dev), ret,
 		ktime_to_us(ktime_sub(ktime_get(), start)),
@@ -8975,6 +9094,86 @@ out:
 	return count;
 }
 
+#ifdef LGE_UFS_THERM_TWEAK
+static void ufshcd_clkscale_enable(struct ufs_hba *hba, int enable)
+{
+	int err;
+
+	if (enable == hba->clk_scaling.is_allowed)
+		return;
+
+	pm_runtime_get_sync(hba->dev);
+	ufshcd_hold(hba, false);
+
+	cancel_work_sync(&hba->clk_scaling.suspend_work);
+	cancel_work_sync(&hba->clk_scaling.resume_work);
+
+	hba->clk_scaling.is_allowed = enable;
+
+	if (enable) {
+		ufshcd_resume_clkscaling(hba);
+	} else {
+		ufshcd_suspend_clkscaling(hba);
+		err = ufshcd_devfreq_scale(hba, true);
+		if (err)
+			dev_err(hba->dev, "%s: failed to scale clocks up %d\n",
+					__func__, err);
+	}
+
+	ufshcd_release(hba, false);
+	pm_runtime_put_sync(hba->dev);
+}
+
+static void ufshcd_set_clk_scaling(struct ufs_hba *hba, int is_normal_temp)
+{
+	static enum lge_ufs_tweak_status cur_status;
+
+	if((!is_normal_temp && cur_status == UFS_LOW_THERM_DISABLE_CLK_SCALING) ||
+			(is_normal_temp && cur_status == UFS_NORMAL_THERM_ENABLE_CLK_SCALING)) {
+		dev_dbg(hba->dev, "[UFS_TWEAK] %s: no need to change current setting - %d => 0:normal, 1:low temp)\n", __func__, cur_status);
+		return;
+	}
+
+	ufshcd_clkscale_enable(hba, is_normal_temp);
+	if(!is_normal_temp) {
+		cur_status = UFS_LOW_THERM_DISABLE_CLK_SCALING;
+		dev_dbg(hba->dev, "[UFS_TWEAK] %s: change setting to LOW_TEMP_MODE(%d)\n", __func__, cur_status);
+	} else {
+		cur_status = UFS_NORMAL_THERM_ENABLE_CLK_SCALING;
+		dev_dbg(hba->dev, "[UFS_TWEAK] %s: change setting to NORMAL_TEMP_MODE(%d)\n", __func__, cur_status);
+	}
+}
+
+static void ufs_qcom_ctrl_clk_scaling_by_therm(struct work_struct *work)
+{
+	static struct lge_power *lge_adc_lpc;
+	int therm;
+	union lge_power_propval lge_val = {0,};
+	struct ufs_hba *hba = container_of(work, struct ufs_hba, therm_clk_ctrl_work.work);
+
+	if(!lge_adc_lpc) {
+		dev_dbg(hba->dev, "[UFS_TWEAK] %s: get lge_adc_lpc\n", __func__);
+		lge_adc_lpc = lge_power_get_by_name("lge_adc");
+	}
+
+	if(!lge_adc_lpc) {
+		dev_dbg(hba->dev, "[UFS_TWEAK] %s: can not get lge_adc_lpc\n", __func__);
+		therm = 0;
+	} else {
+		lge_adc_lpc->get_property(lge_adc_lpc, LGE_POWER_PROP_BD2_THERM_PHY, &lge_val);
+		therm = lge_val.intval;
+		dev_dbg(hba->dev, "[UFS_TWEAK] %s: board thermal : %d\n", __func__, therm);
+	}
+
+	ufshcd_set_clk_scaling(hba, therm > LGE_UFS_THERM_TWEAK_BORDER);
+
+	ufshcd_print_pwr_info(hba);
+
+	schedule_delayed_work(&hba->therm_clk_ctrl_work,
+			round_jiffies_relative(msecs_to_jiffies(CHECK_THERMAL_TIME)));
+}
+#endif
+
 static void ufshcd_clk_scaling_suspend_work(struct work_struct *work)
 {
 	struct ufs_hba *hba = container_of(work, struct ufs_hba,
@@ -9061,8 +9260,14 @@ static int ufshcd_devfreq_get_dev_status(struct device *dev,
 		struct devfreq_dev_status *stat)
 {
 	struct ufs_hba *hba = dev_get_drvdata(dev);
-	struct ufs_clk_scaling *scaling = &hba->clk_scaling;
+	struct ufs_clk_scaling *scaling;
 	unsigned long flags;
+
+#ifdef CONFIG_MACH_LGE
+	if (!hba)
+		return -EINVAL;
+#endif
+	scaling = &hba->clk_scaling;
 
 	if (!ufshcd_is_clkscaling_supported(hba))
 		return -EINVAL;
@@ -9218,6 +9423,13 @@ int ufshcd_init(struct ufs_hba *hba, void __iomem *mmio_base, unsigned int irq)
 	ufshcd_init_clk_gating(hba);
 	ufshcd_init_hibern8_on_idle(hba);
 
+#ifdef LGE_UFS_THERM_TWEAK
+	dev_dbg(hba->dev, "[UFS_TWEAK] init therm_clk_ctrl_work\n");
+	INIT_DELAYED_WORK(&hba->therm_clk_ctrl_work, ufs_qcom_ctrl_clk_scaling_by_therm);
+	schedule_delayed_work(&hba->therm_clk_ctrl_work,
+			round_jiffies_relative(msecs_to_jiffies(CHECK_THERMAL_TIME)));
+#endif
+
 	/*
 	 * In order to avoid any spurious interrupt immediately after
 	 * registering UFS controller interrupt handler, clear any pending UFS
@@ -9306,9 +9518,17 @@ int ufshcd_init(struct ufs_hba *hba, void __iomem *mmio_base, unsigned int irq)
 	 */
 	ufshcd_set_ufs_dev_active(hba);
 
+#ifdef CONFIG_UFS_LGE_CARD_RESET
+	ufs_card_reset_init(hba);
+#endif
+
 	async_schedule(ufshcd_async_scan, hba);
 
 	ufsdbg_add_debugfs(hba);
+
+#ifdef CONFIG_UFS_LGE_CARD_RESET_DEBUGFS
+	ufs_card_reset_add_debugfs(hba);
+#endif
 
 	ufshcd_add_sysfs_nodes(hba);
 

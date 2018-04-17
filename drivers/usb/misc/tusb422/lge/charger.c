@@ -8,6 +8,7 @@ static enum power_supply_property chg_properties[] = {
 	POWER_SUPPLY_PROP_VOLTAGE_MAX,
 	POWER_SUPPLY_PROP_TYPE,
 	POWER_SUPPLY_PROP_CURRENT_CAPABILITY,
+	POWER_SUPPLY_PROP_INPUT_SUSPEND,
 };
 
 static const char *chg_to_string(enum power_supply_type type)
@@ -82,6 +83,31 @@ static void otg_work(struct work_struct *w)
 	}
 }
 
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECT
+static int chg_get_sbu_adc(struct hw_pd_dev *dev)
+{
+	union lge_power_propval lge_val;
+	int rc;
+
+	if (!dev->lge_adc_lpc) {
+		dev_err(dev->dev, "%s: lge_adc_lpc is NULL\n", __func__);
+		return -ENODEV;
+	}
+
+	rc = dev->lge_adc_lpc->get_property(dev->lge_adc_lpc,
+					    LGE_POWER_PROP_USB_ID_PHY,
+					    &lge_val);
+	if (rc) {
+		dev_err(dev->dev, "failed to get sbu_adc %d\n", rc);
+		return rc;
+	}
+
+	PRINT("SBU_ADC: %d\n", (int)lge_val.int64val);
+
+	return (int)lge_val.int64val;
+}
+#endif
+
 static int chg_get_property(struct power_supply *psy,
 			    enum power_supply_property prop,
 			    union power_supply_propval *val)
@@ -128,7 +154,14 @@ static int chg_get_property(struct power_supply *psy,
 		      dev->typec_mode);
 		val->intval = dev->typec_mode;
 		break;
+#if defined(CONFIG_LGE_USB_MOISTURE_DETECT) && defined(CONFIG_LGE_PM_WATERPROOF_PROTECTION)
+	case POWER_SUPPLY_PROP_INPUT_SUSPEND:
+		dev->sbu_ov_cnt = 0;
 
+		val->intval = (dev->mode == DUAL_ROLE_PROP_MODE_FAULT) ? 1 : 0;
+		DEBUG("%s: input_suspend(%d)\n", __func__, val->intval);
+		break;
+#endif
 	default:
 		return -EINVAL;
 	}
@@ -159,6 +192,23 @@ static int chg_set_property(struct power_supply *psy,
 		dev->is_present = val->intval;
 		DEBUG("%s: is_present(%d)\n", __func__, dev->is_present);
 
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECT
+		if (dev->mode == DUAL_ROLE_PROP_MODE_FAULT) {
+			tcpm_cc_fault_timer(0, dev->is_present ? false : true);
+			break;
+		}
+
+		if (dev->moisture_detect_use_sbu && IS_CHARGERLOGO && val->intval) {
+			int sbu_adc = chg_get_sbu_adc(dev);
+			if (sbu_adc > SBU_WET_THRESHOLD) {
+				PRINT("%s: VBUS/SBU SHORT!!! %d\n", __func__, sbu_adc);
+				tcpm_cc_fault_set(0, TCPC_STATE_CC_FAULT_SBU_ADC);
+				tcpm_cc_fault_timer(0, false);
+				break;
+			}
+		}
+#endif
+
 		if (dev->mode == DUAL_ROLE_PROP_MODE_NONE) {
 			if (val->intval) {
 				PRINT("power on by charger\n");
@@ -170,6 +220,7 @@ static int chg_set_property(struct power_supply *psy,
 				}
 			}
 		}
+
 		break;
 
 	default:
@@ -228,6 +279,10 @@ int charger_init(struct hw_pd_dev *dev)
 	}
 
 	power_supply_set_supply_type(&dev->chg_psy, POWER_SUPPLY_TYPE_UNKNOWN);
+
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECT
+	dev->lge_adc_lpc = lge_power_get_by_name("lge_adc");
+#endif
 
 	return 0;
 }

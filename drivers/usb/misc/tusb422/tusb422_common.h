@@ -1,18 +1,39 @@
 /*
  * Constants for the Texas Instruments TUSB422 Power Delivery
  *
- * Author: Dan Murphy <dmurphy@ti.com>
+ * Author: Brian Quach <brian.quach@ti.com>
  *
- * Copyright: (C) 2016 Texas Instruments, Inc.
+ * Copyright (C) 2016 Texas Instruments Incorporated - http://www.ti.com/
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions
+ *  are met:
+ *
+ *    Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ *    Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the
+ *    distribution.
+ *
+ *    Neither the name of Texas Instruments Incorporated nor the names of
+ *    its contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ *  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ *  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ *  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ *  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
 #ifndef __TUSB422_COMMON_H__
@@ -132,17 +153,14 @@ typedef struct
 	uint16_t           flags;
 	tc_role_t          role;
 	tcpc_role_rp_val_t rp_val;
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECT
+	bool               moisture_detect_disable;
+	bool               moisture_detect_use_sbu;
+#endif
 
 } tcpc_config_t;
 
 /** Power Control functions **/
-enum vbus_select_t
-{
-	VBUS_SRC_5V       = (1 << 0),
-	VBUS_SRC_HI_VOLT  = (1 << 1),
-	VBUS_SNK          = (1 << 2)
-};
-
 enum supply_type_t
 {
 	SUPPLY_TYPE_FIXED    = 0,
@@ -223,16 +241,42 @@ typedef struct
 	bool            higher_capability;
 	bool            giveback_flag;
 	bool            no_usb_suspend;
+
+	/* Configuration Options */
 	fr_swap_current_t     fast_role_swap_support;
 	pdo_priority_t  pdo_priority;
-
 	bool            auto_accept_swap_to_dfp;
 	bool            auto_accept_swap_to_ufp;
 	bool            auto_accept_swap_to_source;
 	bool            auto_accept_swap_to_sink;
 	bool            auto_accept_vconn_swap;
 
+	/* VDM */
+//	bool            attempt_discover_identity;
+	bool            ufp_alt_mode_entry_timeout_enable;
+	bool            multi_function_preferred; /* For UFP with DP Alt mode, USB SS + 1 or 2 lanes DisplayPort */
+	uint32_t        id_header_vdo;
+	uint32_t        cert_stat_vdo;
+	uint32_t        product_vdo;
+	uint8_t         num_product_type_vdos; /* max of 3 for Discover Identity response */
+	uint32_t        product_type_vdos[3];
+
+	uint8_t         num_svids;  /* no max for Discover SVIDs response but we limit to 3 */
+	uint16_t        svids[3];
+	uint32_t        modes[3];  /* indexed by SVID index, currently limited to 1 mode per SVID */
+
+//	uint8_t         num_modes[3];  /* indexed by SVID index */
+
 } usb_pd_port_config_t;
+
+typedef enum
+{
+	MUX_DISABLE = 0,
+	MUX_USB,
+	MUX_DP_2LANE,
+	MUX_DP_4LANE,
+	MUX_AUDIO,
+} mux_ctrl_t;
 
 /** I2C Access functions **/
 
@@ -374,9 +418,18 @@ void timer_cancel(struct tusb422_timer_t *timer);
 // These functions will control platform-specific GPIOs to sink or source VBUS.
 // Cannot make these more generic since power controls may be active high/low or
 // open drain and require multiple GPIOs.
-void tcpm_hal_vbus_enable(uint8_t port, enum vbus_select_t sel);
-void tcpm_hal_vbus_disable(uint8_t port, enum vbus_select_t sel);
 void tcpm_msleep(int msecs);
+
+void tcpm_source_vbus(uint8_t port, uint16_t mv);
+void tcpm_source_vbus_disable(uint8_t port);
+void tcpm_sink_vbus(uint8_t port, bool usb_pd, uint16_t mv, uint16_t ma);
+void tcpm_sink_vbus_batt(uint8_t port, uint16_t min_mv, uint16_t max_mv, uint16_t mw);
+void tcpm_sink_vbus_vari(uint8_t port, uint16_t min_mv, uint16_t max_mv, uint16_t ma);
+void tcpm_sink_vbus_disable(uint8_t port);
+
+void tcpm_mux_control(uint8_t port, uint8_t data_role, mux_ctrl_t ctrl, uint8_t polarity);
+void tcpm_hpd_out_control(uint8_t port, uint8_t val);
+uint8_t tcpm_get_hpd_in(uint8_t port);
 
 int tcpm_init(const tcpc_config_t *config);
 void usb_pd_init(const usb_pd_port_config_t *port_config);

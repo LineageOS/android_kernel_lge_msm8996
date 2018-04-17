@@ -1,17 +1,39 @@
 /*
- * Texas Instruments TUSB422 Power Delivery
+ * TUSB422 Power Delivery
  *
  * Author: Brian Quach <brian.quach@ti.com>
- * Copyright: (C) 2016 Texas Instruments, Inc.
  *
- * This program is free software; you can redistribute it and/or modify
- * it under the terms of the GNU General Public License version 2 as
- * published by the Free Software Foundation.
+ * Copyright (C) 2016 Texas Instruments Incorporated - http://www.ti.com/
  *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * General Public License for more details.
+ *
+ *  Redistribution and use in source and binary forms, with or without
+ *  modification, are permitted provided that the following conditions
+ *  are met:
+ *
+ *    Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ *
+ *    Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the
+ *    distribution.
+ *
+ *    Neither the name of Texas Instruments Incorporated nor the names of
+ *    its contributors may be used to endorse or promote products derived
+ *    from this software without specific prior written permission.
+ *
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+ *  "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+ *  LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
+ *  A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+ *  OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+ *  SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
+ *  LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
+ *  DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
+ *  THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ *  (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+ *  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
 #ifndef __USB_PD_POLICY_ENGINE_H__
@@ -21,6 +43,11 @@
 #include "tcpci.h"
 #include "tcpm.h"
 
+#ifndef CONFIG_LGE_USB_COMPLIANCE_TEST
+#define ENABLE_VDM_SUPPORT
+#endif
+//#define ENABLE_DP_ALT_MODE_SUPPORT  /* Requires ENABLE_VDM_SUPPORT */
+
 #define MAX_EXT_MSG_LEN 260 /* 260-bytes */
 
 #define MAX_SOP_NUM 5     /* SOP, SOP', SOP", SOP_DBG', SOP_DBG" */
@@ -28,6 +55,7 @@
 #define PD_STATE_HISTORY_LEN  16
 #define PD_STATE_INDEX_MASK   0xF  /* bitmask based on history length */
 
+#define HPD_IN_QUEUE_SIZE  4
 
 typedef enum
 {
@@ -103,6 +131,7 @@ typedef enum
 	PE_PRS_SEND_SWAP,
 	PE_PRS_EVALUATE_SWAP,
 	PE_PRS_REJECT_SWAP,
+	PE_PRS_WAIT_SWAP,
 	PE_PRS_ACCEPT_SWAP,
 	PE_PRS_TRANSITION_TO_OFF,
 	PE_PRS_ASSERT_RD,
@@ -121,10 +150,63 @@ typedef enum
 	PE_VCS_TURN_ON_VCONN,
 	PE_VCS_SEND_PS_RDY,
 
+	/* VDM */
+#ifdef ENABLE_VDM_SUPPORT
+	PE_SRC_VDM_IDENTITY_REQUEST,  /* request to cable before explict contact */
+	PE_INIT_PORT_VDM_IDENTITY_REQUEST, /* request to port partner */
+	PE_INIT_VDM_SVIDS_REQUEST,
+	PE_INIT_VDM_MODES_REQUEST,
+	PE_INIT_VDM_ATTENTION_REQUEST,
+#ifdef ENABLE_DP_ALT_MODE_SUPPORT
+	PE_INIT_VDM_DP_STATUS_UPDATE, /* DFP_U only */
+	PE_INIT_VDM_DP_CONFIG,        /* DFP_U only */
+#endif
+
+	PE_RESP_VDM_NAK,
+	PE_RESP_VDM_GET_IDENTITY,
+	PE_RESP_VDM_GET_SVIDS,
+	PE_RESP_VDM_GET_MODES,
+	PE_RCV_VDM_ATTENTION_REQUEST,
+#ifdef ENABLE_DP_ALT_MODE_SUPPORT
+	PE_RESP_VDM_DP_STATUS_UPDATE,
+	PE_RESP_VDM_DP_CONFIG,
+#endif
+
+	PE_DFP_VDM_MODE_ENTRY_REQUEST,
+	PE_DFP_VDM_MODE_EXIT_REQUEST,
+
+	PE_UFP_VDM_EVAL_MODE_ENTRY,
+	PE_UFP_VDM_MODE_EXIT,
+#endif
+
 	PE_NUM_STATES
 } usb_pd_pe_state_t;
 
 extern const char * const pdstate2string[PE_NUM_STATES];
+
+typedef enum
+{
+	NO_ALT_MODE = 0,
+	DP_ALT_MODE = (1 << 0),
+	TBOLT_ALT_MODE = (1 << 1),
+	HDMI_ALT_MODE = (1 << 2)
+} alt_mode_t;
+
+typedef enum
+{
+	CONFIG_FOR_USB = 0,
+	CONFIG_UFP_U_AS_DFP_D = 1,
+	CONFIG_UFP_U_AS_UFP_D = 2,
+	CONFIG_MASK = 0x3
+} dp_config_sel_t;
+
+typedef enum
+{
+	NOTIFY_HPD_NONE = 0,
+	NOTIFY_HPD_LOW  = 1,
+	NOTIFY_HPD_HIGH = 2,
+	NOTIFY_HPD_IRQ  = 3
+} hpd_notify_t;
 
 //typedef enum
 //{
@@ -143,6 +225,8 @@ typedef struct
 	usb_pd_pe_state_t   *current_state;
 	bool                state_change;
 
+	tcpc_device_t       *tcpc_dev;
+
 //    uint8_t             flags;   /* BQ can convert all bools to single flag to save RAM if needed */
 	unsigned int        port;
 	struct tusb422_timer_t  timer;
@@ -157,12 +241,11 @@ typedef struct
 	uint8_t             stored_msg_id[MAX_SOP_NUM];	  /* For Rx */
 	uint8_t             rx_msg_data_len;
 	uint8_t             rx_msg_type;
+	uint8_t             rx_sop;
 
 	uint8_t             hard_reset_cnt;
 	uint8_t             caps_cnt;
 	bool                vconn_source;
-	uint8_t             discover_identity_cnt;	 // When sending Discover Identity to cable plug.  Max 20.  Zero upon data role swap.
-	uint8_t             vdm_busy_cnt;  // For UFP or Cable Plug.  Max of 1 responder busy response.  Reset upon non-busy response.
 
 	bool                non_interruptable_ams;
 	bool                swap_source_start;
@@ -171,7 +254,6 @@ typedef struct
 	bool                no_response_timed_out;
 	bool                vbus_present;
 	bool                power_role_swap_in_progress;
-	bool                modal_operation;
 
 	uint8_t             object_position;  /* Range: 1 - 7 */
 	uint8_t				selected_snk_pdo_idx;
@@ -185,12 +267,52 @@ typedef struct
 
 	uint32_t            src_pdo[PD_MAX_PDO_NUM];
 	uint32_t            snk_pdo[PD_MAX_PDO_NUM];
+#ifdef CONFIG_LGE_USB_TYPE_C
+	uint32_t            offered_pdo[PD_MAX_PDO_NUM];
+	uint32_t            offered_rdo;
+#endif
 
+	uint16_t            cable_max_current_ma;
+	uint16_t            cable_max_voltage_mv;
+	bool                active_cable;
+
+	uint8_t             active_alt_modes;
+
+	bool                cable_plug_comm_required;
+#ifdef ENABLE_VDM_SUPPORT
+	bool                cable_id_req_complete;
+	uint8_t             discover_identity_cnt;	 // When sending Discover Identity to cable plug.  Max 20.  Zero upon data role swap.
+	uint8_t             vdm_busy_cnt;  // For UFP or Cable Plug.  Max of 1 responder busy response.  Reset upon non-busy response.
+
+	bool                port_partner_id_req_complete;
+	uint32_t            vdm_hdr_vdos[7];
+	bool                vdm_in_progress;
+	uint8_t             svid_index;
+
+	uint8_t             matched_alt_modes;
+	bool                mode_exit_pending;
+#ifdef ENABLE_DP_ALT_MODE_SUPPORT
+	uint32_t            displayport_remote_caps; /* from port partner */
+	uint8_t             displayport_matched_pin_assignments;
+	uint8_t             displayport_selected_pin_assignment;
+
+	bool                displayport_alt_mode_configured;
+	dp_config_sel_t     displayport_config;
+	uint8_t             displayport_lane_cnt;
+	uint32_t            displayport_status;  /* local port status */
+	uint32_t            displayport_remote_status;  /* remote port status */
+
+	bool                hpd_in_changed;
+	uint8_t             hpd_in_value;
+	hpd_notify_t        hpd_in_queue[HPD_IN_QUEUE_SIZE];   /* Worst case: HPD_Low, HPD_High, IRQ_HPD, IRQ_HPD. */
+	uint8_t             hpd_in_queue_idx;
+	uint8_t             hpd_in_send_idx;
+#endif
+#endif
+
+	bool                externally_powered;
 	bool                remote_externally_powered;
 
-	uint16_t            src_settling_time;
-
-	bool                high_pwr_cable;	 /* If using cable with 5A support */
 } usb_pd_port_t;
 
 typedef enum
@@ -217,9 +339,26 @@ typedef enum
 	PD_POLICY_MNGR_REQ_UPDATE_REMOTE_CAPS,
 	PD_POLICY_MNGR_REQ_PR_SWAP,
 	PD_POLICY_MNGR_REQ_DR_SWAP,
-	PD_POLICY_MNGR_REQ_VCONN_SWAP
+	PD_POLICY_MNGR_REQ_VCONN_SWAP,
+	PD_POLICY_MNGR_REQ_HARD_RESET
 } pd_policy_manager_request_t;
 
+#ifdef ENABLE_DP_ALT_MODE_SUPPORT
+typedef enum
+{
+	IRQ_HPD             = (1 << 8),
+	HPD_STATE_HIGH      = (1 << 7),
+	REQ_DP_MODE_EXIT    = (1 << 6),
+	REQ_USB_CONFIG      = (1 << 5),
+	MULTIFUNC_PREFERRED = (1 << 4),
+	ADAPTER_ENABLED     = (1 << 3),
+	ADAPTER_POWER_LOW   = (1 << 2),
+	UFP_D_CONNECTED     = (1 << 1),
+	DFP_D_CONNECTED     = 1
+} display_port_status_t;
+
+void usb_pd_pe_update_dp_status(unsigned int port, uint32_t status);
+#endif
 
 
 void usb_pd_pe_notify(unsigned int port, usb_pd_prl_alert_t prl_alert);
