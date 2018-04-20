@@ -1,3 +1,5 @@
 include lineageos_elsa_common
 # LG Platform
 CONFIG_MACH_MSM8996_ELSA_ATT_US=y
+
+CONFIG_BCM4358=y
