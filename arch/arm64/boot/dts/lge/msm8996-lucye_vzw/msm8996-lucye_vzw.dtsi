@@ -18,7 +18,7 @@
 #include "msm8996-lucye_vzw-pm.dtsi"
 #include "../msm8996-lucye-connectivity.dtsi"
 #include "../msm8996-nfc.dtsi"
-#include "msm8996-lucye_vzw-hdmi.dtsi"
+#include "../msm8996-lucye-hdmi.dtsi"
 #include "../msm8996-fingerprint-fpc1022.dtsi"
 #include "msm8996-lucye_vzw-usb.dtsi"
 #include "../msm8996-lineage.dtsi"
