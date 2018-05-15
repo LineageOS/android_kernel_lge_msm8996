@@ -6,6 +6,7 @@
 #include <linux/static_key.h>
 #include <linux/context_tracking.h>
 #include "sched.h"
+#include "walt.h"
 
 
 #ifdef CONFIG_IRQ_TIME_ACCOUNTING
@@ -50,8 +51,10 @@ void irqtime_account_irq(struct task_struct *curr)
 	unsigned long flags;
 	s64 delta;
 	int cpu;
+#ifdef CONFIG_SCHED_WALT
 	u64 wallclock;
 	bool account = true;
+#endif
 
 	if (!sched_clock_irqtime)
 		return;
@@ -59,8 +62,10 @@ void irqtime_account_irq(struct task_struct *curr)
 	local_irq_save(flags);
 
 	cpu = smp_processor_id();
+#ifdef CONFIG_SCHED_WALT
 	wallclock = sched_clock_cpu(cpu);
-	delta = wallclock - __this_cpu_read(irq_start_time);
+#endif
+	delta = sched_clock_cpu(cpu) - __this_cpu_read(irq_start_time);
 	__this_cpu_add(irq_start_time, delta);
 
 	irq_time_write_begin();
@@ -74,16 +79,16 @@ void irqtime_account_irq(struct task_struct *curr)
 		__this_cpu_add(cpu_hardirq_time, delta);
 	else if (in_serving_softirq() && curr != this_cpu_ksoftirqd())
 		__this_cpu_add(cpu_softirq_time, delta);
+#ifdef CONFIG_SCHED_WALT
 	else
 		account = false;
+#endif
 
 	irq_time_write_end();
-
+#ifdef CONFIG_SCHED_WALT
 	if (account)
-		sched_account_irqtime(cpu, curr, delta, wallclock);
-	else if (curr != this_cpu_ksoftirqd())
-		sched_account_irqstart(cpu, curr, wallclock);
-
+		walt_account_irqtime(cpu, curr, delta, wallclock);
+#endif
 	local_irq_restore(flags);
 }
 EXPORT_SYMBOL_GPL(irqtime_account_irq);
@@ -281,21 +286,21 @@ static __always_inline bool steal_account_process_tick(void)
 #ifdef CONFIG_PARAVIRT
 	if (static_key_false(&paravirt_steal_enabled)) {
 		u64 steal;
-		unsigned long steal_jiffies;
+		cputime_t steal_ct;
 
 		steal = paravirt_steal_clock(smp_processor_id());
 		steal -= this_rq()->prev_steal_time;
 
 		/*
-		 * steal is in nsecs but our caller is expecting steal
-		 * time in jiffies. Lets cast the result to jiffies
+		 * cputime_t may be less precise than nsecs (eg: if it's
+		 * based on jiffies). Lets cast the result to cputime
 		 * granularity and account the rest on the next rounds.
 		 */
-		steal_jiffies = nsecs_to_jiffies(steal);
-		this_rq()->prev_steal_time += jiffies_to_nsecs(steal_jiffies);
+		steal_ct = nsecs_to_cputime(steal);
+		this_rq()->prev_steal_time += cputime_to_nsecs(steal_ct);
 
-		account_steal_time(jiffies_to_cputime(steal_jiffies));
-		return steal_jiffies;
+		account_steal_time(steal_ct);
+		return steal_ct;
 	}
 #endif
 	return false;
@@ -589,7 +594,7 @@ static void cputime_advance(cputime_t *counter, cputime_t new)
 {
 	cputime_t old;
 
-	while (new > (old = ACCESS_ONCE(*counter)))
+	while (new > (old = READ_ONCE(*counter)))
 		cmpxchg_cputime(counter, old, new);
 }
 

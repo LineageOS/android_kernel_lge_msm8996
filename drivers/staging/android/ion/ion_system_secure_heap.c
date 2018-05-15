@@ -1,6 +1,6 @@
 /*
  *
- * Copyright (c) 2014-2017, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -39,10 +39,10 @@ struct prefetch_info {
 
 static bool is_cp_flag_present(unsigned long flags)
 {
-	return flags && (ION_FLAG_CP_TOUCH ||
-			ION_FLAG_CP_BITSTREAM ||
-			ION_FLAG_CP_PIXEL ||
-			ION_FLAG_CP_NON_PIXEL ||
+	return flags & (ION_FLAG_CP_TOUCH |
+			ION_FLAG_CP_BITSTREAM |
+			ION_FLAG_CP_PIXEL |
+			ION_FLAG_CP_NON_PIXEL |
 			ION_FLAG_CP_CAMERA);
 }
 
@@ -68,7 +68,7 @@ int ion_system_secure_heap_unassign_sg(struct sg_table *sgt, int source_vmid)
 
 int ion_system_secure_heap_assign_sg(struct sg_table *sgt, int dest_vmid)
 {
-	int source_vmid = VMID_HLOS;
+	u32 source_vmid = VMID_HLOS;
 	u32 dest_perms = PERM_READ | PERM_WRITE;
 	struct scatterlist *sg;
 	int ret, i;

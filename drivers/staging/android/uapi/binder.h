@@ -37,15 +37,6 @@ enum {
 };
 
 /**
- * enum flat_binder_object_shifts: shift values for flat_binder_object_flags
- * @FLAT_BINDER_FLAG_SCHED_POLICY_SHIFT: shift for getting scheduler policy.
- *
- */
-enum flat_binder_object_shifts {
-	FLAT_BINDER_FLAG_SCHED_POLICY_SHIFT = 9,
-};
-
-/**
  * enum flat_binder_object_flags - flags for use in flat_binder_object.flags
  */
 enum flat_binder_object_flags {
@@ -57,7 +48,7 @@ enum flat_binder_object_flags {
 	 * in these bits depend on the scheduler policy encoded in
 	 * @FLAT_BINDER_FLAG_SCHED_POLICY_MASK.
 	 *
-	 * For SCHED_NORMAL/SCHED_BATCH, the valid range is between [-20..19]
+	 * For SCHED_NORMAL, the valid range is between [-20..19]
 	 * For SCHED_FIFO/SCHED_RR, the value can run between [1..99]
 	 */
 	FLAT_BINDER_FLAG_PRIORITY_MASK = 0xff,
@@ -76,16 +67,16 @@ enum flat_binder_object_flags {
 	 * 10b: SCHED_RR
 	 * 11b: SCHED_BATCH
 	 */
-	FLAT_BINDER_FLAG_SCHED_POLICY_MASK =
-		3U << FLAT_BINDER_FLAG_SCHED_POLICY_SHIFT,
+	FLAT_BINDER_FLAG_SCHED_POLICY_MASK = 0x600,
+};
 
-	/**
-	 * @FLAT_BINDER_FLAG_INHERIT_RT: whether the node inherits RT policy
-	 *
-	 * Only when set, calls into this node will inherit a real-time
-	 * scheduling policy from the caller (for synchronous transactions).
-	 */
-	FLAT_BINDER_FLAG_INHERIT_RT = 0x800,
+/**
+ * enum flat_binder_object_shifts: shift values for flat_binder_object_flags
+ * @FLAT_BINDER_FLAG_SCHED_POLICY_SHIFT: shift for getting scheduler policy.
+ *
+ */
+enum flat_binder_object_shifts {
+	FLAT_BINDER_FLAG_SCHED_POLICY_SHIFT = 9,
 };
 
 #ifdef BINDER_IPC_32BIT
@@ -178,7 +169,6 @@ enum {
 
 /* struct binder_fd_array_object - object describing an array of fds in a buffer
  * @hdr:		common header structure
- * @pad:		padding to ensure correct alignment
  * @num_fds:		number of file descriptors in the buffer
  * @parent:		index in offset array to buffer holding the fd array
  * @parent_offset:	start offset of fd array in the buffer
@@ -199,7 +189,6 @@ enum {
  */
 struct binder_fd_array_object {
 	struct binder_object_header	hdr;
-	__u32				pad;
 	binder_size_t			num_fds;
 	binder_size_t			parent;
 	binder_size_t			parent_offset;
