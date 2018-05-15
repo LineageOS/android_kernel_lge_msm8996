@@ -15,8 +15,9 @@
 static bool schedtune_initialized = false;
 #endif
 
-int sysctl_sched_cfs_boost __read_mostly;
+unsigned int sysctl_sched_cfs_boost __read_mostly;
 
+static struct reciprocal_value schedtune_spc_rdiv;
 extern struct target_nrg schedtune_target_nrg;
 
 /* Performance Boost region (B) threshold params */
@@ -205,7 +206,7 @@ schedtune_accept_deltas(int nrg_delta, int cap_delta,
  *    implementation especially for the computation of the per-CPU boost
  *    value
  */
-#define BOOSTGROUPS_COUNT 4
+#define BOOSTGROUPS_COUNT 5
 
 /* Array of configured boostgroups */
 static struct schedtune *allocated_group[BOOSTGROUPS_COUNT] = {
@@ -236,7 +237,7 @@ struct boost_groups {
 };
 
 /* Boost groups affecting each CPU in the system */
-static DEFINE_PER_CPU(struct boost_groups, cpu_boost_groups);
+DEFINE_PER_CPU(struct boost_groups, cpu_boost_groups);
 
 static void
 schedtune_cpu_update(int cpu)
@@ -368,7 +369,14 @@ void schedtune_enqueue_task(struct task_struct *p, int cpu)
 	raw_spin_unlock_irqrestore(&bg->lock, irq_flags);
 }
 
-static int schedtune_can_attach(struct cgroup_subsys_state *css,
+int schedtune_allow_attach(struct cgroup_subsys_state *css,
+		struct cgroup_taskset *tset)
+{
+	/* We always allows tasks to be moved between existing CGroups */
+	return 0;
+}
+
+int schedtune_can_attach(struct cgroup_subsys_state *css,
 			  struct cgroup_taskset *tset)
 {
 	struct task_struct *task;
@@ -440,8 +448,8 @@ static int schedtune_can_attach(struct cgroup_subsys_state *css,
 	return 0;
 }
 
-static void schedtune_cancel_attach(struct cgroup_subsys_state *css,
-				    struct cgroup_taskset *tset)
+void schedtune_cancel_attach(struct cgroup_subsys_state *css,
+			     struct cgroup_taskset *tset)
 {
 	/* This can happen only if SchedTune controller is mounted with
 	 * other hierarchies ane one of them fails. Since usually SchedTune is
@@ -713,6 +721,7 @@ schedtune_css_free(struct cgroup_subsys_state *css)
 struct cgroup_subsys schedtune_cgrp_subsys = {
 	.css_alloc	= schedtune_css_alloc,
 	.css_free	= schedtune_css_free,
+	.allow_attach   = schedtune_allow_attach,
 	.can_attach     = schedtune_can_attach,
 	.cancel_attach  = schedtune_cancel_attach,
 	.legacy_cftypes	= files,
@@ -885,6 +894,79 @@ schedtune_add_cluster_nrg(
 	}
 }
 
+static long
+schedtune_margin(unsigned long signal, long boost)
+{
+	long long margin = 0;
+
+	/*
+	 * Signal proportional compensation (SPC)
+	 *
+	 * The Boost (B) value is used to compute a Margin (M) which is
+	 * proportional to the complement of the original Signal (S):
+	 *   M = B * (SCHED_CAPACITY_SCALE - S)
+	 * The obtained M could be used by the caller to "boost" S.
+	 */
+	if (boost >= 0) {
+		margin  = SCHED_CAPACITY_SCALE - signal;
+		margin *= boost;
+	} else
+		margin = -signal * boost;
+
+	margin  = reciprocal_divide(margin, schedtune_spc_rdiv);
+
+	if (boost < 0)
+		margin *= -1;
+	return margin;
+}
+
+static inline int
+schedtune_cpu_margin(unsigned long util, int cpu)
+{
+	int boost = schedtune_cpu_boost(cpu);
+
+	if (boost == 0)
+		return 0;
+
+	return schedtune_margin(util, boost);
+}
+
+static inline long
+schedtune_task_margin(struct task_struct *task)
+{
+	int boost = schedtune_task_boost(task);
+	unsigned long util;
+	long margin;
+
+	if (boost == 0)
+		return 0;
+
+	util = task_util(task, UTIL_AVG);
+	margin = schedtune_margin(util, boost);
+
+	return margin;
+}
+
+unsigned long boosted_cpu_util(int cpu)
+{
+	unsigned long util = cpu_util(cpu, UTIL_EST);
+	long margin = schedtune_cpu_margin(util, cpu);
+
+	trace_sched_boost_cpu(cpu, util, margin);
+
+	return util + margin;
+}
+
+unsigned long boosted_task_util(struct task_struct *task)
+{
+	unsigned long util = task_util(task, UTIL_EST);
+	long margin = schedtune_task_margin(task);
+
+	trace_sched_boost_task(task, util, margin);
+
+	return util + margin;
+}
+
 /*
  * Initialize the constants required to compute normalized energy.
  * The values of these constants depends on the EM data for the specific
@@ -940,9 +1022,12 @@ schedtune_init(void)
 	pr_info("schedtune: configured to support global boosting only\n");
 #endif
 
+	schedtune_spc_rdiv = reciprocal_value(100);
+
 	return 0;
 
 nodata:
+	pr_warning("schedtune: disabled!\n");
 	rcu_read_unlock();
 	return -EINVAL;
 }
