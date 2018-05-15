@@ -21,7 +21,7 @@
 #include "../msm8996-nfc.dtsi"
 #include "msm8996-h1_kr-tdmb.dtsi"
 #include "msm8996-h1_kr-hdmi.dtsi"
-#include "msm8996-h1_kr-fingerprint.dtsi"
+#include "../msm8996-fingerprint-fpc1022.dtsi"
 #include "msm8996-h1_kr-usb.dtsi"
 #include "../msm8996-lineage.dtsi"
 
