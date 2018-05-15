@@ -17,7 +17,7 @@
 #include "msm8996-lucye_global_ldu-panel.dtsi"
 #include "msm8996-lucye_global_ldu-pm.dtsi"
 #include "msm8996-lucye_global_ldu-connectivity.dtsi"
-#include "msm8996-lucye_global_ldu-nfc.dtsi"
+#include "../msm8996-nfc.dtsi"
 #include "msm8996-lucye_global_ldu-hdmi.dtsi"
 #include "msm8996-lucye_global_ldu-fingerprint.dtsi"
 #include "msm8996-lucye_global_ldu-usb.dtsi"

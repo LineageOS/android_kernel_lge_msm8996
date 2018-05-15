@@ -18,7 +18,7 @@
 #include "msm8996-h1_global_esa-pm.dtsi"
 #include "msm8996-h1_global_esa-sound.dtsi"
 #include "msm8996-h1_global_esa-connectivity.dtsi"
-#include "msm8996-h1_global_esa-nfc.dtsi"
+#include "../msm8996-nfc.dtsi"
 #include "msm8996-h1_global_esa-tdmb.dtsi"
 #include "msm8996-h1_global_esa-hdmi.dtsi"
 #include "msm8996-h1_global_esa-fingerprint.dtsi"

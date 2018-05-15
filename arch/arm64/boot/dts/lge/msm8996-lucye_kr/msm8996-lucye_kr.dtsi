@@ -17,7 +17,7 @@
 #include "msm8996-lucye_kr-panel.dtsi"
 #include "msm8996-lucye_kr-pm.dtsi"
 #include "msm8996-lucye_kr-connectivity.dtsi"
-#include "msm8996-lucye_kr-nfc.dtsi"
+#include "../msm8996-nfc.dtsi"
 #include "msm8996-lucye_kr-mme.dtsi"
 #include "msm8996-lucye_kr-hdmi.dtsi"
 #include "msm8996-lucye_kr-fingerprint.dtsi"
