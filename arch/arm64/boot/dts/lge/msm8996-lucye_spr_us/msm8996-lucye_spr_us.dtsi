@@ -16,10 +16,11 @@
 #include "msm8996-lucye_spr_us-misc.dtsi"
 #include "msm8996-lucye_spr_us-panel.dtsi"
 #include "msm8996-lucye_spr_us-pm.dtsi"
-#include "msm8996-lucye_spr_us-connectivity.dtsi"
+#include "../msm8996-lucye-connectivity.dtsi"
+/* all other MSM8996 devices share ../msm8996-nfc.dtsi */
 #include "msm8996-lucye_spr_us-nfc.dtsi"
-#include "msm8996-lucye_spr_us-hdmi.dtsi"
-#include "msm8996-lucye_spr_us-fingerprint.dtsi"
+#include "../msm8996-lucye-hdmi.dtsi"
+#include "../msm8996-fingerprint-fpc1022.dtsi"
 #include "msm8996-lucye_spr_us-usb.dtsi"
 #include "../msm8996-lineage.dtsi"
 

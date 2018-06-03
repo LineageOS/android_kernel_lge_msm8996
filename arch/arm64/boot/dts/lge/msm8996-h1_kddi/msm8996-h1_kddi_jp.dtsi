@@ -17,11 +17,13 @@
 #include "msm8996-h1_kddi_jp-panel.dtsi"
 #include "msm8996-h1_kddi_jp-pm.dtsi"
 #include "msm8996-h1_kddi_jp-sound.dtsi"
+/* all other H1 devices share ../msm8996-h1-connectivity.dtsi */
 #include "msm8996-h1_kddi_jp-connectivity.dtsi"
+/* all other MSM8996 devices share ../msm8996-nfc.dtsi */
 #include "msm8996-h1_kddi_jp-nfc.dtsi"
 #include "msm8996-h1_kddi_jp-isdbt_japan_i2c.dtsi"
-#include "msm8996-h1_kddi_jp-hdmi.dtsi"
-#include "msm8996-h1_kddi_jp-fingerprint.dtsi"
+#include "../msm8996-h1-hdmi.dtsi"
+#include "../msm8996-fingerprint-fpc1022.dtsi"
 #include "msm8996-h1_kddi_jp-usb.dtsi"
 #include "../msm8996-lineage.dtsi"
 
