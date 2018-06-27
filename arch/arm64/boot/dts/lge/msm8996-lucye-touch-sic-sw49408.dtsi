@@ -129,7 +129,7 @@
 				hide_coordinate = <1>;
 
 				/* Firmware */
-				fw_image = "touch/lucye/L1L57P2_1_03.img",
+				fw_image = "touch/lucye/L1L57P2_1_05.img",
 					 "touch/lucye/L1L57P2_1_03.img";
 
 				panel_spec = "touch/lucye/lucye_limit.txt";
