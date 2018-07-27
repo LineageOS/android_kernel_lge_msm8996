@@ -649,6 +649,9 @@ static void lge_monitor_batt_temp_work(struct work_struct *work){
 #endif
 #endif
 #endif
+#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_CHARGER_SLEEP
+	union lge_power_propval lge_val = {0,};
+#endif
 	struct lge_charging_controller *cc =
 		container_of(work, struct lge_charging_controller,
 			battemp_work.work);
