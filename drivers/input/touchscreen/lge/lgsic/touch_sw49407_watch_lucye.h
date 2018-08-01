@@ -41,7 +41,7 @@ enum {
 /******************************************************************
 * CAPABILITY QUERY
 *******************************************************************/
-__packed struct ExtWatchFontDataQuery {
+struct __packed ExtWatchFontDataQuery {
 	bool Font_supported;	/* 0:not supported, 1:supported */
 	u8 max_font_x_size;		/* 1~9 number X max size. */
 	u8 max_font_y_size;		/* 1~9 number Y max size. */
@@ -59,14 +59,14 @@ struct ExtWatchFontTimeQuery {	/* 0:not supported, 1:supported */
 	bool	AmPm_supported;
 };
 
-__packed struct ExtWatchFontColorQuery {	/* 0:not supported, 1:supported */
+struct __packed ExtWatchFontColorQuery {	/* 0:not supported, 1:supported */
 	u8	max_num;					/* The number of LUT */
 	bool	LUT_supported;
 	bool	alpha_supported;
 	bool	gradation_supported;
 };
 
-__packed struct ExtWatchFontEffectQuery {
+struct __packed ExtWatchFontEffectQuery {
 	bool	zero_supported;		/* 0:display off, 1:display on */
 	u8	blink_type;				/* 0:blink disable, 1:125ms, 2:250ms, 3:500ms
 									4:1s, 5:2s, 6:3s, 7:8s*/
@@ -176,7 +176,7 @@ struct ExtWatchFontDataConfig {
 #define EXT_WATCH_RTC_START		1
 #define EXT_WATCH_RTC_STOP		2
 
-__packed struct ext_watch_ctrl_cfg {
+struct __packed ext_watch_ctrl_cfg {
 	//watch ctrl1
 	u8	dispmode:1;
 	u8	u2_u3_disp_on:1;
@@ -220,7 +220,7 @@ __packed struct ext_watch_ctrl_cfg {
 	u32	reserved11:24;
 };
 
-__packed struct ext_watch_lut_bits {
+struct __packed ext_watch_lut_bits {
 	u8  b;
 	u32 reserved0:24;
 	u8  g;
@@ -229,18 +229,18 @@ __packed struct ext_watch_lut_bits {
 	u32 reserved2:24;
 };
 
-__packed struct ext_watch_lut_cfg {
+struct __packed ext_watch_lut_cfg {
 	struct ext_watch_lut_bits lut[EXT_WATCH_LUT_MAX];
 };
 
-__packed struct ext_watch_time_bits {
+struct __packed ext_watch_time_bits {
 	u32 hour:5;
 	u32 min:6;
 	u32 sec:6;
 	u32 reserved0:15;
 };
 
-__packed struct ext_watch_time_cfg {
+struct __packed ext_watch_time_cfg {
 	u32 disp_waton;			/* watch display off:0, on:1*/
 	struct ext_watch_time_bits rtc_sct;
 	u32 rtc_sctcnt;
@@ -249,7 +249,7 @@ __packed struct ext_watch_time_cfg {
 	u32 rtc_ecnt;
 };
 
-__packed struct ext_watch_position_cfg {
+struct __packed ext_watch_position_cfg {
 	u32 h10x_pos:9;
 	u32 h1x_pos:9;
 	u32 reserved0:14;
@@ -271,7 +271,7 @@ __packed struct ext_watch_position_cfg {
 	u32 reserved5:8;
 };
 
-__packed struct ext_watch_status_cfg {
+struct __packed ext_watch_status_cfg {
 	u32 step:3;
 	u32 en:1;
 	u32 en_24:1;

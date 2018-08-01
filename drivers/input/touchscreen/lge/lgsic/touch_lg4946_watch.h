@@ -40,7 +40,7 @@ enum {
 /******************************************************************
 * CAPABILITY QUERY
 *******************************************************************/
-__packed struct ExtWatchFontDataQuery {
+struct __packed ExtWatchFontDataQuery {
 	bool Font_supported;	/* 0:not supported, 1:supported */
 	u8 max_font_x_size;	/* 1~9 number X max size. */
 	u8 max_font_y_size;	/* 1~9 number Y max size. */
@@ -58,14 +58,14 @@ struct ExtWatchFontTimeQuery { /* 0:not supported, 1:supported */
 	bool	AmPm_supported;
 };
 
-__packed struct ExtWatchFontColorQuery { /* 0:not supported, 1:supported */
+struct __packed ExtWatchFontColorQuery { /* 0:not supported, 1:supported */
 	u8	max_num;		/* The number of LUT */
 	bool	LUT_supported;
 	bool	alpha_supported;
 	bool	gradation_supported;
 };
 
-__packed struct ExtWatchFontEffectQuery {
+struct __packed ExtWatchFontEffectQuery {
 	bool	zero_supported;	/* 0:display off, 1:display on */
 	u8	blink_type;	/* 0:blink disable, 1:500ms, 2:1sec, 3:2sec. */
 };
@@ -167,38 +167,38 @@ struct ExtWatchFontDataConfig {
 #define EXT_WATCH_RTC_START		1
 #define EXT_WATCH_RTC_STOP		2
 
-__packed struct ext_watch_ctrl_bits {	/* 0x2D2 */
+struct __packed ext_watch_ctrl_bits {	/* 0x2D2 */
 	u32	reserved0:1;
 	u32	dispmode:1;	/* 0:U2, 1:AnyMode */
 	u32	reserved1:5;
 	u32	alpha:9;
 };
 
-__packed struct ext_watch_area_bits { /* 0x2D3, 0x2D4 */
+struct __packed ext_watch_area_bits { /* 0x2D3, 0x2D4 */
 	u32	watstart:12;
 	u32	watend:12;
 };
 
-__packed struct ext_watch_blink_area_bits { /* 0x2D5 */
+struct __packed ext_watch_blink_area_bits { /* 0x2D5 */
 	u32 bstartx:12;
 	u32 bendx:12;
 };
 
-__packed struct  ext_watch_lut_bits {	/* 0x2D6 */
+struct __packed  ext_watch_lut_bits {	/* 0x2D6 */
 	u8 b;
 	u8 g;
 	u8 r;
 	u8 reserved0;
 };
 
-__packed struct ext_watch_time_bits {
+struct __packed ext_watch_time_bits {
 	u32 hour:5;
 	u32 min:6;
 	u32 sec:6;
 	u32 reserved0:15;
 };
 
-__packed struct ext_watch_mode_cfg {	/* 36 bytes */
+struct __packed ext_watch_mode_cfg {	/* 36 bytes */
 	struct ext_watch_ctrl_bits watch_ctrl;		/* 2 bytes */
 	struct ext_watch_area_bits watch_area_x;		/* 3 bytes */
 	struct ext_watch_area_bits watch_area_y;		/* 3 bytes */
@@ -206,7 +206,7 @@ __packed struct ext_watch_mode_cfg {	/* 36 bytes */
 	struct ext_watch_lut_bits lut[EXT_WATCH_LUT_NUM];	/* 21 bytes */
 };
 
-__packed struct ext_watch_time_cfg {	/* 36 bytes */
+struct __packed ext_watch_time_cfg {	/* 36 bytes */
 	u32 disp_waton;		/* 0xC10 watch display off:0, on:1*/
 	struct ext_watch_time_bits rtc_sct;	/* 0x081 */
 	u32 rtc_sctcnt;						/* 0x082 */
@@ -216,7 +216,7 @@ __packed struct ext_watch_time_cfg {	/* 36 bytes */
 	u32 rtc_ecnt;						/* 0x088 */
 };
 
-__packed struct ext_watch_position_cfg {	/* 0xC11 */
+struct __packed ext_watch_position_cfg {	/* 0xC11 */
 	u32 h10x_pos:9;
 	u32 h1x_pos:9;
 	u32 reserved0:14;
@@ -238,7 +238,7 @@ __packed struct ext_watch_position_cfg {	/* 0xC11 */
 	u32 reserved5:8;
 };
 
-__packed struct ext_watch_status_cfg {	/* 0x270*/
+struct __packed ext_watch_status_cfg {	/* 0x270*/
 	u32 step:3;
 	u32 en:1;
 	u32 en_24:1;
