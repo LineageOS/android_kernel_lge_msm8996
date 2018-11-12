@@ -1,5 +1,5 @@
 /*******************************************************************************
- Copyright © 2015, STMicroelectronics International N.V.
+ Copyright © 2016, STMicroelectronics International N.V.
  All rights reserved.
 
  Redistribution and use in source and binary forms, with or without
@@ -114,10 +114,6 @@
 			(uint16_t)((((uint16_t)msb) << 8) + (uint16_t)lsb)
 
 /* Internal functions declaration */
-#if 0
-VL53L010_EXTERNAL VL53L0_Error VL53L010_set_vcsel_pulse_period(VL53L0_DEV Dev,
-				uint8_t VCSELPulsePeriod);
-#endif
 VL53L010_EXTERNAL VL53L0_Error VL53L010_get_vcsel_pulse_period(VL53L0_DEV Dev,
 				uint8_t *pVCSELPulsePeriod, uint8_t RangeIndex);
 VL53L010_EXTERNAL uint8_t VL53L010_encode_vcsel_period(uint8_t vcsel_period_pclks);
@@ -601,22 +597,23 @@ VL53L0_Error VL53L010_StaticInit(VL53L0_DEV Dev)
 
 	LOG_FUNCTION_START("");
 
-	/* Set I2C standard mode */
-	if (Status == VL53L0_ERROR_NONE)
-		Status = VL53L0_WrByte(Dev, 0x88, 0x00);
+    /* Set I2C standard mode */
+    if (Status == VL53L0_ERROR_NONE)
+        Status = VL53L0_WrByte(Dev, 0x88, 0x00);
 
 	/* this function do nothing if it has been called before */
 	Status = VL53L010_get_info_from_device(Dev);
 
-	if (Status == VL53L0_ERROR_NONE)
-		Revision = VL53L010_GETDEVICESPECIFICPARAMETER(Dev, Revision);
-
 	if (Status == VL53L0_ERROR_NONE) {
+        Revision = VL53L010_GETDEVICESPECIFICPARAMETER(Dev, Revision);
+    }
+
+    if (Status == VL53L0_ERROR_NONE) {
 		if (Revision == 0)
 			Status = VL53L010_load_additional_settings1(Dev);
 	}
 
-	/* update13_05_15 */
+    /* update13_05_15 */
 	if (Status == VL53L0_ERROR_NONE) {
 		if ((Revision <= 34) && (Revision != 32)) {
 
@@ -635,11 +632,11 @@ VL53L0_Error VL53L010_StaticInit(VL53L0_DEV Dev)
 		}
 	}
 
-	/* update 17_06_15_v10 */
+    /* update 17_06_15_v10 */
 	if (Status == VL53L0_ERROR_NONE)
 		Status = VL53L010_load_tuning_settings(Dev);
 
-	/* check if GO1 power is ON after load default tuning */
+    /* check if GO1 power is ON after load default tuning */
 	if (Status == VL53L0_ERROR_NONE) {
 		Status = VL53L0_RdByte(Dev, 0x80, &TempByte);
 		if ((TempByte != 0) && (Status == VL53L0_ERROR_NONE)) {
@@ -648,7 +645,7 @@ VL53L0_Error VL53L010_StaticInit(VL53L0_DEV Dev)
 		}
 	}
 
-	/* Set interrupt config to new sample ready */
+    /* Set interrupt config to new sample ready */
 	if (Status == VL53L0_ERROR_NONE) {
 		Status = VL53L010_SetGpioConfig(Dev, 0, 0,
 			VL53L010_REG_SYSTEM_INTERRUPT_GPIO_NEW_SAMPLE_READY,
@@ -1075,8 +1072,8 @@ VL53L0_Error VL53L010_GetMeasurementTimingBudgetMicroSeconds(VL53L0_DEV Dev,
 	uint8_t CurrentVCSELPulsePeriod;
 	uint8_t CurrentVCSELPulsePeriodPClk;
 	uint16_t encodedTimeOut;
-	uint32_t RangATimingBudgetMicroSeconds;
-	uint32_t RangBTimingBudgetMicroSeconds;
+	uint32_t RangATimingBudgetMicroSeconds = 0;
+	uint32_t RangBTimingBudgetMicroSeconds = 0;
 	uint8_t Byte;
 
 	LOG_FUNCTION_START("");
@@ -1442,7 +1439,7 @@ VL53L0_Error VL53L010_GetLimitCheckValue(VL53L0_DEV Dev,
 
     LOG_FUNCTION_END(Status);
     return Status;
-
+    
 }
 
 VL53L0_Error VL53L010_GetLimitCheckCurrent(VL53L0_DEV Dev,

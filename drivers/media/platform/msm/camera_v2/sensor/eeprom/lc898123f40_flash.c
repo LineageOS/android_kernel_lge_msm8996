@@ -18,7 +18,7 @@
 #include "msm_cci.h"
 #include "msm_eeprom.h"
 
-#ifdef CONFIG_MACH_LGE
+#if 1 //def CONFIG_MACH_LGE
 #include "msm_eeprom_util.h"
 #endif
 #undef CDBG
@@ -1750,7 +1750,7 @@ static int eeprom_init_config32(struct msm_eeprom_ctrl_t *e_ctrl,
 		pr_err("%s:%d Power down failed rc %d\n",
 			__func__, __LINE__, rc);
 
-#ifdef CONFIG_MACH_LGE
+#if 1 //def CONFIG_MACH_LGE
 	msm_eeprom_set_maker_id(e_ctrl->cal_data.mapdata[EEPROM_OFFSET_MODULE_MAKER]);
 #endif
 
@@ -2039,7 +2039,7 @@ static int msm_eeprom_platform_probe(struct platform_device *pdev)
 
 	e_ctrl->is_supported = (e_ctrl->is_supported << 1) | 1;
 
-#ifdef CONFIG_MACH_LGE
+#if 1 //def CONFIG_MACH_LGE
 	msm_eeprom_create_sysfs();
 #endif
 
@@ -2151,7 +2151,7 @@ static int __init msm_eeprom_init_module(void)
 static void __exit msm_eeprom_exit_module(void)
 {
 	platform_driver_unregister(&msm_eeprom_platform_driver);
-#ifdef CONFIG_MACH_LGE
+#if 1 //def CONFIG_MACH_LGE
 	msm_eeprom_destroy_sysfs();
 #endif
 	spi_unregister_driver(&msm_eeprom_spi_driver);

@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -29,7 +29,7 @@
 #include <media/videobuf2-dma-contig.h>
 #include <media/msmb_camera.h>
 
-#ifdef CONFIG_MACH_LGE
+#if 1 //def CONFIG_MACH_LGE
 /* LGE_CHANGE_S, camera stability task, added  msm-config debugfs*/
 #include <linux/debugfs.h>
 #define LGE_DEBUG_DISABLE_TIMEOUT	1
@@ -41,11 +41,11 @@
 /* LGE_CHANGE_E, camera stability task, added  msm-config debugfs*/
 #endif
 
-/* Setting MAX timeout to 6.5seconds considering
+/* Setting MAX timeout to 10seconds considering
  * backend will operate @ .6fps in certain usecases
  * like Long exposure usecase and isp needs max of 2 frames
  * to stop the hardware which will be around 3 seconds*/
-#define MSM_POST_EVT_TIMEOUT 6500
+#define MSM_POST_EVT_TIMEOUT 10000
 #define MSM_POST_EVT_NOTIMEOUT 0xFFFFFFFF
 #define MSM_CAMERA_STREAM_CNT_BITS  32
 
@@ -57,6 +57,7 @@ extern bool is_daemon_status;
 struct msm_video_device {
 	struct video_device *vdev;
 	atomic_t opened;
+	struct mutex video_drvdata_mutex;
 };
 
 struct msm_queue_head {

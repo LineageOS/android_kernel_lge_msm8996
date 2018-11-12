@@ -97,10 +97,8 @@ enum sensor_sub_module_t {
 	SUB_MODULE_CSIPHY_3D,
 	SUB_MODULE_OIS,
 	SUB_MODULE_EXT,
-#ifndef CONFIG_LGE_CAMERA_DRIVER
 	SUB_MODULE_IR_LED,
 	SUB_MODULE_IR_CUT,
-#endif
 
 #if 1 /* CONFIG_MACH_LGE */
 	SUB_MODULE_PROXY,
@@ -327,7 +325,6 @@ struct msm_eeprom_info_t {
 	struct msm_eeprom_memory_map_array *mem_map_array;
 };
 
-#ifndef CONFIG_LGE_CAMERA_DRIVER
 struct msm_ir_led_cfg_data_t {
 	enum msm_ir_led_cfg_type_t cfg_type;
 	int32_t pwm_duty_on_ns;
@@ -337,7 +334,6 @@ struct msm_ir_led_cfg_data_t {
 struct msm_ir_cut_cfg_data_t {
 	enum msm_ir_cut_cfg_type_t cfg_type;
 };
-#endif
 
 struct msm_eeprom_cfg_data {
 	enum eeprom_cfg_type_t cfgtype;
@@ -379,6 +375,7 @@ enum msm_sensor_cfg_type_t {
 	CFG_SET_AUTOFOCUS,
 	CFG_CANCEL_AUTOFOCUS,
 	CFG_SET_STREAM_TYPE,
+	CFG_GET_SENSER_TEMPERATURE,/*LGE_CHANGE, LG_AF, 2017, By AF Member*/
 	CFG_SET_I2C_SYNC_PARAM,
 	CFG_WRITE_I2C_ARRAY_ASYNC,
 	CFG_WRITE_I2C_ARRAY_SYNC,
@@ -647,9 +644,7 @@ struct msm_ois_slave_info {
 };
 struct msm_ois_cfg_data {
 	int cfgtype;
-#ifdef CONFIG_MACH_MSM8996_LUCYE
 	uint16_t eeprom_slave_addr;
-#endif
 	union {
 		struct msm_ois_set_info_t set_info;
 		struct msm_camera_i2c_seq_reg_setting *settings;
@@ -804,14 +799,18 @@ struct msm_tcs_cfg_data32 {
 #define VIDIOC_MSM_OIS_CFG_DOWNLOAD \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 14, struct msm_ois_cfg_download_data)
 
-#ifndef CONFIG_LGE_CAMERA_DRIVER
 #define VIDIOC_MSM_IR_LED_CFG \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 15, struct msm_ir_led_cfg_data_t)
 
 #define VIDIOC_MSM_IR_CUT_CFG \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 15, struct msm_ir_cut_cfg_data_t)
 
-#endif
+#define VIDIOC_MSM_IR_LED_CFG \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 15, struct msm_ir_led_cfg_data_t)
+
+#define VIDIOC_MSM_IR_CUT_CFG \
+	_IOWR('V', BASE_VIDIOC_PRIVATE + 15, struct msm_ir_cut_cfg_data_t)
+
 #if 1 /* CONFIG_MACH_LGE */
 #define VIDIOC_MSM_PROXY_CFG \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 12, struct msm_proxy_cfg_data)
