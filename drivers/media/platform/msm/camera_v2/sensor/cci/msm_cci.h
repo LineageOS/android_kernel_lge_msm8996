@@ -61,7 +61,7 @@ struct msm_camera_cci_client {
 	uint16_t retries;
 	uint16_t id_map;
 
-#ifdef CONFIG_MACH_LGE
+#if 1 //def CONFIG_MACH_LGE
 	bool  cci_acquired;	/*LGE_CHANGE, CST, check if cci is acquired */
 #endif
 };

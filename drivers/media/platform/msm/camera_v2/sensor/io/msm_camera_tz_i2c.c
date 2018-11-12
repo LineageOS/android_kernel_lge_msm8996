@@ -14,7 +14,7 @@
 #include <linux/mutex.h>
 #include <soc/qcom/camera2.h>
 #include "qseecom_kernel.h"
-#include "msm_camera_i2c.h"
+#include "../drivers/media/platform/msm/camera_v2/sensor/io/msm_camera_i2c.h"
 #include "msm_camera_io_util.h"
 #include "msm_cci.h"
 #include "msm_sensor.h"

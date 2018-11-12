@@ -10,7 +10,7 @@
  * GNU General Public License for more details.
  */
 
-#define SENSOR_DRIVER_I2C "i2c_camera"
+#define SENSOR_DRIVER_I2C "i2c_camera" //LGE_CHANGE
 /* Header file declaration */
 #include "msm_sensor.h"
 #include "msm_sd.h"
@@ -21,7 +21,7 @@
 #define SENSOR_INFO
 /* Logging macro */
 #undef CDBG
-#define CDBG(fmt, args...) pr_err(fmt, ##args)
+#define CDBG(fmt, args...) pr_debug(fmt, ##args)
 
 #define SENSOR_MAX_MOUNTANGLE (360)
 
@@ -37,128 +37,6 @@ static int32_t msm_sensor_driver_platform_probe(struct platform_device *pdev);
 
 /* Static declaration */
 static struct msm_sensor_ctrl_t *g_sctrl[MAX_CAMERAS];
-
-#ifdef CONFIG_LGE_CAMERA_DRIVER
-#ifdef CONFIG_MACH_MSM8996_H1
-static struct msm_sensor_power_setting imx234_power_up[] = {
-	{.seq_type = 1, .seq_val = 0, .config_val = 0, .delay = 1,},
-	{.seq_type = 1, .seq_val = 8, .config_val = 0, .delay = 1,},
-	{.seq_type = 1, .seq_val = 4, .config_val = 2, .delay = 1,},
-	{.seq_type = 2, .seq_val = 0, .config_val = 0, .delay = 1,},
-	{.seq_type = 2, .seq_val = 1, .config_val = 0, .delay = 1,},
-	{.seq_type = 2, .seq_val = 4, .config_val = 0, .delay = 1,},
-	{.seq_type = 2, .seq_val = 5, .config_val = 0, .delay = 1,},
-	{.seq_type = 1, .seq_val = 7, .config_val = 2, .delay = 1,},
-	{.seq_type = 1, .seq_val = 0, .config_val = 2, .delay = 1,},
-	{.seq_type = 1, .seq_val = 8, .config_val = 2, .delay = 21,},
-	{.seq_type = 0, .seq_val = 0, .config_val = 24000000, .delay = 1,},
-	{.seq_type = 3, .seq_val = 0, .config_val = 0, .delay = 10,},
-};
-static struct msm_sensor_power_setting imx234_power_down[] = {
-	{.seq_type = 3, .seq_val = 0, .config_val = 0, .delay = 2,},
-	{.seq_type = 0, .seq_val = 0, .config_val = 0, .delay = 1,},
-	{.seq_type = 1, .seq_val = 0, .config_val = 0, .delay = 1,},
-	{.seq_type = 1, .seq_val = 8, .config_val = 0, .delay = 1,},
-	{.seq_type = 1, .seq_val = 4, .config_val = 0, .delay = 1,},
-	{.seq_type = 2, .seq_val = 0, .config_val = 0, .delay = 1,},
-	{.seq_type = 2, .seq_val = 1, .config_val = 0, .delay = 0,},
-	{.seq_type = 2, .seq_val = 5, .config_val = 0, .delay = 1,},
-	{.seq_type = 2, .seq_val = 4, .config_val = 0, .delay = 1,},
-	{.seq_type = 1, .seq_val = 7, .config_val = 0, .delay = 1,},
-};
-static struct msm_sensor_power_setting t4ka3_power_up[] = {
-	{.seq_type = 1, .seq_val = 0, .config_val = 0, .delay = 1},
-	{.seq_type = 2, .seq_val = 0, .config_val = 0, .delay = 1},
-	{.seq_type = 2, .seq_val = 2, .config_val = 0, .delay = 1},
-	{.seq_type = 2, .seq_val = 1, .config_val = 0, .delay = 1},
-	{.seq_type = 0, .seq_val = 0, .config_val = 24000000, .delay = 2},
-	{.seq_type = 1, .seq_val = 0, .config_val = 2, .delay = 2},
-	{.seq_type = 3, .seq_val = 0, .config_val = 0, .delay = 2},
-};
-static struct msm_sensor_power_setting t4ka3_power_down[] = {
-	{.seq_type = 3, .seq_val = 0, .config_val = 0, .delay = 1},
-	{.seq_type = 1, .seq_val = 0, .config_val = 0, .delay = 2},
-	{.seq_type = 0, .seq_val = 0, .config_val = 0, .delay = 1},
-	{.seq_type = 2, .seq_val = 2, .config_val = 0, .delay = 0},
-	{.seq_type = 2, .seq_val = 1, .config_val = 0, .delay = 0},
-	{.seq_type = 2, .seq_val = 0, .config_val = 0, .delay = 1},
-};
-static struct msm_sensor_power_setting imx268_power_up[] = {
-	{.seq_type = 1, .seq_val = 0, .config_val = 0, .delay = 1,},
-	{.seq_type = 1, .seq_val = 4, .config_val = 2, .delay = 1,},
-	{.seq_type = 2, .seq_val = 1, .config_val = 0, .delay = 1,},
-	{.seq_type = 2, .seq_val = 0, .config_val = 0, .delay = 1,},
-	{.seq_type = 0, .seq_val = 0, .config_val = 24000000, .delay = 1,},
-	{.seq_type = 1, .seq_val = 0, .config_val = 2, .delay = 13,},
-	{.seq_type = 3, .seq_val = 0, .config_val = 0, .delay = 10,},
-	{.seq_type = 2, .seq_val = 7, .config_val = 0, .delay = 1,},
-	{.seq_type = 1, .seq_val = 9, .config_val = 2, .delay = 1,},
-};
-static struct msm_sensor_power_setting imx268_power_down[] = {
-	{.seq_type = 1, .seq_val = 9, .config_val = 0, .delay = 1,},
-	{.seq_type = 2, .seq_val = 7, .config_val = 0, .delay = 1,},
-	{.seq_type = 3, .seq_val = 0, .config_val = 0, .delay = 2,},
-	{.seq_type = 0, .seq_val = 0, .config_val = 0, .delay = 1,},
-	{.seq_type = 1, .seq_val = 0, .config_val = 0, .delay = 1,},
-	{.seq_type = 1, .seq_val = 4, .config_val = 0, .delay = 0,},
-	{.seq_type = 2, .seq_val = 1, .config_val = 0, .delay = 0,},
-	{.seq_type = 2, .seq_val = 0, .config_val = 0, .delay = 1,},
-};
-#endif
-#ifdef CONFIG_MACH_MSM8996_ELSA
-static struct msm_sensor_power_setting imx298_lgit_power_up[] = {
-	{.seq_type = 1, .seq_val = 8, .config_val = 0, .delay = 1,},
-	{.seq_type = 1, .seq_val = 4, .config_val = 2, .delay = 0,},
-	{.seq_type = 2, .seq_val = 0, .config_val = 0, .delay = 0,},
-	{.seq_type = 2, .seq_val = 1, .config_val = 0, .delay = 0,},
-	{.seq_type = 2, .seq_val = 4, .config_val = 0, .delay = 0,},
-	{.seq_type = 2, .seq_val = 5, .config_val = 0, .delay = 0,},
-	{.seq_type = 0, .seq_val = 0, .config_val = 24000000, .delay = 1,},
-	{.seq_type = 1, .seq_val = 7, .config_val = 2, .delay = 1,},
-	{.seq_type = 1, .seq_val = 0, .config_val = 2, .delay = 1,},
-	{.seq_type = 1, .seq_val = 8, .config_val = 2, .delay = 21,},
-};
-static struct msm_sensor_power_setting imx298_lgit_power_down[] = {
-	{.seq_type = 0, .seq_val = 0, .config_val = 0, .delay = 1,},
-	{.seq_type = 1, .seq_val = 8, .config_val = 0, .delay = 1,},
-	{.seq_type = 1, .seq_val = 0, .config_val = 0, .delay = 1,},
-	{.seq_type = 2, .seq_val = 5, .config_val = 0, .delay = 0,},
-	{.seq_type = 2, .seq_val = 4, .config_val = 0, .delay = 0,},
-	{.seq_type = 2, .seq_val = 1, .config_val = 0, .delay = 0,},
-	{.seq_type = 2, .seq_val = 0, .config_val = 0, .delay = 0,},
-	{.seq_type = 1, .seq_val = 4, .config_val = 0, .delay = 0,},
-	{.seq_type = 1, .seq_val = 7, .config_val = 0, .delay = 1,},
-};
-static struct msm_sensor_power_setting hi553_power_up[] = {
-	{.seq_type = 2, .seq_val = 1, .config_val = 0, .delay = 0},
-	{.seq_type = 2, .seq_val = 2, .config_val = 0, .delay = 0},
-	{.seq_type = 2, .seq_val = 0, .config_val = 0, .delay = 0},
-	{.seq_type = 0, .seq_val = 0, .config_val = 24000000, .delay = 1},
-	{.seq_type = 1, .seq_val = 0, .config_val = 2, .delay = 1},
-};
-static struct msm_sensor_power_setting hi553_power_down[] = {
-	{.seq_type = 1, .seq_val = 0, .config_val = 0, .delay = 1},
-	{.seq_type = 0, .seq_val = 0, .config_val = 0, .delay = 1},
-	{.seq_type = 2, .seq_val = 0, .config_val = 0, .delay = 0},
-	{.seq_type = 2, .seq_val = 2, .config_val = 0, .delay = 0},
-	{.seq_type = 2, .seq_val = 1, .config_val = 0, .delay = 0},
-};
-static struct msm_sensor_power_setting imx219_power_up[] = {
-	{.seq_type = 2, .seq_val = 0, .config_val = 0, .delay = 0},
-	{.seq_type = 1, .seq_val = 4, .config_val = 2, .delay = 0},
-	{.seq_type = 2, .seq_val = 1, .config_val = 0, .delay = 0},
-	{.seq_type = 0, .seq_val = 0, .config_val = 24000000, .delay = 1},
-	{.seq_type = 1, .seq_val = 0, .config_val = 2, .delay = 1},
-};
-static struct msm_sensor_power_setting imx219_power_down[] = {
-	{.seq_type = 1, .seq_val = 0, .config_val = 0, .delay = 1},
-	{.seq_type = 2, .seq_val = 1, .config_val = 0, .delay = 0},
-	{.seq_type = 1, .seq_val = 4, .config_val = 0, .delay = 0},
-	{.seq_type = 2, .seq_val = 0, .config_val = 0, .delay = 0},
-	{.seq_type = 0, .seq_val = 0, .config_val = 0, .delay = 0},
-};
-#endif
-#endif
 
 static int msm_sensor_platform_remove(struct platform_device *pdev)
 {
@@ -216,11 +94,14 @@ static int32_t msm_sensor_driver_create_i2c_v4l_subdev
 	struct i2c_client *client = s_ctrl->sensor_i2c_client->client;
 
 	CDBG("%s %s I2c probe succeeded\n", __func__, client->name);
-	rc = camera_init_v4l2(&client->dev, &session_id);
-	if (rc < 0) {
-		pr_err("failed: camera_init_i2c_v4l2 rc %d", rc);
-		return rc;
+	if (0 == s_ctrl->bypass_video_node_creation) {
+		rc = camera_init_v4l2(&client->dev, &session_id);
+		if (rc < 0) {
+			pr_err("failed: camera_init_i2c_v4l2 rc %d", rc);
+			return rc;
+		}
 	}
+
 	CDBG("%s rc %d session_id %d\n", __func__, rc, session_id);
 	snprintf(s_ctrl->msm_sd.sd.name,
 		sizeof(s_ctrl->msm_sd.sd.name), "%s",
@@ -235,7 +116,11 @@ static int32_t msm_sensor_driver_create_i2c_v4l_subdev
 	s_ctrl->msm_sd.sd.entity.name =	s_ctrl->msm_sd.sd.name;
 	s_ctrl->sensordata->sensor_info->session_id = session_id;
 	s_ctrl->msm_sd.close_seq = MSM_SD_CLOSE_2ND_CATEGORY | 0x3;
-	msm_sd_register(&s_ctrl->msm_sd);
+	rc = msm_sd_register(&s_ctrl->msm_sd);
+	if (rc < 0) {
+		pr_err("failed: msm_sd_register rc %d", rc);
+		return rc;
+	}
 	msm_sensor_v4l2_subdev_fops = v4l2_subdev_fops;
 #ifdef CONFIG_COMPAT
 	msm_sensor_v4l2_subdev_fops.compat_ioctl32 =
@@ -253,11 +138,14 @@ static int32_t msm_sensor_driver_create_v4l_subdev
 	int32_t rc = 0;
 	uint32_t session_id = 0;
 
-	rc = camera_init_v4l2(&s_ctrl->pdev->dev, &session_id);
-	if (rc < 0) {
-		pr_err("failed: camera_init_v4l2 rc %d", rc);
-		return rc;
+	if (0 == s_ctrl->bypass_video_node_creation) {
+		rc = camera_init_v4l2(&s_ctrl->pdev->dev, &session_id);
+		if (rc < 0) {
+			pr_err("failed: camera_init_v4l2 rc %d", rc);
+			return rc;
+		}
 	}
+
 	CDBG("rc %d session_id %d", rc, session_id);
 	s_ctrl->sensordata->sensor_info->session_id = session_id;
 
@@ -272,7 +160,11 @@ static int32_t msm_sensor_driver_create_v4l_subdev
 	s_ctrl->msm_sd.sd.entity.group_id = MSM_CAMERA_SUBDEV_SENSOR;
 	s_ctrl->msm_sd.sd.entity.name = s_ctrl->msm_sd.sd.name;
 	s_ctrl->msm_sd.close_seq = MSM_SD_CLOSE_2ND_CATEGORY | 0x3;
-	msm_sd_register(&s_ctrl->msm_sd);
+	rc = msm_sd_register(&s_ctrl->msm_sd);
+	if (rc < 0) {
+		pr_err("failed: msm_sd_register rc %d", rc);
+		return rc;
+	}
 	msm_cam_copy_v4l2_subdev_fops(&msm_sensor_v4l2_subdev_fops);
 #ifdef CONFIG_COMPAT
 	msm_sensor_v4l2_subdev_fops.compat_ioctl32 =
@@ -460,7 +352,43 @@ static int32_t msm_sensor_fill_ois_subdevid_by_name(
 	return rc;
 }
 
-#ifdef CONFIG_LGE_CAMERA_DRIVER
+static int32_t msm_sensor_fill_flash_subdevid_by_name(
+				struct msm_sensor_ctrl_t *s_ctrl)
+{
+	int32_t rc = 0;
+	struct device_node *src_node = NULL;
+	uint32_t val = 0;
+	int32_t *flash_subdev_id;
+	struct  msm_sensor_info_t *sensor_info;
+	struct device_node *of_node = s_ctrl->of_node;
+
+	if (!of_node)
+		return -EINVAL;
+
+	sensor_info = s_ctrl->sensordata->sensor_info;
+	flash_subdev_id = &sensor_info->subdev_id[SUB_MODULE_LED_FLASH];
+
+	*flash_subdev_id = -1;
+
+	src_node = of_parse_phandle(of_node, "qcom,led-flash-src", 0);
+	if (!src_node) {
+		CDBG("%s:%d src_node NULL\n", __func__, __LINE__);
+	} else {
+		rc = of_property_read_u32(src_node, "cell-index", &val);
+		CDBG("%s qcom,flash cell index %d, rc %d\n", __func__,
+			val, rc);
+		if (rc < 0) {
+			pr_err("%s failed %d\n", __func__, __LINE__);
+			return -EINVAL;
+		}
+		*flash_subdev_id = val;
+		of_node_put(src_node);
+		src_node = NULL;
+	}
+	return rc;
+}
+
+#if 1 //def CONFIG_MACH_LGE
 static int32_t msm_sensor_fill_tcs_subdevid_by_name(
 				struct msm_sensor_ctrl_t *s_ctrl)
 {
@@ -718,31 +646,6 @@ static int32_t msm_sensor_get_power_down_settings(void *setting,
 	size_down = slave_info->power_setting_array.size_down;
 	if (!size_down || size_down > MAX_POWER_CONFIG)
 		size_down = slave_info->power_setting_array.size;
-#ifdef CONFIG_LGE_CAMERA_DRIVER
-#ifdef CONFIG_MACH_MSM8996_H1
-    if(slave_info->camera_id == 0){
-        size_down = ARRAY_SIZE(imx234_power_down);
-    }
-    else if(slave_info->camera_id == 1){
-        size_down = ARRAY_SIZE(t4ka3_power_down);
-    }
-	else if(slave_info->camera_id == 2){
-        size_down = ARRAY_SIZE(imx268_power_down);
-    }
-#endif
-#ifdef CONFIG_MACH_MSM8996_ELSA
-    if(slave_info->camera_id == 0){
-        size_down = ARRAY_SIZE(imx298_lgit_power_down);
-    }
-    else if(slave_info->camera_id == 1){
-        size_down = ARRAY_SIZE(hi553_power_down);
-    }
-	else if(slave_info->camera_id == 2){
-        size_down = ARRAY_SIZE(imx219_power_down);
-    }
-#endif
-#endif
-
 	/* Validate size_down */
 	if (size_down > MAX_POWER_CONFIG) {
 		pr_err("failed: invalid size_down %d", size_down);
@@ -756,79 +659,9 @@ static int32_t msm_sensor_get_power_down_settings(void *setting,
 	if (slave_info->power_setting_array.power_down_setting) {
 #ifdef CONFIG_COMPAT
 		if (is_compat_task()) {
-#ifdef CONFIG_LGE_CAMERA_DRIVER
-#ifdef CONFIG_MACH_MSM8996_H1
-            if(slave_info->camera_id == 0){
-            pr_err("msm_sensor_get_power_down_settings: forcing imx234_power_down\n");
-            for (i = 0; i < size_down; i++) {
-		      pd[i].config_val = imx234_power_down[i].config_val;
-		      pd[i].delay = imx234_power_down[i].delay;
-		      pd[i].seq_type = imx234_power_down[i].seq_type;
-		      pd[i].seq_val = imx234_power_down[i].seq_val;
-	        }
-            rc = 1;
-        }
-		else if(slave_info->camera_id == 1){
-            pr_err("msm_sensor_get_power_down_settings: forcing t4ka3_power_down\n");
-            for (i = 0; i < size_down; i++) {
-		      pd[i].config_val = t4ka3_power_down[i].config_val;
-		      pd[i].delay = t4ka3_power_down[i].delay;
-		      pd[i].seq_type = t4ka3_power_down[i].seq_type;
-		      pd[i].seq_val = t4ka3_power_down[i].seq_val;
-	        }
-            rc = 1;
-        }
-		else if(slave_info->camera_id == 2){
-            pr_err("msm_sensor_get_power_down_settings: forcing imx268_power_down\n");
-            for (i = 0; i < size_down; i++) {
-		      pd[i].config_val = imx268_power_down[i].config_val;
-		      pd[i].delay = imx268_power_down[i].delay;
-		      pd[i].seq_type = imx268_power_down[i].seq_type;
-		      pd[i].seq_val = imx268_power_down[i].seq_val;
-	        }
-            rc = 1;
-        }
-        else
-#endif
-#ifdef CONFIG_MACH_MSM8996_ELSA
-            if(slave_info->camera_id == 0){
-            pr_err("msm_sensor_get_power_down_settings: forcing imx298_lgit_power_down\n");
-            for (i = 0; i < size_down; i++) {
-		      pd[i].config_val = imx298_lgit_power_down[i].config_val;
-		      pd[i].delay = imx298_lgit_power_down[i].delay;
-		      pd[i].seq_type = imx298_lgit_power_down[i].seq_type;
-		      pd[i].seq_val = imx298_lgit_power_down[i].seq_val;
-	        }
-            rc = 1;
-        }
-		else if(slave_info->camera_id == 1){
-            pr_err("msm_sensor_get_power_down_settings: forcing hi553_power_down\n");
-            for (i = 0; i < size_down; i++) {
-		      pd[i].config_val = hi553_power_down[i].config_val;
-		      pd[i].delay = hi553_power_down[i].delay;
-		      pd[i].seq_type = hi553_power_down[i].seq_type;
-		      pd[i].seq_val = hi553_power_down[i].seq_val;
-	        }
-            rc = 1;
-        }
-		else if(slave_info->camera_id == 2){
-            pr_err("msm_sensor_get_power_down_settings: forcing imx219_power_down\n");
-            for (i = 0; i < size_down; i++) {
-		      pd[i].config_val = imx219_power_down[i].config_val;
-		      pd[i].delay = imx219_power_down[i].delay;
-		      pd[i].seq_type = imx219_power_down[i].seq_type;
-		      pd[i].seq_val = imx219_power_down[i].seq_val;
-	        }
-            rc = 1;
-        }
-        else
-#endif
-#endif
-        {
 			rc = msm_sensor_get_pw_settings_compat(
 				pd, slave_info->power_setting_array.
 				power_down_setting, size_down);
-        }
 			if (rc < 0) {
 				pr_err("failed");
 				kfree(pd);
@@ -859,7 +692,7 @@ static int32_t msm_sensor_get_power_down_settings(void *setting,
 
 	/* Print power setting */
 	for (i = 0; i < size_down; i++) {
-		CDBG("DOWN seq_type %d seq_val %d config_val %ld delay %d\n",
+		CDBG("DOWN seq_type %d seq_val %d config_val %ld delay %d",
 			pd[i].seq_type, pd[i].seq_val,
 			pd[i].config_val, pd[i].delay);
 	}
@@ -877,31 +710,6 @@ static int32_t msm_sensor_get_power_up_settings(void *setting,
 
 	size = slave_info->power_setting_array.size;
 
-#ifdef CONFIG_LGE_CAMERA_DRIVER
-#ifdef CONFIG_MACH_MSM8996_H1
-    if(slave_info->camera_id == 0){
-        size = ARRAY_SIZE(imx234_power_up);
-    }
-    else if(slave_info->camera_id == 1){
-        size = ARRAY_SIZE(t4ka3_power_up);
-    }
-	else if(slave_info->camera_id == 2){
-        size = ARRAY_SIZE(imx268_power_up);
-    }
-#endif
-#ifdef CONFIG_MACH_MSM8996_ELSA
-    if(slave_info->camera_id == 0){
-        size = ARRAY_SIZE(imx298_lgit_power_up);
-    }
-    else if(slave_info->camera_id == 1){
-        size = ARRAY_SIZE(hi553_power_up);
-    }
-	else if(slave_info->camera_id == 2){
-        size = ARRAY_SIZE(imx219_power_up);
-    }
-#endif
-#endif
-
 	/* Validate size */
 	if ((size == 0) || (size > MAX_POWER_CONFIG)) {
 		pr_err("failed: invalid power_setting size_up = %d\n", size);
@@ -915,79 +723,9 @@ static int32_t msm_sensor_get_power_up_settings(void *setting,
 
 #ifdef CONFIG_COMPAT
 	if (is_compat_task()) {
-#ifdef CONFIG_LGE_CAMERA_DRIVER
-#ifdef CONFIG_MACH_MSM8996_H1
-		if(slave_info->camera_id == 0){
-            pr_err("msm_sensor_get_power_up_settings: forcing imx234_power_up\n");
-            for (i = 0; i < size; i++) {
-		      pu[i].config_val = imx234_power_up[i].config_val;
-		      pu[i].delay = imx234_power_up[i].delay;
-		      pu[i].seq_type = imx234_power_up[i].seq_type;
-		      pu[i].seq_val = imx234_power_up[i].seq_val;
-	        }
-            rc = 1;
-        }
-		else if(slave_info->camera_id == 1){
-            pr_err("msm_sensor_get_power_up_settings: forcing t4ka3_power_up\n");
-            for (i = 0; i < size; i++) {
-		      pu[i].config_val = t4ka3_power_up[i].config_val;
-		      pu[i].delay = t4ka3_power_up[i].delay;
-		      pu[i].seq_type = t4ka3_power_up[i].seq_type;
-		      pu[i].seq_val = t4ka3_power_up[i].seq_val;
-	        }
-            rc = 1;
-        }
-		else if(slave_info->camera_id == 2){
-            pr_err("msm_sensor_get_power_up_settings: forcing imx268_power_up\n");
-            for (i = 0; i < size; i++) {
-		      pu[i].config_val = imx268_power_up[i].config_val;
-		      pu[i].delay = imx268_power_up[i].delay;
-		      pu[i].seq_type = imx268_power_up[i].seq_type;
-		      pu[i].seq_val = imx268_power_up[i].seq_val;
-	        }
-            rc = 1;
-        }
-        else
-#endif
-#ifdef CONFIG_MACH_MSM8996_ELSA
-		if(slave_info->camera_id == 0){
-            pr_err("msm_sensor_get_power_up_settings: forcing imx298_lgit_power_up\n");
-            for (i = 0; i < size; i++) {
-		      pu[i].config_val = imx298_lgit_power_up[i].config_val;
-		      pu[i].delay = imx298_lgit_power_up[i].delay;
-		      pu[i].seq_type = imx298_lgit_power_up[i].seq_type;
-		      pu[i].seq_val = imx298_lgit_power_up[i].seq_val;
-	        }
-            rc = 1;
-        }
-		else if(slave_info->camera_id == 1){
-            pr_err("msm_sensor_get_power_up_settings: forcing hi553_power_up\n");
-            for (i = 0; i < size; i++) {
-		      pu[i].config_val = hi553_power_up[i].config_val;
-		      pu[i].delay = hi553_power_up[i].delay;
-		      pu[i].seq_type = hi553_power_up[i].seq_type;
-		      pu[i].seq_val = hi553_power_up[i].seq_val;
-	        }
-            rc = 1;
-        }
-		else if(slave_info->camera_id == 2){
-            pr_err("msm_sensor_get_power_up_settings: forcing imx219_power_up\n");
-            for (i = 0; i < size; i++) {
-		      pu[i].config_val = imx219_power_up[i].config_val;
-		      pu[i].delay = imx219_power_up[i].delay;
-		      pu[i].seq_type = imx219_power_up[i].seq_type;
-		      pu[i].seq_val = imx219_power_up[i].seq_val;
-	        }
-            rc = 1;
-        }
-        else
-#endif
-#endif
-        {
-        rc = msm_sensor_get_pw_settings_compat(pu,
+		rc = msm_sensor_get_pw_settings_compat(pu,
 			slave_info->power_setting_array.
 				power_setting, size);
-        }
 		if (rc < 0) {
 			pr_err("failed");
 			kfree(pu);
@@ -1007,7 +745,7 @@ static int32_t msm_sensor_get_power_up_settings(void *setting,
 
 	/* Print power setting */
 	for (i = 0; i < size; i++) {
-		CDBG("UP seq_type %d seq_val %d config_val %ld delay %d\n",
+		CDBG("UP seq_type %d seq_val %d config_val %ld delay %d",
 			pu[i].seq_type, pu[i].seq_val,
 			pu[i].config_val, pu[i].delay);
 	}
@@ -1133,7 +871,7 @@ int32_t msm_sensor_driver_probe(void *setting,
 		strlcpy(slave_info->flash_name, slave_info32->flash_name,
 			sizeof(slave_info->flash_name));
 
-#ifdef CONFIG_MACH_LGE
+#if 1 //def CONFIG_MACH_LGE
 		strlcpy(slave_info->proxy_name, slave_info32->proxy_name,
 			sizeof(slave_info->proxy_name));
 
@@ -1166,6 +904,8 @@ int32_t msm_sensor_driver_probe(void *setting,
 			slave_info32->sensor_init_params;
 		slave_info->output_format =
 			slave_info32->output_format;
+		slave_info->bypass_video_node_creation =
+			!!slave_info32->bypass_video_node_creation;
 		kfree(slave_info32);
 	} else
 #endif
@@ -1176,6 +916,21 @@ int32_t msm_sensor_driver_probe(void *setting,
 			rc = -EFAULT;
 			goto free_slave_info;
 		}
+	}
+
+	if (strlen(slave_info->sensor_name) >= MAX_SENSOR_NAME ||
+		strlen(slave_info->eeprom_name) >= MAX_SENSOR_NAME ||
+		strlen(slave_info->actuator_name) >= MAX_SENSOR_NAME ||
+		strlen(slave_info->ois_name) >= MAX_SENSOR_NAME) {
+		pr_err("failed: name len greater than 32.\n");
+		pr_err("sensor name len:%zu, eeprom name len: %zu.\n",
+			strlen(slave_info->sensor_name),
+			strlen(slave_info->eeprom_name));
+		pr_err("actuator name len: %zu, ois name len:%zu.\n",
+			strlen(slave_info->actuator_name),
+			strlen(slave_info->ois_name));
+		rc = -EINVAL;
+		goto free_slave_info;
 	}
 
 	/* Print slave info */
@@ -1193,6 +948,8 @@ int32_t msm_sensor_driver_probe(void *setting,
 		slave_info->sensor_init_params.position);
 	CDBG("mount %d",
 		slave_info->sensor_init_params.sensor_mount_angle);
+	CDBG("bypass video node creation %d",
+		slave_info->bypass_video_node_creation);
 #ifdef SENSOR_INFO
 	if(slave_info->camera_id == 0)
 	{
@@ -1207,7 +964,6 @@ int32_t msm_sensor_driver_probe(void *setting,
 		rear2_sensor_name = slave_info->sensor_name;
 	}
 #endif
-
 	/* Validate camera id */
 	if (slave_info->camera_id >= MAX_CAMERAS) {
 		pr_err("failed: invalid camera id %d max %d",
@@ -1233,7 +989,7 @@ int32_t msm_sensor_driver_probe(void *setting,
 		 * and probe already succeeded for that sensor. Ignore this
 		 * probe
 		 */
-#ifdef CONFIG_MACH_LGE
+#if 1 //def CONFIG_MACH_LGE
 		if ((slave_info->sensor_id_info.sensor_id ==
 			s_ctrl->sensordata->cam_slave_info->sensor_id_info.sensor_id) &&
 			(slave_info->slave_addr !=
@@ -1346,7 +1102,8 @@ CSID_TG:
 	s_ctrl->sensordata->eeprom_name = slave_info->eeprom_name;
 	s_ctrl->sensordata->actuator_name = slave_info->actuator_name;
 	s_ctrl->sensordata->ois_name = slave_info->ois_name;
-#ifdef CONFIG_LGE_CAMERA_DRIVER
+	s_ctrl->sensordata->flash_name = slave_info->flash_name;
+#if 1 //def CONFIG_MACH_LGE
 	s_ctrl->sensordata->proxy_name = slave_info->proxy_name;
 	s_ctrl->sensordata->tcs_name = slave_info->tcs_name;
 	s_ctrl->sensordata->iris_name = slave_info->iris_name;
@@ -1374,7 +1131,13 @@ CSID_TG:
 		goto free_camera_info;
 	}
 
-#ifdef CONFIG_LGE_CAMERA_DRIVER
+	rc = msm_sensor_fill_flash_subdevid_by_name(s_ctrl);
+	if (rc < 0) {
+		pr_err("%s failed %d\n", __func__, __LINE__);
+		goto free_camera_info;
+	}
+
+#if 1 //def CONFIG_MACH_LGE
 	rc = msm_sensor_fill_tcs_subdevid_by_name(s_ctrl);
 	if (rc < 0) {
 		pr_err("%s failed %d\n", __func__, __LINE__);
@@ -1403,11 +1166,8 @@ CSID_TG:
 
 	pr_err("%s probe succeeded", slave_info->sensor_name);
 
-	/*
-	  Set probe succeeded flag to 1 so that no other camera shall
-	 * probed on this slot
-	 */
-	s_ctrl->is_probe_succeed = 1;
+	s_ctrl->bypass_video_node_creation =
+		slave_info->bypass_video_node_creation;
 
 	/*
 	 * Update the subdevice id of flash-src based on availability in kernel.
@@ -1449,7 +1209,7 @@ CSID_TG:
 	}
 	/* Update sensor mount angle and position in media entity flag */
 	is_yuv = (slave_info->output_format == MSM_SENSOR_YCBCR) ? 1 : 0;
-	mount_pos = is_yuv << 25 |
+	mount_pos = ((s_ctrl->is_secure & 0x1) << 26) | is_yuv << 25 |
 		(s_ctrl->sensordata->sensor_info->position << 16) |
 		((s_ctrl->sensordata->
 		sensor_info->sensor_mount_angle / 90) << 8);
@@ -1461,6 +1221,11 @@ CSID_TG:
 
 	msm_sensor_fill_sensor_info(s_ctrl, probed_info, entity_name);
 
+	/*
+	 * Set probe succeeded flag to 1 so that no other camera shall
+	 * probed on this slot
+	 */
+	s_ctrl->is_probe_succeed = 1;
 	return rc;
 
 camera_power_down:
@@ -1534,6 +1299,16 @@ static int32_t msm_sensor_driver_get_dt_data(struct msm_sensor_ctrl_t *s_ctrl)
 	if (rc < 0) {
 		pr_err("failed: msm_sensor_driver_get_gpio_data rc %d", rc);
 		goto FREE_VREG_DATA;
+	}
+
+	/* Get custom mode */
+	rc = of_property_read_u32(of_node, "qcom,secure",
+		&s_ctrl->is_secure);
+	CDBG("qcom,secure = %d, rc %d", s_ctrl->is_secure, rc);
+	if (rc < 0) {
+		/* Set default to non-secure mode */
+		s_ctrl->is_secure = 0;
+		rc = 0;
 	}
 
 	/* Get CCI master */
@@ -1649,6 +1424,7 @@ static int32_t msm_sensor_driver_parse(struct msm_sensor_ctrl_t *s_ctrl)
 FREE_DT_DATA:
 	kfree(s_ctrl->sensordata->power_info.gpio_conf->gpio_num_info);
 	kfree(s_ctrl->sensordata->power_info.gpio_conf->cam_gpio_req_tbl);
+	kfree(s_ctrl->sensordata->power_info.gpio_conf->cam_gpio_set_tbl);
 	kfree(s_ctrl->sensordata->power_info.gpio_conf);
 	kfree(s_ctrl->sensordata->power_info.cam_vreg);
 	kfree(s_ctrl->sensordata);

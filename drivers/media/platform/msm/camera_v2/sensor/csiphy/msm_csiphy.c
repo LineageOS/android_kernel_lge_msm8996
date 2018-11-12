@@ -55,7 +55,7 @@
 
 static struct v4l2_file_operations msm_csiphy_v4l2_subdev_fops;
 
-#ifdef CONFIG_MACH_LGE
+#if 1 //def CONFIG_MACH_LGE
 /* LGE_CHANGE, CST, added csiphy timer for enableing/disable irq */
 void csiphy_timer_callback(unsigned long data)
 {
@@ -471,7 +471,7 @@ static int msm_csiphy_2phase_lane_config(
 	}
 	msm_csiphy_cphy_irq_config(csiphy_dev, csiphy_params);
 
-#ifdef CONFIG_MACH_LGE
+#if 1 //def CONFIG_MACH_LGE
 	msm_camera_io_w(0x50, csiphybase+0x10);
 	msm_camera_io_w(0x50, csiphybase+0x210);
 	msm_camera_io_w(0x50, csiphybase+0x710);
@@ -509,7 +509,7 @@ static int msm_csiphy_lane_config(struct csiphy_device *csiphy_dev,
 		return rc;
 	}
 
-	clk_rate = (csiphy_params->csiphy_clk > 0)
+	clk_rate = ((int)csiphy_params->csiphy_clk > 0)
 			? csiphy_params->csiphy_clk :
 			csiphy_dev->csiphy_max_clk;
 	clk_rate = msm_camera_clk_set_rate(&csiphy_dev->pdev->dev,
@@ -930,14 +930,14 @@ static int msm_csiphy_init(struct csiphy_device *csiphy_dev)
 		goto top_vreg_enable_failed;
 	}
 
-#ifdef CONFIG_MACH_LGE
+#if 1 //def CONFIG_MACH_LGE
 /* LGE_CHANGE, CST, added gdsc regulator */
 	if ( csiphy_dev->csiphy_reg &&
 		!regulator_is_enabled(csiphy_dev->csiphy_reg)) {
 		pr_err("%s: csiphy reg is either null or down \n", __func__);
 		csiphy_dev->ref_count--;
 		rc = -EINVAL;
-		goto csiphy_vreg_config_fail;
+		goto csiphy_enable_clk_fail;
 	}
 #endif
 
@@ -1133,7 +1133,7 @@ static int msm_csiphy_release(struct csiphy_device *csiphy_dev, void *arg)
 	}
 
 	if (csiphy_dev->csiphy_3phase == CSI_3PHASE_HW) {
-#ifdef CONFIG_MACH_LGE
+#if 1 //def CONFIG_MACH_LGE
 		  /* LGE_CHANGE, CST, added gdsc regulator */
 		if ( csiphy_dev->csiphy_reg &&
 			regulator_is_enabled(csiphy_dev->csiphy_reg)) {
@@ -1261,6 +1261,7 @@ static int32_t msm_csiphy_cmd(struct csiphy_device *csiphy_dev, void *arg)
 			break;
 		}
 		csiphy_dev->csiphy_sof_debug = SOF_DEBUG_DISABLE;
+		csiphy_dev->is_combo_mode = csiphy_params.combo_mode;
 		rc = msm_csiphy_lane_config(csiphy_dev, &csiphy_params);
 		break;
 	case CSIPHY_RELEASE:
@@ -1271,7 +1272,7 @@ static int32_t msm_csiphy_cmd(struct csiphy_device *csiphy_dev, void *arg)
 			rc = -EFAULT;
 			break;
 		}
-#ifdef CONFIG_MACH_LGE
+#if 1 //def CONFIG_MACH_LGE
 		/* LGE_CHANGE, CST, added csiphy timer for enableing/disable irq */
 		if(atomic_read(&csiphy_dev->csiphy_timer.used)) {
 			pr_err("%s: csiphy(%p) sof_debug(%d)", __func__,csiphy_dev,
@@ -1281,7 +1282,14 @@ static int32_t msm_csiphy_cmd(struct csiphy_device *csiphy_dev, void *arg)
 			del_timer(&csiphy_dev->csiphy_timer.timer);
 		}
 #endif
-		rc = msm_csiphy_release(csiphy_dev, &csi_lane_params);
+		if ((csiphy_dev->is_combo_mode == 1) &&
+			(csiphy_dev->ref_count == 2)) {
+			/*CSIPHY is running in Combo mode do
+			not power down core*/
+			csiphy_dev->ref_count--;
+		} else {
+			rc = msm_csiphy_release(csiphy_dev, &csi_lane_params);
+		}
 		break;
 	default:
 		pr_err("%s: %d failed\n", __func__, __LINE__);
@@ -1308,7 +1316,7 @@ static long msm_csiphy_subdev_ioctl(struct v4l2_subdev *sd,
 			unsigned int cmd, void *arg)
 {
 	int rc = -ENOIOCTLCMD;
-#ifdef CONFIG_MACH_LGE
+#if 1 //def CONFIG_MACH_LGE
 	int ret;
 #endif
 	struct csiphy_device *csiphy_dev = v4l2_get_subdevdata(sd);
@@ -1337,7 +1345,7 @@ static long msm_csiphy_subdev_ioctl(struct v4l2_subdev *sd,
 			rc = msm_camera_enable_irq(csiphy_dev->irq, true);
 		}
 
-#ifdef CONFIG_MACH_LGE
+#if 1 //def CONFIG_MACH_LGE
 /* LGE_CHANGE, CST, added csiphy timer for enableing/disable irq */
 		if(!atomic_read(&csiphy_dev->csiphy_timer.used)) {
 			atomic_set(&csiphy_dev->csiphy_timer.used, 1);
@@ -1407,7 +1415,7 @@ static const struct v4l2_subdev_ops msm_csiphy_subdev_ops = {
 static int msm_csiphy_get_clk_info(struct csiphy_device *csiphy_dev,
 	struct platform_device *pdev)
 {
-	int i, rc;
+	int i, rc = 0;
 	char *csi_3p_clk_name = "csi_phy_3p_clk";
 	char *csi_3p_clk_src_name = "csiphy_3p_clk_src";
 	uint32_t clk_cnt = 0;
@@ -1423,6 +1431,7 @@ static int msm_csiphy_get_clk_info(struct csiphy_device *csiphy_dev,
 	if (csiphy_dev->num_all_clk > CSIPHY_NUM_CLK_MAX) {
 		pr_err("%s: invalid count=%zu, max is %d\n", __func__,
 			csiphy_dev->num_all_clk, CSIPHY_NUM_CLK_MAX);
+		rc = -EINVAL;
 		goto MAX_CLK_ERROR;
 	}
 
@@ -1466,13 +1475,14 @@ static int msm_csiphy_get_clk_info(struct csiphy_device *csiphy_dev,
 	}
 
 	csiphy_dev->num_clk = clk_cnt;
+	return rc;
 MAX_CLK_ERROR:
 	msm_camera_put_clk_info(csiphy_dev->pdev,
 		&csiphy_dev->csiphy_all_clk_info,
 		&csiphy_dev->csiphy_all_clk,
 		csiphy_dev->num_all_clk);
 
-	return 0;
+	return rc;
 }
 
 static int csiphy_probe(struct platform_device *pdev)
@@ -1563,7 +1573,7 @@ static int csiphy_probe(struct platform_device *pdev)
 		new_csiphy_dev->hw_dts_version = CSIPHY_VERSION_V35;
 		new_csiphy_dev->csiphy_3phase = CSI_3PHASE_HW;
 
-#ifdef CONFIG_MACH_LGE
+#if 1 //def CONFIG_MACH_LGE
 /* LGE_CHANGE, CST, added gdsc regulator */
 		new_csiphy_dev->csiphy_reg = regulator_get(&pdev->dev, "gdscr");
 		if (!new_csiphy_dev->csiphy_reg)
@@ -1632,7 +1642,7 @@ static int csiphy_probe(struct platform_device *pdev)
 		&msm_csiphy_v4l2_subdev_fops;
 	new_csiphy_dev->csiphy_state = CSIPHY_POWER_DOWN;
 
-#ifdef CONFIG_MACH_LGE
+#if 1 //def CONFIG_MACH_LGE
 	/* LGE_CHANGE, CST, added csiphy timer for enableing/disable irq */
 	atomic_set(&new_csiphy_dev->csiphy_timer.used, 0);
 	setup_timer(&new_csiphy_dev->csiphy_timer.timer,

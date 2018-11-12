@@ -1,4 +1,4 @@
-/* Copyright (c) 2013-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2013-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -177,7 +177,7 @@ int msm_camera_fill_vreg_params(struct camera_vreg_t *cam_vreg,
 				power_setting[i].seq_val = INVALID_VREG;
 			break;
 
-#ifdef CONFIG_MACH_LGE
+#if 1 //def CONFIG_MACH_LGE
 		case CAM_OISVDD:
 			for (j = 0; j < num_vreg; j++) {
 				if (!strcmp(cam_vreg[j].reg_name, "cam_oisvdd")) {
@@ -282,7 +282,10 @@ int msm_sensor_get_sub_module_index(struct device_node *of_node,
 			pr_err("%s failed %d\n", __func__, __LINE__);
 			goto ERROR;
 		}
-		sensor_info->subdev_id[SUB_MODULE_ACTUATOR] = val;
+		if (of_device_is_available(src_node))
+			sensor_info->subdev_id[SUB_MODULE_ACTUATOR] = val;
+		else
+			CDBG("%s:%d actuator disabled!\n", __func__, __LINE__);
 		of_node_put(src_node);
 		src_node = NULL;
 	}
@@ -303,7 +306,7 @@ int msm_sensor_get_sub_module_index(struct device_node *of_node,
 		src_node = NULL;
 	}
 
-#ifdef CONFIG_LG_TCS
+#if 1 //def CONFIG_MACH_LGE
 	src_node = of_parse_phandle(of_node, "qcom,tcs-src", 0);
 	if (!src_node) {
 		pr_err("%s:%d src_node NULL\n", __func__, __LINE__);
@@ -319,9 +322,7 @@ int msm_sensor_get_sub_module_index(struct device_node *of_node,
 		of_node_put(src_node);
 		src_node = NULL;
 	}
-#endif
 
-#ifdef CONFIG_LG_PROXY
 	src_node = of_parse_phandle(of_node, "qcom,proxy-src", 0);
 	if (!src_node) {
 		CDBG("%s:%d src_node NULL\n", __func__, __LINE__);
@@ -383,7 +384,6 @@ int msm_sensor_get_sub_module_index(struct device_node *of_node,
 		src_node = NULL;
 	}
 
-#ifndef CONFIG_LGE_CAMERA_DRIVER
 	src_node = of_parse_phandle(of_node, "qcom,ir-led-src", 0);
 	if (!src_node) {
 		CDBG("%s:%d src_node NULL\n", __func__, __LINE__);
@@ -415,7 +415,6 @@ int msm_sensor_get_sub_module_index(struct device_node *of_node,
 		of_node_put(src_node);
 		src_node = NULL;
 	}
-#endif
 
 	rc = of_property_read_u32(of_node, "qcom,strobe-flash-sd-index", &val);
 	if (rc != -EINVAL) {
@@ -607,7 +606,7 @@ int msm_camera_get_dt_power_setting_data(struct device_node *of_node,
 
 	CDBG("%s qcom,cam-power-seq-type count %d\n", __func__, count);
 
-#ifndef CONFIG_MACH_LGE
+#if 0 //ndef CONFIG_MACH_LGE
 	if (count <= 0)
 		return 0;
 #else
@@ -694,7 +693,7 @@ int msm_camera_get_dt_power_setting_data(struct device_node *of_node,
 			else if (!strcmp(seq_name, "sensor_gpio_vio"))
 				ps[i].seq_val = SENSOR_GPIO_VIO;
 
-#ifdef CONFIG_MACH_LGE
+#if 1 //def CONFIG_MACH_LGE
 			else if (!strcmp(seq_name, "sensor_gpio_ldaf"))
 				ps[i].seq_val = SENSOR_GPIO_LDAF_EN;
 			else if (!strcmp(seq_name, "sensor_gpio_ois_reset"))
@@ -898,6 +897,86 @@ ERROR1:
 	gconf->cam_gpio_req_tbl_size = 0;
 	return rc;
 }
+int msm_camera_get_dt_gpio_set_tbl(struct device_node *of_node,
+	struct msm_camera_gpio_conf *gconf, uint16_t *gpio_array,
+	uint16_t gpio_array_size)
+{
+	int rc = 0, i = 0;
+	uint32_t count = 0;
+	uint32_t *val_array = NULL;
+
+	if (!of_get_property(of_node, "qcom,gpio-set-tbl-num", &count))
+		return 0;
+
+	count /= sizeof(uint32_t);
+	if (!count) {
+		pr_err("%s qcom,gpio-set-tbl-num 0\n", __func__);
+		return 0;
+	}
+
+	val_array = kzalloc((sizeof(uint32_t) * count), GFP_KERNEL);
+	if (!val_array)
+		return -ENOMEM;
+
+	gconf->cam_gpio_set_tbl = kzalloc(sizeof(struct msm_gpio_set_tbl) *
+		count, GFP_KERNEL);
+	if (!gconf->cam_gpio_set_tbl) {
+		rc = -ENOMEM;
+		goto ERROR1;
+	}
+	gconf->cam_gpio_set_tbl_size = count;
+
+	rc = of_property_read_u32_array(of_node, "qcom,gpio-set-tbl-num",
+		val_array, count);
+	if (rc < 0) {
+		pr_err("%s failed %d\n", __func__, __LINE__);
+		goto ERROR2;
+	}
+	for (i = 0; i < count; i++) {
+		if (val_array[i] >= gpio_array_size) {
+			pr_err("%s gpio set tbl index %d invalid\n",
+				__func__, val_array[i]);
+			return -EINVAL;
+		}
+		gconf->cam_gpio_set_tbl[i].gpio = gpio_array[val_array[i]];
+		CDBG("%s cam_gpio_set_tbl[%d].gpio = %d\n", __func__, i,
+			gconf->cam_gpio_set_tbl[i].gpio);
+	}
+
+	rc = of_property_read_u32_array(of_node, "qcom,gpio-set-tbl-flags",
+		val_array, count);
+	if (rc < 0) {
+		pr_err("%s failed %d\n", __func__, __LINE__);
+		goto ERROR2;
+	}
+	for (i = 0; i < count; i++) {
+		gconf->cam_gpio_set_tbl[i].flags = val_array[i];
+		CDBG("%s cam_gpio_set_tbl[%d].flags = %ld\n", __func__, i,
+			gconf->cam_gpio_set_tbl[i].flags);
+	}
+
+	rc = of_property_read_u32_array(of_node, "qcom,gpio-set-tbl-delay",
+		val_array, count);
+	if (rc < 0) {
+		pr_err("%s failed %d\n", __func__, __LINE__);
+		goto ERROR2;
+	}
+	for (i = 0; i < count; i++) {
+		gconf->cam_gpio_set_tbl[i].delay = val_array[i];
+		CDBG("%s cam_gpio_set_tbl[%d].delay = %d\n", __func__, i,
+			gconf->cam_gpio_set_tbl[i].delay);
+	}
+
+	kfree(val_array);
+	return rc;
+
+ERROR2:
+	kfree(gconf->cam_gpio_set_tbl);
+ERROR1:
+	kfree(val_array);
+	gconf->cam_gpio_set_tbl_size = 0;
+	return rc;
+}
 
 int msm_camera_init_gpio_pin_tbl(struct device_node *of_node,
 	struct msm_camera_gpio_conf *gconf, uint16_t *gpio_array,
@@ -913,7 +992,6 @@ int msm_camera_init_gpio_pin_tbl(struct device_node *of_node,
 		return rc;
 	}
 
-#ifndef CONFIG_LGE_CAMERA_DRIVER
 	rc = of_property_read_u32(of_node, "qcom,gpio-ir-p", &val);
 	if (rc != -EINVAL) {
 		if (rc < 0) {
@@ -960,7 +1038,6 @@ int msm_camera_init_gpio_pin_tbl(struct device_node *of_node,
 	} else {
 		rc = 0;
 	}
-#endif
 
 	rc = of_property_read_u32(of_node, "qcom,gpio-vana", &val);
 	if (rc != -EINVAL) {
@@ -1170,7 +1247,7 @@ int msm_camera_init_gpio_pin_tbl(struct device_node *of_node,
 	} else
 		rc = 0;
 
-#ifdef CONFIG_MACH_LGE
+#if 1 //def CONFIG_MACH_LGE
 	rc = of_property_read_u32(of_node, "qcom,gpio-ois-reset", &val);
 	if (rc != -EINVAL) {
 		if (rc < 0) {
@@ -1520,7 +1597,7 @@ int msm_cam_sensor_handle_reg_gpio(int seq_val,
 		gpio_offset = SENSOR_GPIO_CUSTOM2;
 		break;
 
-#ifdef CONFIG_MACH_LGE
+#if 1 //def CONFIG_MACH_LGE
 	case CAM_IRIS_VDD:
 		gpio_offset = SENSOR_GPIO_IRIS_VDD;
 		break;
@@ -1574,7 +1651,7 @@ int32_t msm_sensor_driver_get_gpio_data(
 	gpio_array_size = of_gpio_count(of_node);
 	CDBG("gpio count %d\n", gpio_array_size);
 	if (gpio_array_size <= 0)
-		return 0;
+		return -ENODEV;
 
 	gconf = kzalloc(sizeof(struct msm_camera_gpio_conf),
 		GFP_KERNEL);
@@ -1591,11 +1668,19 @@ int32_t msm_sensor_driver_get_gpio_data(
 		gpio_array[i] = of_get_gpio(of_node, i);
 		CDBG("gpio_array[%d] = %d", i, gpio_array[i]);
 	}
+
 	rc = msm_camera_get_dt_gpio_req_tbl(of_node, gconf, gpio_array,
 		gpio_array_size);
 	if (rc < 0) {
 		pr_err("failed in msm_camera_get_dt_gpio_req_tbl\n");
 		goto FREE_GPIO_CONF;
+	}
+
+	rc = msm_camera_get_dt_gpio_set_tbl(of_node, gconf,
+		gpio_array, gpio_array_size);
+	if (rc < 0) {
+		pr_err("%s failed %d\n", __func__, __LINE__);
+		goto FREE_GPIO_REQ_TBL;
 	}
 
 	rc = msm_camera_init_gpio_pin_tbl(of_node, gconf, gpio_array,
@@ -1606,7 +1691,6 @@ int32_t msm_sensor_driver_get_gpio_data(
 	}
 	kfree(gpio_array);
 	return rc;
-
 FREE_GPIO_REQ_TBL:
 	kfree(gconf->cam_gpio_req_tbl);
 FREE_GPIO_CONF:
@@ -1992,3 +2076,4 @@ int msm_camera_power_down(struct msm_camera_power_ctrl_t *ctrl,
 	CDBG("%s exit\n", __func__);
 	return 0;
 }
+

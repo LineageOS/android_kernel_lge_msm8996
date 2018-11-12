@@ -415,10 +415,15 @@ int32_t lgit_imx298_rohm_ois_mode(struct msm_ois_ctrl_t *o_ctrl,
 					   struct msm_ois_set_info_t *set_info)
 {
 	int cur_mode = lgit_ois_func_tbl.ois_cur_mode;
-	uint8_t mode = *(uint8_t *)set_info->setting;
+	uint8_t mode = 0;
 	int rc = 0;
 
-	pr_err("%s:%d Enter\n", __func__, __LINE__);
+	if (copy_from_user(&mode, (void *)set_info->setting, sizeof(uint8_t))) {
+		pr_err("%s:%d failed\n", __func__, __LINE__);
+		rc = -EFAULT;
+		return rc;
+	}
+	pr_err("%s:Enter input mode : %d, current mode : %d \n", __func__, mode, cur_mode);
 
 	if (cur_mode == mode)
 		return OIS_SUCCESS;

@@ -1,4 +1,4 @@
-/* Copyright (c) 2012-2016, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2012-2017, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -65,7 +65,7 @@ static void msm_cci_dump_registers(struct cci_device *cci_dev,
 	uint32_t i = 0;
 	uint32_t reg_offset = 0;
 
-#ifdef CONFIG_MACH_LGE
+#if 1 //def CONFIG_MACH_LGE
 	dump_stack();	/* LGE_CHANGE, CST, print out backtrace in case of read/write timeout */
 #endif
 
@@ -119,6 +119,10 @@ static int32_t msm_cci_set_clk_param(struct cci_device *cci_dev,
 	enum cci_i2c_master_t master = c_ctrl->cci_info->cci_i2c_master;
 	enum i2c_freq_mode_t i2c_freq_mode = c_ctrl->cci_info->i2c_freq_mode;
 
+#if !defined (CONFIG_MACH_MSM8996_LUCYE)
+	i2c_freq_mode = I2C_FAST_MODE;
+#endif
+
 	if ((i2c_freq_mode >= I2C_MAX_MODES) || (i2c_freq_mode < 0)) {
 		pr_err("%s:%d invalid i2c_freq_mode = %d",
 			__func__, __LINE__, i2c_freq_mode);
@@ -169,7 +173,7 @@ static void msm_cci_flush_queue(struct cci_device *cci_dev,
 {
 	int32_t rc = 0;
 
-#ifdef CONFIG_MACH_LGE
+#if 1 //def CONFIG_MACH_LGE
 	/* LGE_CHANGE, CST, make sure to check cci_state before HALT_REQ*/
 	if (cci_dev->cci_state != CCI_STATE_ENABLED) {
 		pr_err("%s invalid cci state %d\n",
@@ -1343,6 +1347,10 @@ static int32_t msm_cci_init(struct v4l2_subdev *sd,
 		CDBG("%s:%d master %d\n", __func__, __LINE__, master);
 		if (master < MASTER_MAX && master >= 0) {
 			mutex_lock(&cci_dev->cci_master_info[master].mutex);
+			mutex_lock(&cci_dev->cci_master_info[master].
+				mutex_q[PRIORITY_QUEUE]);
+			mutex_lock(&cci_dev->cci_master_info[master].
+				mutex_q[SYNC_QUEUE]);
 			flush_workqueue(cci_dev->write_wq[master]);
 			/* Re-initialize the completion */
 			reinit_completion(&cci_dev->
@@ -1367,6 +1375,10 @@ static int32_t msm_cci_init(struct v4l2_subdev *sd,
 			if (rc <= 0)
 				pr_err("%s:%d wait failed %d\n", __func__,
 					__LINE__, rc);
+			mutex_unlock(&cci_dev->cci_master_info[master].
+				mutex_q[SYNC_QUEUE]);
+			mutex_unlock(&cci_dev->cci_master_info[master].
+				mutex_q[PRIORITY_QUEUE]);
 			mutex_unlock(&cci_dev->cci_master_info[master].mutex);
 		}
 		return 0;
@@ -1663,7 +1675,7 @@ static int32_t msm_cci_config(struct v4l2_subdev *sd,
 	case MSM_CCI_INIT:
 		rc = msm_cci_init(sd, cci_ctrl);
 
-#ifdef CONFIG_MACH_LGE
+#if 1 //def CONFIG_MACH_LGE
 		/*LGE_CHANGE, CST, check if cci is acquired */
 		if(!rc)
 			cci_ctrl->cci_info->cci_acquired = 1;
@@ -1671,7 +1683,7 @@ static int32_t msm_cci_config(struct v4l2_subdev *sd,
 #endif
 
 	case MSM_CCI_RELEASE:
-#ifndef CONFIG_MACH_LGE
+#if 0 //ndef CONFIG_MACH_LGE
 		rc = msm_cci_release(sd);
 #else
 		/*LGE_CHANGE_S, CST, check if cci is acquired */
@@ -1847,7 +1859,7 @@ static long msm_cci_subdev_ioctl(struct v4l2_subdev *sd,
 	case MSM_SD_SHUTDOWN: {
 		struct msm_camera_cci_ctrl ctrl_cmd;
 
-#ifdef CONFIG_MACH_LGE
+#if 1 //def CONFIG_MACH_LGE
 		ctrl_cmd.cci_info = NULL ;		/*LGE_CHANGE, CST, check if cci is acquired */
 #endif
 
