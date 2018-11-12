@@ -72,7 +72,7 @@
 static int16_t g_gyro_offset_value_x, g_gyro_offset_value_y;
 static uint16_t cal_ver = 0;
 static bool vcm_check = 0;
-#if defined(CONFIG_MACH_MSM8996_ELSA) && !defined(CONFIG_IMX234)
+#if (defined(CONFIG_MACH_MSM8996_ELSA) || defined(CONFIG_MACH_MSM8996_ANNA)) && !defined(CONFIG_IMX234)
 extern uint16_t map_ver;
 #endif
 
@@ -415,8 +415,16 @@ int32_t lgit_s5k2p7_rohm_ois_mode(struct msm_ois_ctrl_t *o_ctrl,
 					   struct msm_ois_set_info_t *set_info)
 {
 	int cur_mode = lgit_ois_func_tbl.ois_cur_mode;
-	uint8_t mode = *(uint8_t *)set_info->setting;
 	int rc = 0;
+#if 0 //CST	
+	uint8_t mode = *(uint8_t *)set_info->setting;
+#else
+	uint8_t mode = 0;
+	if (copy_from_user(&mode, (void *)set_info->setting, sizeof(uint8_t))) {
+		pr_err("%s:%d failed to get mode\n", __func__, __LINE__);
+		return OIS_FAIL;
+	}
+#endif
 
 	pr_err("%s:%d Enter\n", __func__, __LINE__);
 
@@ -619,9 +627,9 @@ int32_t lgit_s5k2p7_init_set_rohm_ois(struct msm_ois_ctrl_t *o_ctrl,
 	}
 
 	ois_i2c_e2p_read(E2P_FIRST_ADDR + 0x2E, &cal_ver, 2);
-#if defined(CONFIG_MACH_MSM8996_ELSA) && !defined(CONFIG_IMX234)
+#if (defined(CONFIG_MACH_MSM8996_ELSA) || defined(CONFIG_MACH_MSM8996_ANNA)) && !defined(CONFIG_IMX234)
 	ois_i2c_e2p_read(E2P_MAP_VER_ADDR, &map_ver, 1);
-	CDBG("%s cal_ver %x, map_ver %x, init ver %d\n", __func__, cal_ver, map_ver, ver);
+        CDBG("%s cal_ver %x, map_ver %x, init ver %d\n", __func__, cal_ver, map_ver, ver);
 #else
 	CDBG("%s cal_ver %x, init ver %d\n", __func__, cal_ver, ver);
 #endif
@@ -856,7 +864,7 @@ int32_t lgit_s5k2p7_rohm_ois_move_lens(struct msm_ois_ctrl_t *o_ctrl,
 		rc = -EFAULT;
 		return rc;
 	}
-	
+
 	switch (cal_ver) {
 		/* MTM Actuator */
 		case 0x01:
@@ -922,11 +930,11 @@ int32_t lgit_s5k2p7_rohm_ois_pwm_mode(struct msm_ois_ctrl_t *o_ctrl,
 							struct msm_ois_set_info_t *set_info)
 {
 #if 1
-        uint8_t mode =0;
-            if (copy_from_user(&mode, (void *)set_info->setting, sizeof(uint8_t))) {
-                    pr_err("%s:%d failed to get mode\n", __func__, __LINE__);
-                    return OIS_FAIL;
-            }
+	        uint8_t mode =0;
+                if (copy_from_user(&mode, (void *)set_info->setting, sizeof(uint8_t))) {
+                        pr_err("%s:%d failed to get mode\n", __func__, __LINE__);
+                        return OIS_FAIL;
+                }
 
 		switch (mode) {
 		case OIS_IMG_SENSOR_REG_A:

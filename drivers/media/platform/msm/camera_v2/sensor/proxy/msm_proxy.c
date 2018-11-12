@@ -354,13 +354,7 @@ int16_t OffsetCalibration(void)
 			pr_err("OffsetCalibration: spec in!\n");
 		} else {
 			VL53L0_RestoreOffset(Dev, st_offset);
-			if (Status != VL53L0_ERROR_NONE){
-				offsetComp =32000;
-				pr_err("OffsetCalibration: spec out from Status error!\n");
-				}
-			else {
-				pr_err("OffsetCalibration: spec out!\n");
-			}
+			pr_err("OffsetCalibration: spec out!\n");
 		}		
 		pr_err("offsetComp:%d OffsetCalibrationDataMicroMeter: %d!\n",offsetComp, st_offset);
     }
@@ -631,18 +625,32 @@ static void get_proxy(struct work_struct *work)
 {
 	struct msm_proxy_ctrl_t *proxy_struct = container_of(work, struct msm_proxy_ctrl_t, proxy_work);
 	uint16_t *proxy = &proxy_struct->last_proxy;
-	int16_t offset = 0;
-	int16_t calCount = 0;
-	int16_t finVal = 0;
+	int16_t offset = 0;  //0x801
+	int16_t calCount = 0; //0x800
+	int16_t finVal = 0; //0x800~801
 	uint16_t moduleId = 0;
-	//uint32_t refSpadCount = 0;	
-	//uint8_t isApertureSpads = 0;
+	uint32_t count = 0; //0x802~805 	  
+	uint16_t count_sep1 = 0; //0x802~803  
+	uint16_t count_sep2 = 0; //0x804~805  
+	uint8_t VhvSettings = 0;  //0x806	  
+	uint8_t PhaseCal = 0;  //0x807		  
+	uint8_t isApertureSpads = 0;  //0x808 
 
 	while (1) {
 		if (!proxy_struct->pause_workqueue) {
 			if (proxy_struct->proxy_cal) {
 				proxy_struct->proxy_stat.cal_done = 0;  //cal done
-				offset = OffsetCalibration();
+/* LGE_CHANGE_S, for initialization time reduce(spad calibration), 2016-02-11, seonyung.kim@lge.com */																																					 
+				VL53L0_PerformRefCalibration(Dev, &VhvSettings,&PhaseCal);													 
+				VL53L0_PerformRefSpadManagement(Dev,  &count, &isApertureSpads);											 
+				pr_err("perform ref calibration= %d, %d, %d, %d to eeprom\n", VhvSettings, PhaseCal, count, isApertureSpads);
+
+ 			 	offset = OffsetCalibration();
+				count_sep1 = count >> 16;																					 
+				count_sep2 = 0xFFFF & count;																				 
+				pr_err("VL53L0 count:%d, count_sep1:%d, count_sep2:%d\n",count, count_sep1, count_sep2);					 
+
+/* LGE_CHANGE_E, for initialization time reduce(spad calibration), 2016-02-13, seonyung.kim@lge.com */	
 				//VL53L0_PerformRefSpadManagement(Dev,&refSpadCount,&isApertureSpads);
 				pr_err("write offset = %x to eeprom\n", offset);
 
@@ -653,17 +661,30 @@ static void get_proxy(struct work_struct *work)
 #else
 				if ((offset < 11) && (offset > (-21))) {
 #endif
-//					if ((moduleId == 0x00) || (moduleId == 0x01) || (moduleId == 0x02)) {
+					//if ((moduleId == 0x00) || (moduleId == 0x01) || (moduleId == 0x02)) {
+						
+						pr_err("VL53L0 VhvSettings:%d, PhaseCal:%d, isApertureSpads:%d\n",VhvSettings, PhaseCal, isApertureSpads);	 
 						proxy_i2c_e2p_read(IT_EEP_REG, &finVal, 2);
 						calCount = finVal >> 8;
 
 						calCount++;
 						finVal = (calCount << 8) | (0x00FF & offset);
 						proxy_i2c_e2p_write(IT_EEP_REG, finVal, 2);
+						msleep(1);
+						proxy_i2c_e2p_write(IT_EEP_REG+2, count_sep1, 2); //0x802~803
+						msleep(1);
+						proxy_i2c_e2p_write(IT_EEP_REG+4, count_sep2, 2); //0x804~805	
+						msleep(1);											 
+						proxy_i2c_e2p_write(IT_EEP_REG+6, VhvSettings, 1);	//0x806 
+						msleep(1);												 
+						proxy_i2c_e2p_write(IT_EEP_REG+7, PhaseCal, 1); //0x807 	
+						msleep(1);												 
+						proxy_i2c_e2p_write(IT_EEP_REG+8, isApertureSpads, 1);	//0x808 	
+						msleep(1);
 
 						pr_err("KSY read inot cal count = %x to eeprom\n", finVal);
 						pr_err("KSY read inot offset = %x to eeprom\n", offset);
-//					}
+					//}
 
 					proxy_struct->proxy_stat.cal_count = calCount;
 					proxy_struct->proxy_cal = 0;
@@ -703,8 +724,6 @@ int16_t stop_proxy(void)
 			destroy_workqueue(msm_proxy_t.work_thread);
 			msm_proxy_t.work_thread = NULL;
 			msm_proxy_t.check_init_finish = 0;
-			/* LGE_CHANGE, CST, deinitialize wq_init_success */
-			msm_proxy_t.wq_init_success = 0;
 			pr_err("destroy_workqueue!\n");
 		}
 	}
@@ -732,8 +751,6 @@ uint16_t msm_proxy_thread_start(void)
 		msm_proxy_t.exit_workqueue = 0;
 		msm_proxy_t.work_thread = create_singlethread_workqueue("my_work_thread");
 		if (!msm_proxy_t.work_thread) {
-			/* LGE_CHANGE, CST, deinitialize wq_init_success */
-			msm_proxy_t.wq_init_success = 0;
 			pr_err("creating work_thread fail!\n");
 			return 1;
 		}
@@ -790,6 +807,7 @@ int32_t msm_init_proxy(void)
 	int i = 0;
 	uint8_t byteArray[4] = {0, 0, 0, 0};
 	int8_t offsetByte = 0;
+	int16_t finVal = 0;
 	uint8_t calCount = 0;
 	uint16_t modelID = 0;
 	uint16_t revID = 0;
@@ -808,7 +826,6 @@ int32_t msm_init_proxy(void)
 	uint16_t dataByte = 0;
 	uint16_t ambpart2partCalib1 = 0;
 	uint16_t ambpart2partCalib2 = 0;
-	int16_t finVal = 0;
 	uint16_t moduleId = 0;
 	uint8_t shiftModuleId = 0;
 
@@ -958,7 +975,7 @@ int32_t msm_init_proxy(void)
 		proxy_i2c_write(SYSRANGE__PART_TO_PART_RANGE_OFFSET, offsetByte, 1);
 
 	} 
-
+	
 	// Babybear_SetStraylight
 	ninepointseven = 25;
 	proxy_i2c_write(SYSRANGE__CROSSTALK_COMPENSATION_RATE, (ninepointseven >> 8) & 0xFF, 1);
@@ -2009,16 +2026,26 @@ int msm_init_proxy_EwokAPI(void)
 	uint8_t pMeasurementDataReady = 0;
 	int8_t e2p_offset = 0;
 	int8_t sensor_offset = 0;
-	uint8_t calCount = 0;
-	FixPoint1616_t XTalkCompMegaCps;
 	int16_t finVal = 0;
+	uint8_t calCount = 0;
 	uint16_t moduleId = 0;
-	uint32_t refSpadCount = 0;	
-	uint8_t isApertureSpads = 0;
+	FixPoint1616_t XTalkCompMegaCps;
+	//int32_t offsetComp; 
+//	uint32_t refSpadCount = 0;	
+//	uint8_t isApertureSpads = 0;	
+	uint32_t count = 0; //0x802~805 		
+	uint16_t count_sep1 = 0; //0x802~803	
+	uint16_t count_sep2 = 0; //0x804~805	
+	uint16_t VhvSettings = 0;  //0x806		
+	uint16_t PhaseCal = 0;	//0x807 		
+	uint16_t isApertureSpads = 0;  //0x808	
+	uint8_t VhvSettings_8 = 0;	//0x806 	
+	uint8_t PhaseCal_8 = 0;  //0x807		
+	uint8_t isApertureSpads_8 = 0;	//0x808 
 	
 	pr_err("msm_init_proxy_EwokAPI(): Starting...\n");
 	msm_proxy_t.check_init_finish = 1;  //Init start
-	
+	msm_proxy_t.proxy_stat.cal_done = 0;
 #ifdef COMPATIBILITY_CUT_1_0_CUT_1_1
 // get device info.
 	VL53L0_GetProductRevision(Dev, &moduleMainVersion, &moduleVersion);
@@ -2092,11 +2119,39 @@ int msm_init_proxy_EwokAPI(void)
 				if(Status == VL53L0_ERROR_NONE)
 				{
 					Status = VL53L0_StaticInit(Dev); // Device Initialization
+					/*
 					//VL53L0_PerformRefSpadManagement(Dev,&refSpadCount,&isApertureSpads);
 					//pr_err("spad calibration : %d, %d\n", refSpadCount, isApertureSpads);
 					refSpadCount =13;
 					isApertureSpads = 1;
 					VL53L0_SetReferenceSpads(Dev,refSpadCount,isApertureSpads);
+					*/
+
+/* LGE_CHANGE_S, for initialization time reduce(spad calibration), 2016-02-15, seonyung.kim@lge.com */																			  
+					proxy_i2c_e2p_read(IT_EEP_REG+2, &count_sep1, 2);																						   
+					proxy_i2c_e2p_read(IT_EEP_REG+4, &count_sep2, 2);																						   
+					count = (count_sep1 << 16) | (0xFFFF & count_sep2); 																					   
+					pr_err("VL53L0 count:%d, count_sep1:%d, count_sep2:%d\n",count, count_sep1, count_sep2);												   
+																																							   
+					proxy_i2c_e2p_read(IT_EEP_REG+6, &VhvSettings, 1);																						   
+					proxy_i2c_e2p_read(IT_EEP_REG+7, &PhaseCal, 1); 																						   
+					proxy_i2c_e2p_read(IT_EEP_REG+8, &isApertureSpads, 1);																					   
+					pr_err("VL53L0 VhvSettings:%d, PhaseCal:%d, isApertureSpads:%d\n",VhvSettings, PhaseCal, isApertureSpads);
+					if(VhvSettings == 255 /* EEPROM default value */
+						|| (count == 0 || VhvSettings == 0 || PhaseCal == 0)) { /* If one of three values has 0 value it means wrong state. It needs re-calibration */
+						VL53L0_PerformRefCalibration(Dev, &VhvSettings_8,&PhaseCal_8);																	   
+						VL53L0_PerformRefSpadManagement(Dev,  &count, &isApertureSpads_8);																   
+						pr_err("VL53L0 count:%d, count_sep1:%d, count_sep2:%d(not calibrated!!)\n",count, count_sep1, count_sep2);						   
+						pr_err("VL53L0 VhvSettings:%d, PhaseCal:%d, isApertureSpads:%d(not calibrated!!)\n",VhvSettings_8, PhaseCal_8, isApertureSpads_8); 
+					}																																		   
+					else {																													   
+																																						   
+						VL53L0_SetRefCalibration(Dev, (uint8_t)VhvSettings,(uint8_t)PhaseCal);															   
+						VL53L0_SetReferenceSpads(Dev, count, (uint8_t)isApertureSpads); 																   
+					}																																		   
+/* LGE_CHANGE_E, for initialization time reduce(spad calibration), 2016-02-15, seonyung.kim@lge.com */																			  
+
+
 				} else {
 					return Status;
 					}
@@ -2150,7 +2205,7 @@ int msm_init_proxy_EwokAPI(void)
 	{ //readRangeOffset
 		proxy_i2c_e2p_read(0x700, &moduleId, 1);
 		
-//		if ((moduleId == 0x00) || (moduleId == 0x01) || (moduleId == 0x02)) {
+		//if ((moduleId == 0x00) || (moduleId == 0x01) || (moduleId == 0x02)) {
 			proxy_i2c_e2p_read(IT_EEP_REG, &finVal, 2);
 			e2p_offset = 0x00FF & finVal;
 			calCount = (0xFF00 & finVal) >> 8;
@@ -2170,6 +2225,7 @@ int msm_init_proxy_EwokAPI(void)
 		sensor_offset = (int8_t)((st_offset/1000) + e2p_offset);
 		VL53L0_SetOffsetCalibrationDataMicroMeter(Dev,(int32_t)(sensor_offset*1000)); 
 		pr_err("e2p_offset = %d, st_offset = %d, sensor_offset = %d\n", e2p_offset, st_offset, sensor_offset);
+		//}
 	}
 	else if(moduleVersion == 0)
 	{
@@ -2230,7 +2286,7 @@ int msm_init_proxy_EwokAPI(void)
 
 	
 	{ // forced x-talk cal
-#ifdef CONFIG_MACH_MSM8996_ELSA
+#if defined(CONFIG_MACH_MSM8996_ELSA) || defined(CONFIG_MACH_MSM8996_ANNA)
 	XTalkCompMegaCps = 8; // glass window
 #else
 	XTalkCompMegaCps = 24;
@@ -2261,6 +2317,11 @@ int msm_init_proxy_EwokAPI(void)
 		{// cut 1.1
 			if(Status == VL53L0_ERROR_NONE)
 			{
+				/* LGE_CHANGE_S, changed LD clk to reduce the S5K2P7 sensor power noise. 2016-11-21 sungmin.cho@lge.com */
+				#ifdef CONFIG_MACH_MSM8996_ELSA
+				uint16_t module_name_1, module_name_2; // 0x814, 0x815~0x816
+				#endif
+				/* LGE_CHANGE_E, changed LD clk to reduce the S5K2P7 sensor power noise. 2016-11-21 sungmin.cho@lge.com */
 				/*
 				 *	Setup the Limit SIGMA and Signal Rate
 				 */
@@ -2291,8 +2352,50 @@ int msm_init_proxy_EwokAPI(void)
 				} else {
 					return Status;
 					}
-		
-				
+/* LGE_CHANGE_S, changed LD clk to reduce the S5K2P7 sensor power noise. 2016-11-21 sungmin.cho@lge.com */
+#ifdef CONFIG_MACH_MSM8996_ELSA
+				// read module name
+				proxy_i2c_e2p_read(0x814, &module_name_1, 1);
+				proxy_i2c_e2p_read(0x815, &module_name_2, 2);
+
+				pr_err("%s, module_name_1 = 0x%x, module_name_2 = 0x%x\n", __func__, module_name_1, module_name_2);
+
+				if (module_name_1 == 0x45 && module_name_2 == 0x7a02)
+				{
+					pr_err("%s, S5K2P7", __func__);
+					if (Status == VL53L0_ERROR_NONE) {
+						Status = VL53L0_SetVcselPulsePeriod(Dev,
+							 VL53L0_VCSEL_PERIOD_PRE_RANGE, 18);
+					}
+					if (Status == VL53L0_ERROR_NONE) {
+						Status = VL53L0_SetVcselPulsePeriod(Dev,
+							VL53L0_VCSEL_PERIOD_FINAL_RANGE, 14);
+					}
+				}
+				else
+				{
+					if (Status == VL53L0_ERROR_NONE) {
+						Status = VL53L0_SetVcselPulsePeriod(Dev,
+							 VL53L0_VCSEL_PERIOD_PRE_RANGE, 14);
+					}
+					if (Status == VL53L0_ERROR_NONE) {
+						Status = VL53L0_SetVcselPulsePeriod(Dev,
+							VL53L0_VCSEL_PERIOD_FINAL_RANGE, 10);
+					}
+				}
+#else
+				if (Status == VL53L0_ERROR_NONE) {
+					Status = VL53L0_SetVcselPulsePeriod(Dev, 
+						 VL53L0_VCSEL_PERIOD_PRE_RANGE, 14);
+				}
+				if (Status == VL53L0_ERROR_NONE) {
+					Status = VL53L0_SetVcselPulsePeriod(Dev, 
+						VL53L0_VCSEL_PERIOD_FINAL_RANGE, 10);
+				}
+
+#endif
+/* LGE_CHANGE_E, changed LD clk to reduce the S5K2P7 sensor power noise. 2016-11-21 sungmin.cho@lge.com */
+
 				if (Status == VL53L0_ERROR_NONE) {
 					Status = VL53L0_SetMeasurementTimingBudgetMicroSeconds(Dev, 33000);//11130);
 				} else {

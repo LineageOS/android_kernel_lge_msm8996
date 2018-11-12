@@ -1,5 +1,5 @@
 /*******************************************************************************
-Copyright © 2015, STMicroelectronics International N.V.
+Copyright © 2016, STMicroelectronics International N.V.
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -58,8 +58,13 @@ extern "C" {
 #endif
 
 
-/** @defgroup VL53L010_general_group VL53L0 General Functions
- *  @brief    General functions and definitions
+/** @defgroup VL53L010_cut10_group VL53L010 cut1.0 Function Definition
+ *  @brief    VL53L010 cut1.0 Function Definition
+ *  @{
+ */
+
+/** @defgroup VL53L010_general_group VL53L010 General Functions
+ *  @brief   VL53L010 General functions and definitions
  *  @{
  */
 
@@ -271,11 +276,11 @@ VL53L010_API VL53L0_Error VL53L010_SetGroupParamHold(VL53L0_DEV Dev,
 VL53L010_API VL53L0_Error VL53L010_GetUpperLimitMilliMeter(VL53L0_DEV Dev,
 			uint16_t *pUpperLimitMilliMeter);
 
-/** @} VL53L0_general_group */
+/** @} VL53L010_general_group */
 
 
-/** @defgroup VL53L0_init_group VL53L0 Init Functions
- *  @brief    VL53L0 Init Functions
+/** @defgroup VL53L010_init_group VL53L010 Init Functions
+ *  @brief    VL53L010 Init Functions
  *  @{
  */
 
@@ -366,11 +371,11 @@ VL53L010_API VL53L0_Error VL53L010_WaitDeviceBooted(VL53L0_DEV Dev);
  */
 VL53L010_API VL53L0_Error VL53L010_ResetDevice(VL53L0_DEV Dev);
 
-/** @} VL53L0_init_group */
+/** @} VL53L010_init_group */
 
 
-/** @defgroup VL53L0_parameters_group VL53L0 Parameters Functions
- *  @brief    Functions used to prepare and setup the device
+/** @defgroup VL53L010_parameters_group VL53L010 Parameters Functions
+ *  @brief   VL53L010 Functions used to prepare and setup the device
  *  @{
  */
 
@@ -578,7 +583,7 @@ VL53L010_API VL53L0_Error VL53L010_GetInterMeasurementPeriodMilliSeconds(
 
 /**
  * @brief Enable/Disable Cross talk compensation feature
- *
+ * 
  * @note This function Access to the device
  *
  * @param   Dev                       Device Handle
@@ -592,7 +597,7 @@ VL53L010_API VL53L0_Error VL53L010_SetXTalkCompensationEnable(
 
 /**
  * @brief Get Cross talk compensation rate
- *
+ * 
  * @note This function Access to the device
  *
  * @param   Dev                        Device Handle
@@ -832,11 +837,11 @@ VL53L010_API VL53L0_Error VL53L010_SetWrapAroundCheckEnable(VL53L0_DEV Dev,
 VL53L010_API VL53L0_Error VL53L010_GetWrapAroundCheckEnable(VL53L0_DEV Dev,
 			uint8_t *pWrapAroundCheckEnable);
 
-/** @} VL53L0_parameters_group */
+/** @} VL53L010_parameters_group */
 
 
-/** @defgroup VL53L0_measurement_group VL53L0 Measurement Functions
- *  @brief    Functions used for the measurements
+/** @defgroup VL53L010_measurement_group VL53L010 Measurement Functions
+ *  @brief   VL53L010 Functions used for the measurements
  *  @{
  */
 
@@ -915,7 +920,7 @@ VL53L010_API VL53L0_Error VL53L010_PerformXTalkCalibration(VL53L0_DEV Dev,
  * @brief Perform Offset Calibration
  *
  * @details Perform a Offset calibration of the Device.
- * This function will launch a ranging measurement, if interrupts are
+ * This function will launch a ranging measurement, if interrupts are 
  * enabled an interrupt will be done.
  * This function will clear the interrupt generated automatically.
  * This function will program a new value for the Offset calibration value and
@@ -936,7 +941,7 @@ VL53L010_API VL53L0_Error VL53L010_PerformXTalkCalibration(VL53L0_DEV Dev,
  * @return  "Other error code"   See ::VL53L0_Error
  */
 VL53L010_API VL53L0_Error VL53L010_PerformOffsetCalibration(VL53L0_DEV Dev,
-            FixPoint1616_t CalDistanceMilliMeter, int32_t *pOffsetMicroMeter);
+            FixPoint1616_t CalDistanceMilliMeter, int32_t* pOffsetMicroMeter);
 
 /**
  * @brief Start device measurement
@@ -1157,11 +1162,11 @@ VL53L010_API VL53L0_Error VL53L010_GetMaxNumberOfROIZones(VL53L0_DEV Dev,
 			uint8_t *pMaxNumberOfROIZones);
 
 
-/** @} VL53L0_measurement_group */
+/** @} VL53L010_measurement_group */
 
 
-/** @defgroup VL53L0_interrupt_group VL53L0 Interrupt Functions
- *  @brief    Functions used for interrupt managements
+/** @defgroup VL53L010_interrupt_group VL53L010 Interrupt Functions
+ *  @brief   VL53L010 Functions used for interrupt managements
  *  @{
  */
 
@@ -1327,11 +1332,11 @@ VL53L010_API VL53L0_Error VL53L010_EnableInterruptMask(VL53L0_DEV Dev,
 			uint32_t InterruptMask);
 
 
-/** @} VL53L0_interrupt_group */
+/** @} VL53L010_interrupt_group */
 
 
-/** @defgroup VL53L0_SPADfunctions_group VL53L0 SPAD Functions
- *  @brief    Functions used for SPAD managements
+/** @defgroup VL53L010_SPADfunctions_group VL53L010 SPAD Functions
+ *  @brief   VL53L010 Functions used for SPAD managements
  *  @{
  */
 
@@ -1405,7 +1410,9 @@ VL53L010_API VL53L0_Error VL53L010_GetSpadAmbientDamperFactor(VL53L0_DEV Dev,
 				   uint16_t *pSpadAmbientDamperFactor);
 
 
-/** @} VL53L0_SPADfunctions_group */
+/** @} VL53L010_SPADfunctions_group */
+
+/** @} VL53L010_cut10_group */
 
 
 
