@@ -96,11 +96,13 @@ struct sps_drv {
 	/* Connection control state */
 	struct sps_rm connection_ctrl;
 
+#ifdef CONFIG_IPC_LOGGING
 	void *ipc_log0;
 	void *ipc_log1;
 	void *ipc_log2;
 	void *ipc_log3;
 	void *ipc_log4;
+#endif
 
 	u32 ipc_loglevel;
 };
@@ -117,6 +119,7 @@ extern u8 logging_option;
 extern u8 debug_level_option;
 extern u8 print_limit_option;
 
+#ifdef CONFIG_IPC_LOGGING
 #define SPS_IPC(idx, dev, msg, args...) do { \
 		if (dev) { \
 			if ((idx == 0) && (dev)->ipc_log0) \
@@ -138,6 +141,10 @@ extern u8 print_limit_option;
 				pr_debug("sps: no such IPC logging index!\n"); \
 		} \
 	} while (0)
+#else
+#define SPS_IPC(idx, dev, msg, args...) /* Do nothing */
+#endif
+#ifdef CONFIG_IPC_LOGGING
 #define SPS_DUMP(msg, args...) do {					\
 		SPS_IPC(4, sps, msg, args); \
 		if (sps) { \
@@ -145,6 +152,9 @@ extern u8 print_limit_option;
 				pr_info(msg, ##args);	\
 		} \
 	} while (0)
+#else
+#define SPS_DUMP(msg, args...) /* Do nothing */
+#endif
 #define SPS_ERR(dev, msg, args...) do {					\
 		if (logging_option != 1) {	\
 			if (unlikely(print_limit_option > 2))	\
