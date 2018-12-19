@@ -53,9 +53,9 @@ size_t);
 
 static attr_type attrs[] = {
 	__ATTR(dirtysanta_lg_model_name,
-		S_IRUGO, dirtysanta_show, dirtysanta_store),
+		(S_IRUGO | S_IWUSR), dirtysanta_show, dirtysanta_store),
 	__ATTR(dirtysanta_sim_num,
-		S_IRUGO, dirtysanta_show, dirtysanta_store),
+		(S_IRUGO | S_IWUSR), dirtysanta_show, dirtysanta_store),
 };
 #endif
 
@@ -72,9 +72,6 @@ static int __init dirtysanta_fixup_loadcfg(void)
 		if(!(match=strstr(saved_command_line, MODELNAMEEQ))) {
 			pr_err("DirtySanta: \"%s\" not passed on kernel command-line\n", MODELNAMEEQ);
 
-#ifdef CONFIG_DIRTYSANTA_FIXUP_SYSFS
-			attrs[0].attr.mode|=S_IWUSR;
-#endif
 		} else {
 			match+=strlen(MODELNAMEEQ);
 			dev_name_len=strchrnul(match, ' ')-match;
@@ -93,9 +90,6 @@ static int __init dirtysanta_fixup_loadcfg(void)
 		if(!(match=strstr(saved_command_line, SIMNUMEQ))) {
 			pr_err("DirtySanta: \"%s\" not passed on kernel command-line\n", SIMNUMEQ);
 
-#ifdef CONFIG_DIRTYSANTA_FIXUP_SYSFS
-			attrs[1].attr.mode|=S_IWUSR;
-#endif
 		} else {
 			sim_num=match[strlen(SIMNUMEQ)]-'0';
 
