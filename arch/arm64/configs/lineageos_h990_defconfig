@@ -15,6 +15,7 @@ CONFIG_WIFI_CONTROL_FUNC=y
 
 # Required for functioning modem
 CONFIG_DIRTYSANTA_FIXUP=y
+CONFIG_DIRTYSANTA_FIXUP_SYSFS=y
 
 # Wipes out the incorrect modem parameters
 CONFIG_CMDLINE_SEARCHREPLACE=y
