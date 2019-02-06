@@ -2259,8 +2259,12 @@ static int _insert_gpuaddr(struct kgsl_pagetable *pagetable,
 			node = &parent->rb_left;
 		else if (new->base > this->base)
 			node = &parent->rb_right;
-		else
-			BUG();
+		else {
+			/* Duplicate entry */
+			WARN(1, "duplicate gpuaddr: 0x%llx\n", gpuaddr);
+			kmem_cache_free(addr_entry_cache, new);
+			return -EEXIST;
+		}
 	}
 
 	rb_link_node(&new->node, parent, node);
