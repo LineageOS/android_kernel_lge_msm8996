@@ -277,8 +277,8 @@ CONFIG_CAVIUM_ERRATUM_22375=n
 CONFIG_CAVIUM_ERRATUM_23154=n
 CONFIG_CAVIUM_ERRATUM_27456=n
 
-# Do not set a minimum amout of loop devices to be created
-CONFIG_BLK_DEV_LOOP_MIN_COUNT=0
+# Set a minimum amout of loop devices to be created
+CONFIG_BLK_DEV_LOOP_MIN_COUNT=16
 
 # We have no use for this fixture device
 CONFIG_USB_EHSET_TEST_FIXTURE=n
