@@ -71,6 +71,7 @@ static int  es9218p_standby2lpb(void);
 static int  es9218p_lpb2standby(void);
 static int es9218p_set_sample_rate(unsigned int sample_rate);
 static int es9218p_set_bit_width(unsigned int bit_width);
+static int es9218_sabre_cfg_custom_filter(struct sabre_custom_filter *sabre_filter);
 
 struct es9218_reg {
     unsigned char   num;
@@ -814,6 +815,11 @@ static ssize_t set_forced_avc_volume(struct device *dev,
     int input_vol;
     sscanf(buf, "%d", &input_vol);
 
+    if ( es9218_power_state < ESS_PS_HIFI ) {
+        pr_err("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
+        return 0;
+    }
+
     if (input_vol >= sizeof(avc_vol_tbl)/sizeof(avc_vol_tbl[0])) {
         pr_err("%s() : Invalid vol = %d return \n", __func__, input_vol);
         return 0;
@@ -834,10 +840,43 @@ static ssize_t get_forced_avc_volume(struct device *dev,
 }
 static DEVICE_ATTR(avc_volume, S_IWUSR|S_IRUGO, get_forced_avc_volume, set_forced_avc_volume);
 
+static ssize_t set_forced_ess_filter(struct device *dev,
+                   struct device_attribute *attr,
+                   const char *buf, size_t count)
+{
+    int input_filter;
+    sscanf(buf, "%d", &input_filter);
+
+    if ( es9218_power_state < ESS_PS_HIFI ) {
+        pr_err("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
+        return 0;
+    }
+
+    if (input_filter > 11) {
+        pr_err("%s() : Invalid filter = %d return \n", __func__, input_filter);
+        return 0;
+    }
+
+    g_sabre_cf_num = input_filter;
+
+    es9218_sabre_cfg_custom_filter(&es9218_sabre_custom_ft[g_sabre_cf_num]);
+
+    return count;
+}
+
+static ssize_t get_forced_ess_filter(struct device *dev,
+                   struct device_attribute *attr,
+                   char *buf)
+{
+    return sprintf(buf, "%i\n", g_sabre_cf_num);
+}
+static DEVICE_ATTR(ess_filter, S_IWUSR|S_IRUGO, get_forced_ess_filter, set_forced_ess_filter);
+
 static struct attribute *es9218_attrs[] = {
     &dev_attr_registers.attr,
     &dev_attr_headset_type.attr,
     &dev_attr_avc_volume.attr,
+    &dev_attr_ess_filter.attr,
     NULL
 };
 
