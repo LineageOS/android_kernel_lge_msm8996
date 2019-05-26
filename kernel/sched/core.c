@@ -74,6 +74,9 @@
 #include <linux/binfmts.h>
 #include <linux/context_tracking.h>
 #include <linux/compiler.h>
+#ifdef CONFIG_CPU_FREQ_STAT
+#include <linux/cpufreq.h>
+#endif
 
 #include <asm/switch_to.h>
 #include <asm/tlb.h>
