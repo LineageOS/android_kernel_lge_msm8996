@@ -2778,8 +2778,6 @@ int hdmi_edid_parser(void *input)
 	int status = 0;
 	u32 i = 0;
 	u32 cea_idx = 1;
-	u32 sink_caps_pclk_khz = 0;
-	u32 max_pclk_khz = 0;
 	struct hdmi_edid_ctrl *edid_ctrl = (struct hdmi_edid_ctrl *)input;
 
 	if (!edid_ctrl) {
@@ -2847,25 +2845,18 @@ int hdmi_edid_parser(void *input)
 
 		ieee_reg_id = hdmi_edid_extract_ieee_reg_id(edid_ctrl,
 				edid_buf);
-		DEV_DBG("%s: ieee_reg_id = 0x%06x\n", __func__, ieee_reg_id);
+		DEV_DBG("%s: ieee_reg_id = 0x%08x\n", __func__, ieee_reg_id);
 		if (ieee_reg_id == EDID_IEEE_REG_ID)
 			edid_ctrl->sink_mode = SINK_MODE_HDMI;
 		else
 			edid_ctrl->sink_mode = SINK_MODE_DVI;
 
-#ifdef CONFIG_SLIMPORT_CTYPE
-		if (lge_get_factory_boot())
-			edid_ctrl->sink_mode = SINK_MODE_HDMI;
-#endif
-
-		if (ieee_reg_id == EDID_IEEE_REG_ID) {
-			hdmi_edid_extract_sink_caps(edid_ctrl, edid_buf);
-			hdmi_edid_extract_latency_fields(edid_ctrl, edid_buf);
-			hdmi_edid_extract_dc(edid_ctrl, edid_buf);
-			hdmi_edid_extract_3d_present(edid_ctrl, edid_buf);
-		}
+		hdmi_edid_extract_sink_caps(edid_ctrl, edid_buf);
+		hdmi_edid_extract_latency_fields(edid_ctrl, edid_buf);
+		hdmi_edid_extract_dc(edid_ctrl, edid_buf);
 		hdmi_edid_extract_speaker_allocation_data(edid_ctrl, edid_buf);
 		hdmi_edid_extract_audio_data_blocks(edid_ctrl, edid_buf);
+		hdmi_edid_extract_3d_present(edid_ctrl, edid_buf);
 		hdmi_edid_extract_extended_data_blocks(edid_ctrl, edid_buf);
 	}
 
