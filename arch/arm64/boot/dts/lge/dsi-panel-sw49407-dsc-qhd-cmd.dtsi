@@ -48,7 +48,11 @@
 		qcom,mdss-dsi-bllp-eof-power-mode;
 		qcom,mdss-dsi-bllp-power-mode;
 		qcom,partial-update-enabled;
+#ifdef CONFIG_LGE_DIRTY_ABOOT_FIXUP
+		qcom,panel-roi-alignment = <440 160 1440 160 1440 160>;
+#else
 		qcom,panel-roi-alignment = <1440 16 1440 16 1440 16>;
+#endif
 		qcom,mdss-dsi-lane-0-state;
 		qcom,mdss-dsi-lane-1-state;
 		qcom,mdss-dsi-lane-2-state;
@@ -100,7 +104,11 @@
 			/* Partial Area Set */
 			39 01 00 00 00 00 05 30 00 00 00 A3
 			/* TE line */
+#ifdef CONFIG_LGE_DIRTY_ABOOT_FIXUP
+			39 01 00 00 00 00 03 44 0A 8F
+#else
 			39 01 00 00 00 00 03 44 00 00
+#endif
 			/* Tearing Effect Line on */
 			15 01 00 00 00 00 02 35 00
 			/* Write Display Brightness */
@@ -639,7 +647,11 @@
 		dsi_sw49407_dsc_cmd_config1: config1 {
 		        qcom,lm-split = <720 720>;
 		        qcom,mdss-dsc-encoders = <1>; /* 3D Mux */
+#ifdef CONFIG_LGE_DIRTY_ABOOT_FIXUP
+		        qcom,mdss-dsc-slice-height = <160>;
+#else
 		        qcom,mdss-dsc-slice-height = <16>;
+#endif
 		        qcom,mdss-dsc-slice-width = <1440>;
 		        qcom,mdss-dsc-slice-per-pkt = <1>;
 

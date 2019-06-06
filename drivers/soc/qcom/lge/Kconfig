@@ -17,4 +17,13 @@ config LGE_DISABLE_SECOND_SCREEN
 	  for LGE devices at the time of this writing (progress is being
 	  made for other Android versions though).
 
+config LGE_DIRTY_ABOOT_FIXUP
+	bool "Fix eng-aboot discrepancy"
+	depends on MACH_MSM8996_ELSA
+	depends on !MACH_MSM8996_ELSA_TMO_US
+	default y
+	help
+	  Fixes screen tearing/static on V20 devices rooted with engineering
+	  bootloader. H918 and officially unlocked US996 doesn't need this.
+
 endmenu
