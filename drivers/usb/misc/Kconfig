@@ -292,3 +292,7 @@ config USB_QCOM_DIAG_BRIDGE
 	  driver.
 	  To compile this driver as a module, choose M here: the
 	  module will be called diag_bridge.  If unsure, choose N.
+
+source "drivers/usb/misc/anx7418/Kconfig"
+source "drivers/usb/misc/anx7688/Kconfig"
+source "drivers/usb/misc/tusb422/Kconfig"
