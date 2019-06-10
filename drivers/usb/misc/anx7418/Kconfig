@@ -1,0 +1,5 @@
+config LGE_USB_ANX7418
+	bool "USB Type-C Crosspoint Switch Driver"
+	help
+	  Say Y here to add support for analogix ANX7418 Type-C Crosspoint Switch
+	  Driver.

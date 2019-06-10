@@ -167,6 +167,10 @@ fw-shipped-$(CONFIG_LGE_TOUCH_CORE_BASE) += \
 	touch/elsa/elsa_limit_mfts.txt
 endif
 
+fw-shipped-$(CONFIG_LGE_USB_ANX7418) += anx7418/ocm_hamming_13.bin
+fw-shipped-$(CONFIG_LGE_USB_ANX7418) += anx7418/ocm_crc_08.bin
+fw-shipped-$(CONFIG_LGE_USB_ANX7688) += analogix/mi1_eeprom_20_8b.img
+
 fw-shipped-all := $(fw-shipped-y) $(fw-shipped-m) $(fw-shipped-)
 
 quiet_cmd_ihex  = IHEX    $@
