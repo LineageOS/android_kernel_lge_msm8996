@@ -1,0 +1,81 @@
+BCM43XX DHD 1.78 for N OS Release Note.
+
+DHD 1.78.18 - 2018.03.30
+Security Patch
+ - CS4757701: CVE-2017-13292. fix overflow in DHD CFG80211 wl_get_assoc_ies when handling assoc_info iovar results
+
+DHD 1.78.17 - 2017.12.28
+Security Patch
+ - CS4158886: CVE-2017-13221. fix buffer overrun in DHD wls_parse_batching_cmd
+              CVE-2017-13213. fix buffer overrun in DHD wl_cfgvendor_set_bssid_blacklist
+              NOTE: CVE-2017-13213 requires HAL change also. HAL updated is mandatory to apply CVE-2017-13213 in DHD
+
+DHD 1.78.16 - 2017.11.23
+Security Patch
+ - CS4002429: CVE-2017-13161. fix buffer overrun in DHD wl_parse_ssid_list_tlv
+
+DHD 1.78.15 - 2017.10.20
+Security Patch
+ - CS3640500: CVE-2017-0824 remove sd_devreg IOVARs to prevent out of bound write via debug oriented IOVARs
+			  CVE-2017-0825 adding event length check in dhd_dbg_msgtrace_log_parser
+
+DHD 1.78.14 - 2017.09.15
+Security Patch
+ - CS3457008: CVE-2017-0791. adding event length check in wl_notify_rx_mgmt_frame
+              CVE-2017-0792. adding event length check in dhd_rtt_event_handler
+			  CVE-2017-0788. adding boundary check in dhd_handle_hotlist_scan_evt
+			  CVE-2017-0790. adding gscan_result bound check in dhd_process_full_gscan_result
+			  CVE-2017-0787. adding boundary check in dhd_pno_process_epno_result function
+			  CVE-2017-0786. adding escan_result boundary check in wl_escan_handler
+			  CVE-2017-0789. remove significant wifi change feature
+			  CVE-2017-0789. Removing obsolete SWC feature to prevent heap overflows
+
+DHD 1.78.13 - 2017.06.22
+Security Patch
+ - CS3040954 Adding boundary check in wl_cfg80211_mgmt_tx(CVE-2017-0706 )
+ - CS3040954: Adding boundary check in wl_cfgvendor_significant_change_cfg(CVE-2017-0705)
+
+DHD 1.78.12 - 2017.05.17
+Others
+ - CS2614469: CVE-2017-0633 Enhanced wrong buffer usage in IOCTL path
+ - Google security fix: V2017030901-check length avoiding 16bit overflow in is_wlc_event_frame
+ 
+DHD 1.78.11 - 2017.03.30
+Others
+ - CSP:1044652 Google Secuity patch A-34469904 prevent stack overflow in the wl_android_set_roampref function
+ - CSP:1137654 Google Security Patch A-32474971 adding hotlist bssid counter element in wl_cfgvendor_hotlist_cfg
+ - CSP:1137656 Google Security Patch A-32125310 fix buffer overrun in wl_cfg80211_add_iw_ie
+ - CSP:1137656 Google Security Patch A-34197514 - fix buffer overrun in wl_run_escan
+ - CSP:1137656 Google Security Patch A-34198931  fix buffer overrun in dhd_pno_process_anqpo_result
+ - CSP:1137656 Google Security Patch A-34203305 Fix buffer overrun in DHD dhd_wlfc_reorderinfo_indicate
+ - CSP:1137656 Google Security Patch A-34624457 fix for arbitrary memory free in wifi driver function wl_cfgvendor_dbg_get_mem_dump
+
+DHD 1.78.10 - 2017.02.15
+Others
+ - CSP:1120247 Google Security patch A-32838767 (Build error fix for A-32838767)
+ 
+DHD 1.78.9 - Not released
+Others
+ - CSP:1120247 Google Security patch A-32838767
+ - Google Security patch - ANDROID-32124445
+ - Google Security patch CVE-2017-0430
+ - Google Security patches - V2016122201, V2016122901, V2016122902
+ 
+DHD 1.78.8 (2016.12.16)
+	- Google Security patches (CSP#1114036,  1104030, 1104026, 1104023)
+DHD 1.78.7 (2016.09.08)
+	- Google Security patch CVE-2016-3869 (CSP#1086098)
+DHD 1.363.70.5 (2016.06.30)
+  - Sync up CSP attached patches and LGE modified patches
+  - Update Google security patches(CSP#1062605)
+  - Google security patches have dependancy with FW 7.177.3
+
+DHD 1.363.70.4 (2016.06.02)
+  - Introduce preliminary N OS features
+
+DHD 1.363.70.2 (2016.05.20)
+  - Enable Gscan/Linkstat/Debugability Features of M OS
+  
+DHD 1.363.70.1 (2016.05.20)
+  - Initial release for M OS
+

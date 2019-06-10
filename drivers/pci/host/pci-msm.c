@@ -244,6 +244,11 @@
 #define PCIE20_BRIDGE_CTRL		0x3C
 #define PCIE20_DEVICE_CONTROL_STATUS	0x78
 #define PCIE20_DEVICE_CONTROL2_STATUS2 0x98
+/* BRCM: correct the EP regs offset for 435x */
+#ifdef CONFIG_BCMDHD_PCIE
+#define PCIE20_L1SUB_CONTROL2                   0x15C
+#define PCIE20_LTR_MAX_SNOOP_LATENCY_BRCM	0x1B4
+#endif /* CONFIG_BCMDHD_PCIE */
 
 #define PCIE20_AUX_CLK_FREQ_REG		0xB40
 #define PCIE20_ACK_F_ASPM_CTRL_REG     0x70C
@@ -279,6 +284,12 @@
 #define PERST_PROPAGATION_DELAY_US_MIN	  1000
 #define PERST_PROPAGATION_DELAY_US_MAX	  1005
 #define SWITCH_DELAY_MAX	  20
+
+#ifdef CONFIG_BCMDHD_PCIE
+#define PERST_DEASSERT_PROPAGATION_DELAY_US_MIN	  18000
+#define PERST_DEASSERT_PROPAGATION_DELAY_US_MAX	  20000
+#endif
+
 #define REFCLK_STABILIZATION_DELAY_US_MIN     1000
 #define REFCLK_STABILIZATION_DELAY_US_MAX     1005
 #define LINK_UP_TIMEOUT_US_MIN		    5000
@@ -3904,7 +3915,11 @@ static void msm_pcie_config_controller(struct msm_pcie_dev_t *dev)
 	}
 }
 
+#ifndef CONFIG_BCMDHD_PCIE
 static void msm_pcie_config_link_state(struct msm_pcie_dev_t *dev)
+#else
+static int msm_pcie_config_link_state(struct msm_pcie_dev_t *dev)
+#endif
 {
 	u32 val;
 	u32 current_offset;
@@ -3913,6 +3928,9 @@ static void msm_pcie_config_link_state(struct msm_pcie_dev_t *dev)
 	u32 ep_link_cap_offset = 0;
 	u32 ep_link_ctrlstts_offset = 0;
 	u32 ep_dev_ctrl2stts2_offset = 0;
+#ifdef CONFIG_BCMDHD_PCIE
+	u32 ep_l1sub_ctrl2_offset = 0;
+#endif
 
 	/* Enable the AUX Clock and the Core Clk to be synchronous for L1SS*/
 	if (!dev->aux_clk_sync && dev->l1ss_supported)
@@ -3922,9 +3940,13 @@ static void msm_pcie_config_link_state(struct msm_pcie_dev_t *dev)
 	current_offset = readl_relaxed(dev->conf + PCIE_CAP_PTR_OFFSET) & 0xff;
 
 	while (current_offset) {
-		if (msm_pcie_check_align(dev, current_offset))
+		if (msm_pcie_check_align(dev, current_offset)) {
+#ifndef CONFIG_BCMDHD_PCIE
 			return;
-
+#else
+			return MSM_PCIE_ERROR;
+#endif
+		}
 		val = readl_relaxed(dev->conf + current_offset);
 		if ((val & 0xff) == PCIE20_CAP_ID) {
 			ep_link_cap_offset = current_offset + 0x0c;
@@ -3939,7 +3961,11 @@ static void msm_pcie_config_link_state(struct msm_pcie_dev_t *dev)
 		PCIE_DBG(dev,
 			"RC%d endpoint does not support PCIe capability registers\n",
 			dev->rc_idx);
+#ifndef CONFIG_BCMDHD_PCIE
 		return;
+#else
+		return MSM_PCIE_ERROR;
+#endif
 	} else {
 		PCIE_DBG(dev,
 			"RC%d: ep_link_cap_offset: 0x%x\n",
@@ -4030,13 +4056,20 @@ static void msm_pcie_config_link_state(struct msm_pcie_dev_t *dev)
 	if (dev->l1ss_supported) {
 		current_offset = PCIE_EXT_CAP_OFFSET;
 		while (current_offset) {
-			if (msm_pcie_check_align(dev, current_offset))
+			if (msm_pcie_check_align(dev, current_offset)) {
+#ifndef CONFIG_BCMDHD_PCIE
 				return;
-
+#else
+				return MSM_PCIE_ERROR;	
+#endif
+			}
 			val = readl_relaxed(dev->conf + current_offset);
 			if ((val & 0xffff) == L1SUB_CAP_ID) {
 				ep_l1sub_cap_reg1_offset = current_offset + 0x4;
 				ep_l1sub_ctrl1_offset = current_offset + 0x8;
+#ifdef CONFIG_BCMDHD_PCIE
+				ep_l1sub_ctrl2_offset = current_offset + 0xC;
+#endif
 				break;
 			}
 			current_offset = val >> 20;
@@ -4045,7 +4078,11 @@ static void msm_pcie_config_link_state(struct msm_pcie_dev_t *dev)
 			PCIE_DBG(dev,
 				"RC%d endpoint does not support l1ss registers\n",
 				dev->rc_idx);
+#ifndef CONFIG_BCMDHD_PCIE
 			return;
+#else
+			return MSM_PCIE_ERROR;
+#endif
 		}
 
 		val = readl_relaxed(dev->conf + ep_l1sub_cap_reg1_offset);
@@ -4055,6 +4092,47 @@ static void msm_pcie_config_link_state(struct msm_pcie_dev_t *dev)
 				dev->rc_idx, ep_l1sub_ctrl1_offset);
 
 		val &= 0xf;
+
+#ifdef CONFIG_BCMDHD_PCIE
+		if (dev->rc_idx == 0) {
+			/* EP: TPOWERON : 120us */
+			msm_pcie_write_reg_field(dev->conf, ep_l1sub_ctrl2_offset,
+				0xff, BIT(6)|BIT(5)|BIT(0));
+			/* RC: TPOWERON : 120us */
+			msm_pcie_write_reg_field(dev->dm_core, PCIE20_L1SUB_CONTROL2,
+				0xff, BIT(6)|BIT(5)|BIT(0));
+
+			/* EP: L12Threshold : 164 us */
+			msm_pcie_write_mask(dev->conf + ep_l1sub_ctrl1_offset, 0,
+				BIT(30)|BIT(23)|BIT(21));
+			/* RC: L12Threshold : 164 us */
+			msm_pcie_write_mask(dev->dm_core + PCIE20_L1SUB_CONTROL1, 0,
+				BIT(30)|BIT(23)|BIT(21));
+
+			/* EP: Set LTR Latency (0x1B4) */
+			msm_pcie_write_mask(dev->conf + PCIE20_LTR_MAX_SNOOP_LATENCY_BRCM, 0,
+				BIT(28)|BIT(17)|BIT(16)|BIT(12)|BIT(1)|BIT(0));
+
+			if (dev->shadow_en) {
+				dev->rc_shadow[PCIE20_L1SUB_CONTROL2 / 4] =
+						readl_relaxed(dev->dm_core +
+						PCIE20_L1SUB_CONTROL2);
+				dev->ep_shadow[0][ep_l1sub_ctrl2_offset / 4] =
+						readl_relaxed(dev->conf +
+						ep_l1sub_ctrl2_offset);
+				dev->ep_shadow[0][PCIE20_LTR_MAX_SNOOP_LATENCY_BRCM / 4] =
+						readl_relaxed(dev->conf +
+						PCIE20_LTR_MAX_SNOOP_LATENCY_BRCM);
+			}
+			PCIE_DBG2(dev, "RC's L1SUB_CONTROL2:0x%x\n",
+				readl_relaxed(dev->dm_core + PCIE20_L1SUB_CONTROL2));
+			PCIE_DBG2(dev, "EP's L1SUB_CONTROL2:0x%x\n",
+				readl_relaxed(dev->conf + ep_l1sub_ctrl2_offset));
+			PCIE_DBG2(dev, "EP's LTR_MAX_SNOOP_LATENCY:0x%x\n",
+				readl_relaxed(dev->conf +
+				PCIE20_LTR_MAX_SNOOP_LATENCY_BRCM));
+		}
+#endif /* CONFIG_BCMDHD_PCIE */
 
 		msm_pcie_write_reg_field(dev->dm_core, PCIE20_L1SUB_CONTROL1,
 					0xf, val);
@@ -4090,6 +4168,9 @@ static void msm_pcie_config_link_state(struct msm_pcie_dev_t *dev)
 			readl_relaxed(dev->conf +
 			ep_dev_ctrl2stts2_offset));
 	}
+#ifdef CONFIG_BCMDHD_PCIE
+	return 0;
+#endif
 }
 
 void msm_pcie_config_msi_controller(struct msm_pcie_dev_t *dev)
@@ -4664,6 +4745,12 @@ int msm_pcie_enable(struct msm_pcie_dev_t *dev, u32 options)
 		dev->rc_idx);
 	gpio_set_value(dev->gpio[MSM_PCIE_GPIO_PERST].num,
 				1 - dev->gpio[MSM_PCIE_GPIO_PERST].on);
+#ifdef CONFIG_BCMDHD_PCIE
+	if (dev->rc_idx == 0)
+		usleep_range(PERST_DEASSERT_PROPAGATION_DELAY_US_MIN,
+					 PERST_DEASSERT_PROPAGATION_DELAY_US_MAX);
+	else
+#endif
 	usleep_range(dev->perst_delay_us_min, dev->perst_delay_us_max);
 
 	/* set max tlp read size */
@@ -4715,9 +4802,20 @@ int msm_pcie_enable(struct msm_pcie_dev_t *dev, u32 options)
 
 	if (!dev->msi_gicm_addr)
 		msm_pcie_config_msi_controller(dev);
-
+#ifndef CONFIG_BCMDHD_PCIE
 	msm_pcie_config_link_state(dev);
-
+#else
+	if (msm_pcie_config_link_state(dev)) {
+		PCIE_INFO(dev, "PCIe: Assert the reset of endpoint of RC%d.\n",
+			dev->rc_idx);
+		gpio_set_value(dev->gpio[MSM_PCIE_GPIO_PERST].num,
+			dev->gpio[MSM_PCIE_GPIO_PERST].on);
+		PCIE_ERR(dev, "PCIe RC%d config link failed\n",
+			dev->rc_idx);
+		ret = -1;
+		goto link_fail;
+	}
+#endif
 	dev->link_status = MSM_PCIE_LINK_ENABLED;
 	dev->power_on = true;
 	dev->suspending = false;

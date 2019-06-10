@@ -1,0 +1,135 @@
+BCM43596 DHD 1.80 Release Note.
+DHD 1.80.18 - 2018.03.30
+Kernel Panic
+ - CS4625460: Fixed RPM crash due to continuous interrupt between D3 inform and D3 ack
+
+Security Patch
+ - CS4757701: CVE-2017-13292. fix overflow in DHD CFG80211 wl_get_assoc_ies when handling assoc_info iovar results
+
+Others
+ - CS4549263: Fix Rxchain setting failure problem during OTA test
+
+DHD 1.80.17 - 2017.12.28
+Security Patch
+ - CS4158886: CVE-2017-13221. fix buffer overrun in DHD wls_parse_batching_cmd
+              CVE-2017-13213. fix buffer overrun in DHD wl_cfgvendor_set_bssid_blacklist
+              NOTE: CVE-2017-13213 requires HAL change also. HAL updated is mandatory to apply CVE-2017-13213 in DHD
+
+DHD 1.80.16 - 2017.11.23
+Security Patch
+ - CS4002429: CVE-2017-13161. fix buffer overrun in DHD wl_parse_ssid_list_tlv
+Others
+ - CS3989824: Fix setChain failure issue while FTM test
+
+DHD 1.80.15 - 2017.10.20
+Security Patch
+ - CS3640500: CVE-2017-0824 remove sd_devreg IOVARs to prevent out of bound write via debug oriented IOVARs
+DHD 1.80.14 - 2017.09.15
+Security Patch
+ - CS3457008: CVE-2017-0791. adding event length check in wl_notify_rx_mgmt_frame
+              CVE-2017-0792. adding event length check in dhd_rtt_event_handler
+			  CVE-2017-0788. adding boundary check in dhd_handle_hotlist_scan_evt
+			  CVE-2017-0790. adding gscan_result bound check in dhd_process_full_gscan_result
+			  CVE-2017-0787. adding boundary check in dhd_pno_process_epno_result function
+			  CVE-2017-0786. adding escan_result boundary check in wl_escan_handler
+			  CVE-2017-0789. remove significant wifi change feature
+			  CVE-2017-0789. Removing obsolete SWC feature to prevent heap overflows
+Others
+ - CS3543215:  Change txfl wakelock_timeout to wakelock to avoid tx stuck issue in hotspot mode
+DHD 1.80.13 - 2017.06.22
+Security Patch
+ - CS3040954 Adding boundary check in wl_cfg80211_mgmt_tx(CVE-2017-0706 )
+ - CS3040954: Adding boundary check in wl_cfgvendor_significant_change_cfg(CVE-2017-0705)
+ 
+DHD 1.80.12 - 2017.05.17
+Others
+ - CS2614469: CVE-2017-0633 Enhanced wrong buffer usage in IOCTL path
+ - Google security fix: V2017030901-check length avoiding 16bit overflow in is_wlc_event_frame
+
+DHD 1.80.11 - 2017.03.30
+Kernel Panic
+ - CSP:1138146 Fix Kernel crash when softap is enabled with virual apsta condition
+
+Others
+ - CSP:1135349 Set SoftAP param for VZW FIT test in AP/STA RSDB mode bringup
+ - CSP:1137654 Google Security Patch A-32474971 adding hotlist bssid counter element in wl_cfgvendor_hotlist_cfg
+ - CSP:1137656 Google Security Patch A-32125310 fix buffer overrun in wl_cfg80211_add_iw_ie
+ - CSP:1137656 Google Security Patch A-34197514 - fix buffer overrun in wl_run_escan
+ - CSP:1137656 Google Security Patch A-34203305 Fix buffer overrun in DHD dhd_wlfc_reorderinfo_indicate
+ - CSP:1137656 [Google Security Vulnerability] fix buffer overrun in dhd_pno_process_anqpo_result
+
+DHD 1.80.10 - 2017.02.27
+Others
+ - CSP:1130510 Fix of STA connection failure issue on STA+GC condition
+
+DHD 1.80.9 - 2017.02.24
+Others
+ - CSP:1127318 Google Security patch - ANDROID-32124445
+ - CSP:1130071 Scan error issue fix due to scan suppress
+ - CSP:1131119 Fix of STA connection failure in AP+STA mode
+ 
+DHD 1.80.8 - 2017.02.10
+Kernel Panic
+ - CSP:1126092 Add smp_wmb incase of if add/del to avoid cpu mis-sync problem
+Others
+ - CSP:1122072 Add scansuppress private cmd for HW10
+ - CSP:1125681 Fix for P2P interface remove failure
+ - CSP:1127222 Add delay for PCIe power up stability
+ - Google Security Patches (V2016122201, V2016122901, V2016122902)
+ 
+DHD 1.80.7 - 2017.01.23
+Kernel Panic
+ - CSP:1118375 Apply memory barrier function as potential fix for SMMU fault
+
+Others
+ - CSP:1114781 Remove error mesasge print when creating a P2P GO
+ - CSP:1117006 Disassoc connection first when there exists previous connection
+ - CSP:1117006 Wait max 500ms for disconnection
+ - CSP:1117820 Add get_rsdb_mode priv cmd for LGE
+ - CSP:1117820 Disable parallel scan while SoftAP is enabled
+ - CSP:1117820 Fix for client disconnection issue when hostapd running
+ - CSP:1119195 add sar_limit mode handling routine in wl_android_set_sarlimit_txctrl()
+ - CSP:1119922 Enable AP rxchain power save
+ - CSP:1120247  Google Security Patch ANDROID-32838767
+ - CSP:1120247 Google Security Patch (ANDROID-31707909)
+ 
+DHD 1.80.6 - 2017.01.10
+Kernel Panic
+ - CSP:1118375 Apply memory barrier function as potential fix for SMMU fault
+
+Others
+ - CSP:1114781 Remove error mesasge print when creating a P2P GO
+ - CSP:1117006 Disassoc connection first when there exists previous connection
+ - CSP:1117006 Wait max 500ms for disconnection
+ - CSP:1117820 Add get_rsdb_mode priv cmd for LGE
+ - CSP:1117820 Disable parallel scan while SoftAP is enabled
+ - CSP:1117820 Fix for client disconnection issue when hostapd running
+ - CSP:1119195 add sar_limit mode handling routine in wl_android_set_sarlimit_txctrl()
+ - CSP:1120247  Google Security Patch ANDROID-32838767
+ - CSP:1120247 Google Security Patch (ANDROID-31707909)
+
+DHD 1.80.5 - 2016.12.16
+Others
+ - CSP:1114036 Google Security patches
+ - CSP:1114030 Google Security patches
+ - CSP:1114026 Google Security patches
+ - CSP:1114023 Google Security patches
+ - CSP:110489 Fix:private command SETROAMPROF is not working
+ - CSP:1111511 Eliminate unnecessary driver loading logs
+ - CSP:1109726 Fix GSCAN error
+
+DHD 1.80.4 - 2016.11.29
+Others
+  - apply Downloadable CLM blob file and uses all ccode rev0.
+    * must locate the file in 'system/etc/wifi/4359_lg.clm_blob' from Official FW release
+  - Sync up with previous additional project fixes
+  - Linkstat Fix
+
+DHD 1.80.2 - 2016.11.07
+Others
+  - Sync up with previous project fixes
+  - NOS Update: GSCAN/LinkStat/NDOE/ePNO
+
+DHD 1.80.1 - 2016.10.13
+Others
+  - Initial release for G6 bring up
