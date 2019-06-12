@@ -116,6 +116,9 @@ static  int msm_cpp_update_gdscr_status(struct cpp_device *cpp_dev,
 	bool status);
 static int msm_cpp_buffer_private_ops(struct cpp_device *cpp_dev,
 	uint32_t buff_mgr_ops, uint32_t id, void *arg);
+/*LGE_CHANGE S, cpp firmware fail recovery, 2017-02-09 */
+static int32_t msm_cpp_reset_vbif_and_load_fw(struct cpp_device *cpp_dev);
+/*LGE_CHANGE E, cpp firmware fail recovery, 2017-02-09 */
 static void msm_cpp_set_micro_irq_mask(struct cpp_device *cpp_dev,
 	uint8_t enable, uint32_t irq_mask);
 static void msm_cpp_flush_queue_and_release_buffer(struct cpp_device *cpp_dev,
@@ -157,7 +160,11 @@ static int32_t msm_cpp_reset_vbif_and_load_fw(struct cpp_device *cpp_dev);
 	qcmd;			 \
 })
 
+#ifndef CONFIG_MACH_LGE
 #define MSM_CPP_MAX_TIMEOUT_TRIAL 1
+#else
+#define MSM_CPP_MAX_TIMEOUT_TRIAL 3
+#endif
 
 struct msm_cpp_timer_data_t {
 	struct cpp_device *cpp_dev;
@@ -2032,8 +2039,19 @@ static int msm_cpp_send_frame_to_hardware(struct cpp_device *cpp_dev,
 		spin_lock_irqsave(&cpp_timer.data.processed_frame_lock, flags);
 		msm_enqueue(&cpp_dev->processing_q,
 			&frame_qcmd->list_frame);
+		/*LGE_CHANGE S, fix NULL pointer panic while msm_cpp_do_timeout_work, 2016-08-02, Camera-Stability@lge.com*/
+#if 0
 		cpp_timer.data.processed_frame[cpp_dev->processing_q.len - 1] =
 			process_frame;
+#else
+		for (i = 0; i < MAX_CPP_PROCESSING_FRAME; i++){
+			if(cpp_timer.data.processed_frame[i] == NULL){
+				cpp_timer.data.processed_frame[i] = process_frame;
+				break;
+			}
+		}
+#endif
+		/*LGE_CHANGE E, fix NULL pointer panic while msm_cpp_do_timeout_work, 2016-08-02, Camera-Stability@lge.com*/
 		queue_len = cpp_dev->processing_q.len;
 		spin_unlock_irqrestore(&cpp_timer.data.processed_frame_lock,
 			flags);

@@ -1595,6 +1595,12 @@ enum msm_camera_vreg_name_t {
 	CAM_VIO,
 	CAM_VANA,
 	CAM_VAF,
+#ifdef CONFIG_MACH_LGE
+	CAM_OISVDD,
+	CAM_OISDVDD,
+	CAM_I2C_PULL_UP,
+	CAM_TCS_VIO,
+#endif
 	CAM_VREG_MAX,
 };
 

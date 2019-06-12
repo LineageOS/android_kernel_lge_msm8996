@@ -50,7 +50,13 @@
 #define CSID_VERSION_V50                      0x50000000
 #define MSM_CSID_DRV_NAME                    "msm_csid"
 
+#ifndef CONFIG_MACH_LGE
 #define DBG_CSID                             0
+#else
+/* LGE_CHANGE, CST, enabled csid sof debug feature */
+#define DBG_CSID                             1
+#endif
+
 #define SHORT_PKT_CAPTURE                    0
 #define SHORT_PKT_OFFSET                     0x200
 #define ENABLE_3P_BIT                        1
@@ -493,8 +499,20 @@ static irqreturn_t msm_csid_irq(int irq_num, void *data)
 
 	irq = msm_camera_io_r(csid_dev->base +
 		csid_dev->ctrl_reg->csid_reg.csid_irq_status_addr);
+
+#ifndef CONFIG_MACH_LGE
 	pr_err_ratelimited("%s CSID%d_IRQ_STATUS_ADDR = 0x%x\n",
 		 __func__, csid_dev->pdev->id, irq);
+#else
+	/* LGE_CHANGE, CST, enabled csid sof debug feature */
+	if (csid_dev->csid_sof_debug == SOF_DEBUG_ENABLE)
+		pr_err("%s CSID%d_IRQ_STATUS_ADDR = 0x%x\n",
+		 __func__, csid_dev->pdev->id, irq);
+	else
+	    pr_err_ratelimited("%s CSID%d_IRQ_STATUS_ADDR = 0x%x\n",
+		 __func__, csid_dev->pdev->id, irq);
+#endif
+
 	if (irq & (0x1 <<
 		csid_dev->ctrl_reg->csid_reg.csid_rst_done_irq_bitshift))
 		complete(&csid_dev->reset_complete);

@@ -35,11 +35,39 @@ struct msm_cam_dump_string_info {
 	const char *print;
 	uint32_t offset;
 };
+/* LGE_CHANGE, camera stability task, Changed to inline function for RTB logging */
+#ifdef CONFIG_MSM_RTB//CONFIG_LGE_CAMERA_RTB_DEBUG
+static inline void msm_camera_io_w(u32 data, void __iomem *addr)
+{
+	writel_relaxed((data), (addr));
+}
+static inline void msm_camera_io_w_mb(u32 data, void __iomem *addr)
+{
+	wmb();
+	writel_relaxed((data), (addr));
+	wmb();
+}
+static inline u32 msm_camera_io_r(void __iomem *addr)
+{
+	uint32_t data = readl_relaxed(addr);
+	return data;
+}
+static inline u32 msm_camera_io_r_mb(void __iomem *addr)
+{
+	uint32_t data;
+	rmb();
+	data = readl_relaxed(addr);
+	rmb();
+	return data;
+}
+#else
 
 void msm_camera_io_w(u32 data, void __iomem *addr);
 void msm_camera_io_w_mb(u32 data, void __iomem *addr);
 u32 msm_camera_io_r(void __iomem *addr);
 u32 msm_camera_io_r_mb(void __iomem *addr);
+#endif
+
 void msm_camera_io_dump(void __iomem *addr, int size, int enable);
 void msm_camera_io_memcpy(void __iomem *dest_addr,
 		void __iomem *src_addr, u32 len);
@@ -70,7 +98,7 @@ int msm_camera_config_single_vreg(struct device *dev,
 	struct camera_vreg_t *cam_vreg, struct regulator **reg_ptr, int config);
 
 int msm_camera_request_gpio_table(struct gpio *gpio_tbl, uint8_t size,
-	int gpio_en);
+	int gpio_en, int dual_camera); //LG Change
 void msm_camera_io_dump_wstring_base(void __iomem *addr,
 	struct msm_cam_dump_string_info *dump_data,
 	int size);

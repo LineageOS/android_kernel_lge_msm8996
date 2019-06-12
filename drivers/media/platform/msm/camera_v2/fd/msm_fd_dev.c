@@ -23,6 +23,7 @@
 #include <media/v4l2-event.h>
 #include <media/videobuf2-v4l2.h>
 #include <linux/clk/msm-clk.h>
+#include <linux/async.h> // LGE async fd_driver init
 
 #include "msm_fd_dev.h"
 #include "msm_fd_hw.h"
@@ -1282,7 +1283,7 @@ static void msm_fd_wq_handler(struct work_struct *work)
 	}
 
 	if (fd->state == MSM_FD_DEVICE_RUNNING) {
-		/* We have the data from fd hw, we can start next processing */
+	/* We have the data from fd hw, we can start next processing */
 		msm_fd_hw_schedule_next_buffer(fd, 0);
 	}
 
@@ -1475,9 +1476,19 @@ static struct platform_driver fd_driver = {
 	},
 };
 
+// LGE async fd_driver init
+static void async_msm_fd_init_module(void *data, async_cookie_t cookie)
+{
+	int ret = 0;
+	ret = platform_driver_register(&fd_driver);
+	if (ret < 0)
+		pr_err("failed to register fd_driver. \n");
+}
+
 static int __init msm_fd_init_module(void)
 {
-	return platform_driver_register(&fd_driver);
+	//return platform_driver_register(&fd_driver);
+	return async_schedule(async_msm_fd_init_module, NULL);
 }
 
 static void __exit msm_fd_exit_module(void)
