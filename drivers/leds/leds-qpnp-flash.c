@@ -1167,6 +1167,19 @@ static int flash_regulator_setup(struct qpnp_flash_led *led,
 
 error_regulator_setup:
 	while (i--) {
+#ifdef CONFIG_MACH_LGE
+		if (IS_ERR_OR_NULL(flash_node->reg_data[i].regs)) {
+			flash_node->reg_data[i].regs =
+				regulator_get(flash_node->cdev.dev,
+						flash_node->reg_data[i].reg_name);
+			if (IS_ERR_OR_NULL(flash_node->reg_data[i].regs)) {
+				rc = PTR_ERR(flash_node->reg_data[i].regs);
+				dev_err(&led->spmi_dev->dev,
+						"Failed to get regulator %d\n", i);
+				continue;
+			}
+		}
+#endif
 		if (regulator_count_voltages(flash_node->reg_data[i].regs)
 									> 0) {
 			regulator_set_voltage(flash_node->reg_data[i].regs,
@@ -1213,7 +1226,7 @@ static int qpnp_flash_led_prepare_v1(struct led_trigger *trig, int options,
 	struct led_classdev *led_cdev = trigger_to_lcdev(trig);
 	struct flash_node_data *flash_node;
 	struct qpnp_flash_led *led;
-	int rc;
+	int rc = 0;
 
 	if (!led_cdev) {
 		pr_err("Invalid led_trigger provided\n");
@@ -1277,14 +1290,25 @@ static void qpnp_flash_led_work(struct work_struct *work)
 	if (!brightness)
 		goto turn_off;
 
+#if !defined(CONFIG_MACH_MSM8996_ELSA) && !defined(CONFIG_MACH_MSM8996_ANNA)
 	if (led->open_fault) {
 		dev_err(&led->pdev->dev, "Open fault detected\n");
 		mutex_unlock(&led->flash_led_lock);
 		return;
 	}
+#else
+	if (led->open_fault) {
+		dev_err(&led->spmi_dev->dev, "Open fault detected\n");
+	}
+#endif
 
 	if (!flash_node->flash_on && flash_node->num_regulators > 0) {
+#ifdef CONFIG_MACH_LGE
+		rc = flash_regulator_setup(led, flash_node, true);
+		rc |= flash_regulator_enable(led, flash_node, true);
+#else
 		rc = flash_regulator_enable(led, flash_node, true);
+#endif
 		if (rc) {
 			mutex_unlock(&led->flash_led_lock);
 			return;
@@ -1721,6 +1745,7 @@ static void qpnp_flash_led_work(struct work_struct *work)
 			goto exit_flash_led_work;
 		}
 
+#ifndef CONFIG_MACH_LGE
 		if (led->strobe_debug && led->dbg_feature_en) {
 			udelay(2000);
 			rc = regmap_read(led->regmap,
@@ -1734,6 +1759,36 @@ static void qpnp_flash_led_work(struct work_struct *work)
 			}
 			led->fault_reg = temp;
 		}
+#else
+		udelay(2000);
+		rc = spmi_ext_register_readl(led->spmi_dev->ctrl,
+				led->spmi_dev->sid,
+				FLASH_LED_FAULT_STATUS(led->base),
+				&val, 1);
+		if (rc) {
+			dev_err(&led->spmi_dev->dev,
+			"Unable to read from addr= %x, rc(%d)\n",
+			FLASH_LED_FAULT_STATUS(led->base), rc);
+			goto exit_flash_led_work;
+		}
+		led->fault_reg = val;
+
+		if(val & 0xFF) {
+			pr_err("FLASH1_LED_FAULT_STATUS 0x%x\n", val);
+		}
+
+		rc = spmi_ext_register_readl(led->spmi_dev->ctrl,
+			led->spmi_dev->sid, led->base + 0x10, &val, 1);
+		if (rc) {
+			dev_err(&led->spmi_dev->dev,
+				"Unable to read from addr=%x, rc(%d)\n",
+				led->base + 0x10, rc);
+			goto exit_flash_led_work;
+		}
+		if(val & 0xF0) {
+			pr_err("FLASH1_INT_RT_STS 0x%x\n", val);
+		}
+#endif
 	} else {
 		pr_err("Both Torch and Flash cannot be select at same time\n");
 		for (i = 0; i < led->num_leds; i++)
@@ -1766,6 +1821,11 @@ turn_off:
 		}
 
 		led->open_fault |= (val & FLASH_LED_OPEN_FAULT_DETECTED);
+
+#ifdef CONFIG_MACH_LGE
+		if(val)
+			dev_err(&led->spmi_dev->dev, "Fault detected (0x%x)\n", val);
+#endif
 	}
 
 	rc = qpnp_led_masked_write(led,
@@ -1818,8 +1878,15 @@ exit_flash_led_work:
 		goto exit_flash_led_work;
 	}
 error_enable_gpio:
+#ifdef CONFIG_MACH_LGE
+	if (flash_node->flash_on && flash_node->num_regulators > 0) {
+		flash_regulator_enable(led, flash_node, false);
+		flash_regulator_setup(led, flash_node,false);
+	}
+#else
 	if (flash_node->flash_on && flash_node->num_regulators > 0)
 		flash_regulator_enable(led, flash_node, false);
+#endif
 
 	flash_node->flash_on = false;
 	mutex_unlock(&led->flash_led_lock);
@@ -2316,9 +2383,13 @@ static int qpnp_flash_led_parse_common_dt(
 
 	led->pdata->hdrm_sns_ch1_en = of_property_read_bool(node,
 						"qcom,headroom-sense-ch1-enabled");
-
+#ifdef CONFIG_MACH_LGE
+	//Disable Current change by power detect enable (G4 deliver)
+	led->pdata->power_detect_en = false;
+#else
 	led->pdata->power_detect_en = of_property_read_bool(node,
 						"qcom,power-detect-enabled");
+#endif
 
 	led->pdata->mask3_en = of_property_read_bool(node,
 						"qcom,otst2-module-enabled");
@@ -2580,8 +2651,13 @@ static int qpnp_flash_led_probe(struct platform_device *pdev)
 				goto error_led_register;
 			}
 
+#ifdef CONFIG_MACH_LGE
+			rc = flash_regulator_setup(led, &led->flash_node[i],
+									false);
+#else
 			rc = flash_regulator_setup(led, &led->flash_node[i],
 									true);
+#endif
 			if (rc) {
 				dev_err(&pdev->dev,
 					"Unable to set up regulator\n");

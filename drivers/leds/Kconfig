@@ -345,6 +345,11 @@ config LEDS_PCA963X
 	  LED driver chip accessed via the I2C bus. Supported
 	  devices include PCA9633 and PCA9634
 
+config LEDS_PMI8996_EMOTIONAL
+	tristate "Support for EMOTIONAL LEDs using PMI8996"
+	help
+	  This enables support for emotional LED using PMI8996.
+
 config LEDS_WM831X_STATUS
 	tristate "LED support for status LEDs on WM831x PMICs"
 	depends on LEDS_CLASS
