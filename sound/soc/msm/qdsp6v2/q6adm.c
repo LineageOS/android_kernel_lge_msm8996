@@ -28,6 +28,9 @@
 #include <sound/q6core.h>
 #include "msm-dts-srs-tm-config.h"
 #include <sound/adsp_err.h>
+#ifdef CONFIG_MACH_LGE
+#define AUDIO_RX_LGE        (0x10010712)
+#endif
 
 #define TIMEOUT_MS 1000
 
@@ -2886,6 +2889,14 @@ int adm_open(int port_id, int path, int rate, int channel_mode, int topology,
 	pr_debug("%s:port %#x path:%d rate:%d mode:%d perf_mode:%d,topo_id %d\n",
 		 __func__, port_id, path, rate, channel_mode, perf_mode,
 		 topology);
+
+
+#ifdef CONFIG_MACH_LGE
+	/* For AUDIO_RX_LGE topology only, force 24 bit */
+	if(topology == AUDIO_RX_LGE) {
+		bit_width = 24;
+	}
+#endif
 
 	port_id = q6audio_convert_virtual_to_portid(port_id);
 	port_idx = adm_validate_and_get_port_index(port_id);

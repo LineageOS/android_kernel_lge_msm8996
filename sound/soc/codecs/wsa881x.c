@@ -992,6 +992,7 @@ static void wsa881x_init(struct snd_soc_codec *codec)
 	/* Bring out of digital reset */
 	snd_soc_update_bits(codec, WSA881X_CDC_RST_CTL, 0x01, 0x01);
 
+	dev_info(codec->dev, "%s: WSA881X_IS_2_0\n", __func__);
 	snd_soc_update_bits(codec, WSA881X_CLOCK_CONFIG, 0x10, 0x10);
 	snd_soc_update_bits(codec, WSA881X_SPKR_OCP_CTL, 0x02, 0x02);
 	snd_soc_update_bits(codec, WSA881X_SPKR_MISC_CTL1, 0xC0, 0x80);
@@ -1023,6 +1024,7 @@ static void wsa881x_init(struct snd_soc_codec *codec)
 			    0xFF, 0xB2);
 	snd_soc_update_bits(codec, WSA881X_BONGO_RESRV_REG2,
 			    0xFF, 0x05);
+	dev_info(codec->dev, "%s: WSA881X_IS_NOT_2_0\n", __func__);
 }
 
 static int32_t wsa881x_resource_acquire(struct snd_soc_codec *codec,
@@ -1089,6 +1091,9 @@ static int wsa881x_probe(struct snd_soc_codec *codec)
 	dev = wsa881x->swr_slave;
 	wsa881x->codec = codec;
 	mutex_init(&wsa881x->bg_lock);
+#ifdef CONFIG_MACH_LGE
+	swr_wakeup_soundwire_master(dev);
+#endif
 	wsa881x_init(codec);
 	snprintf(wsa881x->tz_pdata.name, sizeof(wsa881x->tz_pdata.name),
 		"%s.%x", "wsatz", (u8)dev->addr);
@@ -1354,8 +1359,16 @@ static int wsa881x_swr_down(struct swr_device *pdev)
 		dev_err(&pdev->dev, "%s: wsa881x is NULL\n", __func__);
 		return -EINVAL;
 	}
+#ifdef CONFIG_MACH_LGE
+	if (delayed_work_pending(&wsa881x->ocp_ctl_work) && wsa881x->state == WSA881X_DEV_UP) {
+		cancel_delayed_work_sync(&wsa881x->ocp_ctl_work);
+	} else {
+		dev_err(&pdev->dev, "%s: do not cancel in WSA881X_DEV_DOWN status\n", __func__);
+	}
+#else
 	if (delayed_work_pending(&wsa881x->ocp_ctl_work))
 		cancel_delayed_work_sync(&wsa881x->ocp_ctl_work);
+#endif
 	ret = wsa881x_gpio_ctrl(wsa881x, false);
 	if (ret)
 		dev_err(&pdev->dev, "%s: Failed to disable gpio\n", __func__);
@@ -1387,6 +1400,8 @@ static int wsa881x_swr_reset(struct swr_device *pdev)
 		/* Retry after 1 msec delay */
 		usleep_range(1000, 1100);
 	}
+	if (retry == 255)
+		panic("[AudioBSP] swrm_get_logical_dev_num error %d",retry);
 	pdev->dev_num = devnum;
 	wsa881x_regcache_sync(wsa881x);
 	return 0;
