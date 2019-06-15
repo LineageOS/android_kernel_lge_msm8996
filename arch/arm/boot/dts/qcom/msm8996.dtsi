@@ -216,17 +216,17 @@
 			reg = <0 0x85800000 0 0x3000000>;
 		};
 
-		peripheral_mem: peripheral_region@8ea00000 {
+		peripheral_mem: peripheral_region@8e900000 {
 			compatible = "removed-dma-pool";
 			no-map;
-			reg = <0 0x8ea00000 0 0x2d00000>;
+			reg = <0 0x8e900000 0 0x2d00000>;
 		};
 
 		adsp_mem: adsp_region {
 			compatible = "shared-dma-pool";
 			alloc-ranges = <0 0x00000000 0 0xffffffff>;
 			reusable;
-			alignment = <0 0x100000>;
+			alignment = <0 0x400000>;
 			size = <0 0x400000>;
 		};
 
@@ -249,7 +249,7 @@
 		modem_mem: modem_region@88800000 {
 			compatible = "removed-dma-pool";
 			no-map;
-			reg = <0 0x88800000 0 0x6200000>;
+			reg = <0 0x88800000 0 0x6100000>;
 		};
 
 		dfps_data_mem: dfps_data_mem@83400000 {
@@ -266,6 +266,14 @@
 			reg = <0 0xb1c00000 0 0x23ff000>;
 			label = "cont_splash_mem_hdmi";
 		};
+	};
+};
+
+/* move to here before clock_cpu
+	It affects  the order of probing driver
+*/
+&soc {
+	qcom,glink-smem-native-xprt-rpm@68000 {
 	};
 };
 
@@ -768,6 +776,33 @@
 			< 1497600 >,
 			< 1593600 >;
 	};
+/* move to here before clock_cpu
+	It affects  the order of probing driver
+*/
+	rpm_bus: qcom,rpm-smd {
+	};
+	clock_gcc: qcom,gcc@300000 {
+	};
+	qcom,spm@9A10000 {
+	};
+	spmi_bus: qcom,spmi@400f000 {
+	};
+	apc0_pwrcl_mem_acc_vreg: apc0-pwrcl-mem-acc-regulator {
+	};
+	apc1_perfcl_mem_acc_vreg: apc1-perfcl-mem-acc-regulator {
+	};
+	apcc_l3_mem_acc_vreg: apcc-l3-mem-acc-regulator {
+	};
+	gfx_mem_acc_vreg: regulator@007af004 {
+	};
+	kryo0_vreg: regulator@99a2000 {
+	};
+	kryo1_vreg: regulator@99d2000 {
+	};
+	apcc_cpr: cpr3-ctrl@99e8000 {
+	};
+	qcom,smem@86000000 {
+	};
 
 	clock_cpu: qcom,cpu-clock-8996@ {
 		compatible = "qcom,cpu-clock-8996";
@@ -878,6 +913,14 @@
 		#reset-cells = <1>;
 	};
 
+/* move to here before clock_gpu
+	It affects  the order of probing driver
+*/
+	gfx_cpr: cpr3-ctrl@838000 {
+	};
+	msm_gpu: qcom,kgsl-3d0@b00000 {
+	};
+
 	clock_gpu: qcom,gpucc@8c0000 {
 		compatible = "qcom,gpucc-8996";
 		reg = <0x8c0000 0xb00c>;
@@ -943,56 +986,6 @@
 		pinctrl-names = "sleep", "active";
 		pinctrl-0 = <&spkr_i2s_clk_sleep>;
 		pinctrl-1 = <&spkr_i2s_clk_active>;
-	};
-
-	tspp: msm_tspp@75e7000 {
-		compatible = "qcom,msm_tspp";
-		reg = <0x075e7000 0x1000>, /* MSM_TSIF0_PHYS */
-		      <0x075e8000 0x1000>, /* MSM_TSIF1_PHYS */
-		      <0x075e9000 0x1000>, /* MSM_TSPP_PHYS  */
-		      <0x075c4000 0x23000>; /* MSM_TSPP_BAM_PHYS */
-		reg-names = "MSM_TSIF0_PHYS",
-			"MSM_TSIF1_PHYS",
-			"MSM_TSPP_PHYS",
-			"MSM_TSPP_BAM_PHYS";
-		interrupts = <0 121 0>, /* TSIF_TSPP_IRQ */
-			<0 119 0>, /* TSIF0_IRQ */
-			<0 120 0>, /* TSIF1_IRQ */
-			<0 122 0>; /* TSIF_BAM_IRQ */
-		interrupt-names = "TSIF_TSPP_IRQ",
-			"TSIF0_IRQ",
-			"TSIF1_IRQ",
-			"TSIF_BAM_IRQ";
-
-		clock-names = "iface_clk", "ref_clk";
-		clocks = <&clock_gcc clk_gcc_tsif_ahb_clk>,
-			<&clock_gcc clk_gcc_tsif_ref_clk>;
-
-		qcom,msm-bus,name = "tsif";
-		qcom,msm-bus,num-cases = <2>;
-		qcom,msm-bus,num-paths = <1>;
-		qcom,msm-bus,vectors-KBps =
-				<82 512 0 0>, /* No vote */
-				<82 512 12288 24576>; /* Max. bandwidth, 2xTSIF, each max of 96Mbps */
-
-		pinctrl-names = "disabled",
-			"tsif0-mode1", "tsif0-mode2",
-			"tsif1-mode1", "tsif1-mode2",
-			"dual-tsif-mode1", "dual-tsif-mode2";
-
-		pinctrl-0 = <>;				/* disabled */
-		pinctrl-1 = <&tsif0_signals_active>;	/* tsif0-mode1 */
-		pinctrl-2 = <&tsif0_signals_active
-			&tsif0_sync_active>;		/* tsif0-mode2 */
-		pinctrl-3 = <&tsif1_signals_active>;	/* tsif1-mode1 */
-		pinctrl-4 = <&tsif1_signals_active
-			&tsif1_sync_active>;		/* tsif1-mode2 */
-		pinctrl-5 = <&tsif0_signals_active
-			&tsif1_signals_active>;		/* dual-tsif-mode1 */
-		pinctrl-6 = <&tsif0_signals_active
-			&tsif0_sync_active
-			&tsif1_signals_active
-			&tsif1_sync_active>;		/* dual-tsif-mode2 */
 	};
 
 	wcd_rst_gpio: msm_cdc_pinctrl@64 {
@@ -1061,14 +1054,14 @@
 						   "cdc-vddpx-1";
 
 			qcom,cdc-micbias1-mv = <1800>;
-			qcom,cdc-micbias2-mv = <1800>;
+			qcom,cdc-micbias2-mv = <2000>;
 			qcom,cdc-micbias3-mv = <1800>;
 			qcom,cdc-micbias4-mv = <1800>;
 
 			qcom,cdc-mclk-clk-rate = <9600000>;
 			qcom,cdc-slim-ifd = "tasha-slim-ifd";
 			qcom,cdc-slim-ifd-elemental-addr = [00 00 A0 01 17 02];
-			qcom,cdc-dmic-sample-rate = <4800000>;
+			qcom,cdc-dmic-sample-rate = <2400000>;
 			qcom,cdc-mad-dmic-rate = <600000>;
 			qcom,cdc-ecpp-dmic-rate = <1200000>;
 			qcom,cdc-dmic-clk-drv-strength = <2>;
@@ -1432,6 +1425,8 @@
 		qcom,l1-supported;
 		qcom,l1ss-supported;
 		qcom,aux-clk-sync;
+		qcom,common-clk-en;
+		qcom,clk-power-manage-en;
 
 		qcom,ep-latency = <10>;
 
@@ -4589,3 +4584,12 @@
 #include "msm-arm-smmu-8996.dtsi"
 #include "msm8996-vidc.dtsi"
 #include "msm8996-bus.dtsi"
+
+//[B]fix build error at Pre_ES4 migration
+/delete-node/ &spi_12;
+&soc {
+/delete-node/ pps;
+};
+
+
+//[E]fix build error
