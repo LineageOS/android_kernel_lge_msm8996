@@ -18,6 +18,7 @@
 #include <linux/interrupt.h>	/* request_irq() */
 #include <linux/memory.h>	/* memset */
 #include <linux/vmalloc.h>
+#include <linux/delay.h>
 
 #include "sps_bam.h"
 #include "bam.h"
@@ -1831,6 +1832,7 @@ static void pipe_handler_eot(struct sps_bam *dev, struct sps_pipe *pipe)
 
 	/* Get offset of last descriptor completed by the pipe */
 	end_offset = bam_pipe_get_desc_read_offset(&dev->base, pipe_index);
+	udelay(50);
 
 	if (dev->ipc_loglevel == 0)
 		SPS_DBG(dev,

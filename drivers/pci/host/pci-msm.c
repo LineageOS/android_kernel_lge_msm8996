@@ -1680,9 +1680,15 @@ static void pcie_pcs_port_phy_init(struct msm_pcie_dev_t *dev)
 	msm_pcie_write_reg(dev->phy,
 		PCIE_N_PWRUP_RESET_DLY_TIME_AUXCLK(dev->rc_idx, common_phy),
 		0x00);
+#if !defined(CONFIG_MACH_MSM8996_LUCYE)
 	msm_pcie_write_reg(dev->phy,
 		PCIE_N_LP_WAKEUP_DLY_TIME_AUXCLK(dev->rc_idx, common_phy),
-		0x01);
+		0x08); /* Wait 8 AuxClk cycles when return from L1ss */
+#else
+        msm_pcie_write_reg(dev->phy,
+                PCIE_N_LP_WAKEUP_DLY_TIME_AUXCLK(dev->rc_idx, common_phy),
+                0x04); /* Wait 4 AuxClk cycles when return from L1ss */
+#endif
 	msm_pcie_write_reg(dev->phy,
 		PCIE_N_PLL_LOCK_CHK_DLY_TIME(dev->rc_idx, common_phy),
 		0x05);

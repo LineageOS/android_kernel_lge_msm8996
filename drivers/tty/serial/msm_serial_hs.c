@@ -3891,7 +3891,8 @@ static void msm_hs_shutdown(struct uart_port *uport)
 		atomic_set(&msm_uport->client_count, 0);
 	}
 	msm_hs_unconfig_uart_gpios(uport);
-	MSM_HS_INFO("%s:UART port closed successfully\n", __func__);
+	LOG_USR_MSG(msm_uport->ipc_msm_hs_pwr_ctxt,
+		"%s:UART port closed, Client_Count 0\n", __func__);
 #ifdef CONFIG_LGE_BLUETOOTH_PM
 //BT_S : [CONBT-1572] LGC_BT_COMMON_IMP_KERNEL_UART_SHUTDOWN_EXCEPTION_HANDLING
 	bluetooth_pm_sleep_stop_by_uart();
