@@ -104,32 +104,6 @@
                         bias-disable;
                     };
                 };
-                
-                i2c_3_active: i2c_3_active {
-                    mux {
-                        pins = "gpio47", "gpio48"; // SDA, SCL
-                        function = "blsp_i2c3";
-                    };
-
-                    config {
-                        pins = "gpio47", "gpio48";
-                        drive-strength = <2>;   // 2MA
-                        bias-disable;
-                    };
-                };
-        
-                i2c_3_sleep: i2c_3_sleep {
-                    mux {
-                        pins = "gpio47", "gpio48";
-                        function = "blsp_i2c3";
-                    };
-
-                    config {
-                        pins = "gpio47", "gpio48";
-                        drive-strength = <2>;   // 2MA
-                        bias-pull-up;
-                    };
-                };
             };
                 
             pmx_isdbt_ctrl_pin {

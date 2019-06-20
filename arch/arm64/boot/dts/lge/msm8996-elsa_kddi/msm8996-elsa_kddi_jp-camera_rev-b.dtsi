@@ -456,36 +456,6 @@
 		pinctrl-0 = <&i2c_3_active>;
 		pinctrl-1 = <&i2c_3_sleep>;
 	};
-
-	tlmm: pinctrl@01010000 {
-		i2c_3 {
-			i2c_3_active: i2c_3_active {
-				mux {
-					pins = "gpio47", "gpio48";
-					function = "blsp_i2c3";
-				};
-
-				config {
-					pins = "gpio47", "gpio48";
-					drive-strength = <2>;
-					bias-disable;
-				};
-			};
-
-			i2c_3_sleep: i2c_3_sleep {
-				mux {
-					pins = "gpio47", "gpio48";
-					function = "blsp_i2c3";
-				};
-
-				config {
-					pins = "gpio47", "gpio48";
-					drive-strength = <2>;
-					bias-pull-down;
-				};
-			};
-		};
-	};
 };
 
 &pm8994_l14 {

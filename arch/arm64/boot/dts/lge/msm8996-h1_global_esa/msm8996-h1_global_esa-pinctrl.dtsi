@@ -112,24 +112,6 @@
 			};
 		};
 
-//[H1_BT_BRINGUP_S]
-                /* gpio pin mux for bluetooth enable pin */
-                pmx_bt_default {
-			bt_default: bt_default {
-				mux {
-					pins = "gpio81", "gpio24", "gpio92";
-					function = "gpio";
-				};
-
-	    			config {
-	    				pins = "gpio81", "gpio24", "gpio92";
-	    				drive-strength = <2>;
-	    				bias-disable = <0>;
-	    			};
-			};
-		};
-//[H1_BT_BRINGUP_E]
-
 		pmx_spi_tdmb {
 			spi_tdmb_active: spi_tdmb_active {
 				mux {
