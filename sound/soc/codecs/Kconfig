@@ -767,7 +767,7 @@ config SND_SOC_WSA881X_ANALOG
 
 config SND_SOC_WCD9XXX
 	tristate
-	default y if SND_SOC_WCD9320=y || SND_SOC_WCD9330=y || SND_SOC_WCD9335=y
+	default y if SND_SOC_WCD9320=y || SND_SOC_WCD9330=y
 
 config SND_SOC_WCD9XXX_V2
 	tristate
