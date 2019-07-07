@@ -429,6 +429,7 @@ static int msm_afe_lb_vol_ctrl;
 static int msm_afe_sec_mi2s_lb_vol_ctrl;
 static int msm_afe_tert_mi2s_lb_vol_ctrl;
 static int msm_afe_quat_mi2s_lb_vol_ctrl;
+static int msm_afe_slimbus_3_lb_vol_ctrl;
 static int msm_afe_slimbus_7_lb_vol_ctrl;
 static int msm_afe_slimbus_8_lb_vol_ctrl;
 static const DECLARE_TLV_DB_LINEAR(fm_rx_vol_gain, 0, INT_RX_VOL_MAX_STEPS);
@@ -549,6 +550,26 @@ static int msm_qti_pp_set_slimbus_8_lb_vol_mixer(struct snd_kcontrol *kcontrol,
 	return ret;
 }
 
+#ifdef CONFIG_SND_USE_QUAT_MI2S
+static int msm_qti_pp_get_quat_mi2s_lb_vol_mixer(struct snd_kcontrol *kcontrol,
+				       struct snd_ctl_elem_value *ucontrol)
+{
+	ucontrol->value.integer.value[0] = msm_afe_lb_vol_ctrl;
+	return 0;
+}
+
+static int msm_qti_pp_set_quat_mi2s_lb_vol_mixer(struct snd_kcontrol *kcontrol,
+			    struct snd_ctl_elem_value *ucontrol)
+{
+	afe_loopback_gain(AFE_PORT_ID_QUATERNARY_MI2S_TX,
+			  ucontrol->value.integer.value[0]);
+
+	msm_afe_lb_vol_ctrl = ucontrol->value.integer.value[0];
+
+	return 0;
+}
+#endif
+
 static int msm_qti_pp_get_icc_vol_mixer(struct snd_kcontrol *kcontrol,
 				       struct snd_ctl_elem_value *ucontrol)
 {
@@ -583,6 +604,31 @@ static int msm_qti_pp_set_quat_mi2s_fm_vol_mixer(struct snd_kcontrol *kcontrol,
 
 	return 0;
 }
+
+static int msm_qti_pp_get_slimbus_3_lb_vol_mixer(struct snd_kcontrol *kcontrol,
+                       struct snd_ctl_elem_value *ucontrol)
+{
+    ucontrol->value.integer.value[0] = msm_afe_slimbus_3_lb_vol_ctrl;
+    return 0;
+}
+
+static int msm_qti_pp_set_slimbus_3_lb_vol_mixer(struct snd_kcontrol *kcontrol,
+                struct snd_ctl_elem_value *ucontrol)
+{
+    int ret = 0;
+
+    ret = afe_loopback_gain(SLIMBUS_3_TX,
+                ucontrol->value.integer.value[0]);
+
+    if (ret)
+        pr_err("%s: failed to set LB vol for SLIMBUS_3_TX", __func__);
+    else
+        msm_afe_slimbus_3_lb_vol_ctrl =
+                ucontrol->value.integer.value[0];
+
+    return ret;
+}
+
 
 static int msm_qti_pp_get_hfp_vol_mixer(struct snd_kcontrol *kcontrol,
 					struct snd_ctl_elem_value *ucontrol)
@@ -1213,6 +1259,20 @@ static const struct snd_kcontrol_new tert_mi2s_lb_vol_mixer_controls[] = {
 	msm_qti_pp_set_tert_mi2s_lb_vol_mixer, afe_lb_vol_gain),
 };
 
+#ifdef CONFIG_SND_USE_QUAT_MI2S
+static const struct snd_kcontrol_new quat_mi2s_lb_vol_mixer_controls[] = {
+	SOC_SINGLE_EXT_TLV("Quat MI2S LOOPBACK Volume", SND_SOC_NOPM, 0,
+	INT_RX_VOL_GAIN, 0, msm_qti_pp_get_quat_mi2s_lb_vol_mixer,
+	msm_qti_pp_set_quat_mi2s_lb_vol_mixer, afe_lb_vol_gain),
+};
+#endif
+
+static const struct snd_kcontrol_new slimbus_3_lb_vol_mixer_controls[] = {
+	SOC_SINGLE_EXT_TLV("SLIMBUS_3 LOOPBACK Volume", SND_SOC_NOPM, 0,
+	INT_RX_VOL_GAIN, 0, msm_qti_pp_get_slimbus_3_lb_vol_mixer,
+	msm_qti_pp_set_slimbus_3_lb_vol_mixer, afe_lb_vol_gain),
+};
+
 static const struct snd_kcontrol_new slimbus_7_lb_vol_mixer_controls[] = {
 	SOC_SINGLE_EXT_TLV("SLIMBUS_7 LOOPBACK Volume", SND_SOC_NOPM, 0,
 				INT_RX_VOL_GAIN, 0,
@@ -1437,6 +1497,14 @@ void msm_qti_pp_add_controls(struct snd_soc_platform *platform)
 
 	snd_soc_add_platform_controls(platform, tert_mi2s_lb_vol_mixer_controls,
 			ARRAY_SIZE(tert_mi2s_lb_vol_mixer_controls));
+
+#ifdef CONFIG_SND_USE_QUAT_MI2S
+	snd_soc_add_platform_controls(platform, quat_mi2s_lb_vol_mixer_controls,
+			ARRAY_SIZE(quat_mi2s_lb_vol_mixer_controls));
+#endif
+
+	snd_soc_add_platform_controls(platform, slimbus_3_lb_vol_mixer_controls,
+			ARRAY_SIZE(slimbus_3_lb_vol_mixer_controls));
 
 	snd_soc_add_platform_controls(platform, slimbus_7_lb_vol_mixer_controls,
 			ARRAY_SIZE(slimbus_7_lb_vol_mixer_controls));

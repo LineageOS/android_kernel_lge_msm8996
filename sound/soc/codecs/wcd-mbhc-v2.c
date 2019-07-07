@@ -1046,7 +1046,7 @@ static void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 			mbhc->mbhc_cb->mbhc_micb_ctrl_thr_mic(mbhc->codec,
 							MIC_BIAS_2, false);
 #endif
-#if defined (CONFIG_MACH_LGE) && (CONFIG_LGE_TOUCH_CORE)
+#if defined (CONFIG_LGE_TOUCH_CORE)
 		touch_notify_earjack(0);
 #endif
 	} else {

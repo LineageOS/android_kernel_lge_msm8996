@@ -389,7 +389,11 @@ static int msm_pcm_playback_prepare(struct snd_pcm_substream *substream)
 	} else if (pdata->avs_ver &&
 			(q6core_get_avs_version() == Q6_SUBSYS_AVS2_7)) {
 		ret = q6asm_open_write_v3(prtd->audio_client,
+#ifdef CONFIG_MACH_LGE // 24bit ASM patch
+				FORMAT_LINEAR_PCM, 24);
+#else
 				FORMAT_LINEAR_PCM, bits_per_sample);
+#endif
 		if (ret < 0) {
 			pr_err("%s: q6asm_open_write_v3 failed (%d)\n",
 			__func__, ret);
@@ -677,6 +681,7 @@ static int msm_pcm_open(struct snd_pcm_substream *substream)
 	struct snd_soc_pcm_runtime *soc_prtd = substream->private_data;
 	struct msm_audio *prtd;
 	struct msm_plat_data *pdata;
+	unsigned int be_id = soc_prtd->dai_link->be_id;
 	int ret = 0;
 
 	pdata = (struct msm_plat_data *)
@@ -769,10 +774,8 @@ static int msm_pcm_open(struct snd_pcm_substream *substream)
 	    (pdata->perf_mode == LOW_LATENCY_PCM_MODE))
 		apr_start_rx_rt(prtd->audio_client->apr);
 
-	/* Vote to update the Rx thread priority to RT Thread for playback */
-	if ((substream->stream == SNDRV_PCM_STREAM_PLAYBACK) &&
-	    (pdata->perf_mode == LOW_LATENCY_PCM_MODE))
-		apr_start_rx_rt(prtd->audio_client->apr);
+	if (be_id == MSM_FRONTEND_DAI_MULTIMEDIA3)
+		prtd->ch_mixer = true;
 
 	return 0;
 }

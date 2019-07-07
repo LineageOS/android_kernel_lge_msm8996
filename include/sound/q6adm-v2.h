@@ -75,6 +75,13 @@ struct route_payload {
 	unsigned int session_id;
 };
 
+
+struct msm_pcm_channel_mux {
+	int out_channel;
+	int input_channel;
+	u16 channel_config[16][16];
+};
+
 struct default_chmixer_param_id_coeff {
 	uint32_t index;
 	uint16_t num_output_channels;

@@ -8290,6 +8290,40 @@ static int tasha_pinctl_mode_put(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+static int tasha_rx7_half_db_get(struct snd_kcontrol *kcontrol,
+	struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
+
+	ucontrol->value.integer.value[0] =
+		((snd_soc_read(codec, WCD9335_CDC_RX7_RX_PATH_SEC1) & 0x01) ?
+		  1 : 0);
+
+	dev_dbg(codec->dev, "%s: value: %lu\n", __func__,
+		ucontrol->value.integer.value[0]);
+
+	return 0;
+}
+
+static int tasha_rx7_half_db_put(struct snd_kcontrol *kcontrol,
+					struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
+
+	dev_dbg(codec->dev, "%s: value: %lu\n", __func__,
+		ucontrol->value.integer.value[0]);
+
+	/* Set half db register configuration */
+	if (ucontrol->value.integer.value[0])
+		snd_soc_update_bits(codec, WCD9335_CDC_RX7_RX_PATH_SEC1,
+						0x01, 0x01);
+	else
+		snd_soc_update_bits(codec, WCD9335_CDC_RX7_RX_PATH_SEC1,
+						0x01, 0x00);
+
+	return 0;
+}
+
 #ifndef CONFIG_MACH_LGE
 static void wcd_vbat_adc_out_config_2_0(struct wcd_vbat *vbat,
 					struct snd_soc_codec *codec)
@@ -8893,6 +8927,10 @@ static const struct snd_kcontrol_new tasha_snd_controls[] = {
 		       tasha_amic_pwr_lvl_get, tasha_amic_pwr_lvl_put),
 	SOC_ENUM_EXT("AMIC_5_6 PWR MODE", amic_pwr_lvl_enum,
 		       tasha_amic_pwr_lvl_get, tasha_amic_pwr_lvl_put),
+
+	SOC_SINGLE_EXT("RX7 Half DB Enable", SND_SOC_NOPM, 0, 1, 0,
+		       tasha_rx7_half_db_get,
+			   tasha_rx7_half_db_put),
 
 #ifndef CONFIG_MACH_LGE
 	SOC_SINGLE_MULTI_EXT("Vbat ADC data", SND_SOC_NOPM, 0, 0xFFFF, 0, 2,
