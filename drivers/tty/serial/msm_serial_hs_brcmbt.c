@@ -2711,7 +2711,7 @@ static int uartdm_init_port(struct uart_port *uport)
 	init_kthread_worker(&tx->kworker);
 	tx->task = kthread_run(kthread_worker_fn,
 			&tx->kworker, "msm_serial_hs_%d_tx_work", uport->line);
-	if (IS_ERR(rx->task)) {
+	if (IS_ERR(tx->task)) {
 		MSM_HS_ERR("%s(): error creating task", __func__);
 		goto exit_lh_init;
 	}
@@ -3355,6 +3355,7 @@ static int msm_hs_probe(struct platform_device *pdev)
 		iounmap(uport->membase);
 		return -ENOMEM;
 	}
+#ifdef CONFIG_IPC_LOGGING
 	msm_uport->ipc_msm_hs_log_ctxt =
 			ipc_log_context_create(IPC_MSM_HS_LOG_PAGES,
 					dev_name(msm_uport->uport.dev), 0);
@@ -3365,11 +3366,13 @@ static int msm_hs_probe(struct platform_device *pdev)
 								__func__);
 	} else {
 		msm_uport->ipc_debug_mask = INFO_LEV;
-		ret = sysfs_create_file(&pdev->dev.kobj,
-				&dev_attr_debug_mask.attr);
-		if (unlikely(ret))
-			MSM_HS_WARN("%s: Failed to create dev. attr", __func__);
 	}
+#endif
+
+	ret = sysfs_create_file(&pdev->dev.kobj,
+			&dev_attr_debug_mask.attr);
+	if (unlikely(ret))
+		MSM_HS_WARN("%s: Failed to create dev. attr", __func__);
 
 	uport->irq = core_irqres;
 	msm_uport->bam_irq = bam_irqres;
