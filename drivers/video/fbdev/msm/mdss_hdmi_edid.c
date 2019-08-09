@@ -1476,10 +1476,8 @@ static void hdmi_edid_extract_sink_caps(struct hdmi_edid_ctrl *edid_ctrl,
 		return;
 
 	/* Max TMDS clock is in  multiples of 5Mhz. */
-	if (len >= 7 && vsd[7]) {
+	if (len >= 7)
 		edid_ctrl->sink_caps.max_pclk_in_hz = vsd[7] * 5000000;
-		DEV_DBG("%s: MaxTMDS=%dMHz\n", __func__, (u32)vsd[7] * 5);
-	}
 
 	vsd = hdmi_edid_find_hfvsdb(in_buf);
 
@@ -1575,6 +1573,9 @@ static u32 hdmi_edid_extract_ieee_reg_id(struct hdmi_edid_ctrl *edid_ctrl,
 
 	DEV_DBG("%s: EDID: VSD PhyAddr=%04x\n", __func__,
 		((u32)vsd[4] << 8) + (u32)vsd[5]);
+
+	if (len >= 7)
+		DEV_DBG("%s: MaxTMDS=%dMHz\n", __func__, (u32)vsd[7] * 5);
 
 	edid_ctrl->physical_address = ((u16)vsd[4] << 8) + (u16)vsd[5];
 
@@ -2819,18 +2820,20 @@ int hdmi_edid_parser(void *input)
 
 		ieee_reg_id = hdmi_edid_extract_ieee_reg_id(edid_ctrl,
 				edid_buf);
-		DEV_DBG("%s: ieee_reg_id = 0x%08x\n", __func__, ieee_reg_id);
+		DEV_DBG("%s: ieee_reg_id = 0x%06x\n", __func__, ieee_reg_id);
 		if (ieee_reg_id == EDID_IEEE_REG_ID)
 			edid_ctrl->sink_mode = SINK_MODE_HDMI;
 		else
 			edid_ctrl->sink_mode = SINK_MODE_DVI;
 
-		hdmi_edid_extract_sink_caps(edid_ctrl, edid_buf);
-		hdmi_edid_extract_latency_fields(edid_ctrl, edid_buf);
-		hdmi_edid_extract_dc(edid_ctrl, edid_buf);
+		if (ieee_reg_id == EDID_IEEE_REG_ID) {
+			hdmi_edid_extract_sink_caps(edid_ctrl, edid_buf);
+			hdmi_edid_extract_latency_fields(edid_ctrl, edid_buf);
+			hdmi_edid_extract_dc(edid_ctrl, edid_buf);
+			hdmi_edid_extract_3d_present(edid_ctrl, edid_buf);
+		}
 		hdmi_edid_extract_speaker_allocation_data(edid_ctrl, edid_buf);
 		hdmi_edid_extract_audio_data_blocks(edid_ctrl, edid_buf);
-		hdmi_edid_extract_3d_present(edid_ctrl, edid_buf);
 		hdmi_edid_extract_extended_data_blocks(edid_ctrl, edid_buf);
 	}
 
