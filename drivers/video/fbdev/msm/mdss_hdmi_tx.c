@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2017,2019-2020, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -4452,8 +4452,6 @@ static int hdmi_tx_evt_handle_check_param(struct hdmi_tx_ctrl *hdmi_ctrl)
 		rc = 1;
 		DEV_DBG("%s: Bitdepth changed\n", __func__);
 	}
-done:
-	pinfo->is_ce_mode = hdmi_util_is_ce_mode(new_vic);
 end:
 	return rc;
 }
