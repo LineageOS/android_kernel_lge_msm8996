@@ -2750,6 +2750,8 @@ int hdmi_edid_parser(void *input)
 	int status = 0;
 	u32 i = 0;
 	u32 cea_idx = 1;
+	u32 sink_caps_pclk_khz = 0;
+	u32 max_pclk_khz = 0;
 	struct hdmi_edid_ctrl *edid_ctrl = (struct hdmi_edid_ctrl *)input;
 
 	if (!edid_ctrl) {
