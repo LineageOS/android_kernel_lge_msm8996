@@ -148,11 +148,6 @@ struct hdmi_edid_y420_cmdb {
 	u32 len;
 };
 
-struct hdmi_edid_colorimetry {
-	u8 standards;
-	u8 metadata_profiles;
-};
-
 struct hdmi_edid_ctrl {
 	u8 pt_scan_info;
 	u8 it_scan_info;
@@ -181,6 +176,10 @@ struct hdmi_edid_ctrl {
 	bool edid_override;
 	bool hdr_supported;
 	bool override_default_vic;
+
+	bool y420_cmdb_present;
+	bool y420_cmdb_supports_all;
+	struct hdmi_edid_y420_cmdb y420_cmdb;
 
 	struct hdmi_edid_sink_data sink_data;
 	struct hdmi_edid_init_data init_data;
@@ -274,11 +273,6 @@ int hdmi_edid_reset_parser(void *input)
 	edid_ctrl->y420_cmdb_supports_all = false;
 	kfree(edid_ctrl->y420_cmdb.vic_list);
 	memset(&edid_ctrl->y420_cmdb, 0, sizeof(edid_ctrl->y420_cmdb));
-
-	edid_ctrl->physical_width = 0;
-	edid_ctrl->physical_height = 0;
-	edid_ctrl->orientation = 0;
-	edid_ctrl->aspect_ratio = HDMI_RES_AR_INVALID;
 	return 0;
 }
 
@@ -995,7 +989,6 @@ static const u8 *hdmi_edid_find_hfvsdb(const u8 *in_buf)
 	return vsd;
 }
 
-#ifndef LGE_TEMP_PATCH_FOR_4K_OUT_FORMAT_TO_RGB
 static void hdmi_edid_add_sink_y420_format(struct hdmi_edid_ctrl *edid_ctrl,
 					   u32 video_format)
 {
@@ -2139,18 +2132,8 @@ static void hdmi_edid_add_sink_video_format(struct hdmi_edid_ctrl *edid_ctrl,
 				&timing, MDP_RGBA_8888);
 	struct hdmi_edid_sink_data *sink_data = &edid_ctrl->sink_data;
 	struct disp_mode_info *disp_mode_list = sink_data->disp_mode_list;
-#endif
-	video_format = limit_supported_video_format(video_format);
-#else
-	struct msm_hdmi_mode_timing_info timing = {0};
-	u32 ret = hdmi_get_supported_mode(&timing,
-				&edid_ctrl->init_data.ds_data,
-				video_format);
-	u32 supported = hdmi_edid_is_mode_supported(edid_ctrl,
-				&timing, MDP_RGBA_8888);
-	struct hdmi_edid_sink_data *sink_data = &edid_ctrl->sink_data;
-	struct disp_mode_info *disp_mode_list = sink_data->disp_mode_list;
-#endif
+	u32 i = 0;
+	bool y420_supported = false;
 
 	if (video_format >= HDMI_VFRMT_MAX) {
 		DEV_ERR("%s: video format: %s is not supported\n", __func__,
@@ -2162,11 +2145,28 @@ static void hdmi_edid_add_sink_video_format(struct hdmi_edid_ctrl *edid_ctrl,
 		video_format, msm_hdmi_mode_2string(video_format),
 		supported ? "Supported" : "Not-Supported");
 
+	if (edid_ctrl->y420_cmdb_present && video_format < HDMI_VFRMT_END) {
+		if (edid_ctrl->y420_cmdb_supports_all) {
+			y420_supported = true;
+			goto done;
+		}
+
+		for (i = 0; i < edid_ctrl->y420_cmdb.len; i++) {
+			if (video_format == edid_ctrl->y420_cmdb.vic_list[i]) {
+				y420_supported = true;
+				break;
+			}
+		}
+	}
+
+done:
 	/* override the default resolution */
 	if (edid_ctrl->override_default_vic) {
 		if (!ret && supported) {
 			disp_mode_list[0].video_format = video_format;
 			disp_mode_list[0].rgb_support = true;
+			if (y420_supported)
+				disp_mode_list[0].y420_support = true;
 			edid_ctrl->override_default_vic = false;
 			return;
 		}
@@ -2177,8 +2177,7 @@ static void hdmi_edid_add_sink_video_format(struct hdmi_edid_ctrl *edid_ctrl,
 
 		if (vic == video_format) {
 			DEV_DBG("%s: vic %d already added\n", __func__, vic);
-			if (supported)
-				disp_mode_list[i].rgb_support = true;
+			disp_mode_list[i].rgb_support = true;
 			if (y420_supported)
 				disp_mode_list[i].y420_support = true;
 			return;
