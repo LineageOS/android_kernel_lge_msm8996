@@ -182,13 +182,6 @@ struct hdmi_edid_ctrl {
 	bool hdr_supported;
 	bool override_default_vic;
 
-	bool y420_cmdb_present;
-	bool y420_cmdb_supports_all;
-	struct hdmi_edid_y420_cmdb y420_cmdb;
-
-	enum edid_screen_orientation orientation;
-	enum aspect_ratio aspect_ratio;
-
 	struct hdmi_edid_sink_data sink_data;
 	struct hdmi_edid_init_data init_data;
 	struct hdmi_edid_sink_caps sink_caps;
@@ -2169,28 +2162,11 @@ static void hdmi_edid_add_sink_video_format(struct hdmi_edid_ctrl *edid_ctrl,
 		video_format, msm_hdmi_mode_2string(video_format),
 		supported ? "Supported" : "Not-Supported");
 
-	if (edid_ctrl->y420_cmdb_present && video_format < HDMI_VFRMT_END) {
-		if (edid_ctrl->y420_cmdb_supports_all) {
-			y420_supported = true;
-			goto done;
-		}
-
-		for (i = 0; i < edid_ctrl->y420_cmdb.len; i++) {
-			if (video_format == edid_ctrl->y420_cmdb.vic_list[i]) {
-				y420_supported = true;
-				break;
-			}
-		}
-	}
-
-done:
 	/* override the default resolution */
 	if (edid_ctrl->override_default_vic) {
 		if (!ret && supported) {
 			disp_mode_list[0].video_format = video_format;
 			disp_mode_list[0].rgb_support = true;
-			if (y420_supported)
-				disp_mode_list[0].y420_support = true;
 			edid_ctrl->override_default_vic = false;
 			return;
 		}
