@@ -1476,8 +1476,10 @@ static void hdmi_edid_extract_sink_caps(struct hdmi_edid_ctrl *edid_ctrl,
 		return;
 
 	/* Max TMDS clock is in  multiples of 5Mhz. */
-	if (len >= 7)
+	if (len >= 7 && vsd[7]) {
 		edid_ctrl->sink_caps.max_pclk_in_hz = vsd[7] * 5000000;
+		DEV_DBG("%s: MaxTMDS=%dMHz\n", __func__, (u32)vsd[7] * 5);
+	}
 
 	vsd = hdmi_edid_find_hfvsdb(in_buf);
 
@@ -1573,9 +1575,6 @@ static u32 hdmi_edid_extract_ieee_reg_id(struct hdmi_edid_ctrl *edid_ctrl,
 
 	DEV_DBG("%s: EDID: VSD PhyAddr=%04x\n", __func__,
 		((u32)vsd[4] << 8) + (u32)vsd[5]);
-
-	if (len >= 7)
-		DEV_DBG("%s: MaxTMDS=%dMHz\n", __func__, (u32)vsd[7] * 5);
 
 	edid_ctrl->physical_address = ((u16)vsd[4] << 8) + (u16)vsd[5];
 
