@@ -835,7 +835,6 @@ struct mdss_panel_info {
 	u32 vic; /* video identification code */
 	u32 deep_color;
 	bool is_ce_mode; /* CE video format */
-	u8 csc_type;
 	struct mdss_rect roi;
 	struct mdss_dsi_dual_pu_roi dual_roi;
 	int pwm_pmic_gpio;

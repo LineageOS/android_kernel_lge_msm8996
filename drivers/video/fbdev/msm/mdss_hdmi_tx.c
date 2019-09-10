@@ -4392,7 +4392,6 @@ sysfs_err:
 static int hdmi_tx_evt_handle_check_param(struct hdmi_tx_ctrl *hdmi_ctrl)
 {
 	struct mdss_panel_info *pinfo = &hdmi_ctrl->panel_data.panel_info;
-	void *data = NULL;
 	int new_vic = -1;
 	int rc = 0;
 
@@ -4429,6 +4428,8 @@ static int hdmi_tx_evt_handle_check_param(struct hdmi_tx_ctrl *hdmi_ctrl)
 		rc = 1;
 		DEV_DBG("%s: Bitdepth changed\n", __func__);
 	}
+done:
+	pinfo->is_ce_mode = hdmi_util_is_ce_mode(new_vic);
 end:
 	return rc;
 }
