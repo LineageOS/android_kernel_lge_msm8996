@@ -153,6 +153,8 @@ static int hdmi_tx_enable_pll_update(struct hdmi_tx_ctrl *hdmi_ctrl,
 static void hdmi_tx_hpd_polarity_setup(struct hdmi_tx_ctrl *hdmi_ctrl,
 		bool polarity);
 static int hdmi_tx_notify_events(struct hdmi_tx_ctrl *hdmi_ctrl, int val);
+static void hdmi_panel_update_colorimetry(struct hdmi_tx_ctrl *ctrl,
+		bool use_bt2020);
 
 static struct mdss_hw hdmi_tx_hw = {
 	.hw_ndx = MDSS_HW_HDMI,
