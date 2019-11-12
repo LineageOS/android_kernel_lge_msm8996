@@ -3609,7 +3609,6 @@ static int hdmi_tx_power_off(struct hdmi_tx_ctrl *hdmi_ctrl)
 	hdmi_tx_core_off(hdmi_ctrl);
 
 	hdmi_ctrl->panel_power_on = false;
-	hdmi_ctrl->dc_support = false;
 	hdmi_ctrl->vic = 0;
 
 	if (hdmi_ctrl->hpd_off_pending || hdmi_ctrl->panel_suspend)
@@ -3751,8 +3750,6 @@ static void hdmi_tx_hpd_off(struct hdmi_tx_ctrl *hdmi_ctrl)
 	hdmi_ctrl->hpd_initialized = false;
 	hdmi_ctrl->hpd_off_pending = false;
 	hdmi_ctrl->dc_support = false;
-
-	hdmi_edid_reset_parser(hdmi_tx_get_fd(HDMI_TX_FEAT_EDID));
 
 	DEV_DBG("%s: HPD is now OFF\n", __func__);
 } /* hdmi_tx_hpd_off */
