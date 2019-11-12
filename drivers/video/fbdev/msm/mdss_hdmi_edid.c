@@ -148,6 +148,11 @@ struct hdmi_edid_y420_cmdb {
 	u32 len;
 };
 
+struct hdmi_edid_colorimetry {
+	u8 standards;
+	u8 metadata_profiles;
+};
+
 struct hdmi_edid_ctrl {
 	u8 pt_scan_info;
 	u8 it_scan_info;
@@ -1236,7 +1241,6 @@ static void hdmi_edid_parse_colorimetry(
 	edid_ctrl->colorimetry.standards = in_buf[2];
 	edid_ctrl->colorimetry.metadata_profiles = in_buf[3];
 }
-#endif
 
 static void hdmi_edid_extract_extended_data_blocks(
 	struct hdmi_edid_ctrl *edid_ctrl, const u8 *in_buf)
@@ -1327,7 +1331,6 @@ static void hdmi_edid_extract_extended_data_blocks(
 					__func__, etag[2]);
 			hdmi_edid_parse_colorimetry(edid_ctrl, etag);
 			break;
-#endif
 		default:
 			DEV_DBG("%s: Tag Code %d not supported\n",
 				__func__, etag[1]);
