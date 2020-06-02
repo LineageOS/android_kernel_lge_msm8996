@@ -23,7 +23,7 @@
 
 	chosen {
 		stdout-path = "serial0";
-		bootargs = "fpsimd.fpsimd_settings=1 app_setting.use_app_setting=1 app_setting.use_32bit_app_setting=1 rcupdate.rcu_expedited=1 kpti=1";
+		bootargs = "fpsimd.fpsimd_settings=1 app_setting.use_app_setting=1 app_setting.use_32bit_app_setting=1 kpti=1";
 	};
 
 	aliases {
