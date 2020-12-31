@@ -1143,36 +1143,47 @@ config EFI
           clock, and platform reset). A UEFI stub is also provided to
 	  allow the kernel to be booted as an EFI application. This
 	  is only useful on systems that have UEFI firmware.
-
+	  
 config BUILD_ARM64_APPENDED_DTB_IMAGE
-	bool "Build a concatenated Image.gz/dtb by default"
+	bool "Build a concatenated Image.(gz/lz4)-dtb by default"
 	depends on OF
 	help
-	  Enabling this option will cause a concatenated Image.gz and list of
-	  DTBs to be built by default (instead of a standalone Image.gz.)
-	  The image will built in arch/arm64/boot/Image.gz-dtb
+	  Enabling this option will cause a concatenated Image.gz or Image.lz4
+	  and list of DTBs to be built by default (instead of a standalone
+	  Image.gz or Image.lz4.)
+	  The image will built in arch/arm64/boot/Image.(gz/lz4)-dtb
 
 config BUILD_ARM64_APPENDED_DTB_IMAGE_NAMES
 	string "Default dtb names"
 	depends on BUILD_ARM64_APPENDED_DTB_IMAGE
 	help
 	  Space separated list of names of dtbs to append when
-	  building a concatenated Image.gz-dtb
+	  building a concatenated Image.(gz/lz4)-dtb.
 
 choice
 	prompt "Kernel compression method"
 	default BUILD_ARM64_KERNEL_COMPRESSION_GZIP
 	help
-	  Allows choice between gzip compressed or uncompressed
-	  kernel image
+	  Some bootloaders are capable of booting not only uncompressed or
+	  gzip compressed kernels, but also LZ4. This option will allow you
+	  to select which format the kernel binary will be compressed to.
+
+	  If in doubt, select 'gzip'
 
 config BUILD_ARM64_KERNEL_COMPRESSION_GZIP
-	bool "Build compressed kernel image"
+	bool "Build Gzip compressed kernel image"
 	help
 	  Build a kernel image using gzip
 	  compression with concatenated dtb.
 	  gzip is based on the DEFLATE
 	  algorithm.
+	  
+config BUILD_ARM64_KERNEL_COMPRESSION_LZ4
+	bool "Build LZ4 compressed kernel image"
+	help
+	  LZ4 is an LZ77-type compressor with a fixed, byte-oriented encoding.
+	  A preliminary version of LZ4 de/compression tool is available at
+	  <https://code.google.com/p/lz4/>.
 
 config BUILD_ARM64_UNCOMPRESSED_KERNEL
 	bool "Build uncompressed kernel image"

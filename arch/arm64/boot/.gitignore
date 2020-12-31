@@ -1,4 +1,5 @@
 Image
-Image-dtb
 Image.gz
+Image.lz4
 Image.gz-dtb
+Image.lz4-dtb

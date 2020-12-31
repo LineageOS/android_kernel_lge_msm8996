@@ -20,7 +20,7 @@ else
 include $(srctree)/arch/arm64/boot/dts/lge/Makefile
 endif
 
-targets := Image Image.gz
+targets := Image Image.$(KBUILD_COMPRESS_SUFFIX)
 
 DTB_NAMES := $(subst $\",,$(CONFIG_BUILD_ARM64_APPENDED_DTB_IMAGE_NAMES))
 ifneq ($(DTB_NAMES),)
@@ -33,23 +33,23 @@ endif
 $(obj)/Image: vmlinux FORCE
 	$(call if_changed,objcopy)
 
-$(obj)/Image.gz: $(obj)/Image FORCE
-	$(call if_changed,gzip)
-
-$(obj)/Image.gz-dtb: $(obj)/Image.gz $(DTB_OBJS) FORCE
-	$(call if_changed,cat)
-
+$(obj)/Image.$(KBUILD_COMPRESS_SUFFIX): $(obj)/Image FORCE
+	$(call if_changed,$(KBUILD_COMPRESS_CMD))
+	
 $(obj)/Image-dtb-hdr: $(obj)/Image FORCE
 	echo -n 'UNCOMPRESSED_IMG' > $@ && \
 	$(call size_append, $(filter-out FORCE,$^)) >> $@
 
 $(obj)/Image-dtb: $(obj)/Image-dtb-hdr $(obj)/Image $(DTB_OBJS) FORCE
 	$(call if_changed,cat)
+	
+$(obj)/Image.$(KBUILD_COMPRESS_SUFFIX)-dtb: $(obj)/Image.$(KBUILD_COMPRESS_SUFFIX) $(DTB_OBJS) FORCE
+	$(call if_changed,cat)
 
 install: $(obj)/Image
 	$(CONFIG_SHELL) $(srctree)/$(src)/install.sh $(KERNELRELEASE) \
 	$(obj)/Image System.map "$(INSTALL_PATH)"
 
-zinstall: $(obj)/Image.gz
+zinstall: $(obj)/Image.$(KBUILD_COMPRESS_SUFFIX)
 	$(CONFIG_SHELL) $(srctree)/$(src)/install.sh $(KERNELRELEASE) \
-	$(obj)/Image.gz System.map "$(INSTALL_PATH)"
+		$(obj)/Image.$(KBUILD_COMPRESS_SUFFIX) System.map "$(INSTALL_PATH)"
