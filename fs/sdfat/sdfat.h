@@ -127,7 +127,7 @@ struct sdfat_mount_options {
 	unsigned char errors;       /* on error: continue, panic, remount-ro */
 	unsigned char discard;      /* flag on if -o dicard specified and device support discard() */
 	unsigned char fs_type;      /* fs_type that user specified */
-	unsigned short adj_req;      /* support aligned mpage write */
+	unsigned short adj_req;     /* support aligned mpage write */
 };
 
 #define SDFAT_HASH_BITS    8
@@ -142,6 +142,9 @@ struct sdfat_sb_info {
 	struct mutex s_vlock;   /* volume lock */
 	int use_vmalloc;
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 13, 0)
+	struct rcu_head rcu;
+#endif
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(3, 7, 0)
 	int s_dirt;
 	struct mutex s_lock;    /* superblock lock */
@@ -209,6 +212,36 @@ struct sdfat_inode_info {
 	struct inode vfs_inode;
 };
 
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 18, 0)
+typedef struct timespec64	sdfat_timespec_t;
+#else /* LINUX_VERSION_CODE < KERNEL_VERSION(4, 18, 0) */
+typedef struct timespec		sdfat_timespec_t;
+#endif
+
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 14, 0)
+
+#else /* LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0) */
+/*
+ * sb->s_flags.  Note that these mirror the equivalent MS_* flags where
+ * represented in both.
+ */
+#define SB_RDONLY	1	/* Mount read-only */
+#define SB_NODIRATIME	2048	/* Do not update directory access times */
+static inline bool sb_rdonly(const struct super_block *sb)
+{
+	return sb->s_flags & MS_RDONLY;
+}
+#endif
+
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0)
+	/* EMPTY */
+#else
+static inline sdfat_timespec_t current_time(struct inode *inode)
+{
+	return CURRENT_TIME_SEC;
+}
+#endif
 /*
  * FIXME : needs on-disk-slot in-memory data
  */
@@ -301,6 +334,7 @@ static inline void sdfat_save_attr(struct inode *inode, u32 attr)
 extern int sdfat_statistics_init(struct kset *sdfat_kset);
 extern void sdfat_statistics_uninit(void);
 extern void sdfat_statistics_set_mnt(FS_INFO_T *fsi);
+extern void sdfat_statistics_set_mnt_ro(void);
 extern void sdfat_statistics_set_mkdir(u8 flags);
 extern void sdfat_statistics_set_create(u8 flags);
 extern void sdfat_statistics_set_rw(u8 flags, u32 clu_offset, s32 create);
@@ -313,6 +347,7 @@ static inline int sdfat_statistics_init(struct kset *sdfat_kset)
 }
 static inline void sdfat_statistics_uninit(void) {};
 static inline void sdfat_statistics_set_mnt(FS_INFO_T *fsi) {};
+static inline void sdfat_statistics_set_mnt_ro(void) {};
 static inline void sdfat_statistics_set_mkdir(u8 flags) {};
 static inline void sdfat_statistics_set_create(u8 flags) {};
 static inline void sdfat_statistics_set_rw(u8 flags, u32 clu_offset, s32 create) {};
@@ -348,6 +383,18 @@ static inline void setup_sdfat_xattr_handler(struct super_block *sb) {};
 #endif
 
 /* sdfat/misc.c */
+#ifdef CONFIG_SDFAT_UEVENT
+extern int sdfat_uevent_init(struct kset *sdfat_kset);
+extern void sdfat_uevent_uninit(void);
+extern void sdfat_uevent_ro_remount(struct super_block *sb);
+#else
+static inline int sdfat_uevent_init(struct kset *sdfat_kset)
+{
+	return 0;
+}
+static inline void sdfat_uevent_uninit(void) {};
+static inline void sdfat_uevent_ro_remount(struct super_block *sb) {};
+#endif
 extern void
 __sdfat_fs_error(struct super_block *sb, int report, const char *fmt, ...)
 	__printf(3, 4) __cold;
@@ -363,11 +410,18 @@ __sdfat_msg(struct super_block *sb, const char *lv, int st, const char *fmt, ...
 #define sdfat_log_msg(sb, lv, fmt, args...)          \
 	__sdfat_msg(sb, lv, 1, fmt, ## args)
 extern void sdfat_log_version(void);
-extern void sdfat_time_fat2unix(struct sdfat_sb_info *sbi, struct timespec *ts,
+extern void sdfat_time_fat2unix(struct sdfat_sb_info *sbi, sdfat_timespec_t *ts,
 				DATE_TIME_T *tp);
-extern void sdfat_time_unix2fat(struct sdfat_sb_info *sbi, struct timespec *ts,
+extern void sdfat_time_unix2fat(struct sdfat_sb_info *sbi, sdfat_timespec_t *ts,
 				DATE_TIME_T *tp);
-extern TIMESTAMP_T *tm_now(struct sdfat_sb_info *sbi, TIMESTAMP_T *tm);
+extern TIMESTAMP_T *tm_now(struct inode *inode, TIMESTAMP_T *tm);
+static inline TIMESTAMP_T *tm_now_sb(struct super_block *sb, TIMESTAMP_T *tm)
+{
+	struct inode fake_inode;
+
+	fake_inode.i_sb = sb;
+	return tm_now(&fake_inode, tm);
+}
 
 #ifdef CONFIG_SDFAT_DEBUG
 

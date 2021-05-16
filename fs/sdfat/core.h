@@ -60,7 +60,15 @@ typedef struct {
 	void	*__buf;		// __buf should be the last member
 } ENTRY_SET_CACHE_T;
 
-
+/*----------------------------------------------------------------------*/
+/*  Inline Functions                                                    */
+/*----------------------------------------------------------------------*/
+static inline bool is_valid_clus(FS_INFO_T *fsi, u32 clus)
+{
+	if (clus < CLUS_BASE || fsi->num_clusters <= clus)
+		return false;
+	return true;
+}
 
 /*----------------------------------------------------------------------*/
 /*  External Function Declarations                                      */
@@ -69,6 +77,9 @@ typedef struct {
 /* file system initialization & shutdown functions */
 s32 fscore_init(void);
 s32 fscore_shutdown(void);
+
+/* bdev management */
+s32 fscore_check_bdi_valid(struct super_block *sb);
 
 /* chain management */
 s32 chain_cont_cluster(struct super_block *sb, u32 chain, u32 len);

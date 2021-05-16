@@ -176,7 +176,7 @@ static s32 fat_free_cluster(struct super_block *sb, CHAIN_T *p_chain, s32 do_rel
 	}
 
 	/* check cluster validation */
-	if ((p_chain->dir < 2) && (p_chain->dir >= fsi->num_clusters)) {
+	if (!is_valid_clus(fsi, p_chain->dir)) {
 		EMSG("%s: invalid start cluster (%u)\n", __func__, p_chain->dir);
 		sdfat_debug_bug_on(1);
 		return -EIO;
@@ -441,6 +441,7 @@ static void fat_get_entry_time(DENTRY_T *p_entry, TIMESTAMP_T *tp, u8 mode)
 		break;
 	}
 
+	tp->tz.value = 0x00;
 	tp->sec  = (t & 0x001F) << 1;
 	tp->min  = (t >> 5) & 0x003F;
 	tp->hour = (t >> 11);
@@ -478,7 +479,7 @@ static void __init_dos_entry(struct super_block *sb, DOS_DENTRY_T *ep, u32 type,
 	ep->start_clu_hi = cpu_to_le16(CLUSTER_16(start_clu >> 16));
 	ep->size = 0;
 
-	tp = tm_now(SDFAT_SB(sb), &tm);
+	tp = tm_now_sb(sb, &tm);
 	fat_set_entry_time((DENTRY_T *) ep, tp, TM_CREATE);
 	fat_set_entry_time((DENTRY_T *) ep, tp, TM_MODIFY);
 	ep->access_date = 0;
@@ -1237,36 +1238,70 @@ static FS_FUNC_T amap_fat_fs_func = {
 	.get_au_stat = amap_get_au_stat,
 };
 
-s32 mount_fat16(struct super_block *sb, pbr_t *p_pbr)
+static s32 mount_fat_common(struct super_block *sb, FS_INFO_T *fsi,
+			    bpb_t *p_bpb, u32 root_sects)
 {
-	s32 num_root_sectors;
-	bpb16_t *p_bpb = &(p_pbr->bpb.f16);
-	FS_INFO_T *fsi = &(SDFAT_SB(sb)->fsi);
+	bool fat32 = root_sects == 0 ? true : false;
+
+	fsi->sect_per_clus = p_bpb->sect_per_clus;
+	if (!is_power_of_2(fsi->sect_per_clus)) {
+		sdfat_msg(sb, KERN_ERR, "bogus sectors per cluster %u",
+			  fsi->sect_per_clus);
+		return -EINVAL;
+	}
+
+	fsi->sect_per_clus_bits = ilog2(p_bpb->sect_per_clus);
+	fsi->cluster_size_bits = fsi->sect_per_clus_bits + sb->s_blocksize_bits;
+	fsi->cluster_size = 1 << fsi->cluster_size_bits;
+	fsi->dentries_per_clu = 1 <<
+				(fsi->cluster_size_bits - DENTRY_SIZE_BITS);
+
+	fsi->vol_flag = VOL_CLEAN;
+	fsi->clu_srch_ptr = CLUS_BASE;
+	fsi->used_clusters = (u32)~0;
+	fsi->fs_func = &fat_fs_func;
+
+	fsi->num_FAT_sectors = le16_to_cpu(p_bpb->num_fat_sectors);
+	if (fat32) {
+		u32 fat32_len = le32_to_cpu(p_bpb->f32.num_fat32_sectors);
+
+		if (fat32_len) {
+			fsi->num_FAT_sectors = fat32_len;
+		} else if (fsi->num_FAT_sectors) {
+			/* SPEC violation for compatibility */
+			sdfat_msg(sb, KERN_WARNING,
+				  "no fatsz32, try with fatsz16: %u",
+				  fsi->num_FAT_sectors);
+		}
+	}
+
+	if (!fsi->num_FAT_sectors) {
+		sdfat_msg(sb, KERN_ERR, "bogus fat size");
+		return -EINVAL;
+	}
 
 	if (!p_bpb->num_fats) {
 		sdfat_msg(sb, KERN_ERR, "bogus number of FAT structure");
 		return -EINVAL;
 	}
 
-	num_root_sectors = get_unaligned_le16(p_bpb->num_root_entries) << DENTRY_SIZE_BITS;
-	num_root_sectors = ((num_root_sectors-1) >> sb->s_blocksize_bits) + 1;
-
-	fsi->sect_per_clus = p_bpb->sect_per_clus;
-	fsi->sect_per_clus_bits = ilog2(p_bpb->sect_per_clus);
-	fsi->cluster_size_bits = fsi->sect_per_clus_bits + sb->s_blocksize_bits;
-	fsi->cluster_size = 1 << fsi->cluster_size_bits;
-
-	fsi->num_FAT_sectors = le16_to_cpu(p_bpb->num_fat_sectors);
+	if (p_bpb->num_fats > 2) {
+		sdfat_msg(sb, KERN_WARNING,
+			"unsupported number of FAT structure :%u, try with 2",
+			p_bpb->num_fats);
+	}
 
 	fsi->FAT1_start_sector = le16_to_cpu(p_bpb->num_reserved);
 	if (p_bpb->num_fats == 1)
 		fsi->FAT2_start_sector = fsi->FAT1_start_sector;
 	else
-		fsi->FAT2_start_sector = fsi->FAT1_start_sector + fsi->num_FAT_sectors;
+		fsi->FAT2_start_sector = fsi->FAT1_start_sector +
+					 fsi->num_FAT_sectors;
 
 	fsi->root_start_sector = fsi->FAT2_start_sector + fsi->num_FAT_sectors;
-	fsi->data_start_sector = fsi->root_start_sector + num_root_sectors;
+	fsi->data_start_sector = fsi->root_start_sector + root_sects;
 
+	/* SPEC violation for compatibility */
 	fsi->num_sectors = get_unaligned_le16(p_bpb->num_sectors);
 	if (!fsi->num_sectors)
 		fsi->num_sectors = le32_to_cpu(p_bpb->num_huge_sectors);
@@ -1276,15 +1311,20 @@ s32 mount_fat16(struct super_block *sb, pbr_t *p_pbr)
 		return -EINVAL;
 	}
 
-	fsi->num_clusters = (u32)((fsi->num_sectors - fsi->data_start_sector) >> fsi->sect_per_clus_bits) + CLUS_BASE;
 	/* because the cluster index starts with 2 */
+	fsi->num_clusters = (u32)((fsi->num_sectors - fsi->data_start_sector) >>
+				  fsi->sect_per_clus_bits) + CLUS_BASE;
 
-	fsi->vol_type = FAT16;
-	if (fsi->num_clusters < FAT12_THRESHOLD)
-		fsi->vol_type = FAT12;
+	return 0;
+}
 
-	fsi->vol_id = get_unaligned_le32(p_bpb->vol_serial);
+s32 mount_fat16(struct super_block *sb, pbr_t *p_pbr)
+{
+	u32 num_root_sectors;
+	bpb_t *p_bpb = &(p_pbr->bpb.fat);
+	FS_INFO_T *fsi = &(SDFAT_SB(sb)->fsi);
 
+	fsi->vol_id = get_unaligned_le32(p_bpb->f16.vol_serial);
 	fsi->root_dir = 0;
 	fsi->dentries_in_root = get_unaligned_le16(p_bpb->num_root_entries);
 	if (!fsi->dentries_in_root) {
@@ -1293,16 +1333,18 @@ s32 mount_fat16(struct super_block *sb, pbr_t *p_pbr)
 		return -EINVAL;
 	}
 
-	fsi->dentries_per_clu = 1 << (fsi->cluster_size_bits - DENTRY_SIZE_BITS);
+	num_root_sectors = fsi->dentries_in_root << DENTRY_SIZE_BITS;
+	num_root_sectors = ((num_root_sectors - 1) >> sb->s_blocksize_bits) + 1;
 
-	fsi->vol_flag = VOL_CLEAN;
-	fsi->clu_srch_ptr = 2;
-	fsi->used_clusters = (u32) ~0;
+	if (mount_fat_common(sb, fsi, p_bpb, num_root_sectors))
+		return -EINVAL;
 
-	fsi->fs_func = &fat_fs_func;
+	fsi->vol_type = FAT16;
+	if (fsi->num_clusters < FAT12_THRESHOLD)
+		fsi->vol_type = FAT12;
 	fat_ent_ops_init(sb);
 
-	if (p_bpb->state & FAT_VOL_DIRTY) {
+	if (p_bpb->f16.state & FAT_VOL_DIRTY) {
 		fsi->vol_flag |= VOL_DIRTY;
 		sdfat_log_msg(sb, KERN_WARNING, "Volume was not properly "
 			"unmounted. Some data may be corrupt. "
@@ -1323,8 +1365,9 @@ static sector_t __calc_hidden_sect(struct super_block *sb)
 	hidden = bdev->bd_part->start_sect;
 	/* a disk device, not a partition */
 	if (!hidden) {
-		ASSERT(bdev == bdev->bd_contains);
-		ASSERT(!bdev->bd_part->partno);
+		if (bdev != bdev->bd_contains)
+			sdfat_log_msg(sb, KERN_WARNING,
+				"hidden(0), but disk has a partition table");
 		goto out;
 	}
 
@@ -1334,8 +1377,8 @@ static sector_t __calc_hidden_sect(struct super_block *sb)
 	}
 
 out:
-	sdfat_log_msg(sb, KERN_INFO, "start_sect of partition  : %lld",
-		(s64)hidden);
+	sdfat_log_msg(sb, KERN_INFO, "start_sect of part(%d)    : %lld",
+		bdev ? bdev->bd_part->partno : -1, (s64)hidden);
 	return hidden;
 
 }
@@ -1345,66 +1388,25 @@ s32 mount_fat32(struct super_block *sb, pbr_t *p_pbr)
 	pbr32_t *p_bpb = (pbr32_t *)p_pbr;
 	FS_INFO_T *fsi = &(SDFAT_SB(sb)->fsi);
 
-	if (!p_bpb->bpb.num_fats) {
-		sdfat_msg(sb, KERN_ERR, "bogus number of FAT structure");
-		return -EINVAL;
-	}
-
-	fsi->sect_per_clus = p_bpb->bpb.sect_per_clus;
-	fsi->sect_per_clus_bits = ilog2(p_bpb->bpb.sect_per_clus);
-	fsi->cluster_size_bits = fsi->sect_per_clus_bits + sb->s_blocksize_bits;
-	fsi->cluster_size = 1 << fsi->cluster_size_bits;
-
-	fsi->num_FAT_sectors = le32_to_cpu(p_bpb->bpb.num_fat32_sectors);
-
-	fsi->FAT1_start_sector = le16_to_cpu(p_bpb->bpb.num_reserved);
-	if (p_bpb->bpb.num_fats == 1)
-		fsi->FAT2_start_sector = fsi->FAT1_start_sector;
-	else
-		fsi->FAT2_start_sector = fsi->FAT1_start_sector + fsi->num_FAT_sectors;
-
-	fsi->root_start_sector = fsi->FAT2_start_sector + fsi->num_FAT_sectors;
-	fsi->data_start_sector = fsi->root_start_sector;
-
-	/* SPEC violation for compatibility */
-	fsi->num_sectors = get_unaligned_le16(p_bpb->bpb.num_sectors);
-	if (!fsi->num_sectors)
-		fsi->num_sectors = le32_to_cpu(p_bpb->bpb.num_huge_sectors);
-
-	/* 2nd check */
-	if (!fsi->num_sectors) {
-		sdfat_msg(sb, KERN_ERR, "bogus number of total sector count");
-		return -EINVAL;
-	}
-
-	fsi->num_clusters = (u32)((fsi->num_sectors - fsi->data_start_sector) >> fsi->sect_per_clus_bits) + CLUS_BASE;
-	/* because the cluster index starts with 2 */
-
-	fsi->vol_type = FAT32;
 	fsi->vol_id = get_unaligned_le32(p_bpb->bsx.vol_serial);
-
-	fsi->root_dir = le32_to_cpu(p_bpb->bpb.root_cluster);
+	fsi->root_dir = le32_to_cpu(p_bpb->bpb.f32.root_cluster);
 	fsi->dentries_in_root = 0;
-	fsi->dentries_per_clu = 1 << (fsi->cluster_size_bits - DENTRY_SIZE_BITS);
 
-	fsi->vol_flag = VOL_CLEAN;
-	fsi->clu_srch_ptr = 2;
-	fsi->used_clusters = (u32) ~0;
+	if (mount_fat_common(sb, fsi, &p_bpb->bpb, 0))
+		return -EINVAL;
 
-	fsi->fs_func = &fat_fs_func;
+	/* Should be initialized before calling amap_create() */
+	fsi->vol_type = FAT32;
+	fat_ent_ops_init(sb);
 
 	/* Delayed / smart allocation related init */
 	fsi->reserved_clusters = 0;
-
-	/* Should be initialized before calling amap_create() */
-	fat_ent_ops_init(sb);
 
 	/* AU Map Creation */
 	if (SDFAT_SB(sb)->options.improved_allocation & SDFAT_ALLOC_SMART) {
 		u32 hidden_sectors = le32_to_cpu(p_bpb->bpb.num_hid_sectors);
 		u32 calc_hid_sect = 0;
 		int ret;
-
 
 		/* calculate hidden sector size */
 		calc_hid_sect = __calc_hidden_sect(sb);

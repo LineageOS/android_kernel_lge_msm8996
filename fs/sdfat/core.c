@@ -33,11 +33,26 @@
 #include <linux/writeback.h>
 #include <linux/kernel.h>
 #include <linux/log2.h>
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 16, 0)
+#include <linux/iversion.h>
+#endif
 
 #include "sdfat.h"
 #include "core.h"
 #include <asm/byteorder.h>
 #include <asm/unaligned.h>
+
+
+/*************************************************************************
+ * FUNCTIONS WHICH HAS KERNEL VERSION DEPENDENCY
+ *************************************************************************/
+#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 16, 0)
+static inline u64 inode_peek_iversion(struct inode *inode)
+{
+	return inode->i_version;
+}
+#endif
+
 
 /*----------------------------------------------------------------------*/
 /*  Constant & Macro Definitions                                        */
@@ -143,7 +158,7 @@ static s32 __fs_set_vol_flags(struct super_block *sb, u16 new_flag, s32 always_s
 	/* skip updating volume dirty flag,
 	 * if this volume has been mounted with read-only
 	 */
-	if (sb->s_flags & MS_RDONLY)
+	if (sb_rdonly(sb))
 		return 0;
 
 	if (!fsi->pbr_bh) {
@@ -162,7 +177,8 @@ static s32 __fs_set_vol_flags(struct super_block *sb, u16 new_flag, s32 always_s
 		bpb->bsx.state = new_flag & VOL_DIRTY ? FAT_VOL_DIRTY : 0x00;
 	} else { /* FAT16/12 */
 		pbr16_t *bpb = (pbr16_t *) fsi->pbr_bh->b_data;
-		bpb->bpb.state = new_flag & VOL_DIRTY ? FAT_VOL_DIRTY : 0x00;
+		bpb->bpb.f16.state = new_flag & VOL_DIRTY ?
+				     FAT_VOL_DIRTY : 0x00;
 	}
 
 	if (always_sync)
@@ -1621,6 +1637,12 @@ s32 fscore_shutdown(void)
 	return 0;
 }
 
+/* check device is ejected */
+s32 fscore_check_bdi_valid(struct super_block *sb)
+{
+	return bdev_check_bdi_valid(sb);
+}
+
 static bool is_exfat(pbr_t *pbr)
 {
 	int i = 53;
@@ -1634,7 +1656,7 @@ static bool is_exfat(pbr_t *pbr)
 
 static bool is_fat32(pbr_t *pbr)
 {
-	if (le16_to_cpu(pbr->bpb.f16.num_fat_sectors))
+	if (le16_to_cpu(pbr->bpb.fat.num_fat_sectors))
 		return false;
 	return true;
 }
@@ -1647,7 +1669,7 @@ inline pbr_t *read_pbr_with_logical_sector(struct super_block *sb, struct buffer
 	if (is_exfat(p_pbr))
 		logical_sect = 1 << p_pbr->bsx.f64.sect_size_bits;
 	else
-		logical_sect = get_unaligned_le16(&p_pbr->bpb.f16.sect_size);
+		logical_sect = get_unaligned_le16(&p_pbr->bpb.fat.sect_size);
 
 	/* is x a power of 2?
 	 * (x) != 0 && (((x) & ((x) - 1)) == 0)
@@ -1703,6 +1725,7 @@ s32 fscore_mount(struct super_block *sb)
 	pbr_t *p_pbr;
 	struct buffer_head *tmp_bh = NULL;
 	struct gendisk *disk = sb->s_bdev->bd_disk;
+	struct hd_struct *part = sb->s_bdev->bd_part;
 	struct sdfat_mount_options *opts = &(SDFAT_SB(sb)->options);
 	FS_INFO_T *fsi = &(SDFAT_SB(sb)->fsi);
 
@@ -1758,18 +1781,6 @@ s32 fscore_mount(struct super_block *sb)
 		opts->improved_allocation = 0;
 		opts->defrag = 0;
 		ret = mount_exfat(sb, p_pbr);
-	} else if (is_fat32(p_pbr)) {
-		if (opts->fs_type && opts->fs_type != FS_TYPE_VFAT) {
-			sdfat_log_msg(sb, KERN_ERR,
-				"not specified filesystem type "
-				"(media:vfat, opts:%s)",
-				FS_TYPE_STR[opts->fs_type]);
-			ret = -EINVAL;
-			goto free_bh;
-		}
-		/* set maximum file size for FAT */
-		sb->s_maxbytes = 0xffffffff;
-		ret = mount_fat32(sb, p_pbr);
 	} else {
 		if (opts->fs_type && opts->fs_type != FS_TYPE_VFAT) {
 			sdfat_log_msg(sb, KERN_ERR,
@@ -1781,9 +1792,14 @@ s32 fscore_mount(struct super_block *sb)
 		}
 		/* set maximum file size for FAT */
 		sb->s_maxbytes = 0xffffffff;
-		opts->improved_allocation = 0;
-		opts->defrag = 0;
-		ret = mount_fat16(sb, p_pbr);
+
+		if (is_fat32(p_pbr)) {
+			ret = mount_fat32(sb, p_pbr);
+		} else {
+			opts->improved_allocation = 0;
+			opts->defrag = 0;
+			ret = mount_fat16(sb, p_pbr);
+		}
 	}
 free_bh:
 	brelse(tmp_bh);
@@ -1795,16 +1811,19 @@ free_bh:
 	/* warn misaligned data data start sector must be a multiple of clu_size */
 	sdfat_log_msg(sb, KERN_INFO,
 		"detected volume info     : %s "
-		"(bps : %lu, spc : %u, data start : %llu, %s)",
+		"(%04hX-%04hX, bps : %lu, spc : %u, data start : %llu, %s)",
 		sdfat_get_vol_type_str(fsi->vol_type),
+		(fsi->vol_id >> 16) & 0xffff, fsi->vol_id & 0xffff,
 		sb->s_blocksize, fsi->sect_per_clus, fsi->data_start_sector,
 		(fsi->data_start_sector & (fsi->sect_per_clus - 1)) ?
 		"misaligned" : "aligned");
 
 	sdfat_log_msg(sb, KERN_INFO,
-		"detected volume size     : %llu MB (disk_size : %llu MB)",
-		fsi->num_sectors >> 11,
-		disk ? (u64)((disk->part0.nr_sects) >> 11) : 0);
+		"detected volume size     : %llu KB (disk : %llu KB, "
+		"part : %llu KB)",
+		(fsi->num_sectors * (sb->s_blocksize >> SECTOR_SIZE_BITS)) >> 1,
+		disk ? (u64)((disk->part0.nr_sects) >> 1) : 0,
+		part ? (u64)((part->nr_sects) >> 1) : 0);
 
 	ret = load_upcase_table(sb);
 	if (ret) {
@@ -1947,10 +1966,10 @@ s32 fscore_lookup(struct inode *inode, u8 *path, FILE_ID_T *fid)
 		return ret;
 
 	/* check the validation of hint_stat and initialize it if required */
-	if (dir_fid->version != (u32)(inode->i_version & 0xffffffff)) {
+	if (dir_fid->version != (u32)inode_peek_iversion(inode)) {
 		dir_fid->hint_stat.clu = dir.dir;
 		dir_fid->hint_stat.eidx = 0;
-		dir_fid->version = (u32)(inode->i_version & 0xffffffff);
+		dir_fid->version = (u32)inode_peek_iversion(inode);
 		dir_fid->hint_femp.eidx = -1;
 	}
 
@@ -2350,7 +2369,7 @@ s32 fscore_write_link(struct inode *inode, FILE_ID_T *fid, void *buffer, u64 cou
 		ep2 = ep;
 	}
 
-	fsi->fs_func->set_entry_time(ep, tm_now(SDFAT_SB(sb), &tm), TM_MODIFY);
+	fsi->fs_func->set_entry_time(ep, tm_now(inode, &tm), TM_MODIFY);
 	fsi->fs_func->set_entry_attr(ep, fid->attr);
 
 	if (modified) {
@@ -2557,7 +2576,7 @@ s32 fscore_truncate(struct inode *inode, u64 old_size, u64 new_size)
 			ep2 = ep;
 		}
 
-		fsi->fs_func->set_entry_time(ep, tm_now(SDFAT_SB(sb), &tm), TM_MODIFY);
+		fsi->fs_func->set_entry_time(ep, tm_now(inode, &tm), TM_MODIFY);
 		fsi->fs_func->set_entry_attr(ep, fid->attr);
 
 		/*
@@ -2947,6 +2966,7 @@ s32 fscore_read_inode(struct inode *inode, DIR_ENTRY_T *info)
 	info->CreateTimestamp.Minute = tm.min;
 	info->CreateTimestamp.Second = tm.sec;
 	info->CreateTimestamp.MilliSecond = 0;
+	info->CreateTimestamp.Timezone.value = tm.tz.value;
 
 	fsi->fs_func->get_entry_time(ep, &tm, TM_MODIFY);
 	info->ModifyTimestamp.Year = tm.year;
@@ -2956,6 +2976,7 @@ s32 fscore_read_inode(struct inode *inode, DIR_ENTRY_T *info)
 	info->ModifyTimestamp.Minute = tm.min;
 	info->ModifyTimestamp.Second = tm.sec;
 	info->ModifyTimestamp.MilliSecond = 0;
+	info->ModifyTimestamp.Timezone.value = tm.tz.value;
 
 	memset((s8 *) &info->AccessTimestamp, 0, sizeof(DATE_TIME_T));
 
@@ -3058,6 +3079,7 @@ s32 fscore_write_inode(struct inode *inode, DIR_ENTRY_T *info, s32 sync)
 	fsi->fs_func->set_entry_attr(ep, info->Attr);
 
 	/* set FILE_INFO structure using the acquired DENTRY_T */
+	tm.tz  = info->CreateTimestamp.Timezone;
 	tm.sec  = info->CreateTimestamp.Second;
 	tm.min  = info->CreateTimestamp.Minute;
 	tm.hour = info->CreateTimestamp.Hour;
@@ -3066,6 +3088,7 @@ s32 fscore_write_inode(struct inode *inode, DIR_ENTRY_T *info, s32 sync)
 	tm.year = info->CreateTimestamp.Year;
 	fsi->fs_func->set_entry_time(ep, &tm, TM_CREATE);
 
+	tm.tz  = info->ModifyTimestamp.Timezone;
 	tm.sec  = info->ModifyTimestamp.Second;
 	tm.min  = info->ModifyTimestamp.Minute;
 	tm.hour = info->ModifyTimestamp.Hour;
