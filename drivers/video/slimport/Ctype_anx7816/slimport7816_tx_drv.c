@@ -207,10 +207,10 @@ static void hdmi_rx_new_vsi_int(void);
 #define write_dpcd_addr(addrh, addrm, addrl) \
 	do { \
 		unchar temp; \
-		if (__i2c_read_byte(TX_P0, AUX_ADDR_7_0) != (unchar)addrl) \
+		if (__i2c_read_byte(TX_P0, AUX_ADDR_7_0) != (unchar)addrl) { \
 			sp_write_reg(TX_P0, AUX_ADDR_7_0, (unchar)addrl); \
 			if (__i2c_read_byte(TX_P0, AUX_ADDR_15_8) != (unchar)addrm) \
-			sp_write_reg(TX_P0, AUX_ADDR_15_8, (unchar)addrm); \
+			sp_write_reg(TX_P0, AUX_ADDR_15_8, (unchar)addrm); } \
 		sp_read_reg(TX_P0, AUX_ADDR_19_16, &temp); \
 		if ((unchar)(temp & 0x0F)  != ((unchar)addrh & 0x0F)) \
 			sp_write_reg(TX_P0, AUX_ADDR_19_16, (temp  & 0xF0) | ((unchar)addrh)); \
@@ -222,12 +222,12 @@ static void hdmi_rx_new_vsi_int(void);
 #define sp_tx_set_sys_state(ss) \
 	do { \
 		pr_info("%s %s : set: clean_status: %x,\n ", LOG_TAG, __func__, (uint)g_need_clean_status); \
-		if((sp_tx_system_state >= STATE_LINK_TRAINING)&&(ss <STATE_LINK_TRAINING)) \
+		if((sp_tx_system_state >= STATE_LINK_TRAINING)&&(ss <STATE_LINK_TRAINING)) { \
 		sp_write_reg_or(TX_P0, SP_TX_ANALOG_PD_REG, CH0_PD); \
 		sp_tx_system_state_bak = sp_tx_system_state; \
 		sp_tx_system_state = (unchar)ss; \
 		g_need_clean_status = 1; \
-		print_sys_state(sp_tx_system_state); \
+		print_sys_state(sp_tx_system_state); } \
 	} while (0)
 
 #define goto_next_system_state() \
@@ -250,12 +250,12 @@ static void hdmi_rx_new_vsi_int(void);
 	do{ \
 		if(sp_tx_system_state >= status) { \
 			pr_info("%s %s : change_case: clean_status: %xm,\n ", LOG_TAG, __func__, (uint)g_need_clean_status); \
-			if((sp_tx_system_state >= STATE_LINK_TRAINING)&&(status <STATE_LINK_TRAINING)) \
+			if((sp_tx_system_state >= STATE_LINK_TRAINING)&&(status <STATE_LINK_TRAINING)) { \
 			sp_write_reg_or(TX_P0, SP_TX_ANALOG_PD_REG, CH0_PD); \
 			g_need_clean_status = 1; \
 			sp_tx_system_state_bak = sp_tx_system_state; \
 			sp_tx_system_state = (unchar)status; \
-			print_sys_state(sp_tx_system_state); \
+			print_sys_state(sp_tx_system_state); } \
 		} \
 	} while (0)
 
