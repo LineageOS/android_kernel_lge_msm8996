@@ -10292,20 +10292,14 @@ static const struct wiphy_wowlan_support brcm_wowlan_support = {
 #endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(3, 9, 0) */
 };
 #endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(3, 6, 0) */
-
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0))
-static struct cfg80211_wowlan brcm_wowlan_config = {
-	.disconnect = true,
-	.gtk_rekey_failure = true,
-	.eap_identity_req = true,
-	.four_way_handshake = true,
-};
-#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0) */
 #endif /* CONFIG_PM */
 
 static s32 wl_setup_wiphy(struct wireless_dev *wdev, struct device *sdiofunc_dev, void *context)
 {
 	s32 err = 0;
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0))
+	struct cfg80211_wowlan *brcm_wowlan_config;
+#endif /* LINUX_VERSION_CODE >= KERNEL_VERSION(3, 11, 0) */
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 4, 0) || defined(WL_COMPAT_WIRELESS))
 	dhd_pub_t *dhd = (dhd_pub_t *)context;
 	BCM_REFERENCE(dhd);
@@ -10440,7 +10434,12 @@ static s32 wl_setup_wiphy(struct wireless_dev *wdev, struct device *sdiofunc_dev
 	/* If this is not provided cfg stack will get disconnect
 	 * during suspend.
 	 */
-	wdev->wiphy->wowlan_config = &brcm_wowlan_config;
+	brcm_wowlan_config = kzalloc(sizeof(struct cfg80211_wowlan), GFP_KERNEL);
+	brcm_wowlan_config->disconnect = true;
+	brcm_wowlan_config->gtk_rekey_failure = true;
+	brcm_wowlan_config->eap_identity_req = true;
+	brcm_wowlan_config->four_way_handshake = true;
+	wdev->wiphy->wowlan_config = brcm_wowlan_config;
 #else
 	wdev->wiphy->wowlan.flags = WIPHY_WOWLAN_ANY;
 	wdev->wiphy->wowlan.n_patterns = WL_WOWLAN_MAX_PATTERNS;
