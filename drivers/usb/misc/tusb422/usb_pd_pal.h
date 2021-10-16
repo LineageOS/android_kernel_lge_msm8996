@@ -36,7 +36,7 @@ void usb_pd_pal_notify_pd_state(unsigned int port, usb_pd_pe_state_t state);
 void usb_pd_pal_power_role_swap(unsigned int port, uint8_t new_role);
 void usb_pd_pal_data_role_swap(unsigned int port, uint8_t new_role);
 
-#if defined(CONFIG_LGE_USB_FACTORY) || defined(CONFIG_LGE_USB_DEBUGGER)
+#if defined(CONFIG_LGE_USB_FACTORY)
 void usb_pd_pal_debug_accessory_mode(unsigned int port, bool is_on);
 #endif
 

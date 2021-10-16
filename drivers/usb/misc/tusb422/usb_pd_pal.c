@@ -189,7 +189,7 @@ void usb_pd_pal_power_role_swap(unsigned int port, uint8_t new_role)
 	return;
 }
 
-#if defined(CONFIG_LGE_USB_FACTORY) || defined(CONFIG_LGE_USB_DEBUGGER)
+#if defined(CONFIG_LGE_USB_FACTORY)
 void usb_pd_pal_debug_accessory_mode(unsigned int port, bool is_on)
 {
 	pd_dpm_handle_pe_event(PD_DPM_PE_EVT_DEBUG_ACCESSORY, (void *)&is_on);

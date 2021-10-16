@@ -17,7 +17,7 @@
 
 #include <soc/qcom/lge/board_lge.h>
 
-#if defined(CONFIG_LGE_USB_DEBUGGER) || defined(CONFIG_LGE_USB_MOISTURE_DETECT)
+#if defined(CONFIG_LGE_USB_MOISTURE_DETECT)
 #include <soc/qcom/lge/power/lge_power_class.h>
 #include <soc/qcom/lge/power/lge_cable_detect.h>
 #endif
@@ -70,14 +70,8 @@ struct hw_pd_dev {
 	enum power_supply_type typec_mode;
 	int rp;
 
-#if defined(CONFIG_LGE_USB_FACTORY) || defined(CONFIG_LGE_USB_DEBUGGER)
+#if defined(CONFIG_LGE_USB_FACTORY)
 	bool is_debug_accessory;
-#endif
-#ifdef CONFIG_LGE_USB_DEBUGGER
-	struct work_struct usb_debugger_work;
-	struct lge_power *lge_power_cd;
-	struct gpio_desc *sbu_sel_gpio;
-	struct gpio_desc *sbu_en_gpio;
 #endif
 
 #ifdef CONFIG_LGE_USB_MOISTURE_DETECT
@@ -98,7 +92,7 @@ enum pd_dpm_pe_evt {
 	PD_DPM_PE_EVT_TYPEC_STATE,
 	PD_DPM_PE_EVT_DR_SWAP,
 	PD_DPM_PE_EVT_PR_SWAP,
-#if defined(CONFIG_LGE_USB_FACTORY) || defined(CONFIG_LGE_USB_DEBUGGER)
+#if defined(CONFIG_LGE_USB_FACTORY)
 	PD_DPM_PE_EVT_DEBUG_ACCESSORY,
 #endif
 #ifdef CONFIG_LGE_USB_MOISTURE_DETECT

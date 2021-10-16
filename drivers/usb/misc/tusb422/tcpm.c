@@ -1197,7 +1197,7 @@ static void timeout_cc_debounce(unsigned int port)
 		else if ((cc1 == CC_SRC_STATE_RD) &&
 				 (cc2 == CC_SRC_STATE_RD))
 		{
-#if defined(CONFIG_LGE_USB_FACTORY) || defined(CONFIG_LGE_USB_DEBUGGER)
+#if defined(CONFIG_LGE_USB_FACTORY)
 			tcpm_set_state(dev, TCPC_STATE_UNATTACHED_SRC);
 #else
 			tcpm_set_state(dev, TCPC_STATE_UNORIENTED_DEBUG_ACC_SRC);
@@ -2030,7 +2030,7 @@ void tcpm_connection_state_machine(unsigned int port)
 			tcpc_modify8(port, TUSB422_REG_INT_MASK, 0, TUSB422_INT_CC_FAULT);
 #endif
 
-#if (defined(CONFIG_LGE_USB_FACTORY) || defined(CONFIG_LGE_USB_DEBUGGER))
+#if (defined(CONFIG_LGE_USB_FACTORY)
 			if (dev->debug_accessory_mode)
 			{
 				dev->debug_accessory_mode = false;
@@ -2589,7 +2589,7 @@ static void alert_cc_status_handler(tcpc_device_t *dev)
 						if (((cc1 == CC_SRC_STATE_RD) || (cc2 == CC_SRC_STATE_RD)) ||
 							((cc1 == CC_SRC_STATE_RA) && (cc2 == CC_SRC_STATE_RA)))
 						{
-#if defined(CONFIG_LGE_USB_FACTORY) || defined(CONFIG_LGE_USB_DEBUGGER)
+#if defined(CONFIG_LGE_USB_FACTORY)
 							if ((cc1 == CC_SRC_STATE_RD) && (cc2 == CC_SRC_STATE_RD)) {
 								tcpm_set_state(dev, TCPC_STATE_ATTACH_WAIT_SNK);
 
@@ -2735,7 +2735,7 @@ static void alert_cc_status_handler(tcpc_device_t *dev)
 					tcpm_notify_current_change(dev->port, dev->src_current_adv);
 					break;
 
-#if defined(CONFIG_LGE_USB_FACTORY) || defined(CONFIG_LGE_USB_DEBUGGER)
+#if defined(CONFIG_LGE_USB_FACTORY)
 				case TCPC_STATE_ATTACHED_SRC:
 					if (!(((cc1 == CC_SRC_STATE_RD) && (cc2 != CC_SRC_STATE_RD)) ||
 						((cc1 != CC_SRC_STATE_RD) && (cc2 == CC_SRC_STATE_RD))))

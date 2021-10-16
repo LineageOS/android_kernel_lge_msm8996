@@ -7,9 +7,6 @@
 #include <linux/module.h>
 
 #include "charger.c"
-#ifdef CONFIG_LGE_USB_DEBUGGER
-#include "usb_debugger.c"
-#endif
 #ifdef CONFIG_LGE_USB_MOISTURE_DETECT
 #include "cc_protect.c"
 #endif
@@ -445,7 +442,7 @@ print_vbus_state:
 	case PD_DPM_PE_EVT_PR_SWAP:
 		break;
 
-#if defined(CONFIG_LGE_USB_FACTORY) || defined(CONFIG_LGE_USB_DEBUGGER)
+#if defined(CONFIG_LGE_USB_FACTORY)
 	case PD_DPM_PE_EVT_DEBUG_ACCESSORY:
 	{
 		bool is_debug_accessory = *(bool *)state;
@@ -461,9 +458,6 @@ print_vbus_state:
 			POWER_SUPPLY_TYPE_UNKNOWN;
 #endif
 
-#ifdef CONFIG_LGE_USB_DEBUGGER
-		schedule_work(&dev->usb_debugger_work);
-#endif
 		break;
 	}
 #endif
@@ -541,9 +535,6 @@ int hw_pd_dev_init(struct device *dev)
 	}
 
 
-#ifdef CONFIG_LGE_USB_DEBUGGER
-	usb_debugger_init(&_hw_pd_dev);
-#endif
 #ifdef CONFIG_LGE_USB_MOISTURE_DETECT
 	cc_protect_init(&_hw_pd_dev);
 #endif
