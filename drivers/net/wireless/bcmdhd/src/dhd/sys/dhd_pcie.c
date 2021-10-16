@@ -480,6 +480,7 @@ int32
 dhdpcie_bus_isr(dhd_bus_t *bus)
 {
 	uint32 intstatus = 0;
+	uint16 val = 0;
 
 	do {
 		DHD_TRACE(("%s: Enter\n", __FUNCTION__));
@@ -508,6 +509,18 @@ dhdpcie_bus_isr(dhd_bus_t *bus)
 		}
 #endif /* SUPPORT_LINKDOWN_RECOVERY */
 #endif /* CONFIG_ARCH_MSM */
+
+		/* Wi-Fi chip registers to legacy PCIe interrupt, which shared by all root ports
+		   and end points. instatus filters out the irqs which are not from Wi-Fi chip,
+		   but when Wi-Fi chip is in D3hot instatus register is not accessible. So adding
+		   D3hot check before proceeding with isr routine */
+		pci_read_config_word(bus->dev, bus->dev->pm_cap + PCI_PM_CTRL, &val);
+		if ((val & PCI_PM_CTRL_STATE_MASK) == PCI_D3hot) {
+			DHD_ERROR(("%s: chip is in D3 state, not processing the interrupt \r\n",
+						__FUNCTION__));
+			break;
+		}
+
 		intstatus = dhdpcie_bus_intstatus(bus);
 
 		/* Check if the interrupt is ours or not */
