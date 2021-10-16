@@ -780,7 +780,11 @@ typedef struct dhd_info {
 #define DHDIF_FWDER(dhdif)      FALSE
 
 /* Flag to indicate if we should download firmware on driver load */
+#ifdef ENABLE_INSMOD_NO_FW_LOAD
+uint dhd_download_fw_on_driverload = FALSE;
+#else
 uint dhd_download_fw_on_driverload = TRUE;
+#endif /* ENABLE_INSMOD_NO_FW_LOAD */
 
 /* Flag to indicate if driver is initialized */
 uint dhd_driver_init_done = FALSE;

@@ -5431,9 +5431,6 @@ int wl_android_init(void)
 {
 	int ret = 0;
 
-#ifdef ENABLE_INSMOD_NO_FW_LOAD
-	dhd_download_fw_on_driverload = FALSE;
-#endif /* ENABLE_INSMOD_NO_FW_LOAD */
 	if (!iface_name[0]) {
 		memset(iface_name, 0, IFNAMSIZ);
 		bcm_strncpy_s(iface_name, IFNAMSIZ, "wlan", IFNAMSIZ);
