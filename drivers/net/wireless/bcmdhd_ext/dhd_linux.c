@@ -8924,10 +8924,6 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 	dhd->apf_set = FALSE;
 #endif /* APF */
 #endif /* PKT_FILTER_SUPPORT */
-#ifdef WLTDLS
-	dhd->tdls_enable = FALSE;
-	dhd_tdls_set_mode(dhd, false);
-#endif /* WLTDLS */
 	dhd->suspend_bcn_li_dtim = CUSTOM_SUSPEND_BCN_LI_DTIM;
 #ifdef ENABLE_MAX_DTIM_IN_SUSPEND
 	dhd->max_dtim_enable = TRUE;
@@ -9019,6 +9015,10 @@ dhd_preinit_ioctls(dhd_pub_t *dhd)
 #if defined(ARP_OFFLOAD_SUPPORT)
 			arpoe = 0;
 #endif
+#ifdef WLTDLS
+	dhd->tdls_enable = FALSE;
+	dhd_tdls_set_mode(dhd, false);
+#endif /* WLTDLS */
 #ifdef PKT_FILTER_SUPPORT
 			dhd_pkt_filter_enable = FALSE;
 #endif
