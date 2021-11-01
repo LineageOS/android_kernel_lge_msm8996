@@ -136,10 +136,44 @@ fw-shipped-$(CONFIG_USB_VICAM) += vicam/firmware.fw
 fw-shipped-$(CONFIG_VIDEO_CPIA2) += cpia2/stv0672_vp4.bin
 fw-shipped-$(CONFIG_YAM) += yam/1200.bin yam/9600.bin
 
+# LG firmware
+ifdef CONFIG_MACH_MSM8996_LUCYE
+fw-shipped-$(CONFIG_LGE_TOUCH_CORE_BASE) += \
+	touch/lucye/L1L57P1_8_23_SW49407_Lucy_VB.img \
+	touch/lucye/L1L57P2_1_03.img \
+	touch/lucye/L1L57P2_1_05.img \
+	touch/lucye/lucye_limit.txt \
+	touch/lucye/lucye_limit_mfts.txt
+endif
+ifdef CONFIG_MACH_MSM8996_H1
+# Old, or for Japanese model.
+# PLG468-V1.20-PR1901334-DS5.2.200.1.1002_50055194504C47343638.img,
+# h1_hdk_limit_mfts_curved.txt, h1_hdk_limit_mfts_flat.txt, h1_hdk_limit_mfts_folder.txt
+fw-shipped-$(CONFIG_LGE_TOUCH_CORE_BASE) += \
+	touch/h1/H1_LG4945_0.01.img \
+	touch/h1/L0L53P1_1_14.img \
+	touch/h1/L0L53P1_1_22.img \
+	touch/h1/h1_limit.txt \
+	touch/h1/h1_limit_mfts.txt
+endif
+ifdef CONFIG_MACH_MSM8996_ELSA
+# Old, or for Japanese model.
+# L1L52P1_1_05.img, L1L52P1_1_13.img, L1L57P1_1_13.img
+fw-shipped-$(CONFIG_LGE_TOUCH_CORE_BASE) += \
+	touch/elsa/L0L57P1_1_35.img \
+	touch/elsa/L0L57P1_2_00.img \
+	touch/elsa/L1L57P1_1_14.img \
+	touch/elsa/elsa_limit.txt \
+	touch/elsa/elsa_limit_mfts.txt
+endif
+
 fw-shipped-all := $(fw-shipped-y) $(fw-shipped-m) $(fw-shipped-)
 
 quiet_cmd_ihex  = IHEX    $@
       cmd_ihex  = $(OBJCOPY) -Iihex -Obinary $< $@
+
+quiet_cmd_copy  = COPY    $@
+      cmd_copy  = cp $< $@
 
 quiet_cmd_ihex2fw  = IHEX2FW $@
       cmd_ihex2fw  = $(objtree)/$(obj)/ihex2fw $< $@
@@ -192,6 +226,10 @@ $(patsubst %,$(obj)/%.gen.o, $(fw-external-y)): $(obj)/%.gen.o: $(fwdir)/%
 # where binaries are frowned upon. They are directly converted with objcopy.
 $(obj)/%: $(obj)/%.ihex
 	$(call cmd,ihex)
+
+# Manufacturers don't like to distribute in ihex, I guess I can't blame them.
+$(obj)/%: $(obj)/%.cp
+	$(call cmd,copy)
 
 # Don't depend on ihex2fw if we're installing and it already exists.
 # Putting it after | in the dependencies doesn't seem sufficient when
