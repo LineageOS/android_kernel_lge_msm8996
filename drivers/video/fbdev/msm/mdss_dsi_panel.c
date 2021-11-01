@@ -28,6 +28,33 @@
 #include "mdss_debug.h"
 #include "mdss_livedisplay.h"
 
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_READER_MODE)
+#include "lge/lge_reader_mode.h"
+#endif
+
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+#include "lge/lge_mdss_display.h"
+#include <soc/qcom/lge/board_lge.h>
+extern int panel_not_connected;
+int detect_factory_cable(void);
+#endif
+
+#if defined(CONFIG_LGE_DISPLAY_BL_EXTENDED)
+void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
+			struct dsi_panel_cmds *pcmds, u32 flags);
+#endif
+
+#if defined(CONFIG_LGE_LCD_TUNING)
+extern int tun_lcd[128];
+extern char read_cmd[128];
+extern int reg_num;
+int cmd_num;
+#endif
+
+#if defined(CONFIG_MACH_LGE)
+struct mdss_panel_data *pdata_base;
+#endif
+
 #define DT_CMD_HDR 6
 #define DEFAULT_MDP_TRANSFER_TIME 14000
 
@@ -181,9 +208,333 @@ static void mdss_dsi_panel_apply_settings(struct mdss_dsi_ctrl_pdata *ctrl,
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 }
 
+/* TODO: check if it is valid for hplus */
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+char lge_dcs_cmd[1] = {0xD8}; /* DTYPE_DCS_READ */
+struct dsi_cmd_desc lge_dcs_read_cmd = {
+	{DTYPE_DCS_READ, 1, 0, 1, 5, sizeof(lge_dcs_cmd)},
+	lge_dcs_cmd
+};
 
+void lge_force_mdss_dsi_panel_cmd_read(char cmd0, int cnt, char* ret_buf)
+{
+	struct dcs_cmd_req cmdreq;
+	struct mdss_dsi_ctrl_pdata *ctrl;
+	char rx_buf[128] = {0x0};
+
+	ctrl = container_of(pdata_base, struct mdss_dsi_ctrl_pdata,
+						panel_data);
+	lge_dcs_cmd[0] = cmd0;
+	memset(&cmdreq, 0, sizeof(cmdreq));
+	cmdreq.cmds = &lge_dcs_read_cmd;
+	cmdreq.cmds_cnt = 1;
+	cmdreq.flags = CMD_REQ_RX | CMD_REQ_COMMIT;
+	cmdreq.rlen = cnt;
+	cmdreq.cb = NULL;
+	cmdreq.rbuf = rx_buf;
+
+	if (ctrl->status_cmds.link_state == DSI_LP_MODE)
+		cmdreq.flags |= CMD_REQ_LP_MODE;
+	else if (ctrl->status_cmds.link_state == DSI_HS_MODE)
+		cmdreq.flags |= CMD_REQ_HS_MODE;
+
+	mdelay(1);
+
+	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
+	memcpy(ret_buf, rx_buf, cnt);
+}
+
+int lge_is_valid_U2_FTRIM_reg(void)
+{
+	int ret = 0;
+	char ret_buf[4] = {0x0};
+	char cmd_addr[1] = {0xC7};
+
+	if(pdata_base->panel_info.panel_power_state == 0){
+		pr_err("%s: Cannot read U2 FTRIM reg because panel is off state.\n", __func__);
+		return -ENODEV;
+	}
+
+	lge_force_mdss_dsi_panel_cmd_read(cmd_addr[0], 4, ret_buf);
+
+	if (ret_buf[3] & BIT(6)) {
+		ret = 1;
+	}
+
+	return ret;
+}
+EXPORT_SYMBOL(lge_is_valid_U2_FTRIM_reg);
+
+#if defined(CONFIG_LGE_DISPLAY_MFTS_DET_SUPPORTED)
+static int mfts_video_cnt;
+int lge_set_validate_lcd_reg(void)
+{
+	int i = 0;
+	int ret = 0;
+	int cnt = 13;
+	char ret_buf[13] = {0x0};
+	char cmd_addr[1] = {0xC7};
+	struct mdss_dsi_ctrl_pdata *ctrl;
+
+	ctrl = container_of(pdata_base, struct mdss_dsi_ctrl_pdata,
+						panel_data);
+	if(pdata_base->panel_info.panel_power_state == 0){
+		pr_err("%s: Cannot check TRIM reg because panel is off state.\n", __func__);
+		return -ENODEV;
+	}
+
+	lge_force_mdss_dsi_panel_cmd_read(cmd_addr[0], cnt, ret_buf);
+
+	if(pdata_base->panel_info.is_validate_lcd == 1) //for MFTS mode
+	{
+		memcpy(&(ctrl->screen_cmds_102v.cmds[0].payload[1]), ret_buf, cnt);
+
+		pr_info("trim reg before writing mode %d : ", pdata_base->panel_info.is_validate_lcd);
+		for ( i = 0; i < cnt + 1; i++) {
+			pr_info("0x%x ", ctrl->screen_cmds_102v.cmds[0].payload[i]);
+		}
+		pr_info("\n");
+
+		//1.02V
+		ctrl->screen_cmds_102v.cmds[0].payload[9] = 0x00;
+
+		mdss_dsi_panel_cmds_send(ctrl, &ctrl->screen_cmds_102v, CMD_REQ_COMMIT);
+		lge_force_mdss_dsi_panel_cmd_read(cmd_addr[0], cnt, ret_buf);
+
+		memcpy(&(ctrl->screen_cmds_102v.cmds[0].payload[1]), ret_buf, cnt);
+
+		pr_info("trim reg after writing mode %d : ", pdata_base->panel_info.is_validate_lcd);
+		for ( i = 0; i < cnt + 1; i++) {
+			pr_info("0x%x ", ctrl->screen_cmds_102v.cmds[0].payload[i]);
+		}
+		pr_info("\n");
+	} else if(pdata_base->panel_info.is_validate_lcd == 2) { //for MFTS mode
+		memcpy(&(ctrl->screen_cmds_129v.cmds[0].payload[1]), ret_buf, cnt);
+
+		pr_info("trim reg before writing mode %d : ", pdata_base->panel_info.is_validate_lcd);
+		for ( i = 0; i < cnt + 1; i++) {
+			pr_info("0x%x ", ctrl->screen_cmds_129v.cmds[0].payload[i]);
+		}
+		pr_info("\n");
+
+		//1.29V
+		ctrl->screen_cmds_129v.cmds[0].payload[9] += 0x22;
+
+		mdss_dsi_panel_cmds_send(ctrl, &ctrl->screen_cmds_129v, CMD_REQ_COMMIT);
+		lge_force_mdss_dsi_panel_cmd_read(cmd_addr[0], cnt, ret_buf);
+
+		memcpy(&(ctrl->screen_cmds_129v.cmds[0].payload[1]), ret_buf, cnt);
+
+		pr_info("trim reg after writing mode %d : ", pdata_base->panel_info.is_validate_lcd);
+		for ( i = 0; i < cnt + 1; i++) {
+			pr_info("0x%x ", ctrl->screen_cmds_129v.cmds[0].payload[i]);
+		}
+		pr_info("\n");
+	}  else if(pdata_base->panel_info.is_validate_lcd == 3) { //for MFTS mode
+		memcpy(&(ctrl->screen_cmds_132v.cmds[0].payload[1]), ret_buf, cnt);
+
+		pr_info("trim reg before writing mode %d : ", pdata_base->panel_info.is_validate_lcd);
+		for ( i = 0; i < cnt + 1; i++) {
+			pr_info("0x%x ", ctrl->screen_cmds_132v.cmds[0].payload[i]);
+		}
+		pr_info("\n");
+		switch(mfts_video_cnt){
+			case 0:
+				ctrl->cam_cmds.cmds[0].payload[1] = 0x99;
+				mdss_dsi_panel_cmds_send(ctrl, &ctrl->cam_cmds, CMD_REQ_COMMIT);
+				pr_info("mfts_video_cnt : %d\n", mfts_video_cnt);
+				mfts_video_cnt++;
+				break;
+			case 1:
+				ctrl->cam_cmds.cmds[0].payload[1] = 0x9a;
+				mdss_dsi_panel_cmds_send(ctrl, &ctrl->cam_cmds, CMD_REQ_COMMIT);
+				pr_info("mfts_video_cnt : %d\n", mfts_video_cnt);
+				mfts_video_cnt++;
+				break;
+			case 2:
+				ctrl->cam_cmds.cmds[0].payload[1] = 0x9b;
+				mdss_dsi_panel_cmds_send(ctrl, &ctrl->cam_cmds, CMD_REQ_COMMIT);
+				pr_info("mfts_video_cnt : %d\n", mfts_video_cnt);
+				break;
+			default:
+				break;
+		}
+		//1.32V
+		ctrl->screen_cmds_132v.cmds[0].payload[9] += 0x33;
+		mdss_dsi_panel_cmds_send(ctrl, &ctrl->screen_cmds_132v, CMD_REQ_COMMIT);
+		lge_force_mdss_dsi_panel_cmd_read(cmd_addr[0], cnt, ret_buf);
+
+		memcpy(&(ctrl->screen_cmds_132v.cmds[0].payload[1]), ret_buf, cnt);
+
+		pr_info("trim reg after writing mode %d : ", pdata_base->panel_info.is_validate_lcd);
+		for ( i = 0; i < cnt + 1; i++) {
+			pr_info("0x%x ", ctrl->screen_cmds_132v.cmds[0].payload[i]);
+		}
+		pr_info("\n");
+	} else {
+		memcpy(&(ctrl->trimming_cmds.cmds[0].payload[1]), ret_buf, cnt);
+
+		pr_info("trim reg before writing mode %d : ", pdata_base->panel_info.is_validate_lcd);
+		for ( i = 0; i < cnt + 1; i++) {
+			pr_info("0x%x ", ctrl->trimming_cmds.cmds[0].payload[i]);
+		}
+		pr_info("\n");
+
+		/* We don't need to set vdds to 1.29V anymore if this video test isn't working.
+		//vdds 1.29V
+		ctrl->trimming_cmds.cmds[0].payload[9] += 0x22;
+		mdss_dsi_panel_cmds_send(ctrl, &ctrl->trimming_cmds, CMD_REQ_COMMIT);
+		*/
+		lge_force_mdss_dsi_panel_cmd_read(cmd_addr[0], cnt, ret_buf);
+
+		memcpy(&(ctrl->trimming_cmds.cmds[0].payload[1]), ret_buf, cnt);
+
+		pr_info("trim reg after writing mode %d : ", pdata_base->panel_info.is_validate_lcd);
+		for ( i = 0; i < cnt + 1; i++) {
+			pr_info("0x%x ", ctrl->trimming_cmds.cmds[0].payload[i]);
+		}
+		mfts_video_cnt = 0;
+		pr_info("\n");
+	}
+
+	return ret;
+}
+EXPORT_SYMBOL(lge_set_validate_lcd_reg);
+
+int lge_set_validate_lcd_cam(int mode)
+{
+	int i = 0;
+	int ret = 0;
+	int cnt = 13;
+	char ret_buf[13] = {0x0};
+	char cmd_addr[1] = {0xC7};
+	struct mdss_dsi_ctrl_pdata *ctrl;
+
+	ctrl = container_of(pdata_base, struct mdss_dsi_ctrl_pdata,
+						panel_data);
+	if(pdata_base->panel_info.panel_power_state == 0){
+		pr_err("%s: Cannot check TRIM reg because panel is off state.\n", __func__);
+		return -ENODEV;
+	}
+
+	lge_force_mdss_dsi_panel_cmd_read(cmd_addr[0], cnt, ret_buf);
+
+	if(mode == 1) //for AAT cam Test
+	{
+		memcpy(&(ctrl->trimming_cmds.cmds[0].payload[1]), ret_buf, cnt);
+
+		pr_info("trim reg before writing mode %d : ", mode);
+		for ( i = 0; i < cnt + 1; i++) {
+			pr_info("0x%x ", ctrl->trimming_cmds.cmds[0].payload[i]);
+		}
+		pr_info("\n");
+
+		//vdds 1.32V
+		ctrl->trimming_cmds.cmds[0].payload[9] += 0x11;
+		mdss_dsi_panel_cmds_send(ctrl, &ctrl->trimming_cmds, CMD_REQ_COMMIT);
+
+		//cam cmds
+		ctrl->cam_cmds.cmds[0].payload[1] = 0x9A;
+		mdss_dsi_panel_cmds_send(ctrl, &ctrl->cam_cmds, CMD_REQ_COMMIT);
+
+		pr_info("cam reg writing mode : ");
+		for ( i = 0; i < 7 + 1; i++) {
+			pr_info("0x%x ", ctrl->cam_cmds.cmds[0].payload[i]);
+		}
+		pr_info("\n");
+
+		lge_force_mdss_dsi_panel_cmd_read(cmd_addr[0], cnt, ret_buf);
+
+		memcpy(&(ctrl->trimming_cmds.cmds[0].payload[1]), ret_buf, cnt);
+
+		pr_info("trim reg after writing mode %d : ", mode);
+		for ( i = 0; i < cnt + 1; i++) {
+			pr_info("0x%x ", ctrl->trimming_cmds.cmds[0].payload[i]);
+		}
+		pr_info("\n");
+	} else { // recovery
+		memcpy(&(ctrl->trimming_cmds.cmds[0].payload[1]), ret_buf, cnt);
+
+		pr_info("trim reg before writing mode %d : ", mode);
+		for ( i = 0; i < cnt + 1; i++) {
+			pr_info("0x%x ", ctrl->trimming_cmds.cmds[0].payload[i]);
+		}
+		pr_info("\n");
+
+		//vdds 1.32V
+		ctrl->trimming_cmds.cmds[0].payload[9] -= 0x11;
+		mdss_dsi_panel_cmds_send(ctrl, &ctrl->trimming_cmds, CMD_REQ_COMMIT);
+
+		//cam time
+		ctrl->cam_cmds.cmds[0].payload[1] = 0x98;
+		mdss_dsi_panel_cmds_send(ctrl, &ctrl->cam_cmds, CMD_REQ_COMMIT);
+
+		pr_info("hold time reg writing mode : ");
+		for ( i = 0; i < 7 + 1; i++) {
+			pr_info("0x%x ", ctrl->cam_cmds.cmds[0].payload[i]);
+		}
+		pr_info("\n");
+
+		lge_force_mdss_dsi_panel_cmd_read(cmd_addr[0], cnt, ret_buf);
+
+		memcpy(&(ctrl->trimming_cmds.cmds[0].payload[1]), ret_buf, cnt);
+
+		pr_info("trim reg after writing mode %d : ", mode);
+		for ( i = 0; i < cnt + 1; i++) {
+			pr_info("0x%x ", ctrl->trimming_cmds.cmds[0].payload[i]);
+		}
+		pr_info("\n");
+	}
+	return ret;
+}
+EXPORT_SYMBOL(lge_set_validate_lcd_cam);
+#endif
+#endif
+
+#if defined(CONFIG_LGE_DISPLAY_AOD_WITH_MIPI)
+char lge_dcs_cmd_watch[1] = {0xD8}; /* DTYPE_DCS_READ */
+struct dsi_cmd_desc lge_dcs_read_cmd_watch = {
+	{DTYPE_DCS_READ, 1, 0, 1, 5, sizeof(lge_dcs_cmd_watch)},
+	lge_dcs_cmd_watch,
+};
+void lge_watch_mdss_dsi_panel_cmd_read(struct mdss_dsi_ctrl_pdata *ctrl,
+		char cmd0, int cnt, char* ret_buf)
+{
+	struct dcs_cmd_req cmdreq;
+	char rx_buf[128] = {0x0};
+
+	lge_dcs_cmd_watch[0] = cmd0;
+	memset(&cmdreq, 0, sizeof(cmdreq));
+	cmdreq.cmds = &lge_dcs_read_cmd_watch;
+	cmdreq.cmds_cnt = 1;
+	cmdreq.flags = CMD_REQ_RX | CMD_REQ_COMMIT;
+	cmdreq.rlen = cnt;
+	cmdreq.cb = NULL;
+	cmdreq.rbuf = rx_buf;
+
+	if (ctrl->status_cmds.link_state == DSI_LP_MODE)
+		cmdreq.flags |= CMD_REQ_LP_MODE;
+	else if (ctrl->status_cmds.link_state == DSI_HS_MODE)
+		cmdreq.flags |= CMD_REQ_HS_MODE;
+
+	mdelay(1);
+
+	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
+
+	//for(i=0;i<cnt;i++)
+	//	pr_info("[Display]Reg[0x%x],buf[%d]=0x%x,mode[%d]\n",cmd0, i, rx_buf[i], ctrl->status_cmds.link_state);
+
+	memcpy(ret_buf, rx_buf, cnt);
+}
+#endif
+
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
 void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
 			struct dsi_panel_cmds *pcmds, u32 flags)
+#else
+static void mdss_dsi_panel_cmds_send(struct mdss_dsi_ctrl_pdata *ctrl,
+			struct dsi_panel_cmds *pcmds, u32 flags)
+#endif
 {
 	struct dcs_cmd_req cmdreq;
 	struct mdss_panel_info *pinfo;
@@ -247,6 +598,11 @@ static void mdss_dsi_panel_bklt_dcs(struct mdss_dsi_ctrl_pdata *ctrl, int level)
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 }
 
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_OVERRIDE_MDSS_DSI_PANEL_RESET)
+/*
+ * mdss_dsi_panel_reset(), mdss_dsi_request_gpios() should be defined in other file.
+ */
+#else
 static int mdss_dsi_request_gpios(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
 	int rc = 0;
@@ -295,81 +651,6 @@ rst_gpio_err:
 	if (gpio_is_valid(ctrl_pdata->disp_en_gpio))
 		gpio_free(ctrl_pdata->disp_en_gpio);
 disp_en_gpio_err:
-	return rc;
-}
-
-int mdss_dsi_bl_gpio_ctrl(struct mdss_panel_data *pdata, int enable)
-{
-	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
-	int rc = 0, val = 0;
-
-	if (pdata == NULL) {
-		pr_err("%s: Invalid input data\n", __func__);
-		return -EINVAL;
-	}
-
-	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
-				panel_data);
-	if (ctrl_pdata == NULL) {
-		pr_err("%s: Invalid ctrl data\n", __func__);
-		return -EINVAL;
-	}
-
-	/* if gpio is not valid */
-	if (!gpio_is_valid(ctrl_pdata->bklt_en_gpio))
-		return rc;
-
-	pr_debug("%s: enable = %d\n", __func__, enable);
-
-	/*
-	 * if gpio state is false and enable (bl level) is
-	 * non zero then toggle the gpio
-	 */
-	if (!ctrl_pdata->bklt_en_gpio_state && enable) {
-		rc = gpio_request(ctrl_pdata->bklt_en_gpio, "bklt_enable");
-		if (rc) {
-			pr_err("request bklt gpio failed, rc=%d\n", rc);
-			goto free;
-		}
-
-		if (ctrl_pdata->bklt_en_gpio_invert)
-			val = 0;
-		 else
-			val = 1;
-
-		rc = gpio_direction_output(ctrl_pdata->bklt_en_gpio, val);
-		if (rc) {
-			pr_err("%s: unable to set dir for bklt gpio val %d\n",
-						__func__, val);
-			goto free;
-		}
-		ctrl_pdata->bklt_en_gpio_state = true;
-		goto ret;
-	} else if (ctrl_pdata->bklt_en_gpio_state && !enable) {
-		/*
-		 * if gpio state is true and enable (bl level) is
-		 * zero then toggle the gpio
-		 */
-		if (ctrl_pdata->bklt_en_gpio_invert)
-			val = 1;
-		 else
-			val = 0;
-
-		rc = gpio_direction_output(ctrl_pdata->bklt_en_gpio, val);
-		if (rc)
-			pr_err("%s: unable to set dir for bklt gpio val %d\n",
-						__func__, val);
-		goto free;
-	}
-
-	/* gpio state is true and bl level is non zero */
-	goto ret;
-
-free:
-	pr_debug("%s: free bklt gpio\n", __func__);
-	ctrl_pdata->bklt_en_gpio_state = false;
-	gpio_free(ctrl_pdata->bklt_en_gpio);
-ret:
 	return rc;
 }
 
@@ -506,6 +787,82 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 	}
 
 exit:
+	return rc;
+}
+#endif
+
+int mdss_dsi_bl_gpio_ctrl(struct mdss_panel_data *pdata, int enable)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
+	int rc = 0, val = 0;
+
+	if (pdata == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return -EINVAL;
+	}
+
+	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
+				panel_data);
+	if (ctrl_pdata == NULL) {
+		pr_err("%s: Invalid ctrl data\n", __func__);
+		return -EINVAL;
+	}
+
+	/* if gpio is not valid */
+	if (!gpio_is_valid(ctrl_pdata->bklt_en_gpio))
+		return rc;
+
+	pr_debug("%s: enable = %d\n", __func__, enable);
+
+	/*
+	 * if gpio state is false and enable (bl level) is
+	 * non zero then toggle the gpio
+	 */
+	if (!ctrl_pdata->bklt_en_gpio_state && enable) {
+		rc = gpio_request(ctrl_pdata->bklt_en_gpio, "bklt_enable");
+		if (rc) {
+			pr_err("request bklt gpio failed, rc=%d\n", rc);
+			goto free;
+		}
+
+		if (ctrl_pdata->bklt_en_gpio_invert)
+			val = 0;
+		 else
+			val = 1;
+
+		rc = gpio_direction_output(ctrl_pdata->bklt_en_gpio, val);
+		if (rc) {
+			pr_err("%s: unable to set dir for bklt gpio val %d\n",
+						__func__, val);
+			goto free;
+		}
+		ctrl_pdata->bklt_en_gpio_state = true;
+		goto ret;
+	} else if (ctrl_pdata->bklt_en_gpio_state && !enable) {
+		/*
+		 * if gpio state is true and enable (bl level) is
+		 * zero then toggle the gpio
+		 */
+		if (ctrl_pdata->bklt_en_gpio_invert)
+			val = 1;
+		 else
+			val = 0;
+
+		rc = gpio_direction_output(ctrl_pdata->bklt_en_gpio, val);
+		if (rc)
+			pr_err("%s: unable to set dir for bklt gpio val %d\n",
+						__func__, val);
+		goto free;
+	}
+
+	/* gpio state is true and bl level is non zero */
+	goto ret;
+
+free:
+	pr_debug("%s: free bklt gpio\n", __func__);
+	ctrl_pdata->bklt_en_gpio_state = false;
+	gpio_free(ctrl_pdata->bklt_en_gpio);
+ret:
 	return rc;
 }
 
@@ -791,6 +1148,107 @@ static int mdss_dsi_panel_apply_display_setting(struct mdss_panel_data *pdata,
 	return 0;
 }
 
+#if defined(CONFIG_LGE_LCD_TUNING)
+int find_lcd_cmd(void)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
+	int i,j;
+	char cmd[128]={0, };
+	memset(read_cmd,0,128*sizeof(char));
+	pr_info("reg_num=%x",reg_num);
+	if(pdata_base == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return -EINVAL;
+	}
+
+	ctrl =  container_of(pdata_base, struct mdss_dsi_ctrl_pdata,
+			panel_data);
+	for(i=0;i<ctrl->on_cmds.cmd_cnt;i++)
+	{
+		pr_info("%s:cmd_cnt(find_lcd_cmd)[%d]=%x",__func__,i,ctrl->on_cmds.cmds[i].payload[0]);
+		if(ctrl->on_cmds.cmds[i].payload[0]==reg_num)
+		{
+			for(j=0;j<ctrl->on_cmds.cmds[i].dchdr.dlen;j++)
+			{
+				cmd[j] = ctrl->on_cmds.cmds[i].payload[j];
+			}
+			memcpy(read_cmd,cmd,128*sizeof(char));
+			cmd_num=ctrl->on_cmds.cmds[i].dchdr.dlen;
+			return cmd_num;
+		}
+	}
+	return 0;
+}
+void put_lcd_cmd(void)
+{
+	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
+	int i,j;
+	pr_info("reg_num=%x",reg_num);
+	if(pdata_base == NULL) {
+		pr_err("%s: Invalid input data\n", __func__);
+		return;
+	}
+
+	ctrl =  container_of(pdata_base, struct mdss_dsi_ctrl_pdata,
+			panel_data);
+	for(i=0;i<ctrl->on_cmds.cmd_cnt;i++)
+	{
+		pr_info("%s:cmd_cnt[%d]=%x",__func__,i,ctrl->on_cmds.cmds[i].payload[0]);
+		if(ctrl->on_cmds.cmds[i].payload[0]==reg_num)
+		{
+			for(j=1;j<ctrl->on_cmds.cmds[i].dchdr.dlen;j++)
+			{
+				ctrl->on_cmds.cmds[i].payload[j]=tun_lcd[j];
+				pr_info("%s: cmds[%d].payload[%d]: %x",__func__,i,j,ctrl->on_cmds.cmds[i].payload[j]);
+			}
+			//mdss_dsi_panel_cmds_send(ctrl, &ctrl->on_cmds, CMD_REQ_COMMIT);
+		}
+	}
+}
+
+int get_backlight_map_size(int *bl_size)
+{
+	int ret = 0;
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+	if (pdata_base) {
+		*bl_size = pdata_base->panel_info.blmap_size;
+		pr_info("Current bl map size : %d\n", *bl_size);
+	}
+#else
+	ret = -1;
+#endif
+	return ret;
+}
+
+int get_backlight_map(int *bl_map)
+{
+	int ret = 0;
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+	if (pdata_base) {
+		memcpy(bl_map, pdata_base->panel_info.blmap, sizeof(int) * pdata_base->panel_info.blmap_size);
+	}
+#else
+	ret = -1;
+#endif
+	return ret;
+}
+int set_backlight_map(int bl_size, int *bl_map)
+{
+	int ret = 0;
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+	if (pdata_base) {
+		pdata_base->panel_info.blmap_size = bl_size;
+		memcpy(pdata_base->panel_info.blmap, bl_map, sizeof(int) * bl_size);
+		pr_info("BL map updated with size %d\n", bl_size);
+	}
+#else
+	ret = -1;
+#endif
+	return ret;
+}
+
+#endif
+
 static void mdss_dsi_panel_switch_mode(struct mdss_panel_data *pdata,
 							int mode)
 {
@@ -857,6 +1315,9 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 		pr_err("%s: Invalid input data\n", __func__);
 		return;
 	}
+#if defined(CONFIG_MACH_LGE)
+	pdata_base = pdata;
+#endif
 
 	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata,
 				panel_data);
@@ -909,6 +1370,11 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 				mdss_dsi_panel_bklt_dcs(sctrl, bl_level);
 		}
 		break;
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+	case BL_OTHERS:
+		lge_set_backlight(bl_level);
+		break;
+#endif
 	default:
 		pr_err("%s: Unknown bl_ctrl configuration\n",
 			__func__);
@@ -916,6 +1382,11 @@ static void mdss_dsi_panel_bl_ctrl(struct mdss_panel_data *pdata,
 	}
 }
 
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_OVERRIDE_MDSS_DSI_PANEL_ON)
+/*
+ * mdss_dsi_panel_on() should be defined in other file.
+ */
+#else
 static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
@@ -968,6 +1439,7 @@ end:
 	pr_debug("%s:-\n", __func__);
 	return ret;
 }
+#endif
 
 static int mdss_dsi_post_panel_on(struct mdss_panel_data *pdata)
 {
@@ -1008,6 +1480,11 @@ end:
 	return 0;
 }
 
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_OVERRIDE_MDSS_DSI_PANEL_OFF)
+/*
+ * mdss_dsi_panel_off() should be defined in other file.
+ */
+#else
 static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
@@ -1041,6 +1518,7 @@ end:
 	pr_debug("%s:-\n", __func__);
 	return 0;
 }
+#endif
 
 static int mdss_dsi_panel_low_power_config(struct mdss_panel_data *pdata,
 	int enable)
@@ -1127,9 +1605,13 @@ static void mdss_dsi_parse_trigger(struct device_node *np, char *trigger,
 	}
 }
 
-
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+int mdss_dsi_parse_dcs_cmds(struct device_node *np,
+		struct dsi_panel_cmds *pcmds, char *cmd_key, char *link_key)
+#else
 static int mdss_dsi_parse_dcs_cmds(struct device_node *np,
 		struct dsi_panel_cmds *pcmds, char *cmd_key, char *link_key)
+#endif
 {
 	const char *data;
 	int blen = 0, len;
@@ -2455,6 +2937,13 @@ int mdss_panel_parse_bl_settings(struct device_node *np,
 			pr_debug("%s: Configured DCS_CMD bklt ctrl\n",
 								__func__);
 		}
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+		else if (!strcmp(data, "bl_ctrl_lge")) {
+			ctrl_pdata->bklt_ctrl = BL_OTHERS;
+			pr_debug("%s: Configured BL_OTHERS bklt ctrl\n",
+								__func__);
+		}
+#endif
 	}
 	return 0;
 }
@@ -2491,6 +2980,40 @@ int mdss_dsi_panel_timing_switch(struct mdss_dsi_ctrl_pdata *ctrl,
 		pinfo->mipi.dsi_phy_db.timing_8996[i] = pt->phy_timing_8996[i];
 
 	ctrl->on_cmds = pt->on_cmds;
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+	ctrl->vcom_cmds = pt->vcom_cmds;
+#endif
+#if defined(CONFIG_LGE_DISPLAY_BL_EXTENDED)
+	ctrl->display_on_cmds = pt -> display_on_cmds;
+#if defined(CONFIG_LGE_DISPLAY_MFTS_DET_SUPPORTED)
+	ctrl->trimming_cmds = pt->trimming_cmds;
+	ctrl->cam_cmds = pt->cam_cmds;
+	ctrl->screen_cmds_102v = pt->screen_cmds_102v;
+	ctrl->screen_cmds_129v = pt->screen_cmds_129v;
+	ctrl->screen_cmds_132v = pt->screen_cmds_132v;
+#endif
+#endif
+#if defined(CONFIG_LGE_ENHANCE_GALLERY_SHARPNESS)
+	ctrl->sharpness_on_cmds = pt->sharpness_on_cmds;
+	ctrl->ce_on_cmds = pt->ce_on_cmds;
+#endif
+#if defined(CONFIG_LGE_LCD_DYNAMIC_CABC_MIE_CTRL)
+	ctrl->ie_on_cmds = pt->ie_on_cmds;
+	ctrl->ie_off_cmds = pt->ie_off_cmds;
+#endif
+#if defined(CONFIG_LGE_DISPLAY_LUCYE_COMMON)
+	ctrl->display_on_cmds= pt->display_on_cmds;
+	ctrl->display_on_and_aod_comds = pt->display_on_and_aod_comds;
+	ctrl->reg_55h_cmds = pt->reg_55h_cmds;
+	ctrl->reg_f0h_cmds = pt->reg_f0h_cmds;
+	ctrl->reg_f2h_cmds = pt->reg_f2h_cmds;
+	ctrl->reg_f3h_cmds = pt->reg_f3h_cmds;
+	ctrl->reg_fbh_cmds = pt->reg_fbh_cmds;
+#endif
+#if defined(CONFIG_LGE_DISPLAY_LINEAR_GAMMA)
+	ctrl->linear_gamma_default_cmds = pt->linear_gamma_default_cmds;
+	ctrl->linear_gamma_tuning_cmds = pt->linear_gamma_tuning_cmds;
+#endif
 	ctrl->post_panel_on_cmds = pt->post_panel_on_cmds;
 
 	ctrl->panel_data.current_timing = timing;
@@ -2633,7 +3156,87 @@ static int  mdss_dsi_panel_config_res_properties(struct device_node *np,
 	mdss_dsi_parse_dcs_cmds(np, &pt->on_cmds,
 		"qcom,mdss-dsi-on-command",
 		"qcom,mdss-dsi-on-command-state");
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+	mdss_dsi_parse_dcs_cmds(np, &pt->vcom_cmds,
+		"qcom,mdss-dsi-vcom-command",
+		"qcom,mdss-dsi-on-command-state");
+#endif
+#if defined(CONFIG_LGE_DISPLAY_BL_EXTENDED)
+	mdss_dsi_parse_dcs_cmds(np, &pt->display_on_cmds,
+		"qcom,mdss-display-on-command",
+		"qcom,mdss-dsi-on-command-state");
+#if defined(CONFIG_LGE_DISPLAY_MFTS_DET_SUPPORTED)
+	mdss_dsi_parse_dcs_cmds(np, &pt->trimming_cmds,
+		"qcom,mdss-dsi-trimming-set-command",
+		"qcom,mdss-dsi-trimming-set-command-state");
+	mdss_dsi_parse_dcs_cmds(np, &pt->cam_cmds,
+		"qcom,mdss-dsi-cam-set-command",
+		"qcom,mdss-dsi-cam-set-command-state");
+	mdss_dsi_parse_dcs_cmds(np, &pt->screen_cmds_102v,
+		"qcom,mdss-dsi-screen-command-102v",
+		"qcom,mdss-dsi-screen-command-state");
+	mdss_dsi_parse_dcs_cmds(np, &pt->screen_cmds_129v,
+		"qcom,mdss-dsi-screen-command-129v",
+		"qcom,mdss-dsi-screen-command-state");
+	mdss_dsi_parse_dcs_cmds(np, &pt->screen_cmds_132v,
+		"qcom,mdss-dsi-screen-command-132v",
+		"qcom,mdss-dsi-screen-command-state");
+#endif
+#endif
+#if defined(CONFIG_LGE_ENHANCE_GALLERY_SHARPNESS)
+	mdss_dsi_parse_dcs_cmds(np, &pt->sharpness_on_cmds,
+		"qcom,mdss-dsi-sharpness-on-command",
+		"qcom,mdss-dsi-common-hs-command-state");
+	mdss_dsi_parse_dcs_cmds(np, &pt->ce_on_cmds,
+		"qcom,mdss-dsi-ce-on-command",
+		"qcom,mdss-dsi-common-hs-command-state");
+#endif
+#if defined(CONFIG_LGE_LCD_DYNAMIC_CABC_MIE_CTRL)
+	mdss_dsi_parse_dcs_cmds(np, &pt->ie_on_cmds,
+		"qcom,mdss-dsi-ie-on-command",
+		"qcom,mdss-dsi-common-hs-command-state");
+	mdss_dsi_parse_dcs_cmds(np, &pt->ie_off_cmds,
+		"qcom,mdss-dsi-ie-off-command",
+		"qcom,mdss-dsi-common-hs-command-state");
+#endif
+#if defined(CONFIG_LGE_DISPLAY_LUCYE_COMMON)
+	mdss_dsi_parse_dcs_cmds(np, &pt->display_on_cmds,
+		"qcom,mdss-display-on-command",
+		"qcom,mdss-dsi-on-command-state");
+	mdss_dsi_parse_dcs_cmds(np, &pt->display_on_and_aod_comds,
+		"lge,mode-change-cmds-u0-to-u2",
+		"qcom,mdss-dsi-on-command-state");
+	mdss_dsi_parse_dcs_cmds(np, &pt->reg_55h_cmds,
+		"lge,mdss-dsi-55h-command",
+		"qcom,mdss-dsi-common-hs-command-state");
+	mdss_dsi_parse_dcs_cmds(np, &pt->reg_f0h_cmds,
+		"lge,mdss-dsi-f0h-command",
+		"qcom,mdss-dsi-common-hs-command-state");
+	mdss_dsi_parse_dcs_cmds(np, &pt->reg_f2h_cmds,
+		"lge,mdss-dsi-f2h-command",
+		"qcom,mdss-dsi-common-hs-command-state");
+	mdss_dsi_parse_dcs_cmds(np, &pt->reg_f3h_cmds,
+		"lge,mdss-dsi-f3h-command",
+		"qcom,mdss-dsi-common-hs-command-state");
+	mdss_dsi_parse_dcs_cmds(np, &pt->reg_fbh_cmds,
+		"lge,mdss-dsi-fbh-command",
+		"qcom,mdss-dsi-common-hs-command-state");
 
+	mdss_dsi_parse_dcs_cmds(np, &pt->vgho_vglo_8p8v_cmd,
+		"lge,mdss-dsi-vgho-vglo-8p8v-command",
+		"qcom,mdss-dsi-common-hs-command-state");
+	mdss_dsi_parse_dcs_cmds(np, &pt->vgho_vglo_11p6v_cmd,
+		"lge,mdss-dsi-vgho-vglo-11p6v-command",
+		"qcom,mdss-dsi-common-hs-command-state");
+#endif
+#if defined(CONFIG_LGE_DISPLAY_LINEAR_GAMMA)
+	mdss_dsi_parse_dcs_cmds(np, &pt->linear_gamma_default_cmds,
+		"qcom,panel-linear-gamma-default-command",
+		"qcom,mdss-dsi-common-hs-command-state");
+	mdss_dsi_parse_dcs_cmds(np, &pt->linear_gamma_tuning_cmds,
+		"qcom,panel-linear-gamma-tuning-command",
+		"qcom,mdss-dsi-common-hs-command-state");
+#endif
 	mdss_dsi_parse_dcs_cmds(np, &pt->post_panel_on_cmds,
 		"qcom,mdss-dsi-post-panel-on-command", NULL);
 
@@ -2805,6 +3408,10 @@ static int mdss_panel_parse_dt(struct device_node *np,
 	pinfo->bl_max = (!rc ? tmp : 255);
 	ctrl_pdata->bklt_max = pinfo->bl_max;
 
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+	lge_mdss_panel_parse_dt_blmaps(np, ctrl_pdata);
+#endif
+
 	rc = of_property_read_u32(np, "qcom,mdss-dsi-interleave-mode", &tmp);
 	pinfo->mipi.interleave_mode = (!rc ? tmp : 0);
 
@@ -2959,6 +3566,10 @@ static int mdss_panel_parse_dt(struct device_node *np,
 
 	mdss_dsi_parse_dfps_config(np, ctrl_pdata);
 
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+	lge_mdss_panel_parse_dt_extra(np, ctrl_pdata);
+#endif
+
 	mdss_dsi_set_refresh_rate_range(np, pinfo);
 
 	pinfo->is_dba_panel = of_property_read_bool(np,
@@ -3016,6 +3627,45 @@ int mdss_dsi_panel_init(struct device_node *node,
 	} else {
 		pr_info("%s: Panel Name = %s\n", __func__, panel_name);
 		strlcpy(&pinfo->panel_name[0], panel_name, MDSS_MAX_PANEL_LEN);
+
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+		if (strncmp(panel_name, "LGD SIC LG4945", 14) == 0) {
+			pr_err("%s: panel_type is LGD_SIC_LG4945_INCELL_CMD_PANEL\n",
+					__func__);
+			pinfo->panel_type = LGD_SIC_LG4945_INCELL_CMD_PANEL;
+		} else if (strncmp(panel_name, "LGD SIC LG4946", 14) == 0) {
+			pr_err("%s: panel_type is LGD_SIC_LG4946_INCELL_CMD_PANEL\n",
+					__func__);
+			pinfo->panel_type = LGE_SIC_LG4946_INCELL_CND_PANEL;
+		} else if (strncmp(panel_name, "LGD RSP", 7) == 0) {
+			pr_err("%s: panel_type is LGD_R69007_INCELL_CMD_PANEL\n",
+					__func__);
+			pinfo->panel_type = LGD_R69007_INCELL_CMD_PANEL;
+		} else if (strncmp(panel_name, "LGD Synaptics", 13)==0) {
+			pr_err("%s: panel_type is LGD_TD4302_INCELL_CMD_PANEL\n",
+					__func__);
+			pinfo->panel_type = LGE_TD4302_INCELL_CND_PANEL;
+		} else if (strncmp(panel_name, "SW49407 cmd mode", 16)==0) {
+			pr_err("%s: panel_type is LGD_SW49407_CMD_DSC_PANEL\n",
+					__func__);
+			pinfo->panel_type = LGD_SIC_LG49407_INCELL_CMD_PANEL;
+		} else if (strncmp(panel_name, "SW49407 video mode", 18)==0) {
+			pr_err("%s: panel_type is LGD_SW49407_VIDEO_DSC_PANEL\n",
+					__func__);
+			pinfo->panel_type = LGD_SIC_LG49407_INCELL_VIDEO_PANEL;
+		} else if (strncmp(panel_name, "SW49407 1440 2880 video", 23) == 0) {
+			pr_err("%s: panel_type is LGD_SW49407_VIDEO_DSC_PANEL\n",
+					__func__);
+			pinfo->panel_type = LGD_SIC_LG49407_1440_2880_INCELL_VIDEO_PANEL;
+		} else if (strncmp(panel_name, "SW49408 1440 2880 cmd", 21) == 0) {
+			pr_err("%s: panel_type is LGD_SW49408_CMD_DSC_PANEL\n",
+					__func__);
+			pinfo->panel_type = LGD_SIC_LG49408_1440_2880_INCELL_CMD_PANEL;
+		} else {
+			pr_err("%s: Invalid panel type\n", __func__);
+		}
+		lge_set_panel(pinfo->panel_type);
+#endif
 	}
 	rc = mdss_panel_parse_dt(node, ctrl_pdata);
 	if (rc) {
@@ -3027,7 +3677,10 @@ int mdss_dsi_panel_init(struct device_node *node,
 	pinfo->is_lpm_mode = false;
 	pinfo->esd_rdy = false;
 	pinfo->persist_mode = false;
-
+#ifdef CONFIG_LGE_LCD_MFTS_MODE
+	if (lge_get_mfts_mode() || (detect_factory_cable() && panel_not_connected))
+		pinfo->power_ctrl = true;
+#endif
 	ctrl_pdata->on = mdss_dsi_panel_on;
 	ctrl_pdata->post_panel_on = mdss_dsi_post_panel_on;
 	ctrl_pdata->off = mdss_dsi_panel_off;
@@ -3036,6 +3689,18 @@ int mdss_dsi_panel_init(struct device_node *node,
 	ctrl_pdata->panel_data.apply_display_setting =
 			mdss_dsi_panel_apply_display_setting;
 	ctrl_pdata->switch_mode = mdss_dsi_panel_switch_mode;
-
+#if defined(CONFIG_LGE_LCD_DYNAMIC_CABC_MIE_CTRL)
+	ctrl_pdata->ie_on = 1;
+#endif
+#if defined(CONFIG_LGE_DISPLAY_AOD_SUPPORTED)
+	if ((rc = oem_mdss_aod_init(node, ctrl_pdata)))
+		return rc;
+#endif
+#if defined(CONFIG_MACH_LGE)
+	if (ctrl_pdata->panel_data.panel_info.pdest == DISPLAY_1) {
+		if (pdata_base == NULL)
+			pdata_base = &(ctrl_pdata->panel_data);
+	}
+#endif
 	return 0;
 }

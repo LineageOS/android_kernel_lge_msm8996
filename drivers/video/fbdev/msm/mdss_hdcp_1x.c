@@ -231,6 +231,9 @@ struct hdcp_1x {
 	struct hdcp_int_set int_set;
 	struct hdcp_sink_addr_map sink_addr;
 	struct workqueue_struct *workq;
+#ifdef CONFIG_LGE_DP_ANX7688
+	bool hdcp_off;
+#endif
 };
 
 const char *hdcp_state_name(enum hdcp_states hdcp_state)
@@ -1435,6 +1438,13 @@ static void hdcp_1x_auth_work(struct work_struct *work)
 		return;
 	}
 
+#ifdef CONFIG_LGE_DP_ANX7688
+	if (hdcp->hdcp_off) {
+		pr_err("%s: HDCP OFF\n", __func__);
+		return;
+	}
+#endif
+
 	hdcp->sink_r0_ready = false;
 	hdcp->reauth = false;
 	hdcp->ksv_ready = false;
@@ -1492,6 +1502,9 @@ end:
 	return;
 }
 
+#ifdef CONFIG_LGE_DP_ANX7688
+extern bool get_device_apple_pid(void);
+#endif
 int hdcp_1x_authenticate(void *input)
 {
 	struct hdcp_1x *hdcp = (struct hdcp_1x *)input;
@@ -1500,6 +1513,10 @@ int hdcp_1x_authenticate(void *input)
 		pr_err("invalid input\n");
 		return -EINVAL;
 	}
+
+#ifdef CONFIG_LGE_DP_ANX7688
+	hdcp->hdcp_off = false;
+#endif
 
 	flush_delayed_work(&hdcp->hdcp_auth_work);
 
@@ -1510,9 +1527,18 @@ int hdcp_1x_authenticate(void *input)
 	}
 
 	if (!hdcp_1x_load_keys(input)) {
+#ifdef CONFIG_LGE_DP_ANX7688
+		if (get_device_apple_pid() == true)
+			queue_delayed_work(hdcp->workq,
+				&hdcp->hdcp_auth_work, HZ);
+		else
+			queue_delayed_work(hdcp->workq,
+				&hdcp->hdcp_auth_work, 4*HZ);
 
+#else
 		queue_delayed_work(hdcp->workq,
 			&hdcp->hdcp_auth_work, HZ/2);
+#endif
 	} else {
 		hdcp->hdcp_state = HDCP_STATE_AUTH_FAIL;
 		hdcp_1x_update_auth_status(hdcp);
@@ -1584,6 +1610,10 @@ void hdcp_1x_off(void *input)
 		pr_err("invalid input\n");
 		return;
 	}
+
+#ifdef CONFIG_LGE_DP_ANX7688
+	hdcp->hdcp_off = true;
+#endif
 
 	io = hdcp->init_data.core_io;
 	reg_set = &hdcp->reg_set;

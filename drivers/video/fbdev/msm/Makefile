@@ -1,5 +1,6 @@
 ccflags-y += -I$(src) -Idrivers/staging/android
 
+obj-$(CONFIG_LGE_DISPLAY_COMMON) += lge/
 obj-$(CONFIG_FB_MSM_MDSS_MHL3) += mhl3/
 obj-$(CONFIG_MSM_DBA) += msm_dba/
 

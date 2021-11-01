@@ -34,6 +34,11 @@
 #define DMA_TX_TIMEOUT 200
 #define DMA_TPG_FIFO_LEN 64
 
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+extern int panel_not_connected;
+extern int skip_lcd_error_check;
+#endif
+
 #define FIFO_STATUS	0x0C
 #define LANE_STATUS	0xA8
 
@@ -3158,6 +3163,19 @@ static bool mdss_dsi_fifo_status(struct mdss_dsi_ctrl_pdata *ctrl)
 		MIPI_OUTP(base + 0x000c, status);
 
 		pr_err("%s: status=%x\n", __func__, status);
+
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+		if(skip_lcd_error_check){
+			ctrl->err_cont.fifo_err_cnt++;
+			return false;
+		}
+#endif
+		/*
+		 * if DSI FIFO overflow is masked,
+		 * do not report overflow error
+		 */
+		if (MIPI_INP(base + 0x10c) & 0xf0000)
+			status = status & 0xaaaaffff;
 
 		/*
 		 * if DSI FIFO overflow is masked,

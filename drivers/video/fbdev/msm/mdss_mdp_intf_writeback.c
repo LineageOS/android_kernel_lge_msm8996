@@ -243,6 +243,7 @@ static int mdss_mdp_writeback_addr_setup(struct mdss_mdp_writeback_ctx *ctx,
 	mdp_wb_write(ctx, MDSS_MDP_REG_WB_DST1_ADDR, data.p[1].addr);
 	mdp_wb_write(ctx, MDSS_MDP_REG_WB_DST2_ADDR, data.p[2].addr);
 	mdp_wb_write(ctx, MDSS_MDP_REG_WB_DST3_ADDR, data.p[3].addr);
+	MDSS_XLOG(ctx->wb_num, data.p[0].addr, data.p[1].addr, data.p[2].addr, data.p[3].addr); //QCT debug patch for SMMU fault issue
 
 	return 0;
 }
@@ -776,6 +777,7 @@ static int mdss_mdp_writeback_stop(struct mdss_mdp_ctl *ctl,
 	struct mdss_mdp_vsync_handler *t, *handle;
 
 	pr_debug("stop ctl=%d\n", ctl->num);
+	MDSS_XLOG(ctl->num); //QCT debug patch for SMMU fault issue
 
 	ctx = (struct mdss_mdp_writeback_ctx *) ctl->priv_data;
 	if (ctx) {
@@ -1159,7 +1161,13 @@ int mdss_mdp_writeback_start(struct mdss_mdp_ctl *ctl)
 
 	if (mdss_mdp_is_cdm_supported(ctl->mdata, ctl->intf_type,
 		mixer_type) && fmt->is_yuv) {
+#ifdef QCT_MM_NOC_PATCH
+		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_ON);
 		ctl->cdm = mdss_mdp_cdm_init(ctl, MDP_CDM_CDWN_OUTPUT_WB);
+		mdss_mdp_clk_ctrl(MDP_BLOCK_POWER_OFF);
+#else
+		ctl->cdm = mdss_mdp_cdm_init(ctl, MDP_CDM_CDWN_OUTPUT_WB);
+#endif
 		if (IS_ERR_OR_NULL(ctl->cdm)) {
 			pr_err("cdm block already in use\n");
 			ctl->cdm = NULL;

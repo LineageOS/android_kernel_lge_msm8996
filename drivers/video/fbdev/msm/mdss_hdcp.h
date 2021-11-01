@@ -62,6 +62,7 @@ struct hdcp_ops {
 	int (*cp_irq)(void *ptr);
 	int (*reauthenticate)(void *input);
 	int (*authenticate)(void *hdcp_ctrl);
+	int (*load_keys)(void *input);
 	bool (*feature_supported)(void *input);
 	void (*off)(void *hdcp_ctrl);
 };

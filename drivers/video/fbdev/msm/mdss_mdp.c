@@ -2048,6 +2048,8 @@ static void mdss_mdp_hw_rev_caps_init(struct mdss_data_type *mdata)
 			ARRAY_SIZE(invalid_mdp107_wb_output_fmts),
 			VALID_MDP_WB_INTF_FORMAT);
 	case MDSS_MDP_HW_REV_107_2:
+		/* disable ECG for 28nm PHY platform */
+		mdata->enable_gate = false;
 		mdata->max_target_zorder = 7; /* excluding base layer */
 		mdata->max_cursor_size = 128;
 		mdata->per_pipe_ib_factor.numer = 8;
@@ -2848,9 +2850,109 @@ static DEVICE_ATTR(caps, S_IRUGO, mdss_mdp_show_capabilities, NULL);
 static DEVICE_ATTR(bw_mode_bitmap, S_IRUGO | S_IWUSR | S_IWGRP,
 		mdss_mdp_read_max_limit_bw, mdss_mdp_store_max_limit_bw);
 
+#ifdef CONFIG_LGE_VSYNC_SKIP
+static ssize_t fps_store(struct device *dev,
+	struct device_attribute *attr, const char *buf, size_t count)
+{
+	ulong fps;
+
+	if (!count)
+		return -EINVAL;
+
+	fps = simple_strtoul(buf, NULL, 10);
+
+	if (fps == 0 || fps >= 60) {
+		mdss_res->enable_skip_vsync = 0;
+		mdss_res->skip_value = 0;
+		mdss_res->weight = 0;
+		mdss_res->bucket = 0;
+		mdss_res->skip_count = 0;
+		mdss_res->skip_ratio = 60;
+		mdss_res->skip_first = false;
+		pr_debug("Disable frame skip.\n");
+	} else {
+		mdss_res->enable_skip_vsync = 1;
+		mdss_res->skip_value = (60<<16)/fps;
+		mdss_res->weight = (1<<16);
+		mdss_res->bucket = 0;
+		mdss_res->skip_ratio = fps;
+		mdss_res->skip_first = false;
+		pr_debug("Enable frame skip: Set to %lu fps.\n", fps);
+	}
+	return count;
+}
+
+static ssize_t fps_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	int r = 0;
+	r = snprintf(buf, PAGE_SIZE, "enable_skip_vsync=%d\nweight=%lu\n"
+		     "skip_value=%lu\nbucket=%lu\nskip_count=%lu\n",
+	mdss_res->enable_skip_vsync,
+	mdss_res->weight,
+	mdss_res->skip_value,
+	mdss_res->bucket,
+	mdss_res->skip_count);
+	return r;
+}
+
+static ssize_t fps_ratio_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	int r = 0;
+	r = snprintf(buf, PAGE_SIZE, "%d 60\n", mdss_res->skip_ratio);
+	return r;
+}
+
+int fps_cnt_before = 0;
+extern struct fb_info *msm_fb_get_pan_fb(void);
+
+static ssize_t fps_fcnt_show(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	int r = 0;
+	struct msm_fb_data_type* mfd;
+	struct mdss_mdp_ctl *ctl;
+	struct fb_info *cmd_pn_info;
+
+	cmd_pn_info = msm_fb_get_pan_fb();
+
+	if ( cmd_pn_info == NULL )
+		goto read_fail;
+
+	if ( cmd_pn_info->par == NULL )
+		goto read_fail;
+
+	mfd = cmd_pn_info->par;
+	if ( mfd == NULL )
+		goto read_fail;
+
+	ctl = mfd_to_ctl(mfd);
+	if ( ctl == NULL )
+		goto read_fail;
+
+	r = snprintf(buf, PAGE_SIZE, "%d\n", ctl->play_cnt-fps_cnt_before);
+	fps_cnt_before = ctl->play_cnt;
+	return r;
+
+read_fail:
+	fps_cnt_before = 0;
+	r = snprintf(buf,PAGE_SIZE, "0\n");
+	return r;
+}
+
+static DEVICE_ATTR(vfps, 0644, fps_show, fps_store);
+static DEVICE_ATTR(vfps_ratio, 0644, fps_ratio_show, NULL);
+static DEVICE_ATTR(vfps_fcnt, 0644, fps_fcnt_show, NULL);
+#endif
 static struct attribute *mdp_fs_attrs[] = {
 	&dev_attr_caps.attr,
 	&dev_attr_bw_mode_bitmap.attr,
+#ifdef CONFIG_LGE_VSYNC_SKIP
+	&dev_attr_vfps.attr,
+	&dev_attr_vfps_ratio.attr,
+	&dev_attr_vfps_fcnt.attr,
+#endif
 	NULL
 };
 

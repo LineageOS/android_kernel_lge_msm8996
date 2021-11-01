@@ -122,4 +122,276 @@ config FB_MSM_MDSS_XLOG_DEBUG
 	driver during fatal errors and enable some display-driver logging
 	into an internal buffer (this avoids logging overhead).
 
+config LGE_DISPLAY_AOD_SUPPORTED
+	bool "Enable AOD function"
+	default n
+	---help---
+	Feature for AOD (Always on Display) scenario.
+
+config LGE_DISPLAY_MARQUEE_SUPPORTED
+	bool "Enable MARQUEE function"
+	default n
+	---help---
+	Feature for MARQUEE scenario.
+
+config LGE_DISPLAY_DELAY_SLEW_CONTROL_IN_TTW
+	bool "Enable Control for delay and slew in TTW mode"
+	default n
+	---help---
+	Feature for Delay and Slew control.
+
+config LGE_DISPLAY_AOD_USE_QPNP_WLED
+	depends on LGE_DISPLAY_AOD_SUPPORTED
+	bool "Enable wled feature for AOD"
+	default n
+	---help---
+	Feature for AOD (Always on Display) backlight mode control.
+
+config LGE_LCD_OFF_DIMMING
+	bool "Enable LCD DIMMING for FOTA"
+	depends on MACH_LGE
+	default n
+	---help---
+	Support for LCD DIMMING (for FOTA)
+
+config LGE_SP_MIRRORING_CTRL_BL
+	bool "SP_MIRRORING_CTRL_BL"
+	default n
+	help
+	  if you say yes here you get support for sp mirroring backlight control
+
+config LGE_LCD_TUNING
+	bool "Enable LCD Tuning interface only userdebug"
+	default n
+	---help---
+	Support LCD tuning interface userdebug
+
+config LGE_DISPLAY_DYNAMIC_LOG
+	depends on LGE_LCD_TUNING
+	bool "Dynamic Log"
+	depends on MACH_LGE
+	default y
+	---help---
+	If you say Y here, developers can enable/disable display logs through adb
+	by accessing /sys/class/graphics/fb0/debug_level
+	ex. echo {debug_level} > sys/class/graphics/fb0/debug_level
+
+config LGE_HIGH_LUMINANCE_MODE
+	bool "LGE_HIGH_LUMINANCE_MODE"
+	default n
+	help
+	  if you say yes here you get support for high luminance mode
+
+config LGE_PP_SUPPORT_WITH_PARTIAL_UPDATE
+	bool "LGE_PP_SUPPORT_WITH_PARTIAL_UPDATE"
+	default n
+	help
+	  if you say yes here you get support Post Processing(Color convert) with Partial Update
+
+config LGE_PP_AD_SUPPORTED
+	bool "LGE_ALICE_AD_SUPPORTED"
+	default n
+	help
+	if you say yes here you get support for Display Driver AD function.
+
+config LGE_ENHANCE_GALLERY_SHARPNESS
+	bool "CONFIG_LGE_ENHANCE_GALLERY_SHARPNESS"
+	depends on MACH_LGE
+	default y
+	help
+	if you say yes here you get support for enhance sharpness at gallery app
+
+config LGE_VSYNC_SKIP
+	bool "MDSS VSYNC Skip scheme"
+	default n
+	---help---
+	This feature provides VSYNC skip scheme.
+
+config LGE_LCD_POWER_CTRL
+	bool "LCD power control mode"
+	depends on MACH_LGE
+	default y
+	---help---
+	if you say yes here you get support for lcd power on/off control.
+
+config LGE_PANEL_RECOVERY
+	depends on  LGE_DISPLAY_COMMON
+	bool "Panel recovery support"
+	depends on MACH_LGE
+	default y
+	---help---
+	if you say yes here, you get support for panel recovery routine.
+
+config LGE_THERMAL_BL_MAX
+	bool "LGE_ALICE_THERMAL_BL_MAX"
+	default n
+	---help---
+	if you say yes here you get support for thermal bl max value.
+
+config LGE_LCD_MFTS_MODE
+	depends on LGE_LCD_POWER_CTRL
+	bool "LCD MFTS mode"
+	depends on MACH_LGE
+	default y
+	---help---
+	if you say yes here you get support for lcd mfts control.
+
+config LGE_CAM_PREVIEW_TUNE
+	bool "Enable LGE_CAM_PREVIEW_TUNE"
+	default n
+	---help---
+	if you say yes here you get support for enhance low-gradation at camera preview
+
+config LGE_LCD_DYNAMIC_CABC_MIE_CTRL
+	bool "LGE_LCD_DYNAMIC_CABC_MIE_CTRL"
+	depends on MACH_LGE
+	default y
+	help
+	if you say yes here you get support for cabc, image enhance function dynamic control
+
+config LGE_DISPLAY_READER_MODE
+	depends on FB_MSM_MDSS
+	bool "LGE reader mode"
+	---help---
+	The reader mode provides support to change color temperature
+	by sending proper cmds to panel.
+
+config LGE_DISPLAY_READER_MONO_MODE
+	depends on FB_MSM_MDSS
+	bool "LGE reader mono mode"
+	---help---
+	The reader mode provides support to change mono color
+	by sending proper cmds to panel.
+
+config LGE_DISPLAY_SRE_MODE
+	depends on FB_MSM_MDSS
+	bool "LGE sre mode"
+	---help---
+	The sre mode provides support to improve outdoor visibility
+	by sending proper cmds to panel.
+
+config LGE_DISPLAY_HDR_MODE
+	depends on FB_MSM_MDSS
+	bool "LGE HDR mode"
+	---help---
+	The HDR mode provides support to ensure high definition for playing movies
+	by sending proper cmds to panel.
+
+config LGE_DISPLAY_DOLBY_MODE
+	depends on FB_MSM_MDSS
+	bool "LGE Dolby mode"
+	---help---
+	The Dolby mode provides support to ensure high definition for playing movies
+	by sending proper cmds to panel.
+
+config LGE_DISPLAY_LINEAR_GAMMA
+	depends on FB_MSM_MDSS
+	bool "LGE linear gamma"
+	---help---
+	The linear gamma mode provides support to change linear gamma
+	by sending proper cmds to panel.
+
+config LGE_DISPLAY_SW49408
+	depends on FB_MSM_MDSS
+	bool "LGE sw49408"
+	---help---
+	The SW49408 provides support for SW49408 features made by LGE.
+
+config LGE_DISPLAY_COMMON
+	depends on FB_MSM_MDSS
+	bool "Use LGE DISPLAY COMMON"
+	---help---
+	The LGE DISPLAY COMMON provides support for common display features made by LGE.
+
+config LGE_DISPLAY_OVERRIDE_MDSS_DSI_PANEL_POWER_ON
+	depends on LGE_DISPLAY_COMMON
+	bool "Use OVERRIDE MDSS_DSI_PANEL_POWER_ON"
+	---help---
+	The LGE DISPLAY COMMON provides support for
+		ovrriding mdss_dsi_panel_power_on() function.
+
+config LGE_DISPLAY_OVERRIDE_MDSS_DSI_PANEL_POWER_OFF
+	depends on LGE_DISPLAY_COMMON
+	bool "Use OVERRIDE MDSS_DSI_PANEL_POWER_OFF"
+	---help---
+	The LGE DISPLAY COMMON provides support for
+		ovrriding mdss_dsi_panel_power_off() function.
+
+config LGE_DISPLAY_OVERRIDE_MDSS_DSI_PANEL_ON
+	depends on LGE_DISPLAY_COMMON
+	bool "Use OVERRIDE MDSS_DSI_PANEL_ON"
+	---help---
+	The LGE DISPLAY COMMON provides support for
+		ovrriding mdss_dsi_panel_on() function.
+
+config LGE_DISPLAY_OVERRIDE_MDSS_DSI_PANEL_OFF
+	depends on LGE_DISPLAY_COMMON
+	bool "Use OVERRIDE MDSS_DSI_PANEL_OFF"
+	---help---
+	The LGE DISPLAY COMMON provides support for
+		ovrriding mdss_dsi_panel_off() function.
+
+config LGE_DISPLAY_OVERRIDE_MDSS_DSI_PANEL_RESET
+	depends on LGE_DISPLAY_COMMON
+	bool "Use OVERRIDE MDSS_DSI_PANEL_RESET"
+	---help---
+	The LGE DISPLAY COMMON provides support for
+		ovrriding mdss_dsi_panel_reset() function.
+
+config LGE_DISPLAY_OVERRIDE_MDSS_DSI_CTRL_SHUTDOWN
+	depends on LGE_DISPLAY_COMMON
+	bool "Use OVERRIDE MDSS_DSI_CTRL_SHUTDOWN"
+	---help---
+	The LGE DISPLAY COMMON provides support for
+		ovrriding mdss_dsi_ctrl_shutdown() function.
+
+config LGE_DISPLAY_H1_COMMON
+	depends on LGE_DISPLAY_COMMON
+	bool "Use LGE DISPLAY H1 COMMON"
+	---help---
+	The H1 COMMON provides support for H1 panel
+
+config LGE_DISPLAY_HPLUS_COMMON
+	depends on LGE_DISPLAY_COMMON
+	bool "Use LGE DISPLAY HPLUS COMMON"
+	---help---
+	The HPLUS COMMON provides support for HPLUS panel
+
+config LGE_DISPLAY_BL_EXTENDED
+     bool "LG DUAL Backlight"
+	default n
+	---help---
+	Support dual backlight
+
+config LGE_DISPLAY_MFTS_DET_SUPPORTED
+	bool "LG MFTS Detection"
+	default n
+	---help---
+	Support MFTS Detection
+
+config LGE_DISPLAY_LUCYE_COMMON
+	depends on LGE_DISPLAY_COMMON
+	bool "Use LGE DISPLAY LUCYE COMMON"
+	---help---
+	The LUCYE COMMON provides support for 49407 1440X2880 panel
+
+config LGE_DISPLAY_AOD_WITH_MIPI
+	bool "Enable AOD_WITH_MIPI"
+	default n
+	---help---
+	Feature for AOD_WITH_MIPI scenario.
+
+config LGE_DP_UNSUPPORT_NOTIFY
+	bool "Enable DP UNSUPPORT NOTIFY FEATURE"
+	default n
+	---help---
+	This config is for notification to framework unsupported
+	Displayport
+
+config LGE_DISPLAY_LABIBB_RECOVERY
+	bool "Recover labibb by reboot system"
+	default n
+	---help---
+	Recovery labibb by reboot system
+
 endif

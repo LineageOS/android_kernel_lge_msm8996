@@ -525,5 +525,8 @@ void hdmi_hdcp2p2_ddc_disable(struct hdmi_tx_ddc_ctrl *ctrl);
 int hdmi_hdcp2p2_ddc_read_rxstatus(struct hdmi_tx_ddc_ctrl *ctrl);
 int hdmi_utils_get_timeout_in_hysnc(struct msm_hdmi_mode_timing_info *timing,
 	u32 timeout_ms);
+#if defined(CONFIG_SLIMPORT_COMMON) || defined(CONFIG_LGE_DP_ANX7688)
+int msm_hdmi_get_timing_info(struct msm_hdmi_mode_timing_info *mode, int id);
+#endif
 u8 hdmi_hdr_get_ops(u8 curr_state, u8 new_state);
 #endif /* __HDMI_UTIL_H__ */

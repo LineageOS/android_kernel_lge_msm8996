@@ -58,7 +58,12 @@
 
 /* wait for at most 2 vsync for lowest refresh rate (24hz) */
 #define KOFF_TIMEOUT_MS 84
+
+#if defined(CONFIG_LGE_DISPLAY_LUCYE_COMMON)
+#define KOFF_TIMEOUT msecs_to_jiffies(500)
+#else
 #define KOFF_TIMEOUT msecs_to_jiffies(KOFF_TIMEOUT_MS)
+#endif
 
 #define OVERFETCH_DISABLE_TOP		BIT(0)
 #define OVERFETCH_DISABLE_BOTTOM	BIT(1)
@@ -87,6 +92,8 @@
 #define XIN_HALT_TIMEOUT_US	0x4000
 
 #define MAX_LAYER_COUNT		0xD
+
+#define QCT_MM_NOC_PATCH /*temp patch for MM NOC error SR#02184707*/
 
 /* For SRC QSEED3, when user space does not send the scaler information,
  * this flag allows pixel _extension to be programmed when scaler is disabled

@@ -1717,6 +1717,7 @@ int mdss_mdp_pipe_destroy(struct mdss_mdp_pipe *pipe)
 		return -EBUSY;
 	}
 
+	MDSS_XLOG(pipe->num, pipe->ndx); //QCT debug patch for SMMU fault issue
 	wake_up_all(&pipe->free_waitq);
 	mutex_unlock(&mdss_mdp_sspp_lock);
 
@@ -1937,6 +1938,11 @@ static int mdss_mdp_image_setup(struct mdss_mdp_pipe *pipe,
 			pipe->src.x, pipe->src.y, pipe->src.w, pipe->src.h,
 			pipe->dst.x, pipe->dst.y, pipe->dst.w, pipe->dst.h);
 
+/* QCT debug patch for SMMU fault issue */
+	MDSS_XLOG(pipe->num, pipe->img_width, pipe->img_height, pipe->flags);
+	MDSS_XLOG(pipe->src.x, pipe->src.y, pipe->src.w, pipe->src.h);
+	MDSS_XLOG(pipe->dst.x, pipe->dst.y, pipe->dst.w, pipe->dst.h);
+/* QCT debug patch for SMMU fault issue */
 	width = pipe->img_width;
 	height = pipe->img_height;
 
@@ -2064,6 +2070,7 @@ static int mdss_mdp_image_setup(struct mdss_mdp_pipe *pipe,
 	mdss_mdp_pipe_write(pipe, MDSS_MDP_REG_SSPP_DECIMATION_CONFIG,
 			decimation);
 
+    MDSS_XLOG(pipe->num, img_size); //QCT debug patch for SMMU fault issue
 	return 0;
 }
 

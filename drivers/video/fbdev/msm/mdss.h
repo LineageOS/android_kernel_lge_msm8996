@@ -38,6 +38,19 @@
 #define MDSS_PINCTRL_STATE_DEFAULT "mdss_default"
 #define MDSS_PINCTRL_STATE_SLEEP  "mdss_sleep"
 
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+enum mdss_mdp_clk_type {
+	MDSS_CLK_AHB,
+	MDSS_CLK_AXI,
+	MDSS_CLK_MDP_SRC,
+	MDSS_CLK_MDP_CORE,
+	MDSS_CLK_MDP_LUT,
+	MDSS_CLK_MDP_VSYNC,
+	MDSS_CLK_MNOC_AHB,
+	MDSS_CLK_THROTTLE_AXI,
+	MDSS_MAX_CLK
+};
+#else
 enum mdss_mdp_clk_type {
 	MDSS_CLK_AHB,
 	MDSS_CLK_AXI,
@@ -48,6 +61,7 @@ enum mdss_mdp_clk_type {
 	MDSS_CLK_THROTTLE_AXI,
 	MDSS_MAX_CLK
 };
+#endif
 
 enum mdss_iommu_domain_type {
 	MDSS_IOMMU_DOMAIN_UNSECURE,
@@ -548,6 +562,16 @@ struct mdss_data_type {
 
 	u32 max_dest_scaler_input_width;
 	u32 max_dest_scaler_output_width;
+#ifdef CONFIG_LGE_VSYNC_SKIP
+	char enable_skip_vsync;
+	ulong skip_value;
+	ulong weight;
+	ulong bucket;
+	ulong skip_count;
+	int skip_ratio;
+	bool skip_first;
+	unsigned int interval_min_fps;
+#endif
 	struct mdss_mdp_destination_scaler *ds;
 	u32 sec_disp_en;
 	u32 sec_cam_en;

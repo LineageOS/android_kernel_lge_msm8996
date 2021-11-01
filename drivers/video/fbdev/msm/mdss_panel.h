@@ -59,6 +59,32 @@ struct panel_id {
 #define LVDS_PANEL		11	/* LVDS */
 #define DP_PANEL		12	/* LVDS */
 
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+/* backlight mapping table type list */
+enum lge_bl_map_type {
+	LGE_BLDFT = 0,		/* default */
+	LGE_BL = LGE_BLDFT,	/* main backlight */
+	LGE_BLHL,		/* main backlight with high luminance */
+	LGE_BL2,		/* second backlight */
+	LGE_BL2DIM,		/* second backlight with dimming */
+	LGE_BL2HL,		/* second backlight with high luminance */
+	LGE_BL2DIMHL,		/* second backlight with dimming and high luminance */
+	LGE_BLMAPMAX
+};
+
+enum lcd_panel_type {
+	LGD_R69007_INCELL_CMD_PANEL,
+	LGD_SIC_LG4945_INCELL_CMD_PANEL,
+	LGE_SIC_LG4946_INCELL_CND_PANEL,
+	LGE_TD4302_INCELL_CND_PANEL,
+	LGD_SIC_LG49407_INCELL_CMD_PANEL,
+	LGD_SIC_LG49407_INCELL_VIDEO_PANEL,
+	LGD_SIC_LG49407_1440_2880_INCELL_VIDEO_PANEL,
+	LGD_SIC_LG49408_1440_2880_INCELL_CMD_PANEL,
+	UNKNOWN_PANEL
+};
+#endif
+
 #define DSC_PPS_LEN		128
 #define INTF_EVENT_STR(x)	#x
 
@@ -462,6 +488,14 @@ enum dynamic_switch_modes {
 	SWITCH_RESOLUTION,
 };
 
+#ifdef CONFIG_LGE_DISPLAY_BL_EXTENDED
+enum mode_switch_type {
+	CMD_TO_VIDEO= 0,
+	VIDEO_TO_CMD,
+	NO_DECISION,
+};
+#endif
+
 /**
  * struct mdss_panel_timing - structure for panel timing information
  * @list: List head ptr to track within panel data timings list
@@ -813,6 +847,22 @@ struct mdss_panel_info {
 	int pwm_pmic_gpio;
 	int pwm_lpg_chan;
 	int pwm_period;
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+	u32 default_brightness;
+	int panel_type;
+	int blmap_size;
+	int *blmap[LGE_BLMAPMAX];
+#if defined(CONFIG_LGE_HIGH_LUMINANCE_MODE)
+	int hl_mode_on;
+#endif
+#endif
+#if defined(CONFIG_LGE_DISPLAY_MFTS_DET_SUPPORTED)
+	int is_validate_lcd;
+#endif
+#if defined(CONFIG_LGE_THERMAL_BL_MAX)
+	int thermal_maxblvalue;
+#endif
+
 	bool dynamic_fps;
 	bool dynamic_bitclk;
 	u32 *supp_bitclks;
@@ -945,6 +995,37 @@ struct mdss_panel_info {
 
 	/* esc clk recommended for the panel */
 	u32 esc_clk_rate_hz;
+
+#if defined(CONFIG_LGE_DISPLAY_AOD_SUPPORTED)
+	bool aod_init_done;
+	bool aod_labibb_ctrl;
+	unsigned int aod_cur_mode;
+	unsigned int aod_cmd_mode;
+	unsigned int aod_node_from_user;
+	unsigned int aod_keep_u2;
+	bool bl2_dimm;
+#if defined(CONFIG_LGE_DISPLAY_BL_EXTENDED)
+	int ext_off;
+	int ext_off_temp;
+	int mode_switch;
+#endif
+#endif
+
+#if defined(CONFIG_LGE_DISPLAY_MARQUEE_SUPPORTED)
+	unsigned int mq_mode;
+	unsigned int mq_direction;
+	unsigned int mq_speed;
+	struct mq_pos_data{
+		unsigned int start_x;
+		unsigned int end_x;
+		unsigned int start_y;
+		unsigned int end_y;
+	} mq_pos;
+#endif
+
+#ifdef CONFIG_LGE_LCD_POWER_CTRL
+	bool power_ctrl;
+#endif
 };
 
 struct mdss_panel_timing {

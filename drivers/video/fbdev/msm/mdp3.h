@@ -34,7 +34,11 @@
 /* PPP cant work at SVS for panel res above qHD */
 #define SVS_MAX_PIXEL		(540 * 960)
 
+#if defined(CONFIG_LGE_DISPLAY_LUCYE_COMMON)
+#define KOFF_TIMEOUT msecs_to_jiffies(500)
+#else
 #define KOFF_TIMEOUT msecs_to_jiffies(84)
+#endif
 #define WAIT_DMA_TIMEOUT msecs_to_jiffies(84)
 
 /*

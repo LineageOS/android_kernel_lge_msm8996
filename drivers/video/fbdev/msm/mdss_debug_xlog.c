@@ -28,7 +28,13 @@
 #define XLOG_DEFAULT_ENABLE 0
 #endif
 
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+#define XLOG_DEFAULT_PANIC 0
+#define XLOG_DEFAULT_REGDUMP_ENABLE 0
+#else
 #define XLOG_DEFAULT_PANIC 1
+#endif
+
 #define XLOG_DEFAULT_REGDUMP 0x2 /* dump in RAM */
 #define XLOG_DEFAULT_DBGBUSDUMP 0x2 /* dump in RAM */
 #define XLOG_DEFAULT_VBIF_DBGBUSDUMP 0x2 /* dump in RAM */
@@ -86,6 +92,10 @@ struct mdss_dbg_xlog {
 	u32 *nrt_vbif_dbgbus_dump; /* address for the nrt vbif debug bus dump */
 	u32 *dsi_dbgbus_dump; /* address for the dsi debug bus dump */
 } mdss_dbg_xlog;
+
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+unsigned int reg_dump_enable;
+#endif
 
 static inline bool mdss_xlog_is_enabled(u32 flag)
 {
@@ -677,6 +687,10 @@ static void xlog_debug_work(struct work_struct *work)
 		mdss_dbg_xlog.work_dsi_dbgbus);
 }
 
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+extern int panel_not_connected;
+#endif
+
 void mdss_xlog_tout_handler_default(bool queue, const char *name, ...)
 {
 	int i, index = 0;
@@ -688,6 +702,16 @@ void mdss_xlog_tout_handler_default(bool queue, const char *name, ...)
 	struct mdss_debug_base *blk_base = NULL;
 	struct mdss_debug_base **blk_arr;
 	u32 blk_len;
+
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+	if(!reg_dump_enable)
+		return;
+
+	if(panel_not_connected) {
+		pr_debug("[%s] reg-dump skipped \n", __func__);
+		return;
+	}
+#endif
 
 	if (!mdss_xlog_is_enabled(MDSS_XLOG_DEFAULT))
 		return;
@@ -818,6 +842,13 @@ int mdss_create_xlog_debug(struct mdss_debug_data *mdd)
 			    &mdss_dbg_xlog.enable_dbgbus_dump);
 	debugfs_create_u32("vbif_dbgbus_dump", 0644, mdss_dbg_xlog.xlog,
 			    &mdss_dbg_xlog.enable_vbif_dbgbus_dump);
+
+#if defined(CONFIG_LGE_DISPLAY_COMMON)
+	debugfs_create_bool("reg_dump_enable", 0644, mdss_dbg_xlog.xlog,
+				&reg_dump_enable);
+
+	reg_dump_enable = XLOG_DEFAULT_REGDUMP_ENABLE;
+#endif
 
 	mdss_dbg_xlog.xlog_enable = XLOG_DEFAULT_ENABLE;
 	mdss_dbg_xlog.panic_on_err = XLOG_DEFAULT_PANIC;
