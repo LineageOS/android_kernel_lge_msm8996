@@ -2085,7 +2085,7 @@ static int es9218_set_bias_level(struct snd_soc_codec *codec,
 		case SND_SOC_BIAS_OFF:
 			break;
 	}
-	codec->dapm.bias_level = level;
+	codec->driver->set_bias_level(codec, level);
 
 	/* dev_dbg(codec->dev, "%s(): exit\n", __func__); */
 	return ret;
