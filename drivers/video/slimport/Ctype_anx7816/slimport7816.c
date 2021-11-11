@@ -1702,8 +1702,8 @@ static struct i2c_driver anx7816_driver = {
 	},
 	.probe  = anx7816_i2c_probe,
 	.remove  = anx7816_i2c_remove,
-	.suspend = anx7816_i2c_suspend,
-	.resume = anx7816_i2c_resume,
+	//.suspend = anx7816_i2c_suspend,
+	//.resume = anx7816_i2c_resume,
 	.id_table  = anx7816_id,
 };
 

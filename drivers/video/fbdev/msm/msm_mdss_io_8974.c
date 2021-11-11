@@ -475,7 +475,7 @@ int mdss_dsi_phy_pll_reset_status(struct mdss_dsi_ctrl_pdata *ctrl)
 	return rc;
 }
 
-static void mdss_dsi_phy_sw_reset(struct mdss_dsi_ctrl_pdata *ctrl)
+void mdss_dsi_phy_sw_reset(struct mdss_dsi_ctrl_pdata *ctrl)
 {
 	struct mdss_dsi_ctrl_pdata *sctrl = NULL;
 	struct dsi_shared_data *sdata;
@@ -1383,7 +1383,7 @@ void mdss_dsi_phy_disable(struct mdss_dsi_ctrl_pdata *ctrl)
 	wmb();
 }
 
-static void mdss_dsi_phy_init(struct mdss_dsi_ctrl_pdata *ctrl)
+void mdss_dsi_phy_init(struct mdss_dsi_ctrl_pdata *ctrl)
 {
 	MDSS_XLOG(ctrl ? ctrl->ndx : 0xff);
 	mdss_dsi_phy_regulator_ctrl(ctrl, true);
