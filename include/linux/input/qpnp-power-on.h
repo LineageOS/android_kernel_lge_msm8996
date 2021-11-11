@@ -63,6 +63,19 @@ enum pon_restart_reason {
 	/* 32 ~ 63 for OEMs/ODMs secific features */
 	PON_RESTART_REASON_OEM_MIN		= 0x20,
 	PON_RESTART_REASON_OEM_MAX		= 0x3f,
+
+	/* LGE UPDATE */
+	PON_RESTART_REASON_NORMAL             = 0x20,
+	PON_RESTART_REASON_WALLPAPER_FAIL     = 0x21,
+	PON_RESTART_REASON_FOTA               = 0x22,
+	PON_RESTART_REASON_FOTA_LCD_OFF       = 0x23,
+	PON_RESTART_REASON_FOTA_OUT_LCD_OFF   = 0x24,
+	PON_RESTART_REASON_LCD_OFF            = 0x25,
+	PON_RESTART_REASON_CHARGE_RESET       = 0x26,
+	PON_RESTART_REASON_LAF_DLOAD_MODE     = 0x27,
+	PON_RESTART_REASON_LAF_RESTART_MODE   = 0x28,
+	PON_RESTART_REASON_LAF_ONRS           = 0x29,
+	PON_RESTART_REASON_XBOOT_AAT_WRITE    = 0x30,
 };
 
 #ifdef CONFIG_INPUT_QPNP_POWER_ON
@@ -96,6 +109,10 @@ static inline bool qpnp_pon_check_hard_reset_stored(void)
 {
 	return false;
 }
+#endif
+
+#ifdef CONFIG_LGE_DISPLAY_LABIBB_RECOVERY
+extern void do_msm_hard_reset(void);
 #endif
 
 #endif

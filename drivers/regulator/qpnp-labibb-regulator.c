@@ -35,7 +35,7 @@
 #include <linux/regulator/qpnp-labibb-regulator.h>
 
 #ifdef CONFIG_LGE_DISPLAY_LABIBB_RECOVERY
-#include <linux/qpnp/power-on.h>
+#include <linux/input/qpnp-power-on.h>
 #endif
 
 #ifdef CONFIG_LGE_LCD_POWER_CTRL
