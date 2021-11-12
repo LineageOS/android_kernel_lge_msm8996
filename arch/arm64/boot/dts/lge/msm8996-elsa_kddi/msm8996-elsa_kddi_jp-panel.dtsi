@@ -518,7 +518,7 @@
 
 &labibb {
 	status = "ok";
-	qpnp,qpnp-labibb-mode = "lcd";
+	qcom,qpnp-labibb-mode = "lcd";
 	qcom,labibb-touch-to-wake-en;
 };
 
