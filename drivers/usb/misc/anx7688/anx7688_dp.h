@@ -13,7 +13,7 @@
 
 #include "anx7688_core.h"
 #include "anx_i2c_intf.h"
-#include "../../../video/msm/mdss/mdss_hdmi_slimport.h"
+#include "../../../video/fbdev/msm/mdss_hdmi_slimport.h"
 #include "anx7688_mi1.h"
 
 /* RX INFO */
