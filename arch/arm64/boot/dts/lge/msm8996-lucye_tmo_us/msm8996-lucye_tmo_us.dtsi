@@ -25,12 +25,6 @@
 
 / {
 	reserved-memory {
-		ramoops_mem: ramoops_region@c0000000 {
-			compatible = "removed-dma-pool";
-			no-map;
-			reg = <0 0xc0000000 0 0x100000>;
-		};
-
 		crash_fb_mem: crash_fb_mem@c0100000 {
 			linux,contiguous-region;
 			reg = <0 0xc0100000 0 0xc00000>;
@@ -56,17 +50,6 @@
 &soc {
 	wdog: qcom,wdt@9830000 {
 		qcom,bark-time = <16000>;
-	};
-
-	ramoops {
-		compatible = "ramoops";
-		mem-size = <0xc0000>;
-		mem-address = <0xc0000000>;
-		record-size = <4096>;
-		console-size = <0x40000>;
-		ftrace-size = <0x40000>;
-		pmsg-size = <0x40000>;
-		dump-oops = <1>;
 	};
 
 	crash_fb {

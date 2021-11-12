@@ -34,3 +34,26 @@
 		};
 	};
 };
+
+/ {
+	reserved-memory {
+		ramoops_mem: ramoops_mem@c0000000 {
+			compatible = "removed-dma-pool";
+			reg = <0 0xc0000000 0 0x00100000>;
+			label = "ramoops_mem";
+			no-map;
+		};
+	};
+};
+
+&soc {
+	ramoops {
+		compatible = "ramoops";
+		memory-region = <&ramoops_mem>;
+		console-size = <0x0 0x00080000>;
+		pmsg-size    = <0x0 0x00040000>;
+		record-size  = <0x0 0x00008000>;
+		ftrace-size  = <0x0 0x00020000>;
+		status = "ok";
+	};
+};
