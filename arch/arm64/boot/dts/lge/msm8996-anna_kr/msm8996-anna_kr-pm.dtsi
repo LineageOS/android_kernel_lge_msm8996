@@ -118,7 +118,7 @@
 
 &pmi8994_haptics {
 	status = "okay";
-	qcom,actuator-type = "erm";
+	qcom,actuator-type = <1>;
 	qcom,wave-shape = "square";
 	qcom,vmax-mv = <2400>;
 	qcom,ilim-ma = <150>;
