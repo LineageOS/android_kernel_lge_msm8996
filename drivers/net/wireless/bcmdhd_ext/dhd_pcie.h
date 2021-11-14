@@ -34,13 +34,13 @@
 #include <bcmpcie.h>
 #include <hnd_cons.h>
 #ifdef SUPPORT_LINKDOWN_RECOVERY
-#ifdef CONFIG_ARCH_MSM
+#ifdef CONFIG_ARCH_QCOM
 #ifdef CONFIG_PCI_MSM
 #include <linux/msm_pcie.h>
 #else
 #include <mach/msm_pcie.h>
 #endif /* CONFIG_PCI_MSM */
-#endif /* CONFIG_ARCH_MSM */
+#endif /* CONFIG_ARCH_QCOM */
 #ifdef EXYNOS_PCIE_LINKDOWN_RECOVERY
 #ifdef CONFIG_SOC_EXYNOS8890
 #include <linux/exynos-pci-noti.h>
@@ -83,10 +83,10 @@ extern int exynos_pcie_deregister_event(struct exynos_pcie_register_event *reg);
 #define	REMAP_ISADDR(bus, a)		(((a) >= ((bus)->orig_ramsize)) && ((a) < ((bus)->ramsize)))
 
 #ifdef SUPPORT_LINKDOWN_RECOVERY
-#ifdef CONFIG_ARCH_MSM
+#ifdef CONFIG_ARCH_QCOM
 #define struct_pcie_notify		struct msm_pcie_notify
 #define struct_pcie_register_event	struct msm_pcie_register_event
-#endif /* CONFIG_ARCH_MSM */
+#endif /* CONFIG_ARCH_QCOM */
 #ifdef EXYNOS_PCIE_LINKDOWN_RECOVERY
 #ifdef CONFIG_SOC_EXYNOS8890
 #define struct_pcie_notify		struct exynos_pcie_notify
@@ -218,13 +218,13 @@ typedef struct dhd_bus {
 	bool	oob_enabled;
 #endif /* PCIE_OOB */
 #ifdef SUPPORT_LINKDOWN_RECOVERY
-#if defined(CONFIG_ARCH_MSM) || (defined(EXYNOS_PCIE_LINKDOWN_RECOVERY) && \
+#if defined(CONFIG_ARCH_QCOM) || (defined(EXYNOS_PCIE_LINKDOWN_RECOVERY) && \
 	defined(CONFIG_SOC_EXYNOS8890))
-#ifdef CONFIG_ARCH_MSM
+#ifdef CONFIG_ARCH_QCOM
 	uint8 no_cfg_restore;
-#endif /* CONFIG_ARCH_MSM */
+#endif /* CONFIG_ARCH_QCOM */
 	struct_pcie_register_event pcie_event;
-#endif /* CONFIG_ARCH_MSM || (EXYNOS_PCIE_LINKDOWN_RECOVERY && CONFIG_SOC_EXYNOS8890) */
+#endif /* CONFIG_ARCH_QCOM || (EXYNOS_PCIE_LINKDOWN_RECOVERY && CONFIG_SOC_EXYNOS8890) */
 #endif /* SUPPORT_LINKDOWN_RECOVERY */
 #ifdef DHD_PCIE_RUNTIMEPM
 	int32 idlecount;                /* Activity timeout counter */

@@ -615,9 +615,9 @@ dhd_prot_d2h_sync_livelock(dhd_pub_t *dhd, msgbuf_ring_t *ring, uint32 tries,
 	prhex("D2H MsgBuf Failure", (uchar *)msg, msglen);
 
 #ifdef SUPPORT_LINKDOWN_RECOVERY
-#ifdef CONFIG_ARCH_MSM
+#ifdef CONFIG_ARCH_QCOM
 	dhd->bus->no_cfg_restore = TRUE;
-#endif /* CONFIG_ARCH_MSM */
+#endif /* CONFIG_ARCH_QCOM */
 	dhd->hang_reason = HANG_REASON_MSGBUF_LIVELOCK;
 	dhd_os_send_hang_message(dhd);
 #endif /* SUPPORT_LINKDOWN_RECOVERY */
@@ -4690,9 +4690,9 @@ dhd_msgbuf_wait_ioctl_cmplt(dhd_pub_t *dhd, uint32 len, void *buf)
 #endif /* DHD_FW_COREDUMP && OEM_ANDROID */
 		if (dhd->rxcnt_timeout >= MAX_CNTL_RX_TIMEOUT) {
 #ifdef SUPPORT_LINKDOWN_RECOVERY
-#ifdef CONFIG_ARCH_MSM
+#ifdef CONFIG_ARCH_QCOM
 			dhd->bus->no_cfg_restore = 1;
-#endif /* CONFIG_ARCH_MSM */
+#endif /* CONFIG_ARCH_QCOM */
 #endif /* SUPPORT_LINKDOWN_RECOVERY */
 			DHD_ERROR(("%s: timeout > MAX_CNTL_RX_TIMEOUT\n", __FUNCTION__));
 		}
@@ -4713,9 +4713,9 @@ dhd_msgbuf_wait_ioctl_cmplt(dhd_pub_t *dhd, uint32 len, void *buf)
 
 	if (dhd->dongle_trap_occured) {
 #ifdef SUPPORT_LINKDOWN_RECOVERY
-#ifdef CONFIG_ARCH_MSM
+#ifdef CONFIG_ARCH_QCOM
 		dhd->bus->no_cfg_restore = 1;
-#endif /* CONFIG_ARCH_MSM */
+#endif /* CONFIG_ARCH_QCOM */
 #endif /* SUPPORT_LINKDOWN_RECOVERY */
 		DHD_ERROR(("%s: TRAP occurred!!\n", __FUNCTION__));
 		ret = -EREMOTEIO;

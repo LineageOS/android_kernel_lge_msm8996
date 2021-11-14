@@ -510,14 +510,14 @@ dhdpcie_bus_isr(dhd_bus_t *bus)
 		}
 
 #ifdef SUPPORT_LINKDOWN_RECOVERY
-#ifdef CONFIG_ARCH_MSM
+#ifdef CONFIG_ARCH_QCOM
 		if (bus->no_cfg_restore) {
 			DHD_ERROR(("%s: PCIe is not enumerated, not processing the interrupt \n",
 				__FUNCTION__));
 			break;
 		}
 #endif /* SUPPORT_LINKDOWN_RECOVERY */
-#endif /* CONFIG_ARCH_MSM */
+#endif /* CONFIG_ARCH_QCOM */
 
 		/* Wi-Fi chip registers to legacy PCIe interrupt, which shared by all root ports
 		   and end points. instatus filters out the irqs which are not from Wi-Fi chip,
@@ -772,11 +772,11 @@ void
 dhdpcie_bus_intr_enable(dhd_bus_t *bus)
 {
 	DHD_TRACE(("enable interrupts\n"));
-#if defined(SUPPORT_LINKDOWN_RECOVERY) && defined(CONFIG_ARCH_MSM)
+#if defined(SUPPORT_LINKDOWN_RECOVERY) && defined(CONFIG_ARCH_QCOM)
 	if (bus && bus->sih && !bus->is_linkdown && !bus->no_cfg_restore) {
 #else
 	if (bus && bus->sih && !bus->is_linkdown) {
-#endif /* SUPPORT_LINKDOWN_RECOVERYi && CONFIG_ARCH_MSM */
+#endif /* SUPPORT_LINKDOWN_RECOVERYi && CONFIG_ARCH_QCOM */
 		if ((bus->sih->buscorerev == 2) || (bus->sih->buscorerev == 6) ||
 			(bus->sih->buscorerev == 4)) {
 			dhpcie_bus_unmask_interrupt(bus);
@@ -786,14 +786,14 @@ dhdpcie_bus_intr_enable(dhd_bus_t *bus)
 		}
 	} else {
 		DHD_ERROR(("****** %s: failed ******\n", __FUNCTION__));
-#if defined(SUPPORT_LINKDOWN_RECOVERY) && defined(CONFIG_ARCH_MSM)
+#if defined(SUPPORT_LINKDOWN_RECOVERY) && defined(CONFIG_ARCH_QCOM)
 		DHD_ERROR(("bus: %p sih: %p bus->is_linkdown %d no_cfg_restore %d\n",
 				bus, bus ? bus->sih : NULL, bus ? bus->is_linkdown : -1,
 				bus ? bus->no_cfg_restore : -1));
 #else
 		DHD_ERROR(("bus: %p sih: %p bus->is_linkdown %d\n",
 				bus, bus ? bus->sih : NULL, bus ? bus->is_linkdown : -1));
-#endif /* SUPPORT_LINKDOWN_RECOVERYi && CONFIG_ARCH_MSM */
+#endif /* SUPPORT_LINKDOWN_RECOVERYi && CONFIG_ARCH_QCOM */
 	}
 }
 
@@ -803,11 +803,11 @@ dhdpcie_bus_intr_disable(dhd_bus_t *bus)
 
 	DHD_TRACE(("%s Enter\n", __FUNCTION__));
 
-#if defined(SUPPORT_LINKDOWN_RECOVERY) && defined(CONFIG_ARCH_MSM)
+#if defined(SUPPORT_LINKDOWN_RECOVERY) && defined(CONFIG_ARCH_QCOM)
 	if (bus && bus->sih && !bus->is_linkdown && !bus->no_cfg_restore) {
 #else
 	if (bus && bus->sih && !bus->is_linkdown) {
-#endif /* SUPPORT_LINKDOWN_RECOVERYi && CONFIG_ARCH_MSM */
+#endif /* SUPPORT_LINKDOWN_RECOVERYi && CONFIG_ARCH_QCOM */
 		if ((bus->sih->buscorerev == 2) || (bus->sih->buscorerev == 6) ||
 			(bus->sih->buscorerev == 4)) {
 			dhpcie_bus_mask_interrupt(bus);
@@ -817,14 +817,14 @@ dhdpcie_bus_intr_disable(dhd_bus_t *bus)
 		}
 	} else {
 		DHD_ERROR(("****** %s: failed ******\n", __FUNCTION__));
-#if defined(SUPPORT_LINKDOWN_RECOVERY) && defined(CONFIG_ARCH_MSM)
+#if defined(SUPPORT_LINKDOWN_RECOVERY) && defined(CONFIG_ARCH_QCOM)
 		DHD_ERROR(("bus: %p sih: %p bus->is_linkdown %d no_cfg_restore %d\n",
 				bus, bus ? bus->sih : NULL, bus ? bus->is_linkdown : -1,
 				bus ? bus->no_cfg_restore : -1));
 #else
 		DHD_ERROR(("bus: %p sih: %p bus->is_linkdown %d\n",
 				bus, bus ? bus->sih : NULL, bus ? bus->is_linkdown : -1));
-#endif /* SUPPORT_LINKDOWN_RECOVERYi && CONFIG_ARCH_MSM */
+#endif /* SUPPORT_LINKDOWN_RECOVERYi && CONFIG_ARCH_QCOM */
 	}
 
 	DHD_TRACE(("%s Exit\n", __FUNCTION__));
@@ -2156,12 +2156,12 @@ dhdpcie_mem_dump(dhd_bus_t *bus)
 		DHD_ERROR(("%s: PCIe link was down so skip\n", __FUNCTION__));
 		return BCME_ERROR;
 	}
-#ifdef CONFIG_ARCH_MSM
+#ifdef CONFIG_ARCH_QCOM
 	if (bus->no_cfg_restore) {
 		DHD_ERROR(("%s: PCIe is not enumerated so skip\n", __FUNCTION__));
 		return BCME_ERROR;
 	}
-#endif /* CONFIG_ARCH_MSM */
+#endif /* CONFIG_ARCH_QCOM */
 #endif /* SUPPORT_LINKDOWN_RECOVERY */
 
 	/* Get full mem size */
@@ -3180,9 +3180,9 @@ dhd_bus_devreset(dhd_pub_t *dhdp, uint8 flag)
 	dhd_bus_t *bus = dhdp->bus;
 	int bcmerror = 0;
 	unsigned long flags;
-#ifdef CONFIG_ARCH_MSM
+#ifdef CONFIG_ARCH_QCOM
 	int retry = POWERUP_MAX_RETRY;
-#endif /* CONFIG_ARCH_MSM */
+#endif /* CONFIG_ARCH_QCOM */
 
 	if (dhd_download_fw_on_driverload) {
 		bcmerror = dhd_bus_start(dhdp);
@@ -3216,7 +3216,7 @@ dhd_bus_devreset(dhd_pub_t *dhdp, uint8 flag)
 					dhd_prot_reset(dhdp);
 					goto done;
 				}
-#ifdef CONFIG_ARCH_MSM
+#ifdef CONFIG_ARCH_QCOM
 				bcmerror = dhdpcie_bus_clock_stop(bus);
 				if (bcmerror) {
 					DHD_ERROR(("%s: host clock stop failed: %d\n",
@@ -3224,7 +3224,7 @@ dhd_bus_devreset(dhd_pub_t *dhdp, uint8 flag)
 					dhd_prot_reset(dhdp);
 					goto done;
 				}
-#endif /* CONFIG_ARCH_MSM */
+#endif /* CONFIG_ARCH_QCOM */
 				DHD_GENERAL_LOCK(bus->dhd, flags);
 				bus->dhd->busstate = DHD_BUS_DOWN;
 				dhd_prot_reset(dhdp);
@@ -3249,14 +3249,14 @@ dhd_bus_devreset(dhd_pub_t *dhdp, uint8 flag)
 					goto done;
 				}
 
-#ifdef CONFIG_ARCH_MSM
+#ifdef CONFIG_ARCH_QCOM
 				bcmerror = dhdpcie_bus_clock_stop(bus);
 				if (bcmerror) {
 					DHD_ERROR(("%s: host clock stop failed: %d\n",
 						__FUNCTION__, bcmerror));
 					goto done;
 				}
-#endif  /* CONFIG_ARCH_MSM */
+#endif  /* CONFIG_ARCH_QCOM */
 			}
 
 			bus->dhd->dongle_reset = TRUE;
@@ -3266,7 +3266,7 @@ dhd_bus_devreset(dhd_pub_t *dhdp, uint8 flag)
 			if (bus->dhd->busstate == DHD_BUS_DOWN) {
 				/* Powering On */
 				DHD_ERROR(("%s: == Power ON ==\n", __FUNCTION__));
-#ifdef CONFIG_ARCH_MSM
+#ifdef CONFIG_ARCH_QCOM
 				while (--retry) {
 					bcmerror = dhdpcie_bus_clock_start(bus);
 					if (!bcmerror) {
@@ -3283,7 +3283,7 @@ dhd_bus_devreset(dhd_pub_t *dhdp, uint8 flag)
 						__FUNCTION__, bcmerror));
 					goto done;
 				}
-#endif /* CONFIG_ARCH_MSM */
+#endif /* CONFIG_ARCH_QCOM */
 				bus->is_linkdown = 0;
 				bus->pci_d3hot_done = 0;
 				bcmerror = dhdpcie_bus_enable_device(bus);
@@ -3775,13 +3775,13 @@ dhdpcie_bus_suspend(struct dhd_bus *bus, bool state)
 		}
 
 #ifdef SUPPORT_LINKDOWN_RECOVERY
-#ifdef CONFIG_ARCH_MSM
+#ifdef CONFIG_ARCH_QCOM
 		if (bus->no_cfg_restore) {
 			DHD_ERROR(("%s: PCIe is not enumerated , state=%d\n",
 				__FUNCTION__, state));
 			return BCME_ERROR;
 		}
-#endif /* CONFIG_ARCH_MSM */
+#endif /* CONFIG_ARCH_QCOM */
 #endif /* SUPPORT_LINKDOWN_RECOVERY */
 		/* Suspend */
 		DHD_ERROR(("%s: Entering suspend state\n", __FUNCTION__));
@@ -3910,9 +3910,9 @@ dhdpcie_bus_suspend(struct dhd_bus *bus, bool state)
 			DHD_ERROR(("%s: Event HANG send up "
 						"due to PCIe linkdown\n", __FUNCTION__));
 #ifdef SUPPORT_LINKDOWN_RECOVERY
-#ifdef CONFIG_ARCH_MSM
+#ifdef CONFIG_ARCH_QCOM
 			bus->no_cfg_restore = TRUE;
-#endif /* CONFIG_ARCH_MSM */
+#endif /* CONFIG_ARCH_QCOM */
 #endif /* SUPPORT_LINKDOWN_RECOVERY */
 			dhd_os_check_hang(bus->dhd, 0, -ETIMEDOUT);
 			rc = -ETIMEDOUT;
@@ -4710,12 +4710,12 @@ dhdpcie_send_mb_data(dhd_bus_t *bus, uint32 h2d_mb_data)
 	}
 
 #ifdef SUPPORT_LINKDOWN_RECOVERY
-#ifdef CONFIG_ARCH_MSM
+#ifdef CONFIG_ARCH_QCOM
 	if (bus->no_cfg_restore) {
 		DHD_ERROR(("%s: PCIe is not enumerated\n", __FUNCTION__));
 		return;
 	}
-#endif /* CONFIG_ARCH_MSM */
+#endif /* CONFIG_ARCH_QCOM */
 #endif /* SUPPORT_LINKDOWN_RECOVERY */
 	dhd_bus_cmn_readshared(bus, &cur_h2d_mb_data, H2D_MB_DATA, 0);
 
@@ -4771,10 +4771,10 @@ dhdpcie_handle_mb_data(dhd_bus_t *bus)
 		dhdpcie_checkdied(bus, NULL, 0);
 		/* not ready yet dhd_os_ind_firmware_stall(bus->dhd); */
 #ifdef SUPPORT_LINKDOWN_RECOVERY
-#ifdef CONFIG_ARCH_MSM
+#ifdef CONFIG_ARCH_QCOM
 		bus->no_cfg_restore = 1;
 		dhd_os_check_hang(bus->dhd, 0, -EREMOTEIO);
-#endif /* CONFIG_ARCH_MSM */
+#endif /* CONFIG_ARCH_QCOM */
 #endif /* SUPPORT_LINKDOWN_RECOVERY */
 		return;
 	}

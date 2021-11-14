@@ -51,13 +51,13 @@
 #include <pcicfg.h>
 #include <dhd_pcie.h>
 #include <dhd_linux.h>
-#ifdef CONFIG_ARCH_MSM
+#ifdef CONFIG_ARCH_QCOM
 #ifdef CONFIG_PCI_MSM
 #include <linux/msm_pcie.h>
 #else
 #include <mach/msm_pcie.h>
 #endif /* CONFIG_PCI_MSM */
-#endif /* CONFIG_ARCH_MSM */
+#endif /* CONFIG_ARCH_QCOM */
 
 #define PCI_CFG_RETRY		10
 #define OS_HANDLE_MAGIC		0x1234abcd	/* Magic # to recognize osh */
@@ -307,12 +307,12 @@ static int dhdpcie_suspend_dev(struct pci_dev *dev)
 		return BCME_ERROR;
 	}
 #ifdef SUPPORT_LINKDOWN_RECOVERY
-#ifdef CONFIG_ARCH_MSM
+#ifdef CONFIG_ARCH_QCOM
 	if (bus->no_cfg_restore) {
 		DHD_ERROR(("%s: PCIe is not enumerated\n", __FUNCTION__));
 		return BCME_ERROR;
 	}
-#endif /* CONFIG_ARCH_MSM */
+#endif /* CONFIG_ARCH_QCOM */
 #endif /* SUPPORT_LINKDOWN_RECOVERY */
 
 #endif /* OEM_ANDROID && LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0) */
@@ -352,13 +352,13 @@ static int dhdpcie_resume_dev(struct pci_dev *dev)
 		goto out;
 	}
 #ifdef SUPPORT_LINKDOWN_RECOVERY
-#ifdef CONFIG_ARCH_MSM
+#ifdef CONFIG_ARCH_QCOM
 	if (bus->no_cfg_restore) {
 		DHD_ERROR(("%s: PCIe is not enumerated\n", __FUNCTION__));
 		err = BCME_ERROR;
 		goto out;
 	}
-#endif /* CONFIG_ARCH_MSM */
+#endif /* CONFIG_ARCH_QCOM */
 #endif /* SUPPORT_LINKDOWN_RECOVERY */
 #endif /* OEM_ANDROID && LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0) */
 	DHD_TRACE_HW4(("%s: Enter\n", __FUNCTION__));
@@ -389,16 +389,16 @@ static int dhdpcie_resume_host_dev(dhd_bus_t *bus)
 #ifdef USE_EXYNOS_PCIE_RC_PMPATCH
 	bcmerror = exynos_pcie_pm_resume(SAMSUNG_PCIE_CH_NUM);
 #endif /* USE_EXYNOS_PCIE_RC_PMPATCH */
-#ifdef CONFIG_ARCH_MSM
+#ifdef CONFIG_ARCH_QCOM
 	bcmerror = dhdpcie_start_host_pcieclock(bus);
-#endif /* CONFIG_ARCH_MSM */
+#endif /* CONFIG_ARCH_QCOM */
 	if (bcmerror < 0) {
 		DHD_ERROR(("%s: PCIe RC resume failed!!! (%d)\n",
 			__FUNCTION__, bcmerror));
 		bus->is_linkdown = 1;
-#ifdef CONFIG_ARCH_MSM
+#ifdef CONFIG_ARCH_QCOM
 		bus->no_cfg_restore = TRUE;
-#endif /* CONFIG_ARCH_MSM */
+#endif /* CONFIG_ARCH_QCOM */
 	}
 
 	return bcmerror;
@@ -415,9 +415,9 @@ static int dhdpcie_suspend_host_dev(dhd_bus_t *bus)
 	}
 	exynos_pcie_pm_suspend(SAMSUNG_PCIE_CH_NUM);
 #endif	/* USE_EXYNOS_PCIE_RC_PMPATCH */
-#ifdef CONFIG_ARCH_MSM
+#ifdef CONFIG_ARCH_QCOM
 	bcmerror = dhdpcie_stop_host_pcieclock(bus);
-#endif	/* CONFIG_ARCH_MSM */
+#endif	/* CONFIG_ARCH_QCOM */
 	return bcmerror;
 }
 
@@ -433,12 +433,12 @@ int dhdpcie_pci_suspend_resume(dhd_bus_t *bus, bool state)
 			return BCME_ERROR;
 		}
 #ifdef SUPPORT_LINKDOWN_RECOVERY
-#ifdef CONFIG_ARCH_MSM
+#ifdef CONFIG_ARCH_QCOM
 		if (bus->no_cfg_restore) {
 			DHD_ERROR(("%s: PCIe is not enumerated\n", __FUNCTION__));
 			return BCME_ERROR;
 		}
-#endif /* CONFIG_ARCH_MSM */
+#endif /* CONFIG_ARCH_QCOM */
 #endif /* SUPPORT_LINKDOWN_RECOVERY */
 #ifndef BCMPCIE_OOB_HOST_WAKE
 		dhdpcie_pme_active(bus->osh, state);
@@ -575,9 +575,9 @@ dhdpcie_pci_remove(struct pci_dev *pdev)
 
 #ifdef SUPPORT_LINKDOWN_RECOVERY
 	if (bus) {
-#ifdef CONFIG_ARCH_MSM
+#ifdef CONFIG_ARCH_QCOM
 		msm_pcie_deregister_event(&bus->pcie_event);
-#endif /* CONFIG_ARCH_MSM */
+#endif /* CONFIG_ARCH_QCOM */
 #ifdef EXYNOS_PCIE_LINKDOWN_RECOVERY
 #ifdef CONFIG_SOC_EXYNOS8890
 		exynos_pcie_deregister_event(&bus->pcie_event);
@@ -750,7 +750,7 @@ int dhdpcie_scan_resource(dhdpcie_info_t *dhdpcie_info)
 }
 
 #ifdef SUPPORT_LINKDOWN_RECOVERY
-#if defined(CONFIG_ARCH_MSM) || (defined(EXYNOS_PCIE_LINKDOWN_RECOVERY) && \
+#if defined(CONFIG_ARCH_QCOM) || (defined(EXYNOS_PCIE_LINKDOWN_RECOVERY) && \
 	defined(CONFIG_SOC_EXYNOS8890))
 void dhdpcie_linkdown_cb(struct_pcie_notify *noti)
 {
@@ -778,7 +778,7 @@ void dhdpcie_linkdown_cb(struct_pcie_notify *noti)
 	}
 
 }
-#endif /* CONFIG_ARCH_MSM || (EXYNOS_PCIE_LINKDOWN_RECOVERY && CONFIG_SOC_EXYNOS8890) */
+#endif /* CONFIG_ARCH_QCOM || (EXYNOS_PCIE_LINKDOWN_RECOVERY && CONFIG_SOC_EXYNOS8890) */
 #endif /* EXYNOS_PCIE_LINKDOWN_RECOVERY */
 
 int dhdpcie_init(struct pci_dev *pdev)
@@ -864,7 +864,7 @@ int dhdpcie_init(struct pci_dev *pdev)
 		bus->dhd->dongle_isolation = TRUE;
 #endif /* DONGLE_ENABLE_ISOLATION */
 #ifdef SUPPORT_LINKDOWN_RECOVERY
-#ifdef CONFIG_ARCH_MSM
+#ifdef CONFIG_ARCH_QCOM
 		bus->pcie_event.events = MSM_PCIE_EVENT_LINKDOWN;
 		bus->pcie_event.user = pdev;
 		bus->pcie_event.mode = MSM_PCIE_TRIGGER_CALLBACK;
@@ -872,7 +872,7 @@ int dhdpcie_init(struct pci_dev *pdev)
 		bus->pcie_event.options = MSM_PCIE_CONFIG_NO_RECOVERY;
 		msm_pcie_register_event(&bus->pcie_event);
 		bus->no_cfg_restore = 0;
-#endif /* CONFIG_ARCH_MSM */
+#endif /* CONFIG_ARCH_QCOM */
 #ifdef EXYNOS_PCIE_LINKDOWN_RECOVERY
 #ifdef CONFIG_SOC_EXYNOS8890
 		bus->pcie_event.events = EXYNOS_PCIE_EVENT_LINKDOWN;
@@ -1017,11 +1017,11 @@ int
 dhdpcie_start_host_pcieclock(dhd_bus_t *bus)
 {
 	int ret = 0;
-#ifdef CONFIG_ARCH_MSM
+#ifdef CONFIG_ARCH_QCOM
 #ifdef SUPPORT_LINKDOWN_RECOVERY
 	int options = 0;
 #endif /* SUPPORT_LINKDOWN_RECOVERY */
-#endif /* CONFIG_ARCH_MSM */
+#endif /* CONFIG_ARCH_QCOM */
 	DHD_TRACE(("%s Enter:\n", __FUNCTION__));
 
 	if (bus == NULL) {
@@ -1032,7 +1032,7 @@ dhdpcie_start_host_pcieclock(dhd_bus_t *bus)
 		return BCME_ERROR;
 	}
 
-#ifdef CONFIG_ARCH_MSM
+#ifdef CONFIG_ARCH_QCOM
 #ifdef SUPPORT_LINKDOWN_RECOVERY
 	if (bus->no_cfg_restore) {
 		options = MSM_PCIE_CONFIG_NO_CFG_RESTORE;
@@ -1053,7 +1053,7 @@ dhdpcie_start_host_pcieclock(dhd_bus_t *bus)
 	}
 
 done:
-#endif /* CONFIG_ARCH_MSM */
+#endif /* CONFIG_ARCH_QCOM */
 	DHD_TRACE(("%s Exit:\n", __FUNCTION__));
 	return ret;
 }
@@ -1062,11 +1062,11 @@ int
 dhdpcie_stop_host_pcieclock(dhd_bus_t *bus)
 {
 	int ret = 0;
-#ifdef CONFIG_ARCH_MSM
+#ifdef CONFIG_ARCH_QCOM
 #ifdef SUPPORT_LINKDOWN_RECOVERY
 	int options = 0;
 #endif /* SUPPORT_LINKDOWN_RECOVERY */
-#endif /* CONFIG_ARCH_MSM */
+#endif /* CONFIG_ARCH_QCOM */
 
 	DHD_TRACE(("%s Enter:\n", __FUNCTION__));
 
@@ -1078,7 +1078,7 @@ dhdpcie_stop_host_pcieclock(dhd_bus_t *bus)
 		return BCME_ERROR;
 	}
 
-#ifdef CONFIG_ARCH_MSM
+#ifdef CONFIG_ARCH_QCOM
 #ifdef SUPPORT_LINKDOWN_RECOVERY
 	if (bus->no_cfg_restore) {
 		options = MSM_PCIE_CONFIG_NO_CFG_RESTORE | MSM_PCIE_CONFIG_LINKDOWN;
@@ -1095,7 +1095,7 @@ dhdpcie_stop_host_pcieclock(dhd_bus_t *bus)
 		goto done;
 	}
 done:
-#endif /* CONFIG_ARCH_MSM */
+#endif /* CONFIG_ARCH_QCOM */
 	DHD_TRACE(("%s Exit:\n", __FUNCTION__));
 	return ret;
 }
