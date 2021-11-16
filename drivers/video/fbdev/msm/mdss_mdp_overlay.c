@@ -2114,7 +2114,9 @@ static void __restore_pipe(struct mdss_mdp_pipe *pipe)
 
 	pipe->restore_roi = false;
 }
+#if defined(CONFIG_LGE_DISPLAY_AOD_SUPPORTED)
 
+#else
 static void __restore_dest_scaler_roi(struct mdss_mdp_ctl *ctl)
 {
 	struct mdss_panel_info *pinfo = &ctl->panel_data->panel_info;
@@ -2147,6 +2149,8 @@ static void __restore_dest_scaler_roi(struct mdss_mdp_ctl *ctl)
 		}
 	}
 }
+
+#endif
 
  /**
  * __adjust_pipe_rect() - Adjust pipe roi for dual partial update feature.
