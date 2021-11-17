@@ -255,8 +255,8 @@ static bool lge_moisture_detection(struct wcd_mbhc *mbhc, int switch_device)
 	if( mbhc->first_moisture_status ) {
 		result = true;
 		mbhc->first_moisture_status = false;
-	} else if (usb_psy && usb_psy->get_property) {
-		usb_psy->get_property(usb_psy, POWER_SUPPLY_PROP_ONLINE, &value);
+	} else if (usb_psy && usb_psy->desc->get_property) {
+		usb_psy->desc->get_property(usb_psy, POWER_SUPPLY_PROP_ONLINE, &value);
 		if (value.intval) {
 			pr_debug("%s TA or USB was inserted, set false on moisture. value.intval = %d\n", __func__, value.intval);
 			result = false;
@@ -3489,7 +3489,7 @@ err:
 			mbhc->first_moisture_status = true;
 		}
 		usb_psy = power_supply_get_by_name("usb");
-		if (!usb_psy || !usb_psy->get_property)
+		if (!usb_psy || !usb_psy->desc->get_property)
 			pr_err("%s : psy usb is not ready\n", __func__);
 	}
 #endif
