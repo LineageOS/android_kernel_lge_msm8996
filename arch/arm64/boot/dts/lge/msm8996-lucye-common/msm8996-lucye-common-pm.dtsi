@@ -173,7 +173,7 @@
 	qcom,wave-shape = "square";
 	qcom,vmax-mv = <3596>;
 	qcom,ilim-ma = <150>;
-	qcom,brake-pattern = [03 03 03 03];
+	qcom,brake-pattern = <0x3 0x3 0x3 0x3>;
 };
 
 &pmi8994_mpps {

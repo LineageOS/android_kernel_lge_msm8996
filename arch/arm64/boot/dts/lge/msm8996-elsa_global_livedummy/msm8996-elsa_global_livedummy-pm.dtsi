@@ -123,7 +123,7 @@
 	qcom,wave-shape = "square";
 	qcom,vmax-mv = <2400>;
 	qcom,ilim-ma = <150>;
-	qcom,brake-pattern = [03 03 03 03];
+	qcom,brake-pattern = <0x3 0x3 0x3 0x3>;
 };
 
 &flash_led {
