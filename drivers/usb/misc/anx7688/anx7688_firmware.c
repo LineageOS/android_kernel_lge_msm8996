@@ -28,35 +28,8 @@ int anx7688_fw_delay_ms = 4;
 
 static bool is_factory_cable(void)
 {
-	unsigned int cable_info;
-#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_CABLE_DETECT
-	unsigned int *p_cable_type = NULL;
-	unsigned int cable_smem_size = 0;
-
-	p_cable_type = smem_get_entry(SMEM_ID_VENDOR1,
-			&cable_smem_size, 0, 0);
-	if (p_cable_type)
-		cable_info = *p_cable_type;
-	else
-		return  false;
-
-	pr_info("[anx7688_firmware] cable %d\n", cable_info);
-	if (cable_info == LT_CABLE_56K ||
-			cable_info == LT_CABLE_130K ||
-			cable_info == LT_CABLE_910K) {
-		return true;
-	}
-#elif defined (CONFIG_LGE_PM_CABLE_DETECTION)
-	cable_info = lge_pm_get_cable_type();
-	pr_info("[anx7688_firmware] cable %d\n", cable_info);
-	if (cable_info == CABLE_56K ||
-			cable_info == CABLE_130K ||
-			cable_info == CABLE_910K) {
-		return true;
-	}
-#else
-	cable_info = NO_INIT_CABLE;
-#endif
+	//unsigned int cable_info;
+	//cable_info = NO_INIT_CABLE;
 	return false;
 }
 
