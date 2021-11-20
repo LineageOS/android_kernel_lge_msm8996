@@ -36,6 +36,17 @@
 #define USB_VENDOR_GENESYS_LOGIC		0x05e3
 #define HUB_QUIRK_CHECK_PORT_AUTOSUSPEND	0x01
 
+#ifdef CONFIG_LGE_ALICE_FRIENDS
+bool alice_friends_hm;
+bool alice_friends_hm_earjack;
+#endif
+
+#ifdef CONFIG_LGE_DP_ANX7688
+unsigned int det_vendor_id;
+unsigned int det_product_id;
+#define APPLE_VID	0x05ac
+#define APPLE_PID	0x100e
+#endif
 /* Protect struct usb_device->state and ->children members
  * Note: Both are also protected by ->dev.sem, except that ->state can
  * change to USB_STATE_NOTATTACHED even when the semaphore isn't held. */
@@ -959,6 +970,9 @@ int usb_remove_device(struct usb_device *udev)
 	set_bit(udev->portnum, hub->removed_bits);
 	hub_port_logical_disconnect(hub, udev->portnum);
 	usb_autopm_put_interface(intf);
+#ifdef CONFIG_LGE_DP_ANX7688
+	det_vendor_id = det_product_id = 0x0000;
+#endif
 	return 0;
 }
 
@@ -2210,6 +2224,17 @@ static void announce_device(struct usb_device *udev)
 static inline void announce_device(struct usb_device *udev) { }
 #endif
 
+#ifdef CONFIG_LGE_DP_ANX7688
+bool get_device_apple_pid(void)
+{
+	if (det_vendor_id == APPLE_VID &&
+			det_product_id == APPLE_PID)
+		return true;
+
+	return false;
+}
+EXPORT_SYMBOL_GPL(get_device_apple_pid);
+#endif
 
 /**
  * usb_enumerate_device_otg - FIXME (usbcore-internal)
