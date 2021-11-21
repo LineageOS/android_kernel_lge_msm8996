@@ -217,7 +217,7 @@ static int dual_role_set_prop(struct dual_role_phy_instance *dual_role,
 		switch (*val) {
 		case DUAL_ROLE_PROP_PR_SRC:
 			//power_supply_set_usb_otg(&chip->usbpd_psy, 1);
-			otgprop.intval = 0;
+			otgprop.intval = 1;
 			power_supply_set_property(chip->usb_psy, 
 			POWER_SUPPLY_PROP_USB_OTG, &otgprop);
 			chip->power_role = DUAL_ROLE_PROP_PR_SRC;
@@ -249,6 +249,7 @@ static int dual_role_set_prop(struct dual_role_phy_instance *dual_role,
 		switch (*val) {
 		case DUAL_ROLE_PROP_DR_HOST:
 			if (chip->data_role == DUAL_ROLE_PROP_DR_DEVICE) {
+				//power_supply_set_present(chip->usb_psy, 0);				
 				presentprop.intval = 0;
 				power_supply_set_property(chip->usb_psy, 
 					POWER_SUPPLY_PROP_PRESENT,&presentprop);
@@ -2464,17 +2465,17 @@ static int anx7688_probe(struct i2c_client *client,
 			goto err6;
 		}
 
-		desc->name = "otg_default";
-		desc->supported_modes = DUAL_ROLE_SUPPORTED_MODES_DFP_AND_UFP;
-		desc->get_property = dual_role_get_prop;
-		desc->set_property = dual_role_set_prop;
-		desc->properties = drp_properties;
-		desc->num_properties = ARRAY_SIZE(drp_properties);
-		desc->property_is_writeable = dual_role_is_writeable;
+		chip->desc->name = "otg_default";
+		chip->desc->supported_modes = DUAL_ROLE_SUPPORTED_MODES_DFP_AND_UFP;
+		chip->desc->get_property = dual_role_get_prop;
+		chip->desc->set_property = dual_role_set_prop;
+		chip->desc->properties = drp_properties;
+		chip->desc->num_properties = ARRAY_SIZE(drp_properties);
+		chip->desc->property_is_writeable = dual_role_is_writeable;
 		dual_role = devm_dual_role_instance_register(cdev, desc);
 		dual_role->drv_data = chip->client;
 		chip->dual_role = dual_role;
-		chip->desc = desc;
+		//chip->desc; //desc;
 
 		chip->mode = DUAL_ROLE_PROP_MODE_NONE;
 		chip->power_role = DUAL_ROLE_PROP_PR_NONE;
@@ -2494,10 +2495,10 @@ static int anx7688_probe(struct i2c_client *client,
 
 		//ret = 
 		dummy_psy = power_supply_register(cdev, chip->usbpd_psy.desc, NULL); // That assignment is weird, but gcc doesn't complain.
-		/*if (ret < 0) { 
+		if (!dummy_psy) { // Not sure if the check works as intended now... better than not having it though.
 			dev_err(cdev, "unalbe to register psy rc = %d\n", ret);
 			goto err7;
-		}*/ // Let's just assume it always gets registered for now.
+		}
 	}
 
 	ret = anx7688_debugfs_init(chip);
@@ -2515,11 +2516,11 @@ static int anx7688_probe(struct i2c_client *client,
 	schedule_delayed_work(&chip->cwork, msecs_to_jiffies(5000));
 
 	return 0;
-/*err7:
+err7:
 	if (IS_ENABLED(CONFIG_DUAL_ROLE_USB_INTF)) {
 		devm_dual_role_instance_unregister(cdev, chip->dual_role);
 		devm_kfree(cdev, chip->desc);
-	}*/ //Welp, since only the check above uses this, comment it as well to keep the GCC output cleaner
+	}
 err6:
 	if (chip->alter_irq > 0)
 		devm_free_irq(cdev, chip->alter_irq, chip);
