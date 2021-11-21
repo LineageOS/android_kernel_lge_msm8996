@@ -2568,7 +2568,7 @@ static int anx7688_remove(struct i2c_client *client)
 	}
 
 	if (IS_ENABLED(CONFIG_POWER_SUPPLY)) {
-		if (chip->usbpd_psy.dev.init_name != NULL)
+		if (chip->usbpd_psy.dev.init_name != NULL) // Keep an eye on this one too.
 			power_supply_unregister(&chip->usbpd_psy);
 	}
 	if (IS_ENABLED(CONFIG_DUAL_ROLE_USB_INTF)) {
@@ -2622,7 +2622,7 @@ static void anx7688_shutdown(struct i2c_client *client)
 }
 
 #ifdef CONFIG_PM
-/*static int anx7688_suspend(struct device *dev)
+static int anx7688_suspend(struct device *dev)
 {
 	return 0;
 }
@@ -2630,11 +2630,11 @@ static void anx7688_shutdown(struct i2c_client *client)
 static int anx7688_resume(struct device *dev)
 {
 	return 0;
-}*/
+}
 
 static const struct dev_pm_ops anx7688_dev_pm_ops = {
-	//.suspend = anx7688_suspend,
-	//.resume  = anx7688_resume,
+	.suspend = anx7688_suspend,
+	.resume  = anx7688_resume,
 };
 #endif
 
