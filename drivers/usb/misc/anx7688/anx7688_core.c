@@ -2456,7 +2456,6 @@ static int anx7688_probe(struct i2c_client *client,
 		goto err5;
 	}
 
-
 	if (IS_ENABLED(CONFIG_DUAL_ROLE_USB_INTF)) {
 		desc = devm_kzalloc(cdev, sizeof(struct dual_role_phy_desc),
 				GFP_KERNEL);
@@ -2465,34 +2464,41 @@ static int anx7688_probe(struct i2c_client *client,
 			goto err6;
 		}
 
-		chip->desc->name = "otg_default";
-		chip->desc->supported_modes = DUAL_ROLE_SUPPORTED_MODES_DFP_AND_UFP;
-		chip->desc->get_property = dual_role_get_prop;
-		chip->desc->set_property = dual_role_set_prop;
-		chip->desc->properties = drp_properties;
-		chip->desc->num_properties = ARRAY_SIZE(drp_properties);
-		chip->desc->property_is_writeable = dual_role_is_writeable;
+		desc->name = "otg_default";
+		desc->supported_modes = DUAL_ROLE_SUPPORTED_MODES_DFP_AND_UFP;
+		desc->get_property = dual_role_get_prop;
+		desc->set_property = dual_role_set_prop;
+		desc->properties = drp_properties;
+		desc->num_properties = ARRAY_SIZE(drp_properties);
+		desc->property_is_writeable = dual_role_is_writeable;
 		dual_role = devm_dual_role_instance_register(cdev, desc);
 		dual_role->drv_data = chip->client;
 		chip->dual_role = dual_role;
-		//chip->desc; //desc;
+		chip->desc = desc;
 
 		chip->mode = DUAL_ROLE_PROP_MODE_NONE;
 		chip->power_role = DUAL_ROLE_PROP_PR_NONE;
 		chip->data_role = DUAL_ROLE_PROP_DR_NONE;
 	}
+	dev_info(cdev, "anx7688 debug: DUAL_ROLE_USB allocated and configured!\n");
 
 	if (IS_ENABLED(CONFIG_POWER_SUPPLY)) {
-		chip->usbpd_psy.desc->name = "usb_pd";
-		chip->usbpd_psy.desc->type = POWER_SUPPLY_TYPE_UNKNOWN;
-		chip->usbpd_psy.desc->get_property = usbpd_get_property;
-		chip->usbpd_psy.desc->set_property = usbpd_set_property;
-		chip->usbpd_psy.desc->property_is_writeable = usbpd_is_writeable;
-		chip->usbpd_psy.desc->properties = usbpd_properties;
-		chip->usbpd_psy.desc->num_properties = ARRAY_SIZE(usbpd_properties);
-		chip->usbpd_psy.supplied_to = usbpd_supplicants;
-		chip->usbpd_psy.num_supplicants = ARRAY_SIZE(usbpd_supplicants);
-
+		usb_psy = devm_kzalloc(cdev, sizeof(struct power_supply),
+				GFP_KERNEL);
+		usb_psy->desc = devm_kzalloc(cdev, sizeof(struct dual_role_phy_desc),
+				GFP_KERNEL);
+		
+		usb_psy->desc->name = "usb_pd";
+		usb_psy->desc->type = POWER_SUPPLY_TYPE_UNKNOWN;
+		usb_psy->desc->get_property = usbpd_get_property;
+		usb_psy->desc->set_property = usbpd_set_property;
+		usb_psy->desc->property_is_writeable = usbpd_is_writeable;
+		usb_psy->desc->properties = usbpd_properties;
+		usb_psy->desc->num_properties = ARRAY_SIZE(usbpd_properties);
+		usb_psy->supplied_to = usbpd_supplicants;
+		usb_psy->num_supplicants = ARRAY_SIZE(usbpd_supplicants);
+		chip->usbpd_psy = *usb_psy;
+		
 		//ret = 
 		dummy_psy = power_supply_register(cdev, chip->usbpd_psy.desc, NULL); // That assignment is weird, but gcc doesn't complain.
 		if (!dummy_psy) { // Not sure if the check works as intended now... better than not having it though.
@@ -2500,6 +2506,7 @@ static int anx7688_probe(struct i2c_client *client,
 			goto err7;
 		}
 	}
+	dev_info(cdev, "anx7688 debug: Power_supply mode allocated, enabled and registered!\n");
 
 	ret = anx7688_debugfs_init(chip);
 	if (ret)
@@ -2508,12 +2515,15 @@ static int anx7688_probe(struct i2c_client *client,
 	enable_irq_wake(chip->cdet_irq);
 	enable_irq_wake(chip->alter_irq);
 
+
 	if (!!gpio_get_value_cansleep(chip->pdata->cdet_gpio)) {
 		chip->power_ctrl = true;
 		queue_work(chip->cc_wq, &chip->dwork);
 	}
 
 	schedule_delayed_work(&chip->cwork, msecs_to_jiffies(5000));
+
+	dev_info(cdev, "anx7688 debug: Chip work scheduled! OTG and USB_PSY all done, moving out.\n");
 
 	return 0;
 err7:
