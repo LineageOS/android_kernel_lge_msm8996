@@ -866,7 +866,6 @@ static void anx7688_ctype_work(struct work_struct *w)
 		}
 	}
 
-	dev_info(cdev, "Charger_Bit: %d", chip->charger_type ? '1' : '0');
 	/* update charger type*/
 	switch (chip->charger_type) {
 #if defined(CONFIG_LGE_USB_FLOATED_CHARGER_DETECT) && \
