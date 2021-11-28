@@ -861,7 +861,7 @@ static void anx7688_ctype_work(struct work_struct *w)
 		} else {
 			dev_info(cdev, "%s: default usb Power\n", __func__);
 			chip->volt_max = USBC_VOLT_RPUSB;
-			chip->curr_max = 0;
+			chip->curr_max = USBC_CURR_RPUSB;
 			chip->charger_type = USBC_UNKNWON_CHARGER;
 		}
 	}
@@ -924,11 +924,19 @@ static void anx7688_ctype_work(struct work_struct *w)
 		break;
 	default:
 		/* unknown charger */
+		usbprop.intval = POWER_SUPPLY_TYPE_USB; // enum POWER_SUPPLY_TYPE_USB = 4
+		chip->usbpd_psy.desc->type = usbprop.intval;
+		dev_info(cdev, "Charger set to Generic USB, usbprop_intval: %d, usbpd_type: %d\n", usbprop.intval, chip->usbpd_psy.desc->type);
+#ifdef CONFIG_LGE_PM
+		usbpd_set_property_on_batt(chip,
+				POWER_SUPPLY_PROP_CURRENT_CAPABILITY,
+				chip->curr_max);
+#endif		
 		break;
 	}
 
 	if(chip->charger_type == BIT(0))
-		dev_info(cdev, "USB_CHARGER_TYPE:Unknown\n");
+		dev_info(cdev, "USB_CHARGER_TYPE:USB\n");
 	else if(chip->charger_type == BIT(1))
 		dev_info(cdev, "USB_CHARGER_TYPE:USB_C\n");
 	else if(chip->charger_type == BIT(2))
