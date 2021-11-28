@@ -835,6 +835,7 @@ static void anx7688_ctype_work(struct work_struct *w)
 	struct device *cdev = &chip->client->dev;
 	int cc1, cc2;
 	union power_supply_propval usbprop;
+	usbprop.intval = 0; // Just to be sure the code isn't assigning garbage to the integer space
 
 	if (!atomic_read(&chip->power_on))
 		return;
@@ -845,7 +846,7 @@ static void anx7688_ctype_work(struct work_struct *w)
 
 	cc1 = chip->cc1;
 	cc2 = chip->cc2;
-
+	
 	if (chip->charger_type != USBC_PD_CHARGER) {
 		if ((cc1 == CC_RP3P0) || (cc2 == CC_RP3P0)) {
 			chip->volt_max = USBC_VOLT_RP3P0;
@@ -858,13 +859,14 @@ static void anx7688_ctype_work(struct work_struct *w)
 				chip->charger_type = USBC_CHARGER;
 			}
 		} else {
-			dev_dbg(cdev, "%s: default usb Power\n", __func__);
+			dev_info(cdev, "%s: default usb Power\n", __func__);
 			chip->volt_max = USBC_VOLT_RPUSB;
 			chip->curr_max = 0;
 			chip->charger_type = USBC_UNKNWON_CHARGER;
 		}
 	}
 
+	dev_info(cdev, "Charger_Bit: %d", chip->charger_type ? '1' : '0');
 	/* update charger type*/
 	switch (chip->charger_type) {
 #if defined(CONFIG_LGE_USB_FLOATED_CHARGER_DETECT) && \
@@ -874,16 +876,17 @@ static void anx7688_ctype_work(struct work_struct *w)
 	case USBC_CHARGER:
 		//power_supply_set_supply_type(&chip->usbpd_psy,
 		//		POWER_SUPPLY_TYPE_TYPEC);
-		usbprop.intval = POWER_SUPPLY_TYPE_TYPEC;
-		power_supply_set_property(&chip->usbpd_psy, POWER_SUPPLY_PROP_TYPE, 
-							&usbprop);
+		usbprop.intval = POWER_SUPPLY_TYPE_TYPEC; // enum POWER_SUPPLY_TYPE_TYPEC = 17
+		chip->usbpd_psy.desc->type = usbprop.intval;
+		//power_supply_set_property(&chip->usbpd_psy, POWER_SUPPLY_PROP_TYPE, 
+		//					&usbprop);
 		
 #ifdef CONFIG_LGE_PM
 		usbpd_set_property_on_batt(chip,
 				POWER_SUPPLY_PROP_CURRENT_CAPABILITY,
 				chip->curr_max);
 #endif
-
+		dev_info(cdev, "Charger set to USB_C, usbprop_intval: %d, usbpd_type: %d\n", usbprop.intval, chip->usbpd_psy.desc->type);
 		break;
 	case USBC_PD_CHARGER:
 #if defined (CONFIG_MACH_MSM8996_ELSA) || defined (CONFIG_MACH_MSM8996_LUCYE) || defined (CONFIG_MACH_MSM8996_ANNA)
@@ -906,9 +909,12 @@ static void anx7688_ctype_work(struct work_struct *w)
 		}
 #endif
 #endif		
-		usbprop.intval = POWER_SUPPLY_TYPE_USB_PD;
-		power_supply_set_property(&chip->usbpd_psy, POWER_SUPPLY_PROP_TYPE, 
-							&usbprop);
+		usbprop.intval = POWER_SUPPLY_TYPE_USB_PD; // enum POWER_SUPPLY_TYPE_USB_PD = 10
+		chip->usbpd_psy.desc->type = usbprop.intval;
+		//power_supply_set_property(&chip->usbpd_psy, POWER_SUPPLY_PROP_TYPE, 
+		//					&usbprop);
+
+		dev_info(cdev, "Charger set to USB_PD, usbprop_intval: %d, usbpd_type: %d\n", usbprop.intval, chip->usbpd_psy.desc->type);
 		//power_supply_set_supply_type(&chip->usbpd_psy,
 		//		POWER_SUPPLY_TYPE_USB_PD);
 #ifdef CONFIG_LGE_PM
@@ -921,6 +927,15 @@ static void anx7688_ctype_work(struct work_struct *w)
 		/* unknown charger */
 		break;
 	}
+
+	if(chip->charger_type == BIT(0))
+		dev_info(cdev, "USB_CHARGER_TYPE:Unknown\n");
+	else if(chip->charger_type == BIT(1))
+		dev_info(cdev, "USB_CHARGER_TYPE:USB_C\n");
+	else if(chip->charger_type == BIT(2))
+		dev_info(cdev, "USB_CHARGER_TYPE:USB_PD\n");
+
+	dev_info(cdev, "Checking usbpd_type again: %d\n", chip->usbpd_psy.desc->type);
 
 	dev_info(cdev, "%s: %s, %dmV, %dmA\n", __func__,
 			usbc_to_string(chip->usbpd_psy.desc->type),
@@ -1159,6 +1174,8 @@ static void anx7688_src_detect(struct anx7688_chip *chip, int cc1, int cc2)
 {
 #if defined(CONFIG_LGE_USB_ANX7688_OVP)
 	union power_supply_propval prop;
+	struct i2c_client *client = chip->client;
+	struct device *cdev = &client->dev;
 #endif
 	chip->cc1 = cc1;
 	chip->cc2 = cc2;
@@ -1209,6 +1226,7 @@ static void anx7688_src_detect(struct anx7688_chip *chip, int cc1, int cc2)
 			POWER_SUPPLY_PROP_TYPE, &prop);
 #endif
 #endif
+	dev_info(cdev, "Detected source integer val:%d \n", prop.intval);
 	chip->mode = DUAL_ROLE_PROP_MODE_UFP;
 	/*
 	 * mi1 firmware bug:
@@ -2302,7 +2320,7 @@ static int anx7688_probe(struct i2c_client *client,
 {
 	struct anx7688_chip *chip;
 	struct device *cdev = &client->dev;
-	struct power_supply *usb_psy, *dummy_psy;
+	struct power_supply *usb_psy, *test_psy;
 	struct power_supply *batt_psy;
 	struct dual_role_phy_desc *desc;
 	struct dual_role_phy_instance *dual_role;
@@ -2485,7 +2503,7 @@ static int anx7688_probe(struct i2c_client *client,
 	if (IS_ENABLED(CONFIG_POWER_SUPPLY)) {
 		usb_psy = devm_kzalloc(cdev, sizeof(struct power_supply),
 				GFP_KERNEL);
-		usb_psy->desc = devm_kzalloc(cdev, sizeof(struct dual_role_phy_desc),
+		usb_psy->desc = devm_kzalloc(cdev, sizeof(struct power_supply_desc),
 				GFP_KERNEL);
 		
 		usb_psy->desc->name = "usb_pd";
@@ -2500,8 +2518,9 @@ static int anx7688_probe(struct i2c_client *client,
 		chip->usbpd_psy = *usb_psy;
 		
 		//ret = 
-		dummy_psy = power_supply_register(cdev, chip->usbpd_psy.desc, NULL); // That assignment is weird, but gcc doesn't complain.
-		if (!dummy_psy) { // Not sure if the check works as intended now... better than not having it though.
+		chip->usbpd_psy = *power_supply_register(cdev, chip->usbpd_psy.desc, NULL); // That assignment is weird, but gcc doesn't complain.
+		test_psy = &chip->usbpd_psy;
+		if (!test_psy) { // Not sure if the check works as intended now... better than not having it though.
 			dev_err(cdev, "unalbe to register psy rc = %d\n", ret);
 			goto err7;
 		}
