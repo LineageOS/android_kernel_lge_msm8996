@@ -618,7 +618,7 @@ static const char *usbc_to_string(enum power_supply_type type)
 	case POWER_SUPPLY_TYPE_USB_PD:
 		return "USB Type-C PD Charger";
 	default:
-		return "Unknown Charger";
+		return "Generic USB Charger";
 	}
 }
 
@@ -873,8 +873,6 @@ static void anx7688_ctype_work(struct work_struct *w)
 	union power_supply_propval prop;
 #endif
 	case USBC_CHARGER:
-		//power_supply_set_supply_type(&chip->usbpd_psy,
-		//		POWER_SUPPLY_TYPE_TYPEC);
 		usbprop.intval = POWER_SUPPLY_TYPE_TYPEC; // enum POWER_SUPPLY_TYPE_TYPEC = 17
 		chip->usbpd_psy.desc->type = usbprop.intval;
 		//power_supply_set_property(&chip->usbpd_psy, POWER_SUPPLY_PROP_TYPE, 
@@ -912,10 +910,7 @@ static void anx7688_ctype_work(struct work_struct *w)
 		chip->usbpd_psy.desc->type = usbprop.intval;
 		//power_supply_set_property(&chip->usbpd_psy, POWER_SUPPLY_PROP_TYPE, 
 		//					&usbprop);
-
 		dev_info(cdev, "Charger set to USB_PD, usbprop_intval: %d, usbpd_type: %d\n", usbprop.intval, chip->usbpd_psy.desc->type);
-		//power_supply_set_supply_type(&chip->usbpd_psy,
-		//		POWER_SUPPLY_TYPE_USB_PD);
 #ifdef CONFIG_LGE_PM
 		usbpd_set_property_on_batt(chip,
 				POWER_SUPPLY_PROP_CURRENT_CAPABILITY,
@@ -941,8 +936,6 @@ static void anx7688_ctype_work(struct work_struct *w)
 		dev_info(cdev, "USB_CHARGER_TYPE:USB_C\n");
 	else if(chip->charger_type == BIT(2))
 		dev_info(cdev, "USB_CHARGER_TYPE:USB_PD\n");
-
-	dev_info(cdev, "Checking usbpd_type again: %d\n", chip->usbpd_psy.desc->type);
 
 	dev_info(cdev, "%s: %s, %dmV, %dmA\n", __func__,
 			usbc_to_string(chip->usbpd_psy.desc->type),
@@ -1181,8 +1174,6 @@ static void anx7688_src_detect(struct anx7688_chip *chip, int cc1, int cc2)
 {
 #if defined(CONFIG_LGE_USB_ANX7688_OVP)
 	union power_supply_propval prop;
-	struct i2c_client *client = chip->client;
-	struct device *cdev = &client->dev;
 #endif
 	chip->cc1 = cc1;
 	chip->cc2 = cc2;
@@ -1233,7 +1224,6 @@ static void anx7688_src_detect(struct anx7688_chip *chip, int cc1, int cc2)
 			POWER_SUPPLY_PROP_TYPE, &prop);
 #endif
 #endif
-	dev_info(cdev, "Detected source integer val:%d \n", prop.intval);
 	chip->mode = DUAL_ROLE_PROP_MODE_UFP;
 	/*
 	 * mi1 firmware bug:
@@ -2505,7 +2495,6 @@ static int anx7688_probe(struct i2c_client *client,
 		chip->power_role = DUAL_ROLE_PROP_PR_NONE;
 		chip->data_role = DUAL_ROLE_PROP_DR_NONE;
 	}
-	dev_info(cdev, "anx7688 debug: DUAL_ROLE_USB allocated and configured!\n");
 
 	if (IS_ENABLED(CONFIG_POWER_SUPPLY)) {
 		usb_psy = devm_kzalloc(cdev, sizeof(struct power_supply),
@@ -2532,7 +2521,6 @@ static int anx7688_probe(struct i2c_client *client,
 			goto err7;
 		}
 	}
-	dev_info(cdev, "anx7688 debug: Power_supply mode allocated, enabled and registered!\n");
 
 	ret = anx7688_debugfs_init(chip);
 	if (ret)
@@ -2549,7 +2537,7 @@ static int anx7688_probe(struct i2c_client *client,
 
 	schedule_delayed_work(&chip->cwork, msecs_to_jiffies(5000));
 
-	dev_info(cdev, "anx7688 debug: Chip work scheduled! OTG and USB_PSY all done, moving out.\n");
+	dev_info(cdev, "Chip work scheduled! OTG and USB_PSY configured.\n");
 
 	return 0;
 err7:
