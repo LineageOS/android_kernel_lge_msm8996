@@ -22,12 +22,12 @@ static enum power_supply_property chg_properties[] = {
 static const char *chg_to_string(enum power_supply_type type)
 {
 	switch (type) {
-	case POWER_SUPPLY_TYPE_CTYPE:
+	case POWER_SUPPLY_TYPE_TYPEC:
 		return "USB Type-C Charger";
-	case POWER_SUPPLY_TYPE_CTYPE_PD:
+	case POWER_SUPPLY_TYPE_USB_PD:
 		return "USB Type-C PD Charger";
 	default:
-		return "Unknown Charger";
+		return "Generic USB Charger";
 	}
 }
 
@@ -66,8 +66,8 @@ static int chg_get_property(struct power_supply *psy,
 
 	case POWER_SUPPLY_PROP_TYPE:
 		dev_dbg(cdev, "%s: type(%s)\n", __func__,
-				chg_to_string(chg->psy.type));
-		val->intval = chg->psy.type;
+				chg_to_string(chg->psy.desc->type));
+		val->intval = chg->psy.desc->type;
 		break;
 
 	case POWER_SUPPLY_PROP_TYPEC_MODE:
@@ -75,7 +75,7 @@ static int chg_get_property(struct power_supply *psy,
 		dev_dbg(cdev, "%s: CC_STATUS(%02X)\n", __func__, rc);
 
 		val->intval = (rc == 0x11) ?
-			POWER_SUPPLY_TYPE_CTYPE_DEBUG_ACCESSORY :
+			POWER_SUPPLY_TYPEC_SINK_DEBUG_ACCESSORY :
 			POWER_SUPPLY_TYPE_UNKNOWN;
 		break;
 
@@ -101,6 +101,7 @@ static int chg_set_property(struct power_supply *psy,
 			struct anx7418_charger, psy);
 	struct anx7418 *anx = chg->anx;
 	struct device *cdev = &chg->anx->client->dev;
+	union power_supply_propval presentprop;
 	int rc;
 
 	switch (prop) {
@@ -135,11 +136,14 @@ static int chg_set_property(struct power_supply *psy,
 					anx7418_set_dr(anx, DUAL_ROLE_PROP_DR_NONE);
 				} else if (anx->dr == DUAL_ROLE_PROP_DR_NONE) {
 					union power_supply_propval prop;
-					anx->usb_psy->get_property(anx->usb_psy,
+					anx->usb_psy->desc->get_property(anx->usb_psy,
 							POWER_SUPPLY_PROP_PRESENT, &prop);
 					if (prop.intval) {
 						dev_info(cdev, "power down by charger\n");
-						power_supply_set_present(anx->usb_psy, 0);
+						//power_supply_set_present(anx->usb_psy, 0);
+						presentprop.intval = 0;
+						power_supply_set_property(anx->usb_psy, 
+							POWER_SUPPLY_PROP_PRESENT,&presentprop);
 					}
 				}
 			}
@@ -174,17 +178,17 @@ static int chg_set_property(struct power_supply *psy,
 
 	case POWER_SUPPLY_PROP_TYPE:
 		switch (val->intval) {
-		case POWER_SUPPLY_TYPE_CTYPE:
-		case POWER_SUPPLY_TYPE_CTYPE_PD:
+		case POWER_SUPPLY_TYPE_TYPEC:
+		case POWER_SUPPLY_TYPE_USB_PD:
 		case POWER_SUPPLY_TYPE_USB_HVDCP:
 		case POWER_SUPPLY_TYPE_USB_HVDCP_3:
-			psy->type = val->intval;
+			psy->desc->type = val->intval;
 			break;
 		default:
-			psy->type = POWER_SUPPLY_TYPE_UNKNOWN;
+			psy->desc->type = POWER_SUPPLY_TYPE_UNKNOWN;
 			break;
 		}
-		dev_dbg(cdev, "%s: type(%s)\n", __func__, chg_to_string(psy->type));
+		dev_dbg(cdev, "%s: type(%s)\n", __func__, chg_to_string(psy->desc->type));
 
 		break;
 
@@ -235,15 +239,17 @@ static void chg_work(struct work_struct *w)
 	struct anx7418 *anx = chg->anx;
 	struct i2c_client *client = anx->client;
 	struct device *cdev = &client->dev;
-	int rc = 0;
-
+	union power_supply_propval usbprop;
+	int rc;
+	usbprop.intval = 0; // Just to be sure the code isn't assigning garbage to the integer space
+	
 	down_read(&anx->rwsem);
 
 	if (!atomic_read(&anx->pwr_on))
 		goto out;
 
-	if (chg->psy.type == POWER_SUPPLY_TYPE_USB_HVDCP ||
-	    chg->psy.type == POWER_SUPPLY_TYPE_USB_HVDCP_3)
+	if (chg->psy.desc->type == POWER_SUPPLY_TYPE_USB_HVDCP ||
+	    chg->psy.desc->type == POWER_SUPPLY_TYPE_USB_HVDCP_3)
 		goto out;
 
 	if (chg->ctype_charger != ANX7418_CTYPE_PD_CHARGER) {
@@ -266,7 +272,7 @@ static void chg_work(struct work_struct *w)
 			// Default USB Current
 			dev_info(cdev, "%s: Default USB Power\n", __func__);
 			chg->volt_max = 5000;
-			chg->curr_max = 0;
+			chg->curr_max = 500;
 			chg->ctype_charger = ANX7418_UNKNOWN_CHARGER;
 		}
 	}
@@ -277,25 +283,23 @@ static void chg_work(struct work_struct *w)
 	union power_supply_propval prop;
 #endif
 	case ANX7418_CTYPE_CHARGER:
-		power_supply_set_supply_type(&chg->psy,
-					POWER_SUPPLY_TYPE_CTYPE);
-#if defined(CONFIG_LGE_USB_FLOATED_CHARGER_DETECT) && defined(CONFIG_LGE_USB_TYPE_C)
-		anx->usb_psy->set_property(anx->usb_psy, POWER_SUPPLY_PROP_CTYPE_CHARGER, &prop);
-#endif
+		usbprop.intval = POWER_SUPPLY_TYPE_TYPEC; // enum POWER_SUPPLY_TYPE_TYPEC = 17
+		chg->psy.desc->type = usbprop.intval;
+		//power_supply_set_supply_type(&chg->psy,
+		//			POWER_SUPPLY_TYPE_TYPEC);
 		break;
 	case ANX7418_CTYPE_PD_CHARGER:
-		power_supply_set_supply_type(&chg->psy,
-					POWER_SUPPLY_TYPE_CTYPE_PD);
-#if defined(CONFIG_LGE_USB_FLOATED_CHARGER_DETECT) && defined(CONFIG_LGE_USB_TYPE_C)
-		anx->usb_psy->set_property(anx->usb_psy, POWER_SUPPLY_PROP_CTYPE_CHARGER, &prop);
-#endif
+		usbprop.intval = POWER_SUPPLY_TYPE_USB_PD; // enum POWER_SUPPLY_TYPE_USB_PD = 10
+		chg->psy.desc->type = usbprop.intval;
+		//power_supply_set_supply_type(&chg->psy,
+		//			POWER_SUPPLY_TYPE_USB_PD);
 		break;
 	default: // unknown charger
 		goto out;
 	}
 
 	dev_info(cdev, "%s: %s, %dmV, %dmA\n", __func__,
-			chg_to_string(chg->psy.type),
+			chg_to_string(chg->psy.desc->type),
 			chg->volt_max,
 			chg->curr_max);
 
@@ -308,28 +312,43 @@ int anx7418_charger_init(struct anx7418 *anx)
 {
 	struct anx7418_charger *chg = &anx->chg;
 	struct device *cdev = &anx->client->dev;
-	int rc;
+	struct power_supply *usb_psy, *test_psy;
+	union power_supply_propval usbprop;
+	//int rc;
+	usbprop.intval = 0;
 
-	chg->psy.name = "usb_pd";
-	chg->psy.type = POWER_SUPPLY_TYPE_CTYPE;
-	chg->psy.get_property = chg_get_property;
-	chg->psy.set_property = chg_set_property;
-	chg->psy.property_is_writeable = chg_is_writeable;
-	chg->psy.properties = chg_properties;
-	chg->psy.num_properties = ARRAY_SIZE(chg_properties);
-	chg->psy.supplied_to = chg_supplicants;
-	chg->psy.num_supplicants = ARRAY_SIZE(chg_supplicants);
+	usb_psy = devm_kzalloc(cdev, sizeof(struct power_supply),
+				GFP_KERNEL);
+	usb_psy->desc = devm_kzalloc(cdev, sizeof(struct power_supply_desc),
+				GFP_KERNEL);
+
+	usb_psy->desc->name = "usb_pd";
+	usb_psy->desc->type = POWER_SUPPLY_TYPE_TYPEC;
+	usb_psy->desc->get_property = chg_get_property;
+	usb_psy->desc->set_property = chg_set_property;
+	usb_psy->desc->property_is_writeable = chg_is_writeable;
+	usb_psy->desc->properties = chg_properties;
+	usb_psy->desc->num_properties = ARRAY_SIZE(chg_properties);
+	usb_psy->supplied_to = chg_supplicants;
+	usb_psy->num_supplicants = ARRAY_SIZE(chg_supplicants);
+	chg->psy = *usb_psy;
 
 	chg->anx = anx;
+	dev_info(cdev, "USB_PD_CHARGER configured");
 	INIT_DELAYED_WORK(&chg->chg_work, chg_work);
-
-	rc = power_supply_register(cdev, &chg->psy);
-	if (rc < 0) {
-		dev_err(cdev, "Unalbe to register ctype_psy rc = %d\n", rc);
+	dev_info(cdev, "USB_PD_CHARGER work initialized");
+	//rc = 
+	chg->psy = *power_supply_register(cdev, chg->psy.desc, NULL);
+	dev_info(cdev, "USB_PD_CHARGER power_supply registeered");
+	test_psy = &chg->psy;
+	if (!test_psy) {
+		dev_err(cdev, "Unalbe to register ctype_psy");
 		return -EPROBE_DEFER;
 	}
 
-	power_supply_set_supply_type(&chg->psy, POWER_SUPPLY_TYPE_UNKNOWN);
-
+	//power_supply_set_supply_type(&chg->psy, POWER_SUPPLY_TYPE_UNKNOWN);
+	usbprop.intval = POWER_SUPPLY_TYPE_UNKNOWN;
+	chg->psy.desc->type = usbprop.intval;
+	dev_info(cdev, "Charger init done, configured and registered.");
 	return 0;
 }
