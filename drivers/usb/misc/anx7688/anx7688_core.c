@@ -937,10 +937,14 @@ static void anx7688_ctype_work(struct work_struct *w)
 	else if(chip->charger_type == BIT(2))
 		dev_info(cdev, "USB_CHARGER_TYPE:USB_PD\n");
 
-	dev_info(cdev, "%s: %s, %dmV, %dmA\n", __func__,
-			usbc_to_string(chip->usbpd_psy.desc->type),
-			chip->volt_max,
-			chip->curr_max);
+	if(chip->charger_type == BIT(0)) // Check if the charger is a PC USB Port with variable max current
+		dev_info(cdev, "%s: %s, %dmV, %dmA to %dmA\n", __func__,
+				usbc_to_string(chip->usbpd_psy.desc->type),
+				chip->volt_max, chip->curr_max, chip->curr_max+500);	
+	else
+		dev_info(cdev, "%s: %s, %dmV, %dmA\n", __func__,
+				usbc_to_string(chip->usbpd_psy.desc->type),
+				chip->volt_max, chip->curr_max);
 
 	power_supply_changed(&chip->usbpd_psy);
 
