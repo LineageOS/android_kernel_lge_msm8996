@@ -334,12 +334,10 @@ int anx7418_charger_init(struct anx7418 *anx)
 	chg->psy = *usb_psy;
 
 	chg->anx = anx;
-	dev_info(cdev, "USB_PD_CHARGER configured");
 	INIT_DELAYED_WORK(&chg->chg_work, chg_work);
-	dev_info(cdev, "USB_PD_CHARGER work initialized");
+
 	//rc = 
 	chg->psy = *power_supply_register(cdev, chg->psy.desc, NULL);
-	dev_info(cdev, "USB_PD_CHARGER power_supply registeered");
 	test_psy = &chg->psy;
 	if (!test_psy) {
 		dev_err(cdev, "Unalbe to register ctype_psy");
