@@ -14,6 +14,7 @@ static bool try_src(struct anx7418 *anx, unsigned long timeout)
 	struct i2c_client *client = anx->client;
 	struct device *cdev = &client->dev;
 	unsigned long expire;
+	union power_supply_propval otgprop;
 
 	wake_lock_timeout(&anx->wlock, msecs_to_jiffies(2000));
 
@@ -22,7 +23,10 @@ static bool try_src(struct anx7418 *anx, unsigned long timeout)
 		return true;
 	}
 
-	power_supply_set_usb_otg(&anx->chg.psy, 0);
+	// power_supply_set_usb_otg(&anx->chg.psy, 0);
+	otgprop.intval = 0;
+	power_supply_set_property(&anx->chg.psy, 
+			POWER_SUPPLY_PROP_USB_OTG, &otgprop);
 	anx->pr = DUAL_ROLE_PROP_PR_SNK;
 
 	anx7418_write_reg(client, RESET_CTRL_0, R_OCM_RESET | R_PD_RESET);
@@ -41,7 +45,11 @@ static bool try_src(struct anx7418 *anx, unsigned long timeout)
 	}
 
 	anx7418_set_mode(anx, DUAL_ROLE_PROP_MODE_DFP);
-	power_supply_set_usb_otg(&anx->chg.psy, 1);
+	// power_supply_set_usb_otg(&anx->chg.psy, 1);
+	otgprop.intval = 1;
+	power_supply_set_property(&anx->chg.psy, 
+			POWER_SUPPLY_PROP_USB_OTG, &otgprop);
+
 	anx->pr = DUAL_ROLE_PROP_PR_SRC;
 	anx7418_set_dr(anx, DUAL_ROLE_PROP_DR_HOST);
 #ifdef CONFIG_DUAL_ROLE_USB_INTF
