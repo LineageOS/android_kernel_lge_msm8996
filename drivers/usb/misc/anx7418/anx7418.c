@@ -420,6 +420,7 @@ static void i2c_work(struct work_struct *w)
 	struct anx7418 *anx = container_of(w, struct anx7418, i2c_work);
 	struct i2c_client *client = anx->client;
 	struct device *cdev = &client->dev;
+	union power_supply_propval otgprop;
 	int irq;
 	int status;
 #ifdef CONFIG_DUAL_ROLE_USB_INTF
@@ -564,7 +565,11 @@ static void i2c_work(struct work_struct *w)
 				anx_dbg_event("DFP", 0);
 
 				anx7418_set_mode(anx, DUAL_ROLE_PROP_MODE_DFP);
-				power_supply_set_usb_otg(&anx->chg.psy, 1);
+				// power_supply_set_usb_otg(&anx->chg.psy, 1);
+				otgprop.intval = 1;
+				power_supply_set_property(&anx->chg.psy, 
+						POWER_SUPPLY_PROP_USB_OTG, &otgprop);
+
 				anx->pr = DUAL_ROLE_PROP_PR_SRC;
 
 				anx7418_set_dr(anx, DUAL_ROLE_PROP_DR_HOST);
@@ -587,11 +592,17 @@ static void i2c_work(struct work_struct *w)
 	if (!(intf_irq_mask & VBUS_CHG) && (irq & VBUS_CHG)) {
 		if (status & VBUS_STATUS) {
 			dev_dbg(cdev, "%s: VBUS ON\n", __func__);
-			power_supply_set_usb_otg(&anx->chg.psy, 1);
+			// power_supply_set_usb_otg(&anx->chg.psy, 1);
+			otgprop.intval = 1;
+			power_supply_set_property(&anx->chg.psy, 
+					POWER_SUPPLY_PROP_USB_OTG, &otgprop);
 			anx->pr = DUAL_ROLE_PROP_PR_SRC;
 		} else {
 			dev_dbg(cdev, "%s: VBUS OFF\n", __func__);
-			power_supply_set_usb_otg(&anx->chg.psy, 0);
+			// power_supply_set_usb_otg(&anx->chg.psy, 0);
+			otgprop.intval = 0;
+			power_supply_set_property(&anx->chg.psy, 
+					POWER_SUPPLY_PROP_USB_OTG, &otgprop);
 			anx->pr = DUAL_ROLE_PROP_PR_SNK;
 		}
 #ifdef CONFIG_DUAL_ROLE_USB_INTF
