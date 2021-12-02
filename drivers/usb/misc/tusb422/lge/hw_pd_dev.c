@@ -442,7 +442,6 @@ print_vbus_state:
 	case PD_DPM_PE_EVT_PR_SWAP:
 		break;
 
-#if defined(CONFIG_LGE_USB_FACTORY)
 	case PD_DPM_PE_EVT_DEBUG_ACCESSORY:
 	{
 		bool is_debug_accessory = *(bool *)state;
@@ -452,15 +451,12 @@ print_vbus_state:
 
 		dev->is_debug_accessory = is_debug_accessory;
 
-#ifdef CONFIG_LGE_USB_FACTORY
 		dev->typec_mode = is_debug_accessory ?
 			POWER_SUPPLY_TYPE_CTYPE_DEBUG_ACCESSORY :
 			POWER_SUPPLY_TYPE_UNKNOWN;
-#endif
 
 		break;
 	}
-#endif
 
 #ifdef CONFIG_LGE_USB_MOISTURE_DETECT
 	case PD_DPM_PE_EVENT_GET_SBU_ADC:
@@ -503,10 +499,7 @@ int hw_pd_dev_init(struct device *dev)
 #ifdef MOISTURE_DETECT_USE_SBU_TEST
 	_hw_pd_dev.moisture_detect_use_sbu = true;
 #else
-#ifdef CONFIG_LGE_USB_FACTORY
-	if (!IS_FACTORY_MODE)
-#endif
-	if (lge_get_board_rev_no() >= HW_REV_1_3)
+	if (!IS_FACTORY_MODE && lge_get_board_rev_no() >= HW_REV_1_3)
 		_hw_pd_dev.moisture_detect_use_sbu = true;
 #endif
 #ifndef CONFIG_MACH_MSM8996_LUCYE_KR
