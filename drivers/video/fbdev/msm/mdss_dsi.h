@@ -400,13 +400,6 @@ struct dsi_panel_timing {
 	struct dsi_panel_cmds on_cmds;
 #if defined(CONFIG_LGE_DISPLAY_BL_EXTENDED)
 	struct dsi_panel_cmds display_on_cmds;
-#if defined(CONFIG_LGE_DISPLAY_MFTS_DET_SUPPORTED)
-	struct dsi_panel_cmds trimming_cmds;
-	struct dsi_panel_cmds cam_cmds;
-	struct dsi_panel_cmds screen_cmds_102v;
-	struct dsi_panel_cmds screen_cmds_129v;
-	struct dsi_panel_cmds screen_cmds_132v;
-#endif
 #endif
 #if defined(CONFIG_LGE_ENHANCE_GALLERY_SHARPNESS)
 	struct dsi_panel_cmds sharpness_on_cmds;
@@ -589,13 +582,6 @@ struct mdss_dsi_ctrl_pdata {
 	struct dsi_panel_cmds on_cmds;
 #if defined(CONFIG_LGE_DISPLAY_BL_EXTENDED)
 	struct dsi_panel_cmds display_on_cmds;
-#if defined(CONFIG_LGE_DISPLAY_MFTS_DET_SUPPORTED)
-	struct dsi_panel_cmds trimming_cmds;
-	struct dsi_panel_cmds cam_cmds;
-	struct dsi_panel_cmds screen_cmds_102v;
-	struct dsi_panel_cmds screen_cmds_129v;
-	struct dsi_panel_cmds screen_cmds_132v;
-#endif
 #endif
 #if defined(CONFIG_LGE_DISPLAY_COMMON)
 	struct dsi_panel_cmds vcom_cmds;

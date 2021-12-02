@@ -45,16 +45,10 @@
 #include <linux/input/lge_touch_notify.h>
 int panel_not_connected;
 int skip_lcd_error_check;
-int laf_mode_check;
 #endif
 
 #ifdef CONFIG_LGE_DISPLAY_COMMON
 #include "lge/lge_mdss_display.h"
-#endif
-
-#if defined(CONFIG_LGE_DISPLAY_MFTS_DET_SUPPORTED)
-#include <soc/qcom/lge/board_lge.h>
-extern int lge_set_validate_lcd_reg(void);
 #endif
 
 /* Master structure to hold all the information about the DSI/panel */
@@ -1582,9 +1576,6 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 	struct mipi_panel_info *mipi;
 	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
 	int cur_power_state;
-#if defined(CONFIG_LGE_DISPLAY_MFTS_DET_SUPPORTED)
-	static int dic_vdds_set = 1;
-#endif
 
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
@@ -1681,14 +1672,6 @@ int mdss_dsi_on(struct mdss_panel_data *pdata)
 				  MDSS_DSI_ALL_CLKS, MDSS_DSI_CLK_OFF);
 
 end:
-#if defined(CONFIG_LGE_DISPLAY_MFTS_DET_SUPPORTED)
-	if (lge_get_factory_boot()) {
-		if(dic_vdds_set) {
-			lge_set_validate_lcd_reg();
-			dic_vdds_set = 0;
-		}
-	}
-#endif
 	pr_debug("%s-:\n", __func__);
 	return ret;
 }
@@ -3368,15 +3351,6 @@ static struct device_node *mdss_dsi_find_panel_of_node(
 				panel_name[i] = *(str1 + i);
 			panel_name[i] = 0;
 		}
-#if defined(CONFIG_LGE_DISPLAY_LUCYE_COMMON)
-		panel_not_connected = lge_get_lk_panel_status();
-		laf_mode_check = strcmp(lge_get_boot_partition(), "laf");
-		if ((panel_not_connected && !laf_mode_check  && !lge_get_mfts_mode())) {
-			pr_err("%s: laf mode detected panel init skip[%d]\n",
-				__func__, panel_not_connected);
-			goto exit;
-		}
-#endif
 		pr_info("%s: cmdline:%s panel_name:%s\n",
 			__func__, panel_cfg, panel_name);
 		if (!strcmp(panel_name, NONE_PANEL))
@@ -4742,11 +4716,11 @@ static int mdss_dsi_parse_gpio_params(struct platform_device *ctrl_pdev,
 	pr_debug("%s: lk panel init fail[%d]\n",
 			__func__, panel_not_connected);
 
-	if (detect_factory_cable()){
+	if (detect_factory_cable()) {
 		pr_info("boot mode : factory cable detected\n");
-		if (!lge_get_mfts_mode() && panel_not_connected){
+		if (panel_not_connected) {
 			skip_lcd_error_check = 1;
-			pr_info("no MFTS and panel not connected. will skip lcd error check routine\n");
+			pr_info("panel not connected. will skip lcd error check routine\n");
 		}
 	}
 #endif

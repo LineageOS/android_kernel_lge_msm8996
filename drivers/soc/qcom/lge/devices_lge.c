@@ -31,7 +31,7 @@ static int lcd_get_values(int *tun_lcd_t)
 	return 0;
 }
 
-static struct lcd_platform_data lcd_pdata ={
+static struct lcd_platform_data lcd_pdata = {
 	.set_values = lcd_set_values,
 	.get_values = lcd_get_values,
 };
@@ -39,7 +39,7 @@ static struct lcd_platform_data lcd_pdata ={
 static struct platform_device lcd_ctrl_device = {
 	.name = "lcd_ctrl",
 	.dev = {
-	.platform_data = &lcd_pdata,
+		.platform_data = &lcd_pdata,
 	}
 };
 

@@ -228,14 +228,6 @@ config LGE_THERMAL_BL_MAX
 	---help---
 	if you say yes here you get support for thermal bl max value.
 
-config LGE_LCD_MFTS_MODE
-	depends on LGE_LCD_POWER_CTRL
-	bool "LCD MFTS mode"
-	depends on MACH_LGE
-	default y
-	---help---
-	if you say yes here you get support for lcd mfts control.
-
 config LGE_CAM_PREVIEW_TUNE
 	bool "Enable LGE_CAM_PREVIEW_TUNE"
 	default n
@@ -362,12 +354,6 @@ config LGE_DISPLAY_BL_EXTENDED
 	default n
 	---help---
 	Support dual backlight
-
-config LGE_DISPLAY_MFTS_DET_SUPPORTED
-	bool "LG MFTS Detection"
-	default n
-	---help---
-	Support MFTS Detection
 
 config LGE_DISPLAY_LUCYE_COMMON
 	depends on LGE_DISPLAY_COMMON

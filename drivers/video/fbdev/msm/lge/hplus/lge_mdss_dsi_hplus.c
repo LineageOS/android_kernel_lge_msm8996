@@ -92,8 +92,7 @@ int lge_panel_power_off(struct mdss_panel_data *pdata)
 
 	pr_err("[Display] %s+: ndx=%d\n", __func__, ctrl_pdata->ndx);
 
-	if (!(panel_not_connected && detect_factory_cable() &&
-						!lge_get_mfts_mode())) {
+	if (!(panel_not_connected && detect_factory_cable())) {
 		if (mdss_dsi_is_right_ctrl(ctrl_pdata)) {
 			pr_err("%s:%d, right ctrl configuration not needed\n",
 				__func__, __LINE__);
@@ -129,9 +128,9 @@ int lge_panel_power_off(struct mdss_panel_data *pdata)
 			ctrl_pdata->panel_power_data.num_vreg,
 			REGULATOR_MODE_SPARE_ON);
 	if (ret)
-		pr_err("%s fail to set mfts mode : %d\n", __func__, ret);
+		pr_err("%s failed to set spare mode : %d\n", __func__, ret);
 	else
-		pr_info("%s: set spare on  mode\n", __func__);
+		pr_info("%s: set spare on mode\n", __func__);
 
 	ret = mdss_dsi_panel_reset(pdata, 0);
 	if (ret)
@@ -182,8 +181,7 @@ int lge_panel_power_on(struct mdss_panel_data *pdata)
 
 	pr_err("[Display] %s+: ndx=%d\n", __func__, ctrl_pdata->ndx);
 
-	if (!(panel_not_connected && detect_factory_cable() &&
-						!lge_get_mfts_mode())) {
+	if (!(panel_not_connected && detect_factory_cable())) {
 		if (mdss_dsi_is_right_ctrl(ctrl_pdata)) {
 			pr_err("%s:%d, right ctrl configuration not needed\n",
 				__func__, __LINE__);

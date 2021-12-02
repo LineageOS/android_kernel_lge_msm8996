@@ -24,10 +24,6 @@
 #include "mdss_debug.h"
 #include "mdss_dsi_phy.h"
 
-#if defined(CONFIG_LGE_DISPLAY_MFTS_DET_SUPPORTED)
-#include <soc/qcom/lge/board_lge.h>
-#endif
-
 #define MDSS_DSI_DSIPHY_REGULATOR_CTRL_0	0x00
 #define MDSS_DSI_DSIPHY_REGULATOR_CTRL_1	0x04
 #define MDSS_DSI_DSIPHY_REGULATOR_CTRL_2	0x08
@@ -1438,16 +1434,6 @@ int mdss_dsi_clk_refresh(struct mdss_panel_data *pdata, bool update_phy)
 
 	if (update_phy) {
 		pinfo->mipi.frame_rate = mdss_panel_calc_frame_rate(pinfo);
-#if defined(CONFIG_LGE_DISPLAY_MFTS_DET_SUPPORTED)
-		if (lge_get_factory_boot()) {
-			if (pinfo->is_validate_lcd == 1)
-				pinfo->mipi.frame_rate = 89;
-			else
-				pinfo->mipi.frame_rate = 60;
-			pr_info("%s: new frame rate %d, validate %d \n",
-					__func__, pinfo->mipi.frame_rate, pinfo->is_validate_lcd);
-		}
-#endif
 		pr_debug("%s: new frame rate %d\n",
 				__func__, pinfo->mipi.frame_rate);
 	}
@@ -1468,12 +1454,6 @@ int mdss_dsi_clk_refresh(struct mdss_panel_data *pdata, bool update_phy)
 	ctrl_pdata->refresh_clk_rate = false;
 	ctrl_pdata->pclk_rate = pdata->panel_info.mipi.dsi_pclk_rate;
 	ctrl_pdata->byte_clk_rate = pdata->panel_info.clk_rate / 8;
-#if defined(CONFIG_LGE_DISPLAY_MFTS_DET_SUPPORTED)
-	if (lge_get_factory_boot()) {
-		pr_info("%s ctrl_pdata->byte_clk_rate=%d ctrl_pdata->pclk_rate=%d\n",
-			__func__, ctrl_pdata->byte_clk_rate, ctrl_pdata->pclk_rate);
-	}
-#endif
 	pr_debug("%s ctrl_pdata->byte_clk_rate=%d ctrl_pdata->pclk_rate=%d\n",
 		__func__, ctrl_pdata->byte_clk_rate, ctrl_pdata->pclk_rate);
 

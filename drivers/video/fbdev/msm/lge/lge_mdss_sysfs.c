@@ -151,58 +151,6 @@ static ssize_t mdss_fb_set_mq_mode(struct device *dev,
 static DEVICE_ATTR(mq_mode, S_IWUSR|S_IRUGO, mdss_fb_get_mq_mode, mdss_fb_set_mq_mode);
 #endif // CONFIG_LGE_DISPLAY_MARQUEE_SUPPORTED
 
-#if IS_ENABLED(CONFIG_LGE_LCD_MFTS_MODE)
-static ssize_t mdss_get_mfts_auto_touch(struct device *dev,
-		struct device_attribute *attr,
-		char *buf)
-{
-	struct fb_info *fbi = dev_get_drvdata(dev);
-	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
-	struct mdss_panel_data *pdata;
-	int ret;
-
-	pdata = dev_get_platdata(&mfd->pdev->dev);
-	if (!pdata) {
-		pr_err("[MFTS] no panel connected!\n");
-		return -EINVAL;
-	}
-
-	ret = scnprintf(buf, PAGE_SIZE, "%d\n", !pdata->panel_info.power_ctrl);
-
-	return ret;
-
-
-}
-
-static ssize_t mdss_set_mfts_auto_touch(struct device *dev,
-	struct device_attribute *attr, const char *buf, size_t len)
-{
-	struct fb_info *fbi = dev_get_drvdata(dev);
-	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
-	struct mdss_panel_data *pdata;
-	int value;
-
-	pdata = dev_get_platdata(&mfd->pdev->dev);
-	if (!pdata) {
-		pr_err("[MFTS] no panel connected!\n");
-		return len;
-	}
-
-	if (sscanf(buf, "%d", &value) != 1) {
-		pr_err("[MFTS] sccanf buf error!\n");
-		return len;
-	}
-
-	pdata->panel_info.power_ctrl = !value;
-	if (pdata->next)
-		pdata->next->panel_info.power_ctrl = !value;
-
-	pr_info("[MFTS]  power_ctrl = %d\n", pdata->panel_info.power_ctrl);
-	return len;
-}
-static DEVICE_ATTR(mfts_auto_touch_test_mode, S_IWUSR|S_IRUGO, mdss_get_mfts_auto_touch , mdss_set_mfts_auto_touch);
-#endif // CONFIG_LGE_LCD_MFTS_MODE
-
 #if IS_ENABLED(CONFIG_LGE_THERMAL_BL_MAX)
 static ssize_t thermal_blmax_show(struct device *dev,
 		struct device_attribute *attr,
@@ -654,110 +602,6 @@ static DEVICE_ATTR(toggle_u1, S_IWUSR|S_IRUGO, mdss_fb_get_toggle_u1,
 			mdss_fb_toggle_u1);
 static DEVICE_ATTR(ext_off, S_IWUSR|S_IRUGO, mdss_fb_get_ext_off,
 			mdss_fb_set_ext_off);
-
-#if IS_ENABLED(CONFIG_LGE_DISPLAY_MFTS_DET_SUPPORTED)
-
-extern int lge_set_validate_lcd_reg(void);
-
-static ssize_t mdss_fb_get_validate_lcd(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	struct fb_info *fbi = dev_get_drvdata(dev);
-	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
-	struct mdss_panel_info *pinfo;
-	int ret;
-
-	pinfo = mfd->panel_info;
-	if (!pinfo) {
-		pr_err("no panel connected!\n");
-		return -EINVAL;
-	}
-
-	if (!lge_get_factory_boot()) {
-		pr_err("mfts booting need\n");
-		return -EINVAL;
-	}
-
-	/* only for testing register set */
-	lge_set_validate_lcd_reg();
-	ret = scnprintf(buf, PAGE_SIZE, "done\n");
-	return ret;
-}
-
-extern void lge_mdss_change_mipi_clk(struct msm_fb_data_type *mfd, int enable);
-
-static ssize_t mdss_fb_set_validate_lcd(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t len)
-{
-	struct fb_info *fbi = dev_get_drvdata(dev);
-	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
-	struct mdss_panel_info *pinfo;
-	int enable;
-
-	pinfo = mfd->panel_info;
-
-	if (!pinfo) {
-		pr_err("no panel connected!\n");
-		return -EINVAL;
-	}
-
-	if (sscanf(buf, "%d", &enable) != 1) {
-		pr_err("sccanf buf error!\n");
-		return -EINVAL;
-	}
-
-	if (!lge_get_factory_boot()) {
-		pr_err("mfts booting need\n");
-		return -EINVAL;
-	}
-
-	pr_info("%s called: enable: %d\n", __func__, enable);
-
-	pinfo->is_validate_lcd = enable;
-
-	lge_mdss_change_mipi_clk(mfd, enable);
-	return len;
-}
-
-extern int lge_set_validate_lcd_cam(int mode);
-
-static ssize_t mdss_fb_set_validate_lcd_cam(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t len)
-{
-	struct fb_info *fbi = dev_get_drvdata(dev);
-	struct msm_fb_data_type *mfd = (struct msm_fb_data_type *)fbi->par;
-	struct mdss_panel_info *pinfo;
-	int enable;
-
-	pinfo = mfd->panel_info;
-
-	if (!pinfo) {
-		pr_err("no panel connected!\n");
-		return -EINVAL;
-	}
-
-	if (sscanf(buf, "%d", &enable) != 1) {
-		pr_err("sccanf buf error!\n");
-		return -EINVAL;
-	}
-
-	if (!lge_get_factory_boot()) {
-		pr_err("mfts booting need\n");
-		return -EINVAL;
-	}
-
-	lge_set_validate_lcd_cam(enable);
-
-	pr_info("%s called: enable: %d\n", __func__, enable);
-
-	return len;
-}
-static DEVICE_ATTR(validate_lcd, S_IWUSR|S_IRUGO, mdss_fb_get_validate_lcd,
-			mdss_fb_set_validate_lcd);
-static DEVICE_ATTR(validate_lcd_cam, S_IWUSR|S_IRUGO, NULL,
-			mdss_fb_set_validate_lcd_cam);
-
-#endif
 #endif // CONFIG_LGE_DISPLAY_BL_EXTENDED
 #endif // CONFIG_LGE_DISPLAY_AOD_SUPPORTED
 
@@ -770,9 +614,6 @@ static struct attribute *lge_mdss_fb_attrs[] = {
 	&dev_attr_valid_check.attr,
 #if IS_ENABLED(CONFIG_LGE_DISPLAY_MARQUEE_SUPPORTED)
 	&dev_attr_mq_mode.attr,
-#endif
-#if IS_ENABLED(CONFIG_LGE_LCD_MFTS_MODE)
-	&dev_attr_mfts_auto_touch_test_mode.attr,
 #endif
 #if IS_ENABLED(CONFIG_LGE_THERMAL_BL_MAX)
   &dev_attr_thermal_blmax.attr,
@@ -796,10 +637,6 @@ static struct attribute *lge_mdss_fb_attrs[] = {
 #if IS_ENABLED(CONFIG_LGE_DISPLAY_BL_EXTENDED)
 	&dev_attr_toggle_u1.attr,
 	&dev_attr_ext_off.attr,
-#if IS_ENABLED(CONFIG_LGE_DISPLAY_MFTS_DET_SUPPORTED)
-	&dev_attr_validate_lcd.attr,
-	&dev_attr_validate_lcd_cam.attr,
-#endif
 #endif // CONFIG_LGE_DISPLAY_BL_EXTENDED
 #endif // CONFIG_LGE_DISPLAY_AOD_SUPPORTED
 	NULL,

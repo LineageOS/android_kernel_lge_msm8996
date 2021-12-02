@@ -27,11 +27,6 @@
 #include <linux/power/lge_battery_id.h>
 #include "lge_mdss_display.h"
 
-extern int get_factory_cable(void);
-#define LGEUSB_FACTORY_56K 1
-#define LGEUSB_FACTORY_130K 2
-#define LGEUSB_FACTORY_910K 3
-
 #if IS_ENABLED(CONFIG_LGE_DISPLAY_BL_EXTENDED)
 extern int mdss_fb_mode_switch(struct msm_fb_data_type *mfd, u32 mode);
 #endif
@@ -41,12 +36,6 @@ struct msm_fb_data_type *mfd_recovery = NULL;
 
 #ifdef CONFIG_LGE_DP_UNSUPPORT_NOTIFY
 extern void register_dp_notify_node(void);
-#endif
-
-#if defined(CONFIG_LGE_DISPLAY_MFTS_DET_SUPPORTED)
-#include <soc/qcom/lge/board_lge.h>
-extern int lge_set_validate_lcd_reg(void);
-extern int lge_set_validate_lcd_cam(int mode);
 #endif
 
 void lge_mdss_fb_init(struct msm_fb_data_type *mfd)
@@ -968,37 +957,4 @@ void lge_mdss_fb_aod_recovery(struct msm_fb_data_type *mfd, char *envp[])
 		|| mfd->panel_info->aod_cur_mode == AOD_PANEL_MODE_U2_BLANK))
 		envp = envp_aod;
 }
-
-#if defined(CONFIG_LGE_DISPLAY_MFTS_DET_SUPPORTED)
-void lge_mdss_change_mipi_clk(struct msm_fb_data_type *mfd, int enable)
-{
-	struct mdss_panel_info *pinfo;
-	struct mdss_dsi_ctrl_pdata *ctrl_pdata = NULL;
-	struct mdss_panel_data *pdata;
-	pdata = dev_get_platdata(&mfd->pdev->dev);
-	ctrl_pdata = container_of(pdata, struct mdss_dsi_ctrl_pdata, panel_data);
-
-	pinfo = &pdata->panel_info;
-
-	if (!lge_get_factory_boot()) {
-		pr_err("mfts booting need\n");
-		return;
-	}
-
-	if (enable) {
-		pr_info("%s: %d\n", __func__, pinfo->mipi.dsi_pclk_rate );
-		pinfo->debugfs_info->override_flag = 1;
-		ctrl_pdata->update_phy_timing = true;
-		pinfo->is_pluggable = true;
-		pr_info("%s: mipi clk will be changed at next unblank\n", __func__);
-	} else {
-		pinfo->debugfs_info->override_flag = 1;
-		ctrl_pdata->update_phy_timing = true;
-		pinfo->is_pluggable = true;
-		pr_info("%s: mipi clk will be restored at next unblank \n", __func__);
-	}
-}
-#endif
-
 #endif // CONFIG_LGE_DISPLAY_AOD_SUPPORTED
-

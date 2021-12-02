@@ -22,11 +22,6 @@
 #include "../lge_reader_mode.h"
 #endif
 
-#if defined(CONFIG_LGE_DISPLAY_MFTS_DET_SUPPORTED)
-#include <soc/qcom/lge/board_lge.h>
-extern int lge_set_validate_lcd_reg(void);
-#endif
-
 #if IS_ENABLED(CONFIG_LGE_DISPLAY_OVERRIDE_MDSS_DSI_PANEL_RESET)
 static int mdss_dsi_request_gpios(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 {
@@ -338,12 +333,6 @@ int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 #if defined(CONFIG_LGE_ENHANCE_GALLERY_SHARPNESS)
 	if (ctrl->sharpness_on_cmds.cmds[2].payload[3] == 0x29)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->sharpness_on_cmds, CMD_REQ_COMMIT);
-#endif
-
-#if defined(CONFIG_LGE_DISPLAY_MFTS_DET_SUPPORTED)
-	if (lge_get_factory_boot()) {
-		lge_set_validate_lcd_reg();
-	}
 #endif
 
 	if (ctrl->display_on_cmds.cmd_cnt)

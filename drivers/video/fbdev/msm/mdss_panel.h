@@ -856,9 +856,6 @@ struct mdss_panel_info {
 	int hl_mode_on;
 #endif
 #endif
-#if defined(CONFIG_LGE_DISPLAY_MFTS_DET_SUPPORTED)
-	int is_validate_lcd;
-#endif
 #if defined(CONFIG_LGE_THERMAL_BL_MAX)
 	int thermal_maxblvalue;
 #endif
