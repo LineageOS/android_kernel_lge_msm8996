@@ -2520,7 +2520,7 @@ static int anx7688_probe(struct i2c_client *client,
 		//ret = 
 		chip->usbpd_psy = *power_supply_register(cdev, chip->usbpd_psy.desc, NULL); // That assignment is weird, but gcc doesn't complain.
 		dev_info(cdev, "USB PSY name: %s\n", chip->usbpd_psy.desc->name);
-		if (!chip->usbpd_psy) { // Not sure if the check works as intended now... better than not having it though.
+		if (strcmp(chip->usbpd_psy.desc->name, "usb_pd") != 0) { // Not sure if the check works as intended now... checks if the psy has the correct name.
 			dev_err(cdev, "unalbe to register psy rc = %d\n", ret);
 			goto err7;
 		}
