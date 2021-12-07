@@ -269,14 +269,6 @@
 	};
 };
 
-/* move to here before clock_cpu
-	It affects  the order of probing driver
-*/
-&soc {
-	qcom,glink-smem-native-xprt-rpm@68000 {
-	};
-};
-
 #include "msm8996-pinctrl.dtsi"
 #include "msm8996-ion.dtsi"
 #include "msm8996-mdss.dtsi"
@@ -776,33 +768,6 @@
 			< 1497600 >,
 			< 1593600 >;
 	};
-/* move to here before clock_cpu
-	It affects  the order of probing driver
-*/
-	rpm_bus: qcom,rpm-smd {
-	};
-	clock_gcc: qcom,gcc@300000 {
-	};
-	qcom,spm@9A10000 {
-	};
-	spmi_bus: qcom,spmi@400f000 {
-	};
-	apc0_pwrcl_mem_acc_vreg: apc0-pwrcl-mem-acc-regulator {
-	};
-	apc1_perfcl_mem_acc_vreg: apc1-perfcl-mem-acc-regulator {
-	};
-	apcc_l3_mem_acc_vreg: apcc-l3-mem-acc-regulator {
-	};
-	gfx_mem_acc_vreg: regulator@007af004 {
-	};
-	kryo0_vreg: regulator@99a2000 {
-	};
-	kryo1_vreg: regulator@99d2000 {
-	};
-	apcc_cpr: cpr3-ctrl@99e8000 {
-	};
-	qcom,smem@86000000 {
-	};
 
 	clock_cpu: qcom,cpu-clock-8996@ {
 		compatible = "qcom,cpu-clock-8996";
@@ -911,14 +876,6 @@
 			<&mdss_hdmi_pll clk_hdmi_vco_clk>;
 		#clock-cells = <1>;
 		#reset-cells = <1>;
-	};
-
-/* move to here before clock_gpu
-	It affects  the order of probing driver
-*/
-	gfx_cpr: cpr3-ctrl@838000 {
-	};
-	msm_gpu: qcom,kgsl-3d0@b00000 {
 	};
 
 	clock_gpu: qcom,gpucc@8c0000 {
