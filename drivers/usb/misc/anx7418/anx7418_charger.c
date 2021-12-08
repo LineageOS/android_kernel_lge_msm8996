@@ -323,7 +323,7 @@ int anx7418_charger_init(struct anx7418 *anx)
 				GFP_KERNEL);
 
 	usb_psy->desc->name = "usb_pd";
-	usb_psy->desc->type = POWER_SUPPLY_TYPE_TYPEC;
+	usb_psy->desc->type = POWER_SUPPLY_TYPE_UNKNOWN;
 	usb_psy->desc->get_property = chg_get_property;
 	usb_psy->desc->set_property = chg_set_property;
 	usb_psy->desc->property_is_writeable = chg_is_writeable;
@@ -344,9 +344,6 @@ int anx7418_charger_init(struct anx7418 *anx)
 		return -EPROBE_DEFER;
 	}
 
-	//power_supply_set_supply_type(&chg->psy, POWER_SUPPLY_TYPE_UNKNOWN);
-	usbprop.intval = POWER_SUPPLY_TYPE_UNKNOWN;
-	chg->psy.desc->type = usbprop.intval;
 	dev_info(cdev, "Charger init done, configured and registered.");
 	return 0;
 }
