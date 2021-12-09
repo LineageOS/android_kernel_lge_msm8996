@@ -156,7 +156,11 @@ struct dual_role_phy_instance {
 	void *drv_data;
 
 	struct device dev;
+#ifdef CONFIG_LGE_USB_ANX7418
+	struct delayed_work changed_work;
+#else
 	struct work_struct changed_work;
+#endif
 };
 
 #if IS_ENABLED(CONFIG_DUAL_ROLE_USB_INTF)
