@@ -57,3 +57,7 @@
 		status = "ok";
 	};
 };
+
+&pmi8994_charger {
+	qcom,typec-psy-name = "usb_pd";
+};
