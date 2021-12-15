@@ -2321,7 +2321,7 @@ static int anx7688_probe(struct i2c_client *client,
 {
 	struct anx7688_chip *chip;
 	struct device *cdev = &client->dev;
-	struct power_supply *usb_psy;
+	struct power_supply *usb_psy, *test_psy, *usbpd_psy;
 	struct power_supply *batt_psy;
 	struct dual_role_phy_desc *desc;
 	struct dual_role_phy_instance *dual_role;
@@ -2501,26 +2501,27 @@ static int anx7688_probe(struct i2c_client *client,
 	}
 
 	if (IS_ENABLED(CONFIG_POWER_SUPPLY)) {
-		usb_psy = devm_kzalloc(cdev, sizeof(struct power_supply),
+		usbpd_psy = devm_kzalloc(cdev, sizeof(struct power_supply),
 				GFP_KERNEL);
-		usb_psy->desc = devm_kzalloc(cdev, sizeof(struct power_supply_desc),
+		usbpd_psy->desc = devm_kzalloc(cdev, sizeof(struct power_supply_desc),
 				GFP_KERNEL);
 		
-		usb_psy->desc->name = "usb_pd";
-		usb_psy->desc->type = POWER_SUPPLY_TYPE_UNKNOWN;
-		usb_psy->desc->get_property = usbpd_get_property;
-		usb_psy->desc->set_property = usbpd_set_property;
-		usb_psy->desc->property_is_writeable = usbpd_is_writeable;
-		usb_psy->desc->properties = usbpd_properties;
-		usb_psy->desc->num_properties = ARRAY_SIZE(usbpd_properties);
-		usb_psy->supplied_to = usbpd_supplicants;
-		usb_psy->num_supplicants = ARRAY_SIZE(usbpd_supplicants);
-		chip->usbpd_psy = *usb_psy;
+		usbpd_psy->desc->name = "usb_pd";
+		usbpd_psy->desc->type = POWER_SUPPLY_TYPE_UNKNOWN;
+		usbpd_psy->desc->get_property = usbpd_get_property;
+		usbpd_psy->desc->set_property = usbpd_set_property;
+		usbpd_psy->desc->property_is_writeable = usbpd_is_writeable;
+		usbpd_psy->desc->properties = usbpd_properties;
+		usbpd_psy->desc->num_properties = ARRAY_SIZE(usbpd_properties);
+		usbpd_psy->supplied_to = usbpd_supplicants;
+		usbpd_psy->num_supplicants = ARRAY_SIZE(usbpd_supplicants);
+		chip->usbpd_psy = *usbpd_psy;
 		
+		kfree(usbpd_psy);
 		//ret = 
-		chip->usbpd_psy = *power_supply_register(cdev, chip->usbpd_psy.desc, NULL); // That assignment is weird, but gcc doesn't complain.
-		dev_info(cdev, "USB PSY name: %s\n", chip->usbpd_psy.desc->name);
-		if (strcmp(chip->usbpd_psy.desc->name, "usb_pd") != 0) { // Not sure if the check works as intended now... checks if the psy has the correct name.
+		test_psy = power_supply_register(cdev, chip->usbpd_psy.desc, NULL); // That assignment is weird, but gcc doesn't complain.
+		dev_info(cdev, "USB PSY name: %s\n", test_psy->desc->name);
+		if (test_psy) { // Not sure if the check works as intended now... checks if the psy has the correct name.
 			dev_err(cdev, "unalbe to register psy rc = %d\n", ret);
 			goto err7;
 		}
