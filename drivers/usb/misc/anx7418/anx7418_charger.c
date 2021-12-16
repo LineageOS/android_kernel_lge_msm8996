@@ -70,14 +70,14 @@ static int chg_get_property(struct power_supply *psy,
 		val->intval = chg->psy.desc->type;
 		break;
 
-	case POWER_SUPPLY_PROP_TYPEC_MODE:
+	/*case POWER_SUPPLY_PROP_TYPEC_MODE:
 		rc = anx7418_read_reg(anx->client, CC_STATUS);
 		dev_dbg(cdev, "%s: CC_STATUS(%02X)\n", __func__, rc);
 
 		val->intval = (rc == 0x11) ?
 			POWER_SUPPLY_TYPEC_SINK_DEBUG_ACCESSORY :
 			POWER_SUPPLY_TYPE_UNKNOWN;
-		break;
+		break;*/
 
 #if defined(CONFIG_LGE_USB_TYPE_C) && defined(CONFIG_LGE_PM_CHARGING_CONTROLLER)
 	case POWER_SUPPLY_PROP_CTYPE_CHARGER:
@@ -332,18 +332,18 @@ int anx7418_charger_init(struct anx7418 *anx)
 	usb_psy->supplied_to = chg_supplicants;
 	usb_psy->num_supplicants = ARRAY_SIZE(chg_supplicants);
 	chg->psy = *usb_psy;
+	kfree(usb_psy);
 
 	chg->anx = anx;
 	INIT_DELAYED_WORK(&chg->chg_work, chg_work);
 
 	//rc = 
-	chg->psy = *power_supply_register(cdev, chg->psy.desc, NULL);
-	test_psy = &chg->psy;
+	test_psy = power_supply_register(cdev, chg->psy.desc, NULL);
 	if (!test_psy) {
 		dev_err(cdev, "Unalbe to register ctype_psy");
 		return -EPROBE_DEFER;
 	}
-
+	
 	dev_info(cdev, "Charger init done, configured and registered.");
 	return 0;
 }
