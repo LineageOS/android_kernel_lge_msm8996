@@ -2,6 +2,7 @@
 #include <linux/of_gpio.h>
 #include <linux/delay.h>
 #include <linux/regulator/consumer.h>
+#include <linux/slab.h>
 
 #include "anx7418.h"
 #include "anx7418_charger.h"
@@ -70,14 +71,14 @@ static int chg_get_property(struct power_supply *psy,
 		val->intval = chg->psy.desc->type;
 		break;
 
-	/*case POWER_SUPPLY_PROP_TYPEC_MODE:
+	case POWER_SUPPLY_PROP_TYPEC_MODE:
 		rc = anx7418_read_reg(anx->client, CC_STATUS);
 		dev_dbg(cdev, "%s: CC_STATUS(%02X)\n", __func__, rc);
 
 		val->intval = (rc == 0x11) ?
 			POWER_SUPPLY_TYPEC_SINK_DEBUG_ACCESSORY :
 			POWER_SUPPLY_TYPE_UNKNOWN;
-		break;*/
+		break;	
 
 #if defined(CONFIG_LGE_USB_TYPE_C) && defined(CONFIG_LGE_PM_CHARGING_CONTROLLER)
 	case POWER_SUPPLY_PROP_CTYPE_CHARGER:
@@ -295,6 +296,8 @@ static void chg_work(struct work_struct *w)
 		//			POWER_SUPPLY_TYPE_USB_PD);
 		break;
 	default: // unknown charger
+		usbprop.intval = POWER_SUPPLY_TYPE_USB; // enum POWER_SUPPLY_TYPE_USB = 4
+		chg->psy.desc->type = usbprop.intval;
 		goto out;
 	}
 
