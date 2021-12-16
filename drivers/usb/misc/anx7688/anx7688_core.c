@@ -647,22 +647,12 @@ static int usbpd_get_property(struct power_supply *psy,
 		val->intval = chip->curr_max;
 		break;
 #endif
-
-#ifdef CONFIG_LGE_USB_ANX7688_OVP
-	case POWER_SUPPLY_PROP_TYPE:
-		dev_dbg(&chip->client->dev, "%s: Rp %dK\n", __func__,
-			chip->rp.intval);
-		val->intval = chip->rp.intval;
-		break;
-#else
 	case POWER_SUPPLY_PROP_TYPE:
 		val->intval = chip->usbpd_psy.desc->type;
 		break;
-#endif
 	default:
 		return -EINVAL;
 	}
-
         return 0;
 }
 
@@ -695,6 +685,7 @@ static int usbpd_set_property(struct power_supply *psy,
 			/* wait for vbus boost diacharging */
 			mdelay(200);
 		}
+		dev_info(cdev, "Setup USBPD PSY OTG");
 		break;
 	case POWER_SUPPLY_PROP_PRESENT:
 		if (val->intval) {
@@ -721,8 +712,6 @@ static int usbpd_set_property(struct power_supply *psy,
 						DUAL_ROLE_PROP_DR_NONE) {
 					anx7688_set_data_role(chip,
 							DUAL_ROLE_PROP_DR_DEVICE);
-				}
-#else
 				}
 #endif
 			}
@@ -753,6 +742,7 @@ static int usbpd_set_property(struct power_supply *psy,
 		}
 
 		if (chip->is_present == val->intval)
+			dev_info(cdev, "Setup USBPD PSY Present");
 			break;
 
 		chip->is_present = val->intval;
@@ -766,45 +756,38 @@ static int usbpd_set_property(struct power_supply *psy,
 			chip->volt_max = 0;
 			chip->charger_type = USBC_UNKNWON_CHARGER;
 		}
-
+		dev_info(cdev, "Setup USBPD PSY Present");
 		break;
 
-		case POWER_SUPPLY_PROP_VOLTAGE_MAX:
-			chip->volt_max = val->intval;
-			break;
+	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
+		chip->volt_max = val->intval;
+		break;
 
-		case POWER_SUPPLY_PROP_CURRENT_MAX:
-			chip->curr_max = val->intval;
-			break;
+	case POWER_SUPPLY_PROP_CURRENT_MAX:
+		chip->curr_max = val->intval;
+		break;
 
-#ifdef CONFIG_LGE_USB_ANX7688_OVP
-		case POWER_SUPPLY_PROP_TYPE:
-			chip->rp.intval = val->intval;
-			dev_dbg(cdev, "%s: Rp %dK\n", __func__, chip->rp.intval);
-			chip->batt_psy->desc->set_property(chip->batt_psy,
-					POWER_SUPPLY_PROP_TYPE, &chip->rp);
+	case POWER_SUPPLY_PROP_TYPE:
+		dev_info(cdev, "Setting up USBPD PSY Type.");
+		switch (val->intval) {
+		case POWER_SUPPLY_TYPE_TYPEC:
+		case POWER_SUPPLY_TYPE_USB_PD:
+		case POWER_SUPPLY_TYPE_USB_HVDCP:
+		case POWER_SUPPLY_TYPE_USB_HVDCP_3:
+			psy->desc->type = val->intval;
+			dev_info(cdev, "USBPD PSY Type Setup done.");
 			break;
-
-#else 
-		case POWER_SUPPLY_PROP_TYPE:
-			switch (val->intval) {
-			case POWER_SUPPLY_TYPE_TYPEC:
-			case POWER_SUPPLY_TYPE_USB_PD:
-			case POWER_SUPPLY_TYPE_USB_HVDCP:
-			case POWER_SUPPLY_TYPE_USB_HVDCP_3:
-				psy->desc.type = val->intval;
-				break;
-			default:
-				psy->desc.type = POWER_SUPPLY_TYPE_UNKNOWN;
-				break;
-			}
-			break;
-
-#endif
 		default:
-			return -EINVAL;
+			
+			psy->desc->type = POWER_SUPPLY_TYPE_UNKNOWN;
+			dev_info(cdev, "Setup USBPD PSY Type as unknown");
+			break;
 		}
+		break;		
+	default:
+		return -EINVAL;
 	}
+
 	return 0;
 }
 
@@ -2321,7 +2304,7 @@ static int anx7688_probe(struct i2c_client *client,
 {
 	struct anx7688_chip *chip;
 	struct device *cdev = &client->dev;
-	struct power_supply *usb_psy, *test_psy, *usbpd_psy;
+	struct power_supply *usb_psy, *test_psy = NULL, *usbpd_psy = NULL;
 	struct power_supply *batt_psy;
 	struct dual_role_phy_desc *desc;
 	struct dual_role_phy_instance *dual_role;
@@ -2516,12 +2499,13 @@ static int anx7688_probe(struct i2c_client *client,
 		usbpd_psy->supplied_to = usbpd_supplicants;
 		usbpd_psy->num_supplicants = ARRAY_SIZE(usbpd_supplicants);
 		chip->usbpd_psy = *usbpd_psy;
-		
 		kfree(usbpd_psy);
+		
 		//ret = 
+		dev_info(cdev, "Created USB PSY name: %s\n", chip->usbpd_psy.desc->name);
 		test_psy = power_supply_register(cdev, chip->usbpd_psy.desc, NULL); // That assignment is weird, but gcc doesn't complain.
-		dev_info(cdev, "USB PSY name: %s\n", test_psy->desc->name);
-		if (test_psy) { // Not sure if the check works as intended now... checks if the psy has the correct name.
+		dev_info(cdev, "Test USB PSY name: %s\n", test_psy->desc->name);
+		if (!test_psy) { // Not sure if the check works as intended now... checks if the psy has the correct name.
 			dev_err(cdev, "unalbe to register psy rc = %d\n", ret);
 			goto err7;
 		}
