@@ -2304,7 +2304,7 @@ static int anx7688_probe(struct i2c_client *client,
 {
 	struct anx7688_chip *chip;
 	struct device *cdev = &client->dev;
-	struct power_supply *usb_psy, *test_psy = NULL, *usbpd_psy = NULL;
+	struct power_supply *usb_psy, *usbpd_psy = NULL;
 	struct power_supply *batt_psy;
 	struct dual_role_phy_desc *desc;
 	struct dual_role_phy_instance *dual_role;
@@ -2503,12 +2503,14 @@ static int anx7688_probe(struct i2c_client *client,
 		
 		//ret = 
 		dev_info(cdev, "Created USB PSY name: %s\n", chip->usbpd_psy.desc->name);
-		test_psy = power_supply_register(cdev, chip->usbpd_psy.desc, NULL); // That assignment is weird, but gcc doesn't complain.
-		dev_info(cdev, "Test USB PSY name: %s\n", test_psy->desc->name);
-		if (!test_psy) { // Not sure if the check works as intended now... checks if the psy has the correct name.
+		chip->usbpd_psy = *devm_power_supply_register(cdev, chip->usbpd_psy.desc, NULL); // That assignment is weird, but gcc doesn't complain.
+		
+		if (chip->usbpd_psy.desc->name == NULL) { // Not sure if the check works as intended now... checks if the psy has the correct name.
 			dev_err(cdev, "unalbe to register psy rc = %d\n", ret);
 			goto err7;
 		}
+		else
+			dev_info(cdev, "Chip USBPD PSY name: %s\n", chip->usbpd_psy.desc->name);
 	}
 
 	ret = anx7688_debugfs_init(chip);
