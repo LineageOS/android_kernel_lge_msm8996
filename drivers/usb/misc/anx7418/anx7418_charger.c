@@ -315,7 +315,7 @@ int anx7418_charger_init(struct anx7418 *anx)
 {
 	struct anx7418_charger *chg = &anx->chg;
 	struct device *cdev = &anx->client->dev;
-	struct power_supply *usb_psy, *test_psy;
+	struct power_supply *usb_psy;
 	union power_supply_propval usbprop;
 	//int rc;
 	usbprop.intval = 0;
@@ -341,8 +341,8 @@ int anx7418_charger_init(struct anx7418 *anx)
 	INIT_DELAYED_WORK(&chg->chg_work, chg_work);
 
 	//rc = 
-	test_psy = power_supply_register(cdev, chg->psy.desc, NULL);
-	if (!test_psy) {
+	chg->psy = *devm_power_supply_register(cdev, chg->psy.desc, NULL);
+	if (chg->psy.desc->name == NULL) {
 		dev_err(cdev, "Unalbe to register ctype_psy");
 		return -EPROBE_DEFER;
 	}
