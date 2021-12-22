@@ -267,9 +267,9 @@ int anx7418_pwr_on(struct anx7418 *anx, int is_on)
 	struct i2c_client *client = anx->client;
 	struct device *cdev = &client->dev;
 	int rc = 0;
-#ifdef CONFIG_LGE_USB_TYPE_C
+// CONFIG_LGE_USB_TYPE_C START
 	union power_supply_propval prop;
-#endif
+// CONFIG_LGE_USB_TYPE_C END
 
 	dev_info_ratelimited(cdev, "%s(%d)\n", __func__, is_on);
 
@@ -351,9 +351,9 @@ set_as_ufp:
 					 * is connected with a register for distinguish
 					 * factory cables by switch SBU_SEL pin.
 					 */
-#ifdef CONFIG_LGE_USB_TYPE_C
+// CONFIG_LGE_USB_TYPE_C START
 					// Check vbus on?
-					anx->usb_psy->get_property(anx->usb_psy,
+					anx->usb_psy->desc->get_property(anx->usb_psy,
 							POWER_SUPPLY_PROP_DP_DM, &prop);
 					if (prop.intval != POWER_SUPPLY_DP_DM_DPF_DMF) {
 						// vbus not detected
@@ -361,15 +361,7 @@ set_as_ufp:
 						__anx7418_pwr_down(anx);
 						goto out;
 					}
-#endif
-
-#ifdef CONFIG_LGE_USB_TYPE_C
-					prop.intval = 0;
-					rc = anx->batt_psy->set_property(anx->batt_psy,
-							POWER_SUPPLY_PROP_DP_ALT_MODE, &prop);
-					if (rc < 0)
-						dev_err(cdev, "set_property(DP_ALT_MODE) error %d\n", rc);
-#endif
+// CONFIG_LGE_USB_TYPE_C END
 					gpio_set_value(anx->sbu_sel_gpio, 1);
 
 					anx->is_dbg_acc = true;
@@ -1139,7 +1131,7 @@ static int anx7418_probe(struct i2c_client *client,
 		}
 	}
 
-#ifdef CONFIG_LGE_USB_TYPE_C
+// CONFIG_LGE_USB_TYPE_C START
 	anx->usb_psy = power_supply_get_by_name("usb");
 	if (!anx->usb_psy) {
 		dev_err(&client->dev, "usb power_supply_get failed\n");
@@ -1151,7 +1143,7 @@ static int anx7418_probe(struct i2c_client *client,
 		dev_err(&client->dev, "battery power_supply_get failed\n");
 		return -EPROBE_DEFER;
 	}
-#endif
+// CONFIG_LGE_USB_TYPE_C END
 
 	rc = regulator_enable(anx->avdd33);
 	if (rc) {
