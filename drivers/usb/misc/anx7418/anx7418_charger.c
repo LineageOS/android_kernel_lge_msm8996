@@ -38,42 +38,34 @@ static int chg_get_property(struct power_supply *psy,
 {
 	struct anx7418_charger *chg = container_of(psy,
 			struct anx7418_charger, psy);
-	struct anx7418 *anx = chg->anx;
-	struct device *cdev = &chg->anx->client->dev;
 	int rc;
+
+	if(!chg) // Don't check the psy if it doesn't exist yet.
+		return -ENODEV;
 
 	switch(prop) {
 	case POWER_SUPPLY_PROP_USB_OTG:
-		dev_dbg(cdev, "%s: is_otg(%d)\n", __func__,
-				chg->is_otg);
 		val->intval = chg->is_otg;
 		break;
 
 	case POWER_SUPPLY_PROP_PRESENT:
-		dev_dbg(cdev, "%s: is_present(%d)\n", __func__,
-				chg->is_present);
 		val->intval = chg->is_present;
 		break;
 
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
-		dev_dbg(cdev, "%s: volt_max(%dmV)\n", __func__, chg->volt_max);
 		val->intval = chg->volt_max;
 		break;
 
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
-		dev_dbg(cdev, "%s: curr_max(%dmA)\n", __func__, chg->curr_max);
 		val->intval = chg->curr_max;
 		break;
 
 	case POWER_SUPPLY_PROP_TYPE:
-		dev_dbg(cdev, "%s: type(%s)\n", __func__,
-				chg_to_string(chg->psy.desc->type));
 		val->intval = chg->psy.desc->type;
 		break;
 
 	case POWER_SUPPLY_PROP_TYPEC_MODE:
-		rc = anx7418_read_reg(anx->client, CC_STATUS);
-		dev_dbg(cdev, "%s: CC_STATUS(%02X)\n", __func__, rc);
+		rc = anx7418_read_reg(chg->anx->client, CC_STATUS);
 
 		val->intval = (rc == 0x11) ?
 			POWER_SUPPLY_TYPEC_SINK_DEBUG_ACCESSORY :
