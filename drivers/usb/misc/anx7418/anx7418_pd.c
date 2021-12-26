@@ -498,11 +498,14 @@ static int dswap_req_parse(struct i2c_client *client, const pd_msg_t msg)
 		dev_info(cdev, "Host to Device\n");
 		anx7418_set_dr(anx, DUAL_ROLE_PROP_DR_DEVICE);
 
-		anx->usb_psy->get_property(anx->usb_psy,
+		anx->usb_psy->desc->get_property(anx->usb_psy,
 				POWER_SUPPLY_PROP_TYPE, &prop);
-		if (prop.intval == POWER_SUPPLY_TYPE_UNKNOWN)
-			power_supply_set_supply_type(anx->usb_psy,
-					POWER_SUPPLY_TYPE_USB);
+		if (prop.intval == POWER_SUPPLY_TYPE_UNKNOWN){
+			prop.intval = POWER_SUPPLY_TYPE_USB;
+			power_supply_set_property(anx->usb_psy,
+					POWER_SUPPLY_PROP_TYPE, &prop);
+			anx->usb_psy->desc->type = prop.intval;
+		}
 		break;
 
 	case DUAL_ROLE_PROP_DR_DEVICE:
