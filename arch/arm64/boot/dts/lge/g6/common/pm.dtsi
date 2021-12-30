@@ -123,7 +123,7 @@
 
 / {
 	vendor {
-		lge_batterydata: qcom,battery-data {
+		mtp_batterydata: qcom,battery-data {
 			qcom,batt-id-range-pct = <30>;
 			#include "../battery/LGE_BLT32_QDM_2260mAh.dtsi"
 			#include "../battery/LGE_BLT32_Tocad_3300mAh.dtsi"
@@ -134,10 +134,8 @@
 
 &pmi8994_fg {
 	status = "ok";
-	qcom,battery-data = <&lge_batterydata>;
 	qcom,fg-cutoff-voltage-mv = <3200>;
 	qcom,thermal-coefficients = [D2 85 0E 4A A5 35];
-	qcom,ext-sense-type;
 	qcom,capacity-learning-feedback;
 	qcom,resume-soc = <97>;
 	qcom,resume-soc-raw = <247>;

@@ -70,7 +70,7 @@
 
 / {
 	vendor {
-		lge_batterydata: qcom,battery-data {
+		mtp_batterydata: qcom,battery-data {
 			#include "../battery/LGE_PMI8996_2000mAh_Test_Battery_Profile_Aug26th2015_PMI8996GUI00012.dtsi"
 			#include "../battery/LGE_PMI8994_2000mAh_Test_Battery_Profile_Aug26th2015_PMI8994GUI2168.dtsi"
 			#include "../battery/LGE_BLT16_3000mAh_averaged_MasterSlave_Aug6th2015_PMI8994GUI2168.dtsi"
@@ -85,10 +85,8 @@
 
 &pmi8994_fg {
 	status = "ok";
-	qcom,battery-data = <&lge_batterydata>;
 	qcom,fg-cutoff-voltage-mv = <3200>;
 	qcom,thermal-coefficients = [D2 85 0E 4A A5 35];
-	qcom,ext-sense-type;
 	qcom,capacity-learning-feedback;
 	qcom,resume-soc = <99>;
 	qcom,resume-soc-raw = <253>;

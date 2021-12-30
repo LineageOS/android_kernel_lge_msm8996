@@ -77,7 +77,7 @@
 
 / {
 	vendor {
-		lge_batterydata: qcom,battery-data {
+		mtp_batterydata: qcom,battery-data {
 #if defined(CONFIG_MACH_MSM8996_ELSA_DCM_JP) || defined(CONFIG_MACH_MSM8996_ELSA_KDDI_JP)
 			#include "../battery/LGE_BLT19_Tocad_2700mAh.dtsi"
 			#include "../battery/LGE_BLT28_Tocad_3000mAh.dtsi"
@@ -91,10 +91,8 @@
 
 &pmi8994_fg {
 	status = "ok";
-	qcom,battery-data = <&lge_batterydata>;
 	qcom,fg-cutoff-voltage-mv = <3200>;
 	qcom,thermal-coefficients = [D2 85 0E 4A A5 35];
-	qcom,ext-sense-type;
 	qcom,capacity-learning-feedback;
 	qcom,resume-soc = <97>;
 	qcom,resume-soc-raw = <247>;
