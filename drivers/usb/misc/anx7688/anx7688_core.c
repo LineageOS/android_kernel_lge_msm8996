@@ -424,6 +424,21 @@ static int anx7688_regulator_ctrl(struct anx7688_chip *chip, bool val)
 	return 0;
 }
 
+void anx7688_power_supply_changed(struct power_supply *psy)
+{
+	unsigned long flags;
+
+	dev_dbg(&psy->dev, "%s\n", __func__);
+
+	spin_lock_irqsave(&psy->changed_lock, flags);
+	psy->changed = true;
+	pm_stay_awake(&psy->dev);
+	spin_unlock_irqrestore(&psy->changed_lock, flags);
+	queue_delayed_work(system_power_efficient_wq,
+			   &psy->deferred_register_work,
+			   msecs_to_jiffies(25));
+}
+
 static int anx7688_power_reset(struct anx7688_chip *chip)
 {
 	struct device *cdev = &chip->client->dev;
@@ -929,7 +944,7 @@ static void anx7688_ctype_work(struct work_struct *w)
 				usbc_to_string(chip->usbpd_psy.desc->type),
 				chip->volt_max, chip->curr_max);
 
-	power_supply_changed(&chip->usbpd_psy);
+	anx7688_power_supply_changed(&chip->usbpd_psy);
 
 	return;
 }
