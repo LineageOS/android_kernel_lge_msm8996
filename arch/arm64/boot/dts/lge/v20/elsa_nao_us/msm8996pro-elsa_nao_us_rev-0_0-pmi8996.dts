@@ -15,6 +15,7 @@
 
 #include "../../../qcom/msm8996pro.dtsi"
 #include "../../../qcom/msm-pmi8996.dtsi"
+#include "../../../qcom/msm8996-mtp.dtsi"
 #include "msm8996-elsa_nao_us.dtsi"
 #include "../common/camera/camera.dtsi"
 

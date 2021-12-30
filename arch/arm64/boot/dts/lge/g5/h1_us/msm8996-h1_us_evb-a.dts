@@ -14,6 +14,7 @@
 /dts-v1/;
 
 #include "../../../qcom/msm8996-v2.dtsi"
+#include "../../../qcom/msm8996-mtp.dtsi"
 #include "msm8996-h1_us.dtsi"
 #include "../common/camera.dtsi"
 

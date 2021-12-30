@@ -15,6 +15,7 @@
 
 #include "../../../qcom/msm8996pro-v1.1.dtsi"
 #include "../../../qcom/msm-pmi8996.dtsi"
+#include "../../../qcom/msm8996-mtp.dtsi"
 #include "msm8996-lucye_nao_us.dtsi"
 #include "msm8996-lucye_nao_us-sound_1.dtsi"
 #include "../common/usb-rev-1.0.dtsi"
