@@ -11,6 +11,8 @@
  * GNU General Public License for more details.
  */
 
+#include "../../../common-camera.dtsi"
+
 /* Flash setting*/
 &flash_led {
 	qcom,vph-pwr-droop-threshold = <2900>;
@@ -72,17 +74,6 @@
 		qcom,invert = <0>;
 		qcom,master-en = <1>;
 		status = "okay";
-	};
-};
-
-&soc {
-	led_flash0: qcom,camera-flash {
-		cell-index = <0>;
-		compatible = "qcom,camera-flash";
-		qcom,flash-type = <1>;
-		qcom,flash-source = <&pmi8994_flash0 &pmi8994_flash1>;
-		qcom,torch-source = <&pmi8994_torch0 &pmi8994_torch1>;
-		qcom,switch-source = <&pmi8994_switch>;
 	};
 };
 
