@@ -39,7 +39,6 @@
 	qcom,bmd-algo-disabled;
 
 	qcom,usb_id-vadc = <&pm8994_vadc>;
-	qcom,usbin-vadc = <&pmi8994_vadc>;
 	qcom,default-hvdcp-icl-ma = <2000>;
 	/* control for CM devices */
 	qcom,ext_en_acc = <&pm8994_gpios 19 0>;

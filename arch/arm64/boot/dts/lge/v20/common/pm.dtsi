@@ -44,7 +44,6 @@
 #endif
 
 	qcom,usb_id-vadc = <&pm8994_vadc>;
-	qcom,usbin-vadc = <&pmi8994_vadc>;
 	qcom,default-hvdcp-icl-ma = <1900>;
 	qcom,default-hvdcp3-icl-ma = <1900>;
 	qcom,maximum-icl-ma = <2000>;
