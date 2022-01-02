@@ -9,3 +9,6 @@ obj-$(CONFIG_BATTERY_BCL) += battery_current_limit.o
 obj-$(CONFIG_QPNP_SMB2)		+= step-chg-jeita.o battery.o qpnp-smb2.o smb-lib.o pmic-voter.o storm-watch.o
 obj-$(CONFIG_SMB138X_CHARGER)	+= battery.o smb138x-charger.o smb-lib.o pmic-voter.o storm-watch.o
 obj-$(CONFIG_QPNP_QNOVO)	+= battery.o qpnp-qnovo.o
+
+#Could be made a bit more modular, so as not to compile it all the time with only LGE_PM, we won't need the whole subdir as well
+obj-$(CONFIG_LGE_PM) += /lge/lge_batt_detection.o

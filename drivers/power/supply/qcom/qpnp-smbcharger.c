@@ -50,6 +50,9 @@
 #include "qpnp-smbcharger_extension_param.h"
 #include "qpnp-smbcharger_extension_usb.h"
 #endif
+#if defined (CONFIG_MACH_MSM8996_ELSA) || defined (CONFIG_MACH_MSM8996_ANNA) || defined (CONFIG_MACH_MSM8996_H1) || defined (CONFIG_MACH_MSM8996_LUCYE)
+#include "lge/lge_batt_detection.h"
+#endif
 
 /* Mask/Bit helpers */
 #define _SMB_MASK(BITS, POS) \
@@ -3801,6 +3804,9 @@ static int smbchg_config_chg_battery_type(struct smbchg_chip *chip)
 	struct device_node *batt_node, *profile_node;
 	struct device_node *node = chip->pdev->dev.of_node;
 	union power_supply_propval prop = {0,};
+#if defined (CONFIG_MACH_MSM8996_ELSA) || defined (CONFIG_MACH_MSM8996_ANNA) || defined (CONFIG_MACH_MSM8996_H1) || defined (CONFIG_MACH_MSM8996_LUCYE)
+	const char *batt_string = return_lge_battery_name();
+#endif
 
 	rc = power_supply_get_property(chip->bms_psy,
 			POWER_SUPPLY_PROP_BATTERY_TYPE, &prop);
@@ -3831,8 +3837,13 @@ static int smbchg_config_chg_battery_type(struct smbchg_chip *chip)
 		return 0;
 	}
 
+#if defined (CONFIG_MACH_MSM8996_ELSA) || defined (CONFIG_MACH_MSM8996_ANNA) || defined (CONFIG_MACH_MSM8996_H1) || defined (CONFIG_MACH_MSM8996_LUCYE)
+	profile_node = of_batterydata_get_best_profile(batt_node,
+				prop.intval / 1000, batt_string);
+#else
 	profile_node = of_batterydata_get_best_profile(batt_node,
 				prop.intval / 1000, NULL);
+#endif
 	if (IS_ERR_OR_NULL(profile_node)) {
 		rc = PTR_ERR(profile_node);
 		pr_err("couldn't find profile handle %d\n", rc);
