@@ -62,6 +62,24 @@
 	};
 
 	/delete-node/ gen-vkeys;
+
+	qcom,msm-dai-tdm-tert-rx {
+		/delete-property/ pinctrl-names;
+		/delete-property/ pinctrl-0;
+		/delete-property/ pinctrl-1;
+	};
+
+	qcom,msm-dai-tdm-quat-rx {
+		/delete-property/ pinctrl-names;
+		/delete-property/ pinctrl-0;
+		/delete-property/ pinctrl-1;
+	};
+
+	qcom,msm-dai-tdm-quat-tx {
+		/delete-property/ pinctrl-names;
+		/delete-property/ pinctrl-0;
+		/delete-property/ pinctrl-1;
+	};
 };
 
 &pmi8994_charger {
