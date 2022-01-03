@@ -3,6 +3,7 @@
 #
 
 # Object files in subdirectories
+ccflags-$(CONFIG_DEBUG_USB)	+= -DDEBUG
 
 obj-$(CONFIG_USB)		+= core/
 obj-$(CONFIG_USB_SUPPORT)	+= phy/

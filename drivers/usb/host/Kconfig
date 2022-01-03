@@ -3,6 +3,14 @@
 #
 comment "USB Host Controller Drivers"
 
+config DEBUG_USB_HOST
+	bool "Debug usb hosts"
+	depends on DEBUG_KERNEL
+	help
+	  Say Y here to add some extra checks and diagnostics to usb
+	  hosts. These checks help ensure that the usb hosts are
+	  functioning properly.
+
 config USB_C67X00_HCD
 	tristate "Cypress C67x00 HCD support"
 	help

@@ -1,5 +1,13 @@
 menu "Qualcomm Technologies Inc Charger and Fuel Gauge support"
 
+config DEBUG_QCOM_PSY
+	bool "Debug qpnp calls"
+	depends on DEBUG_KERNEL
+	help
+	  Say Y here to add some extra checks and diagnostics to qcom qpnp
+	  calls. These checks help ensure that the qualcomm power supplies
+	  and chargers are functioning properly.
+
 config QPNP_SMBCHARGER
 	tristate "QPNP SMB Charger driver"
 	depends on MFD_SPMI_PMIC

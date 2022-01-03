@@ -2,6 +2,14 @@
 # USB device configuration
 #
 
+config DEBUG_USB
+	bool "Debug usb calls"
+	depends on DEBUG_KERNEL
+	help
+	  Say Y here to add some extra checks and diagnostics to usb
+	  drivers. These checks help ensure that the usb subsystem is
+	  functioning properly.
+
 config USB_OHCI_BIG_ENDIAN_DESC
 	bool
 

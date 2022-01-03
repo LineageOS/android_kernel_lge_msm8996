@@ -5,6 +5,13 @@
 if HAS_IOMEM
 menu "Multifunction device drivers"
 
+config DEBUG_MFD
+	bool "Debug mfd calls"
+	depends on DEBUG_KERNEL
+	help
+	  Say Y here to add some extra checks and diagnostics to mfd
+	  calls.
+
 config MFD_CORE
 	tristate
 	select IRQ_DOMAIN

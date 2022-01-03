@@ -1,6 +1,7 @@
 #
 # Makefile for multifunction miscellaneous devices
 #
+ccflags-$(CONFIG_DEBUG_MFD)	+= -DDEBUG
 
 88pm860x-objs			:= 88pm860x-core.o 88pm860x-i2c.o
 obj-$(CONFIG_MFD_88PM860X)	+= 88pm860x.o

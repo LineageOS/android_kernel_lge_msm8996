@@ -1,4 +1,5 @@
 ccflags-y += -I$(srctree)/drivers/media/platform/msm/vidc/
+ccflags-$(CONFIG_DEBUG_MSM_VIDC)	+= -DDEBUG
 
 msm-vidc-objs := msm_v4l2_vidc.o \
                                 msm_vidc_common.o \

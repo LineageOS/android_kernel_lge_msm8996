@@ -1,6 +1,6 @@
-
 # Makefile for external connector class (extcon) devices
 #
+ccflags-$(CONFIG_DEBUG_EXTCON)	+= -DDEBUG
 
 obj-$(CONFIG_EXTCON)		+= extcon.o
 obj-$(CONFIG_EXTCON_ADC_JACK)	+= extcon-adc-jack.o

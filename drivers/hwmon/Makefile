@@ -1,6 +1,7 @@
 #
 # Makefile for sensor chip drivers.
 #
+ccflags-$(CONFIG_DEBUG_HWMON)	+= -DDEBUG
 
 obj-$(CONFIG_HWMON)		+= hwmon.o
 obj-$(CONFIG_HWMON_VID)		+= hwmon-vid.o

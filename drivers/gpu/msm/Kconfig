@@ -15,6 +15,14 @@ config QCOM_KGSL
 	  Required to use hardware accelerated OpenGL and compute on Qualcomm
 	  targets.
 
+config DEBUG_KGSL
+	bool "Debug KGSL calls"
+	depends on DEBUG_KERNEL
+	help
+	  Say Y here to add some extra checks and diagnostics to kgsl calls.
+	  These checks help ensure that the Adreno graphics driver is working
+	  as it should.
+
 config QCOM_KGSL_CFF_DUMP
 	bool "Enable KGSL Common File Format (CFF) Dump Feature [Use with caution]"
 	default n

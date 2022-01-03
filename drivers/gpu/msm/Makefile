@@ -1,4 +1,5 @@
 ccflags-y := -Idrivers/staging/android
+ccflags-$(CONFIG_DEBUG_KGSL)	+= -DDEBUG
 
 msm_kgsl_core-y = \
 	kgsl.o \
