@@ -2,8 +2,8 @@ KASAN_SANITIZE_scm.o := n
 
 CFLAGS_scm.o :=$(call as-instr,.arch_extension sec,-DREQUIRES_SEC=1)
 
+subdir-ccflags-$(CONFIG_DEBUG_SOC_QCOM)	+= -DDEBUG
 ccflags-$(CONFIG_MSM_QBT1000) += -Idrivers/misc/
-ccflags-$(CONFIG_DEBUG_SOC_QCOM)	+= -DDEBUG
 
 obj-$(CONFIG_MSM_INRUSH_CURRENT_MITIGATION) += inrush-current-mitigation.o
 obj-$(CONFIG_MSM_SMEM)	+=	msm_smem.o smem_debug.o
