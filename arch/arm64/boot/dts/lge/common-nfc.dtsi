@@ -12,16 +12,19 @@
  */
 
 &i2c_8 { /* BLSP2 QUP2 */
-	pn548 {
+	/delete-node/ nq@28;
+
+	pn548@28 {
 		compatible = "nxp,nfc-548";
 		reg = <0x28>;
+		status = "ok";
 		nxp-nfc-548,irq-gpio = <&tlmm 9 0x00>;
 		nxp-nfc-548,firm-gpio = <&tlmm 11 0x00>;
 		nxp-nfc-548,ven-gpio = <&tlmm 12 0x00>;
 		interrupt-parent = <&tlmm>;
 		interrupts = <9 0>;
 		interrupt-names = "nfc_irq";
-		pinctrl-names = "pmx_nfc_active","pmx_nfc_suspend";
+		pinctrl-names = "pmx_nfc_active", "pmx_nfc_suspend";
 		pinctrl-0 = <&nfc_active>;
 		pinctrl-1 = <&nfc_suspend>;
 	};
@@ -30,28 +33,20 @@
 &tlmm {
 	i2c_8 {
 		i2c_8_active: i2c_8_active {
-			mux {
-				pins = "gpio6", "gpio7";
-				function = "blsp_i2c8";
-			};
-
 			config {
-				pins = "gpio6", "gpio7";
 				drive-strength = <2>;
-				bias-disable;
 			};
 		};
 
 		i2c_8_sleep: i2c_8_sleep {
-			mux {
-				pins = "gpio6", "gpio7";
-				function = "blsp_i2c8";
-			};
-
 			config {
-				pins = "gpio6", "gpio7";
 				drive-strength = <2>;
-				bias-pull-up;
+			};
+		};
+
+		i2c_8_bitbang: i2c_8_bitbang {
+			config {
+				drive-strength = <2>;
 			};
 		};
 	};
@@ -61,7 +56,7 @@
 			nfc_mux {
 				pins = "gpio9", "gpio11", "gpio12";
 				drive-strength = <6>;
-				bias-pull-up;
+				bias-disable;
 			};
 		};
 
