@@ -136,12 +136,6 @@
 	status = "ok";
 };
 
-&uartblsp2dm1 {
-	status = "ok";
-	pinctrl-names = "default";
-	pinctrl-0 = <&uart_console_active>;
-};
-
 &sdhc_1 {
 	vdd-supply = <&pm8994_l20>;
 	qcom,vdd-voltage-level = <2950000 2950000>;

@@ -21,15 +21,8 @@
 		#interrupt-cells = <2>;
 
 		uart_console_active: uart_console_active {
-			mux {
-				pins = "gpio4", "gpio5";
-				function = "blsp_uart8";
-			};
-
 			config {
-				pins = "gpio4", "gpio5";
 				drive-strength = <6>;
-				bias-disable;
 			};
 		};
 
