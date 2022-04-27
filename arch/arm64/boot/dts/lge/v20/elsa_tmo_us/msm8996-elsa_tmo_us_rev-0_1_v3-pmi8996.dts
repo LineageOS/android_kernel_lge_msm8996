@@ -18,7 +18,7 @@
 #include "../../../qcom/msm8996-mtp.dtsi"
 #include "msm8996-elsa_tmo_us.dtsi"
 #include "../common/camera/camera.dtsi"
-#include "../common/sound/sound_rev-0_1.dtsi"
+#include "../common/sound/sound_rev-0.dtsi"
 
 / {
 	model = "Qualcomm Technologies, Inc. MSM 8996 v3.x + PMI8996 MTP";
