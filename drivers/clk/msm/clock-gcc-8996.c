@@ -3724,9 +3724,13 @@ static int msm_gcc_8996_probe(struct platform_device *pdev)
 	/* Keep an active vote on CXO in case no other driver votes for it */
 	clk_prepare_enable(&cxo_clk_src_ao.c);
 
-	/* Configure blsp2_uart2_apps_clk_src */
-	clk_set_rate(&blsp2_uart2_apps_clk_src.c, 19200000);
+	/* Configure blsp2_uart2_apps_clk_src - console */
+	clk_set_rate(&blsp2_uart2_apps_clk_src.c, 3686400);
 	clk_prepare_enable(&blsp2_uart2_apps_clk_src.c);
+
+	/* Configure blsp1_uart6_apps_clk_src - lg ir port */
+	clk_set_rate(&blsp1_uart6_apps_clk_src.c, 3686400);
+	clk_prepare_enable(&blsp1_uart6_apps_clk_src.c);
 
 	/*
 	 * Keep the core memory settings enabled at all times for
