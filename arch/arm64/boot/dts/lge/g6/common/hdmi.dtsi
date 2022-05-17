@@ -23,5 +23,3 @@
 		/delete-node/ cont_splash_mem_hdmi@b1c00000;
 	};
 };
-
-/delete-node/ &sde_hdmi;
