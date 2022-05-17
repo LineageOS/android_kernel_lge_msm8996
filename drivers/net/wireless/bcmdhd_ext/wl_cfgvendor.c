@@ -93,14 +93,14 @@ int wl_cfgvendor_send_async_event(struct wiphy *wiphy,
 {
 	u16 kflags;
 	struct sk_buff *skb;
-
+	struct wireless_dev *wdev = ndev_to_wdev(dev);
 	kflags = in_atomic() ? GFP_ATOMIC : GFP_KERNEL;
 
 	/* Alloc the SKB for vendor_event */
 #if defined(CONFIG_ARCH_QCOM) && defined(SUPPORT_WDEV_CFG80211_VENDOR_EVENT_ALLOC)
-	skb = cfg80211_vendor_event_alloc(wiphy, NULL, len, event_id, kflags);
+	skb = cfg80211_vendor_event_alloc(wiphy, wdev, len, event_id, kflags);
 #else
-	skb = cfg80211_vendor_event_alloc(wiphy, NULL, len, event_id, kflags);
+	skb = cfg80211_vendor_event_alloc(wiphy, wdev, len, event_id, kflags);
 #endif /* CONFIG_ARCH_QCOM && SUPPORT_WDEV_CFG80211_VENDOR_EVENT_ALLOC */
 	if (!skb) {
 		WL_ERR(("skb alloc failed"));
@@ -281,6 +281,7 @@ wl_cfgvendor_send_hotlist_event(struct wiphy *wiphy,
 	u16 kflags;
 	const void *ptr;
 	struct sk_buff *skb;
+	struct wireless_dev *wdev = ndev_to_wdev(dev);
 	int malloc_len, total, iter_cnt_to_send, cnt;
 	gscan_results_cache_t *cache = (gscan_results_cache_t *)data;
 	total = len/sizeof(wifi_gscan_result_t);
@@ -297,9 +298,9 @@ wl_cfgvendor_send_hotlist_event(struct wiphy *wiphy,
 
 		/* Alloc the SKB for vendor_event */
 #if defined(CONFIG_ARCH_QCOM) && defined(SUPPORT_WDEV_CFG80211_VENDOR_EVENT_ALLOC)
-		skb = cfg80211_vendor_event_alloc(wiphy, NULL, malloc_len, event, kflags);
+		skb = cfg80211_vendor_event_alloc(wiphy, wdev, malloc_len, event, kflags);
 #else
-		skb = cfg80211_vendor_event_alloc(wiphy, NULL, malloc_len, event, kflags);
+		skb = cfg80211_vendor_event_alloc(wiphy, wdev, malloc_len, event, kflags);
 #endif /* CONFIG_ARCH_QCOM && SUPPORT_WDEV_CFG80211_VENDOR_EVENT_ALLOC */
 		if (!skb) {
 			WL_ERR(("skb alloc failed"));
