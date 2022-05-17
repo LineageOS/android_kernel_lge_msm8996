@@ -198,8 +198,8 @@ static int mdss_dsi_request_gpios(struct mdss_dsi_ctrl_pdata *ctrl_pdata)
 			goto bklt_en_gpio_err;
 		}
 	}
-	if (gpio_is_valid(ctrl_pdata->mode_gpio)) {
-		rc = gpio_request(ctrl_pdata->mode_gpio, "panel_mode");
+	if (gpio_is_valid(ctrl_pdata->lcd_mode_sel_gpio)) {
+		rc = gpio_request(ctrl_pdata->lcd_mode_sel_gpio, "panel_mode");
 		if (rc) {
 			pr_err("request panel mode gpio failed,rc=%d\n",
 					rc);
@@ -355,15 +355,15 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			}
 		}
 #endif
-		if (gpio_is_valid(ctrl_pdata->mode_gpio)) {
+		if (gpio_is_valid(ctrl_pdata->lcd_mode_sel_gpio)) {
 			bool out = false;
 
-			if (pinfo->mode_gpio_state == MODE_GPIO_HIGH)
+			if (pinfo->mode_sel_state == MODE_GPIO_HIGH)
 				out = true;
-			else if (pinfo->mode_gpio_state == MODE_GPIO_LOW)
+			else if (pinfo->mode_sel_state == MODE_GPIO_LOW)
 				out = false;
 
-			rc = gpio_direction_output(ctrl_pdata->mode_gpio, out);
+			rc = gpio_direction_output(ctrl_pdata->lcd_mode_sel_gpio, out);
 			if (rc) {
 				pr_err("%s: unable to set dir for mode gpio\n",
 					__func__);
@@ -387,8 +387,8 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 		}
 		gpio_set_value((ctrl_pdata->rst_gpio), 0);
 		gpio_free(ctrl_pdata->rst_gpio);
-		if (gpio_is_valid(ctrl_pdata->mode_gpio))
-			gpio_free(ctrl_pdata->mode_gpio);
+		if (gpio_is_valid(ctrl_pdata->lcd_mode_sel_gpio))
+			gpio_free(ctrl_pdata->lcd_mode_sel_gpio);
 	}
 
 exit:
