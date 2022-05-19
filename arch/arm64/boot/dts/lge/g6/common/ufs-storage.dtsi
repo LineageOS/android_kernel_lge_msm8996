@@ -16,10 +16,6 @@
 	status = "ok";
 };
 
-&sdcc1_ice {
-        status = "ok";
-};
-
 &ufsphy1 {
 	status = "ok";
 };
@@ -30,45 +26,4 @@
 
 &sdhc_1 {
 	qcom,ice-clk-rates = <300000000>;
-};
-
-&soc {
-	tlmm: pinctrl@1010000 {
-
-		ufs_reset_on: ufs_reset_on {
-			mux {
-				pins = "gpio74";
-				function = "gpio";
-			};
-
-			config {
-				pins = "gpio74";
-				drive-strength = <2>;
-				bias-pull-down;
-				output-high;
-		    };
-		};
-
-		ufs_reset_off: ufs_reset_off {
-			mux {
-				pins = "gpio74";
-				function = "gpio";
-			};
-
-			config {
-				pins = "gpio74";
-				drive-strength = <2>;
-				bias-disable;
-				output-low;
-			};
-		};
-	};
-};
-
-&ufs1 {
-	pinctrl-names = "ufs_res_in_on", "ufs_res_in_off";
-	pinctrl-0 = <&ufs_reset_on>;
-	pinctrl-1 = <&ufs_reset_off>;
-	/* H+ hw - invert signal by FET - UFS_RESET_N is low active */
-	ufsreset-gpios = <&tlmm 74 0x0>;
 };
