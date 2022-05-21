@@ -1173,7 +1173,7 @@ int qpnp_wled_set_sink(int enable)
 	/* Enable CABC and return to normal state.*/
 		for (i = 0; i < wled_base->num_strings; i++) {
 			if (wled_base->strings[i] >= QPNP_WLED_MAX_STRINGS) {
-				dev_err(&wled_base->spmi->dev, "Invalid string number\n");
+				dev_err(&wled_base->pdev->dev, "Invalid string number\n");
 				rc = -EINVAL;
 				goto unlock_mutex;
 			}
@@ -1205,7 +1205,7 @@ int qpnp_wled_set_sink(int enable)
 	/* Disable CABC to control WLED_SINK in sleep state */
 		for (i = 0; i < wled_base->num_strings; i++) {
 			if (wled_base->strings[i] >= QPNP_WLED_MAX_STRINGS) {
-				dev_err(&wled_base->spmi->dev, "Invalid string number\n");
+				dev_err(&wled_base->pdev->dev, "Invalid string number\n");
 				rc =  -EINVAL;
 				goto unlock_mutex;
 			}
@@ -1290,9 +1290,9 @@ void qpnp_wled_dimming(int dst_lvl, int current_lvl)
         wled->cdev.brightness = current_brightness;
 
         rc = qpnp_wled_set_level(wled, wled->cdev.brightness);
-        dev_dbg(&wled->spmi->dev, "[AD] qpnp_wled_set_level : brightness= %d \n", wled->cdev.brightness);
+        dev_dbg(&wled->pdev->dev, "[AD] qpnp_wled_set_level : brightness= %d \n", wled->cdev.brightness);
 		if (rc) {
-			dev_err(&wled->spmi->dev, "wled set level failed\n");
+			dev_err(&wled->pdev->dev, "wled set level failed\n");
 			goto unlock_mutex;
 		}
         msleep(10);
@@ -2795,11 +2795,12 @@ static int qpnp_wled_probe(struct platform_device *pdev)
 	wled = devm_kzalloc(&pdev->dev, sizeof(*wled), GFP_KERNEL);
 	if (!wled)
 		return -ENOMEM;
-		wled->regmap = dev_get_regmap(pdev->dev.parent, NULL);
-		if (!wled->regmap) {
-			dev_err(&pdev->dev, "Couldn't get parent's regmap\n");
-			return -EINVAL;
-		}
+
+	wled->regmap = dev_get_regmap(pdev->dev.parent, NULL);
+	if (!wled->regmap) {
+		dev_err(&pdev->dev, "Couldn't get parent's regmap\n");
+		return -EINVAL;
+	}
 
 	wled->pdev = pdev;
 

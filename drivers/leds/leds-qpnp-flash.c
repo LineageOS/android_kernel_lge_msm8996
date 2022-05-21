@@ -1174,7 +1174,7 @@ error_regulator_setup:
 						flash_node->reg_data[i].reg_name);
 			if (IS_ERR_OR_NULL(flash_node->reg_data[i].regs)) {
 				rc = PTR_ERR(flash_node->reg_data[i].regs);
-				dev_err(&led->spmi_dev->dev,
+				dev_err(&led->pdev->dev,
 						"Failed to get regulator %d\n", i);
 				continue;
 			}
@@ -1298,7 +1298,7 @@ static void qpnp_flash_led_work(struct work_struct *work)
 	}
 #else
 	if (led->open_fault) {
-		dev_err(&led->spmi_dev->dev, "Open fault detected\n");
+		dev_err(&led->pdev->dev, "Open fault detected\n");
 	}
 #endif
 
@@ -1761,32 +1761,30 @@ static void qpnp_flash_led_work(struct work_struct *work)
 		}
 #else
 		udelay(2000);
-		rc = spmi_ext_register_readl(led->spmi_dev->ctrl,
-				led->spmi_dev->sid,
+		rc = regmap_read(led->regmap,
 				FLASH_LED_FAULT_STATUS(led->base),
-				&val, 1);
+				&temp);
 		if (rc) {
-			dev_err(&led->spmi_dev->dev,
+			dev_err(&led->pdev->dev,
 			"Unable to read from addr= %x, rc(%d)\n",
 			FLASH_LED_FAULT_STATUS(led->base), rc);
 			goto exit_flash_led_work;
 		}
-		led->fault_reg = val;
+		led->fault_reg = temp;
 
-		if(val & 0xFF) {
-			pr_err("FLASH1_LED_FAULT_STATUS 0x%x\n", val);
+		if(temp & 0xFF) {
+			pr_err("FLASH1_LED_FAULT_STATUS 0x%x\n", temp);
 		}
 
-		rc = spmi_ext_register_readl(led->spmi_dev->ctrl,
-			led->spmi_dev->sid, led->base + 0x10, &val, 1);
+		rc = regmap_read(led->regmap, led->base + 0x10, &temp);
 		if (rc) {
-			dev_err(&led->spmi_dev->dev,
+			dev_err(&led->pdev->dev,
 				"Unable to read from addr=%x, rc(%d)\n",
 				led->base + 0x10, rc);
 			goto exit_flash_led_work;
 		}
-		if(val & 0xF0) {
-			pr_err("FLASH1_INT_RT_STS 0x%x\n", val);
+		if(temp & 0xF0) {
+			pr_err("FLASH1_INT_RT_STS 0x%x\n", temp);
 		}
 #endif
 	} else {
@@ -1823,8 +1821,8 @@ turn_off:
 		led->open_fault |= (val & FLASH_LED_OPEN_FAULT_DETECTED);
 
 #ifdef CONFIG_MACH_LGE
-		if(val)
-			dev_err(&led->spmi_dev->dev, "Fault detected (0x%x)\n", val);
+		if(temp)
+			dev_err(&led->pdev->dev, "Fault detected (0x%x)\n", temp);
 #endif
 	}
 
