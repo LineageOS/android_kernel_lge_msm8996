@@ -104,7 +104,6 @@ enum sensor_sub_module_t {
 	SUB_MODULE_EXT,
 	SUB_MODULE_IR_LED,
 	SUB_MODULE_IR_CUT,
-	SUB_MODULE_LASER_LED,
 #ifdef CONFIG_MACH_LGE
 	SUB_MODULE_PROXY,
 	SUB_MODULE_TCS,
@@ -337,15 +336,6 @@ struct msm_ir_led_cfg_data_t {
 
 struct msm_ir_cut_cfg_data_t {
 	enum msm_ir_cut_cfg_type_t cfg_type;
-};
-
-struct msm_laser_led_cfg_data_t {
-	enum msm_laser_led_cfg_type_t cfg_type;
-	void __user                   *setting;
-	void __user                   *debug_reg;
-	uint32_t                      debug_reg_size;
-	uint16_t                      i2c_addr;
-	enum i2c_freq_mode_t          i2c_freq_mode;
 };
 
 struct msm_eeprom_cfg_data {
@@ -828,9 +818,6 @@ struct msm_tcs_cfg_data32 {
 #define VIDIOC_MSM_IR_CUT_CFG \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 15, struct msm_ir_cut_cfg_data_t)
 
-#define VIDIOC_MSM_LASER_LED_CFG \
-	_IOWR('V', BASE_VIDIOC_PRIVATE + 16, struct msm_laser_led_cfg_data_t)
-
 #ifdef CONFIG_MACH_LGE
 #define VIDIOC_MSM_PROXY_CFG \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 12, struct msm_proxy_cfg_data)
@@ -841,5 +828,6 @@ struct msm_tcs_cfg_data32 {
 #define VIDIOC_MSM_IRIS_CFG \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 17, struct msm_iris_cfg_data)
 #endif
+
 #endif
 

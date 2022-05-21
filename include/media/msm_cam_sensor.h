@@ -91,15 +91,6 @@ struct msm_ir_cut_cfg_data_t32 {
 	enum msm_ir_cut_cfg_type_t cfg_type;
 };
 
-struct msm_laser_led_cfg_data_t32 {
-	enum msm_laser_led_cfg_type_t cfg_type;
-	compat_uptr_t                 setting;
-	compat_uptr_t                 debug_reg;
-	uint32_t                      debug_reg_size;
-	uint16_t                      i2c_addr;
-	enum i2c_freq_mode_t          i2c_freq_mode;
-};
-
 struct eeprom_read_t32 {
 	compat_uptr_t dbuffer;
 	uint32_t num_bytes;
@@ -339,9 +330,6 @@ struct msm_flash_cfg_data_t32 {
 #define VIDIOC_MSM_IR_CUT_CFG32 \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 15, struct msm_ir_cut_cfg_data_t32)
 
-#define VIDIOC_MSM_LASER_LED_CFG32 \
-	_IOWR('V', BASE_VIDIOC_PRIVATE + 16, struct msm_laser_led_cfg_data_t32)
-	
 #ifdef CONFIG_MACH_LGE
 #define VIDIOC_MSM_PROXY_CFG32 \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 12, struct msm_proxy_cfg_data32)
@@ -352,6 +340,8 @@ struct msm_flash_cfg_data_t32 {
 #define VIDIOC_MSM_IRIS_CFG32 \
 	_IOWR('V', BASE_VIDIOC_PRIVATE + 17, struct msm_iris_cfg_data32)
 #endif
+
 #endif
 
 #endif
+
