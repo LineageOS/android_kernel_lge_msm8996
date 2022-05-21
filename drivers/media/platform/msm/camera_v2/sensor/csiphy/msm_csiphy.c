@@ -311,11 +311,11 @@ static int msm_csiphy_3phase_lane_config(
 				csiphy_dev->ctrl_reg->csiphy_3ph_reg.
 				mipi_csiphy_3ph_lnn_ctrl25.addr + 0x200*i);
 		} else {
-		msm_camera_io_w(csiphy_dev->ctrl_reg->csiphy_3ph_reg.
-			mipi_csiphy_3ph_lnn_ctrl25.data,
+			msm_camera_io_w(csiphy_dev->ctrl_reg->csiphy_3ph_reg.
+				mipi_csiphy_3ph_lnn_ctrl25.data,
 				csiphybase +
 				csiphy_dev->ctrl_reg->csiphy_3ph_reg.
-			mipi_csiphy_3ph_lnn_ctrl25.addr + 0x200*i);
+				mipi_csiphy_3ph_lnn_ctrl25.addr + 0x200*i);
 		}
 		lane_mask >>= 1;
 		i++;
@@ -871,16 +871,16 @@ static int msm_csiphy_lane_config(struct csiphy_device *csiphy_dev,
 				rc = msm_csiphy_3phase_lane_config_v50(
 					csiphy_dev, csiphy_params);
 			else
-			rc = msm_csiphy_3phase_lane_config(csiphy_dev,
-				csiphy_params);
+				rc = msm_csiphy_3phase_lane_config(csiphy_dev,
+					csiphy_params);
 			csiphy_dev->num_irq_registers = 20;
 		} else {
 			if (csiphy_dev->hw_dts_version >= CSIPHY_VERSION_V50)
 				rc = msm_csiphy_2phase_lane_config_v50(
 					csiphy_dev, csiphy_params);
 			else
-			rc = msm_csiphy_2phase_lane_config(csiphy_dev,
-				csiphy_params);
+				rc = msm_csiphy_2phase_lane_config(csiphy_dev,
+					csiphy_params);
 			csiphy_dev->num_irq_registers = 11;
 		}
 		if (rc < 0) {
