@@ -20,6 +20,7 @@
 #include <linux/gpio.h>
 /*#include <linux/regulator/machine.h>*/
 #include <linux/regulator/consumer.h>
+#include <linux/irq.h>
 #include <soc/qcom/lge/board_lge.h>
 
 /*
@@ -29,6 +30,7 @@
 #include <touch_i2c.h>
 #include <touch_spi.h>
 #include <touch_hwif.h>
+#include "../../../../kernel/irq/internals.h"
 
 /* -- gpio -- */
 int touch_gpio_init(int pin, const char *name)
@@ -129,11 +131,11 @@ int touch_bus_init(struct device *dev, int buf_size)
 	TOUCH_TRACE();
 
 	if (buf_size) {
-		ts->tx_buf = devm_kzalloc(dev, buf_size, GFP_KERNEL);
+		ts->tx_buf = devm_kzalloc(dev, buf_size, GFP_KERNEL | GFP_DMA);
 		if (!ts->tx_buf)
 			TOUCH_E("fail to allocate tx_buf\n");
 
-		ts->rx_buf = devm_kzalloc(dev, buf_size, GFP_KERNEL);
+		ts->rx_buf = devm_kzalloc(dev, buf_size, GFP_KERNEL | GFP_DMA);
 		if (!ts->rx_buf)
 			TOUCH_E("fail to allocate rx_buf\n");
 	}
@@ -242,9 +244,9 @@ void touch_enable_irq(unsigned int irq)
 	struct irq_desc *desc = irq_to_desc(irq);
 
 	if (desc) {
-		if (desc->istate & 0x00000200 /*IRQS_PENDING*/)
+		if (desc->istate & IRQS_PENDING)
 			TOUCH_D(BASE_INFO, "Remove pending irq(%d)\n", irq);
-		desc->istate &= ~(0x00000200);
+		desc->istate &= ~(IRQS_PENDING);
 	}
 	enable_irq(irq);
 }
@@ -266,16 +268,23 @@ void touch_resend_irq(unsigned int irq)
 	struct irq_desc *desc = irq_to_desc(irq);
 
 	if (desc) {
-		if (desc->istate & 0x00000200 /*IRQS_PENDING*/)
+		if (desc->istate & IRQS_PENDING)
 			TOUCH_D(BASE_INFO, "irq(%d) pending\n", irq);
-		check_irq_resend(desc, irq);
 	}
 }
 
 void touch_set_irq_pending(unsigned int irq)
 {
+	struct irq_desc *desc = irq_to_desc(irq);
+	unsigned long flags;
+
 	TOUCH_D(BASE_INFO, "%s : irq=%d\n", __func__, irq);
-	irq_set_pending(irq);
+
+	if (desc) {
+		raw_spin_lock_irqsave(&desc->lock, flags);
+		desc->istate |= IRQS_PENDING;
+		raw_spin_unlock_irqrestore(&desc->lock, flags);
+	}
 }
 
 int touch_boot_mode(void)
