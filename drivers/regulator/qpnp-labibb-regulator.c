@@ -984,8 +984,8 @@ static int qpnp_ibb_soft_start_ctl_v1(struct qpnp_labibb *labibb,
 		return rc;
 	}
 #if defined(CONFIG_LGE_DISPLAY_COMMON)
-	rc = qpnp_labibb_read(labibb, &val,
-				labibb->ibb_base + REG_IBB_REVISION4, 1);
+	rc = qpnp_labibb_read(labibb, labibb->ibb_base + REG_IBB_REVISION4,
+				&val, 1);
 	if (rc) {
 		pr_err("qpnp_labibb_read register %x failed rc = %d\n",
 			REG_IBB_REVISION4, rc);
@@ -2180,7 +2180,10 @@ static int qpnp_labibb_ttw_exit_ibb_common(struct qpnp_labibb *labibb)
 static int qpnp_labibb_regulator_ttw_mode_exit(struct qpnp_labibb *labibb)
 {
 	int rc = 0;
-	u8 val, reg;
+	u8 val;
+#ifndef CONFIG_LGE_DISPLAY_COMMON
+	u8 reg;
+#endif
 
 	if (!labibb->ibb_settings_saved) {
 		pr_err("IBB settings are not saved!\n");
@@ -2397,11 +2400,11 @@ static void qpnp_labibb_enable_fail_reg_read(struct qpnp_labibb *labibb)
 	//u32 LAB_address = 0x1de00;
 
 	for (i=0;i<256;i++){
-		qpnp_labibb_read(labibb, &val,labibb->ibb_base+i, 1);
+		qpnp_labibb_read(labibb, labibb->ibb_base+i, &val, 1);
 		pr_err("IBB address=0x%05x val=0x%x\n",labibb->ibb_base+i,val);
 	}
 	for (i=0;i<256;i++){
-		qpnp_labibb_read(labibb, &val,labibb->lab_base+i, 1);
+		qpnp_labibb_read(labibb,labibb->lab_base+i, &val, 1);
 		pr_err("LAB address=0x%05x val=0x%x\n",labibb->lab_base+i,val);
 	}
 }
