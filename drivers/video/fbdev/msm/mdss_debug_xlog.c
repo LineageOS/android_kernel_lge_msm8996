@@ -94,7 +94,7 @@ struct mdss_dbg_xlog {
 } mdss_dbg_xlog;
 
 #if defined(CONFIG_LGE_DISPLAY_COMMON)
-unsigned int reg_dump_enable;
+bool reg_dump_enable;
 #endif
 
 static inline bool mdss_xlog_is_enabled(u32 flag)
