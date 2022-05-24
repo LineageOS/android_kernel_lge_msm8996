@@ -1,0 +1,11 @@
+menu "LGE Specific Patches"
+
+config LGE_HALL_IC
+	bool "Support LGE Smartcover"
+	depends on MACH_LGE
+	default y
+	help
+	  Support sending a device-tree defined gpio code when hall IC
+	  is triggered.
+
+endmenu
