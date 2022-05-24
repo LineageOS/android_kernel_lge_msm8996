@@ -1,0 +1,34 @@
+/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "../msm8996-elsa-touch-sic-sw49407.dtsi"
+/{
+	aliases {
+		spi12 = &spi_12;
+	};
+
+
+	soc {
+		spi_12: spi@75ba000{    /* BLSP-2 QUP6 */
+			sw49407 {
+				compatible = "lge,sw49407";
+
+				/* firmware */
+				fw_image = "touch/elsa/L1L52P1_1_14.img",
+						"touch/elsa/L1L52P1_1_14.img";
+
+				panel_spec = "touch/elsa/elsa_limit.txt";
+				panel_spec_mfts_folder = "touch/elsa/elsa_limit_mfts.txt";
+			};
+		};
+	};
+};

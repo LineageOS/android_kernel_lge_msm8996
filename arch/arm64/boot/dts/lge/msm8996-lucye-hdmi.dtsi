@@ -1,0 +1,27 @@
+/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&mdss_fb2 {
+	/delete-node/ qcom,cont-splash-memory;
+};
+
+&soc {
+	/delete-node/ qcom,mdss_fb_hdmi;
+};
+
+/ {
+	reserved-memory {
+		/delete-node/ cont_splash_mem_hdmi@b1c00000;
+	};
+};
+
+/delete-node/ &sde_hdmi;

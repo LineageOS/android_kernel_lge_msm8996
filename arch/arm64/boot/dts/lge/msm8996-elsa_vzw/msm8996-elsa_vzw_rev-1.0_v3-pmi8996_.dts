@@ -1,0 +1,425 @@
+/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+
+/dts-v1/;
+
+#include "../../qcom/msm8996-v3.dtsi"
+#include "../../qcom/msm-pmi8996.dtsi"
+#include "msm8996-elsa_vzw.dtsi"
+#include "msm8996-elsa_vzw-touch.dtsi"
+#include "../msm8996-camera/msm8996-elsa-camera_rev-1.0.dtsi"
+#include "../msm8996-elsa_storage_type/current_storage_type.dtsi"
+#include "../msm8996-sound/msm8996-elsa-sound_rev-1_0.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. MSM 8996 v3.x + PMI8996 MTP";
+	compatible = "qcom,msm8996-mtp", "qcom,msm8996", "qcom,mtp";
+	qcom,board-id = <0xC08 0>;
+};
+
+&i2c_12 {
+	status = "disabled";
+};
+
+/* Display Function */
+&soc {
+	dsi_panel_pwr_supply: dsi_panel_pwr_supply {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		qcom,panel-supply-entry@0 {
+			reg = <0>;
+			qcom,supply-name = "lab";
+			qcom,supply-min-voltage = <4600000>;
+			qcom,supply-max-voltage = <6000000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+		};
+
+		qcom,panel-supply-entry@1 {
+			reg = <1>;
+			qcom,supply-name = "ibb";
+			qcom,supply-min-voltage = <4600000>;
+			qcom,supply-max-voltage = <6000000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-post-on-sleep = <20>;
+		};
+	};
+
+	spi_12: spi@75ba000{    /* BLSP-2 QUP6 */
+		lg4945 {
+			status = "disabled";
+		};
+		sw49407 {
+			status = "ok";
+		};
+	};
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&dsi_dual_lgd_lg4945_cmd>;
+	lge,extra-gpio-names = "vddio", "vpnl";
+
+	lge,gpio-vddio = <&tlmm 69 0>;
+	lge,gpio-vpnl = <&tlmm 94 0>;
+};
+
+&mdss_dsi1 {
+	/delete-property/cell-index;
+};
+
+/* pinctrl for Display function
+ * GPIO69 : LCD_VDD_IO_EN
+ * GPIO94 : LCD_VCL_EN
+ */
+&soc {
+	tlmm: pinctrl@01010000 {
+		compatible = "qcom,msm8996-pinctrl";
+		reg = <0x01010000 0x300000>;
+		interrupts = <0 208 0>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
+
+		pmx_mdss: pmx_mdss {
+			mdss_dsi_active1: mdss_dsi_active1 {
+				mux {
+					pins = "gpio69";
+					function = "gpio";
+				};
+
+				pmx_mdss {
+					pins = "gpio69";
+					drive-strength = <8>; /* 8 mA */
+					bias-disable = <0>; /* no pull */
+					output-high;
+				};
+			};
+			mdss_dsi_active2: mdss_dsi_active2 {
+				mux {
+					pins = "gpio94";
+					function = "gpio";
+				};
+
+				pmx_mdss {
+					pins = "gpio94";
+					drive-strength = <8>; /* 8 mA */
+					bias-disable = <0>; /* no pull */
+					output-high;
+				};
+			};
+			mdss_dsi_suspend1: mdss_dsi_suspend1 {
+				mux {
+					pins = "gpio69";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio69";
+					drive-strength = <2>; /* 2 mA */
+					bias-pull-down; /* pull down */
+				};
+			};
+			mdss_dsi_suspend2: mdss_dsi_suspend2 {
+				mux {
+					pins = "gpio94";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio94";
+					drive-strength = <2>; /* 2 mA */
+					bias-pull-down; /* pull down */
+				};
+			};
+		};
+	};
+};
+
+&pmi8994_charger {
+    lge,lge_otp_enable;
+};
+
+/* set unused and changed assigne gpios on here */
+&pmi8994_mpps {
+/* Must not define the mpp(mpp 3) on here */
+	mpp@a000 {	/* MPP 1 VBACKUP_ADC */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	mpp@a100 { /* MPP 2 - FLASH_STROBE_TRIG */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	mpp@a300 { /* MPP 4 - BAT2_THERM -> NC */
+		qcom,mode = <0>;			/* Digital output */
+		qcom,vin-sel = <2>;			/* Vin 2 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,invert = <0>;			/* Disable Invert */
+		qcom,master-en = <0>;		/* Disable GPIO */
+		status = "okay";
+	};
+};
+
+&pmi8994_gpios {
+	gpio@c000 { /* GPIO 1 - BOOST_BYP_BYP */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@c100 { /* GPIO 2 - HIFI_RESET_N */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@c200 {	/* GPIO 3 SPKR_AMP_EN2 */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@c300 { /* GPIO 4 - EIS_LDO_EN */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@c400 { /* GPIO 5 - SWAP_CTRL_EN2 -> NC */
+		qcom,master-en = <0>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@c500 { /* GPIO 6 - EIS_GYRO_INT */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@c600 { /* GPIO 7 - 2ND_CHG_ENABLE_N -> NC */
+		qcom,master-en = <0>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@c700 { /* GPIO 8 - IRCC_RESET_N */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@c800 { /* GPIO 9 - 5V_APPSPORT_BOOST_EN -> VPWR_SW_EN */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@c900 { /* GPIO 10 - EIS_CAM_SELECT */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+};
+
+&pm8994_mpps {
+/* Must not define the mpps(mpp 1 and 3) on here */
+	mpp@a100 { /* MPP 2 - NC */
+		qcom,master-en = <0>;		/* Disable GPIO */
+		status = "okay";
+	};
+
+	mpp@a300 { /* MPP 4 - NC */
+		qcom,master-en = <0>;		/* Disable GPIO */
+		status = "okay";
+	};
+
+	mpp@a400 { /* MPP 5 - NC -> EXT_ACC_EN */
+		qcom,mode = <1>;			/* Digital output */
+		qcom,invert = <0>;			/* Enable invert */
+		qcom,vin-sel = <2>;			/* Vin 2 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,out-strength = <1>;	/* Low */
+		qcom,master-en = <1>;		/* Disable GPIO */
+		status = "okay";
+	};
+
+	mpp@a500 { /* MPP 6 - NC -> STAT_SMB1350 */
+		qcom,mode = <1>;			/* Digital output */
+		qcom,invert = <0>;			/* Enable invert */
+		qcom,vin-sel = <2>;			/* Vin 2 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,out-strength = <1>;	/* Low */
+		qcom,master-en = <1>;		/* Disable GPIO */
+		status = "okay";
+	};
+
+	mpp@a600 { /* MPP 7 - NC */
+		qcom,master-en = <0>;		/* Disable GPIO */
+		status = "okay";
+
+	};
+
+	mpp@a700 { /* MPP 8 - NC */
+		qcom,master-en = <0>;		/* Disable GPIO */
+		status = "okay";
+	};
+};
+
+&pm8994_gpios {
+/* Gpio 1 and 3 is set on relevant usb-type-c */
+/* at "kernel\arch\arm64\boot\dts\lge\msm8996-usb-typec-anx7418.dtsi" */
+/* Must not define the gpios(gpio 20 and 21) on here */
+	gpio@c100 { /* GPIO 2 - VOL_UP_PM */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@c300 { /* GPIO 4 - TOUCH_KEY_EN -> LDAF_RGB_POWER_EN -> NC*/
+		qcom,mode = <0>;			/* Digital input */
+		qcom,master-en = <0>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@c400 { /* GPIO 5 - NC -> SWAP_CTRL_EN1 -> NC */
+		qcom,mode = <0>;			/* Digital output */
+		qcom,master-en = <0>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@c500 { /* GPIO 6 - MENU_KEY_TOUCH_PM -> 16M_AVDD_EN */
+		qcom,mode = <1>;			/* Digital output */
+		qcom,pull = <4>;			/* Pull down */
+		qcom,vin-sel = <2>;			/* Vin 2 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,invert = <0>;			/* Disable Invert */
+		qcom,out-strength = <1>;	/* Low */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@c600 { /* GPIO 7 - BACK_KEY_TOUCH_PM -> 8M_AVDD_EN */
+		qcom,mode = <1>;			/* Digital output */
+		qcom,pull = <4>;			/* Pull down */
+		qcom,vin-sel = <2>;			/* Vin 2 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,invert = <0>;			/* Disable Invert */
+		qcom,out-strength = <1>;	/* Low */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@c700 { /* GPIO 8 - WLAN_POWER_EN */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@c800 { /* GPIO 9 - HIFI_HPH_SW -> WLAN_EXT_REG_EN -> NC */
+		qcom,mode = <0>;			/* Digital output */
+		qcom,master-en = <0>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@c900 { /* GPIO 10 - NC -> HIFI_MODE2 */
+		qcom,mode = <1>;			/* Digital output */
+		qcom,pull = <4>;			/* Pull down */
+		qcom,vin-sel = <2>;			/* Vin2 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,invert = <0>;			/* Disable Invert */
+		qcom,out-strength = <1>;	/* Low */
+		qcom,master-en = <1>;		/* Disable GPIO */
+		status = "okay";
+	};
+
+	gpio@ca00 { /* GPIO 11 - HIFI_LDO_SW */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@cb00 { /* GPIO 12 - LCD_AOD_BL_EN */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@cc00 { /* GPIO 13 - HOME_KEY_PM -> HIFI_MODE1 */
+		qcom,mode = <1>;			/* Digital output */
+		qcom,pull = <4>;			/* Pull down */
+		qcom,vin-sel = <2>;			/* Vin2 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,invert = <0>;			/* Disable Invert */
+		qcom,out-strength = <1>;	/* Low */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@cd00 { /* GPIO 14 - APPS_PORT_KEY -> BAT_MISSING_DET -> NC */
+		qcom,mode = <0>;			/* Digital input */
+		qcom,master-en = <0>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@ce00 { /* GPIO 15 - CODEC_MCLK */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@cf00 { /* GPIO 16 - PMI_CLK_IN */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@d000 { /* GPIO 17 - AOD_RTC */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@d100 { /* GPIO 18 - WIFI_SLEEP_CLK */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@d200 { /* GPIO 19 - EXT_ACC_EN -> BT_POWER_ON */
+		qcom,mode = <1>;			/* Digital output */
+		qcom,pull = <4>;			/* Pull down */
+		qcom,vin-sel = <2>;			/* Vin2 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,invert = <0>;			/* Disable Invert */
+		qcom,out-strength = <1>;	/* Low */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+	gpio@d500 { /* GPIO 22 - LDAF_EN */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+};
+
+&rpm_bus {
+	rpm-regulator-ldoa18 {
+		status = "okay";
+		pm8994_l18: regulator-l18 {
+			regulator-min-microvolt = <2200000>;
+			regulator-max-microvolt = <2200000>;
+			qcom,init-voltage       = <2200000>;
+			qcom,vdd-voltage-level = <2200000 2200000>;
+			regulator-always-on;
+			status = "okay";
+		};
+	};
+	rpm-regulator-ldoa22 { /* regulator LDO22 - For Headset Detect */
+		status = "okay";
+		pm8994_l22: regulator-l22 {
+			regulator-min-microvolt = <3300000>;
+			regulator-max-microvolt = <3300000>;
+			qcom,init-voltage       = <3300000>;
+			qcom,vdd-voltage-level = <3300000 3300000>;
+			regulator-always-on;
+			status = "okay";
+		};
+	};
+};

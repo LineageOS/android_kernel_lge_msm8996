@@ -1,0 +1,111 @@
+/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "../msm8996-elsa-common/msm8996-elsa-common-pm.dtsi"
+
+&soc {
+
+	lge,vzw_req {
+		compatible = "lge,vzw_req";
+		lge,under_chg_current = <450>;
+	};
+
+	lge,power-sysfs {
+		status = "ok";
+		compatible = "lge,power-sysfs";
+
+		sysfs,node =
+			/* group , user_node, kernel node */
+			/* ADC/MPP */
+			"adc", "thermal", "/sys/class/thermal/",
+			"adc", "xo_therm", "/sys/class/hwmon/hwmon1/device/xo_therm",
+			"adc", "batt_therm", "/sys/class/power_supply/battery/temp",
+			"adc", "batt_id", "/sys/class/lge_power/lge_batt_id/valid_batt_id",
+			"adc", "pa_therm0", "NULL",
+			"adc", "pa_therm1", "/sys/class/hwmon/hwmon1/device/pa_therm1",
+			"adc", "usb_in", "/sys/class/hwmon/hwmon2/device/usbin",
+			"adc", "vcoin", "/sys/class/hwmon/hwmon1/device/vcoin",
+			"adc", "vph_pwr", "/sys/class/hwmon/hwmon1/device/vph_pwr",
+			"adc", "usb_id", "/sys/class/hwmon/hwmon1/device/usb_id_lv",
+			"adc", "vts", "/sys/class/thermal/thermal_zone38/temp",
+			"adc", "pmic", "/sys/class/thermal/thermal_zone22/temp",
+			/* Battery */
+			"battery", "capacity", "/sys/class/power_supply/battery/capacity",
+			"battery", "health", "/sys/class/power_supply/battery/health",
+			"battery", "present", "/sys/class/power_supply/battery/present",
+			"battery", "pseudo_batt", "/sys/class/lge_power/lge_cc/pseudo_batt",
+			"battery", "status", "/sys/class/power_supply/battery/status",
+			"battery", "temp", "/sys/class/power_supply/battery/temp",
+			"battery", "valid_batt_id", "/sys/class/lge_power/lge_batt_id/valid_batt_id",
+			"battery", "voltage_now", "/sys/class/power_supply/battery/voltage_now",
+			"battery", "vzw_chg", "/sys/class/power_supply/lgcc/vzw_chg",
+			"battery", "condition", "/sys/class/power_supply/battery/battery_condition",
+			"battery", "time_to_full_now", "/sys/class/power_supply/battery/time_to_full_now",
+			"battery", "cycle", "NULL",
+			"battery", "battery_type", "/sys/class/power_supply/bms/battery_type",
+			"battery", "charge_full", "/sys/class/power_supply/bms/charge_full",
+			"battery", "charge_now_raw", "/sys/class/power_supply/bms/charge_now_raw",
+			/* Charger */
+			"charger", "ac_online", "NULL",
+			"charger", "usb_online", "/sys/class/power_supply/usb/online",
+			"charger", "present", "/sys/class/power_supply/usb/present",
+			"charger", "wlc_online", "NULL",
+			"charger", "type", "/sys/class/power_supply/usb/real_type",
+			"charger", "time_out", "/sys/class/power_supply/battery/safety_timer_enabled",
+			"charger", "charging_enabled", "/sys/class/power_supply/battery/charging_enabled",
+			"charger", "ibat_current", "/sys/class/power_supply/battery/current_now",
+			"charger", "ichg_current", "/sys/class/power_supply/usb/current_max",
+			"charger", "iusb_control", "NULL",
+			"charger", "thermal_mitigation", "/sys/class/power_supply/battery/system_temp_level",
+			"charger", "wlc_thermal_mitigation", "NULL",
+			"charger", "usb_parallel_chg_status", "/sys/class/power_supply/usb-parallel/status",
+			"charger", "usb_parallel_charging_enabled", "/sys/class/power_supply/usb-parallel/charging_enabled",
+			"charger", "restricted_charging", "/sys/module/lge_power_class_charging_controller/parameters/restricted_charging",
+			"charger", "fastchg", "/sys/class/power_supply/usb/fastchg",
+			"charger", "chgstep", "/sys/class/power_supply/battery/device/chgstep",
+			"charger", "incompatible", "/sys/class/power_supply/usb/incompatible_chg",
+			"charger", "ext_pwr", "/sys/class/power_supply/battery/ext_pwr",
+			"charger", "input_current_settled", "/sys/class/power_supply/battery/input_current_settled",
+			"charger", "connection_type", "NULL",
+			"charger", "wireless_charging_enabled", "NULL",
+			"charger", "input_suspend", "NULL",
+			/* LCD Backlight */
+			"lcd", "brightness", "/sys/class/leds/lcd-backlight/brightness",
+			"lcd", "max_brightness", "/sys/class/leds/lcd-backlight/max_brightness",
+			"lcd_ex", "brightness", "/sys/class/leds/lcd-backlight-ex/brightness",
+			"lcd_ex", "max_brightness", "/sys/class/leds/lcd-backlight-ex/max_brightness",
+			/* KEY LED */
+			"key_led", "red_brightness", "/sys/class/leds/red/brightness",
+			"key_led", "green_brightness", "/sys/class/leds/green/brightness",
+			"key_led", "blue_brightness", "/sys/class/leds/blue/brightness",
+			/* CPU */
+			"cpu", "cpu_idle_modes", "/sys/module/lpm_levels/system/",
+			/* GPU */
+			"gpu", "busy", "/sys/class/kgsl/kgsl-3d0/gpubusy",
+			/* PLATFORM */
+			"platform", "speed_bin", "NULL",
+			"platform", "pvs_bin", "NULL",
+			"platform", "power_state", "/sys/power/autosleep",
+			"platform", "poweron_alarm", "/sys/module/qpnp_rtc/parameters/poweron_alarm",
+			"platform", "pcb_rev", "/sys/class/hwmon/hwmon1/device/pcb_rev",
+			"platform", "smpl_boot", "/sys/module/lge_smpl_count/parameters/smpl_boot",
+			/* testmode */
+			"testmode", "charge", "/sys/class/power_supply/battery/device/at_charge",
+			"testmode", "chcomp", "/sys/class/power_supply/battery/device/at_chcomp",
+			"testmode", "chgmodeoff", "/sys/class/power_supply/battery/charging_enabled",
+			"testmode", "fuelrst", "/sys/bus/i2c/drivers/max17048/6-0036/fuelrst",
+			"testmode", "rtc_time", "/dev/rtc0",
+			"testmode", "pmrst", "/sys/class/power_supply/charger_controller/device/at_pmrst",
+			"testmode", "battexit", "/sys/class/power_supply/battery/present",
+			"testmode", "hardreset_mode", "/sys/module/qpnp_power_on/parameters/hardreset_mode";
+	};
+};

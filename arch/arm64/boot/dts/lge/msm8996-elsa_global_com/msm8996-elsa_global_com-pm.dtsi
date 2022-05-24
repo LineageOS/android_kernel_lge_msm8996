@@ -1,0 +1,25 @@
+/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "../msm8996-elsa-common/msm8996-elsa-common-pm.dtsi"
+
+&spmi_bus {
+	qcom,pm8994@0 {
+		 qcom,power-on@800 {
+			 qcom,pon_3 {  /* KPD_PWR_N AND RESIN_N */
+				  status = "ok";
+				  qcom,support-reset = <1>;
+			 };
+		 };
+	};
+
+};

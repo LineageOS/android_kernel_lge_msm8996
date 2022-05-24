@@ -1,0 +1,175 @@
+/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+
+/dts-v1/;
+
+#include "../../qcom/msm8996pro-v1.1.dtsi"
+#include "../../qcom/msm-pmi8996.dtsi"
+#include "msm8996-lucye_att_us.dtsi"
+#include "msm8996-lucye_att_us-touch.dtsi"
+#include "../msm8996-camera/msm8996-lucye-camera_rev-0.0.dtsi"
+#include "../msm8996-lucye_storage_type/current_storage_type.dtsi"
+#include "../msm8996-sound/msm8996-lucye-sound_rev-0_0.dtsi"
+#include "msm8996-lucye_att_us_plus-sound.dtsi"
+#include "../msm8996-lucye-common/msm8996-lucye-common-usb-rev-1.0.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. MSM 8996pro v1.1 + PMI8996 MTP";
+	compatible = "qcom,msm8996-mtp", "qcom,msm8996", "qcom,mtp";
+	qcom,board-id = <0x1108 0>;
+};
+
+&i2c_12 {
+	status = "disabled";
+};
+
+/* Display Function */
+&soc {
+	dsi_panel_pwr_supply: dsi_panel_pwr_supply {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		qcom,panel-supply-entry@0 {
+			reg = <0>;
+			qcom,supply-name = "lab";
+			qcom,supply-min-voltage = <4600000>;
+			qcom,supply-max-voltage = <6000000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+		};
+
+		qcom,panel-supply-entry@1 {
+			reg = <1>;
+			qcom,supply-name = "ibb";
+			qcom,supply-min-voltage = <4600000>;
+			qcom,supply-max-voltage = <6000000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-post-on-sleep = <20>;
+		};
+	};
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&dsi_sw49408_dsc_1440_2880_cmd>;
+	lge,extra-gpio-names = "vddio", "vpnl";
+
+	lge,gpio-vddio = <&tlmm 69 0>;
+	lge,gpio-vpnl = <&tlmm 94 0>;
+};
+
+&mdss_dsi1 {
+	/delete-property/cell-index;
+};
+
+/* pinctrl for Display function
+ * GPIO69 : LCD_VDD_IO_EN
+ * GPIO94 : LCD_VCL_EN
+ */
+&soc {
+	tlmm: pinctrl@01010000 {
+		compatible = "qcom,msm8996-pinctrl";
+		reg = <0x01010000 0x300000>;
+		interrupts = <0 208 0>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
+
+		pmx_mdss: pmx_mdss {
+			mdss_dsi_active1: mdss_dsi_active1 {
+				mux {
+					pins = "gpio69";
+					function = "gpio";
+				};
+
+				pmx_mdss {
+					pins = "gpio69";
+					drive-strength = <8>; /* 8 mA */
+					bias-disable = <0>; /* no pull */
+					output-high;
+				};
+			};
+			mdss_dsi_active2: mdss_dsi_active2 {
+				mux {
+					pins = "gpio94";
+					function = "gpio";
+				};
+
+				pmx_mdss {
+					pins = "gpio94";
+					drive-strength = <8>; /* 8 mA */
+					bias-disable = <0>; /* no pull */
+					output-high;
+				};
+			};
+			mdss_dsi_suspend1: mdss_dsi_suspend1 {
+				mux {
+					pins = "gpio69";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio69";
+					drive-strength = <2>; /* 2 mA */
+					bias-pull-down; /* pull down */
+				};
+			};
+			mdss_dsi_suspend2: mdss_dsi_suspend2 {
+				mux {
+					pins = "gpio94";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio94";
+					drive-strength = <2>; /* 2 mA */
+					bias-pull-down; /* pull down */
+				};
+			};
+		};
+	};
+};
+
+&pmi8994_charger {
+    lge,lge_otp_enable;
+};
+
+&soc {
+	qcom,msm-thermal {
+		qcom,freq-mitigation-value = <1056000>;
+	};
+	qcom,bcl {
+		qcom,ibat-monitor {
+			qcom,big-mitigation-freq-khz = <1056000>;
+		};
+	};
+
+        lge,cable_detect {
+                lge,no-init-cable       = <     0       0    0   0    0     0>;
+                lge,cable-mhl-1k        = <     1    3000  500  500  500  500>;
+                lge,cable-u-28p7k       = <  3001    6000 1800  500 1500 3200>;
+                lge,cable-28p7k         = <  6001  138000 1800  500 1500 3200>;
+                lge,cable-56k           = <138001  330000 1500 1500  500  500>;
+                lge,cable-100k          = <330001  341000 1800  500 1500 3200>;
+                lge,cable-130k          = <341001  429000 1500 1500  500  500>;
+                lge,cable-180k          = <429001  479000 1800  500 1500 3200>;
+                lge,cable-200k          = <479001  501000 1800  500 1500 3200>;
+                lge,cable-220k          = <501001  528000 1800  500 1500 3200>;
+                lge,cable-270k          = <528001  578000 1800  500 1500 3200>;
+                lge,cable-330k          = <578001  633000 1800  500 1500 3200>;
+                lge,cable-620k          = <633001  759000 1800  500 1500 3200>;
+                lge,cable-910k          = <759001  897000 1500 1500  500  500>;
+                lge,cable-none          = <897001 1045000 1800  500 1500 3200>;
+        };
+};

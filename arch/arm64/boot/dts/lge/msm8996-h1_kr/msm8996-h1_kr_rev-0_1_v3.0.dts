@@ -1,0 +1,331 @@
+/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+
+/dts-v1/;
+
+#include "../../qcom/msm8996-v3.0.dtsi"
+#include "msm8996-h1_kr.dtsi"
+#include "msm8996-h1_kr-touch.dtsi"
+#include "msm8996-h1_kr-camera-rev-0_1.dtsi"
+#include "msm8996-h1_kr-fingerprint-rev-0_1.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. MSM 8996 v3.0 + PMI8994 MTP";
+	compatible = "qcom,msm8996-mtp", "qcom,msm8996", "qcom,mtp";
+	qcom,board-id = <0x408 0>;
+};
+
+&spmi_bus {
+	qcom,pmi8994@2 {
+		 bcl@4200 {
+			 status = "disabled";
+		 };
+	};
+};
+
+&i2c_6 {
+	analogix_anx7816@72 {
+		status = "disabled";
+	};
+};
+
+&i2c_12 {
+	status = "disabled";
+};
+
+/* Display Function */
+&soc {
+	dsi_panel_pwr_supply: dsi_panel_pwr_supply {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		qcom,panel-supply-entry@0 {
+			reg = <0>;
+			qcom,supply-name = "lab";
+			qcom,supply-min-voltage = <4600000>;
+			qcom,supply-max-voltage = <6000000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+		};
+
+		qcom,panel-supply-entry@1 {
+			reg = <1>;
+			qcom,supply-name = "ibb";
+			qcom,supply-min-voltage = <4600000>;
+			qcom,supply-max-voltage = <6000000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-post-on-sleep = <20>;
+		};
+	};
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&dsi_dual_lgd_lg4945_cmd>;
+	lge,extra-gpio-names = "vddio", "vpnl";
+
+	lge,gpio-vddio = <&tlmm 79 0>;
+	lge,gpio-vpnl = <&tlmm 94 0>;
+};
+
+&mdss_dsi1 {
+	qcom,dsi-pref-prim-pan = <&dsi_dual_lgd_lg4945_cmd>;
+	lge,extra-gpio-names = "vddio", "vpnl";
+
+	lge,gpio-vddio = <&tlmm 79 0>;
+	lge,gpio-vpnl = <&tlmm 94 0>;
+};
+
+/* pinctrl for Display function
+ * GPIO79 : LCD_VDD_IO_EN
+ * GPIO94 : LCD_VCL_EN
+ */
+&soc {
+	tlmm: pinctrl@01010000 {
+		compatible = "qcom,msm8996-pinctrl";
+		reg = <0x01010000 0x300000>;
+		interrupts = <0 208 0>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
+
+		pmx_mdss: pmx_mdss {
+			mdss_dsi_active1: mdss_dsi_active1 {
+				mux {
+					pins = "gpio79";
+					function = "gpio";
+				};
+
+				pmx_mdss {
+					pins = "gpio79";
+					drive-strength = <8>; /* 8 mA */
+					bias-disable = <0>; /* no pull */
+					output-high;
+				};
+			};
+			mdss_dsi_active2: mdss_dsi_active2 {
+				mux {
+					pins = "gpio94";
+					function = "gpio";
+				};
+
+				pmx_mdss {
+					pins = "gpio94";
+					drive-strength = <8>; /* 8 mA */
+					bias-disable = <0>; /* no pull */
+					output-high;
+				};
+			};
+			mdss_dsi_suspend1: mdss_dsi_suspend1 {
+				mux {
+					pins = "gpio79";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio79";
+					drive-strength = <2>; /* 2 mA */
+					bias-pull-down; /* pull down */
+				};
+			};
+			mdss_dsi_suspend2: mdss_dsi_suspend2 {
+				mux {
+					pins = "gpio94";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio94";
+					drive-strength = <2>; /* 2 mA */
+					bias-pull-down; /* pull down */
+				};
+			};
+		};
+	};
+};
+
+&pmi8994_charger {
+    lge,lge_otp_enable;
+    lge,cable-adc-useset  = <3>;
+    lge,cable-adc-muxset  = <0x79>;
+};
+
+&pmi8994_fg {
+	lge,lge_rid_disable;
+};
+
+&sdhc_2 {
+    pinctrl-0 = <&sdc2_clk_on  &sdc2_cmd_on &sdc2_data_on &sdc2_cd_rev_0_1_on>;
+    pinctrl-1 = <&sdc2_clk_off &sdc2_cmd_off &sdc2_data_off &sdc2_cd_rev_0_1_off>;
+    cd-gpios = <&tlmm 112 0x1>;
+};
+
+/* set unused gpio to off */
+&pm8994_gpios {
+	gpio@c500 { /* GPIO 6 - FPC LDO_EN */
+		qcom,mode = <1>;                /* Digital output*/
+		qcom,vin-sel = <2>;             /* VIN2 */
+		qcom,src-sel = <0>;             /* GPIO */
+		qcom,master-en = <1>;           /* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@c600 { /* PM GPIO 7 */
+		status = "okay";
+		qcom,master-en = <0x0>;
+	};
+
+	gpio@c900 { /* PM GPIO 10 */
+		status = "okay";
+		qcom,master-en = <0x0>;
+	};
+
+	gpio@ca00 { /* PM GPIO 11 */
+		status = "okay";
+		qcom,master-en = <0x0>;
+	};
+
+	gpio@cb00 { /* PM GPIO 12 */
+		status = "okay";
+		qcom,master-en = <0x0>;
+	};
+
+	gpio@cd00 { /* PM GPIO 14 */
+		status = "okay";
+		qcom,master-en = <0x0>;
+	};
+
+	gpio@d200 { /* PM GPIO 19 */
+		status = "okay";
+		qcom,master-en = <0x0>;
+	};
+
+	gpio@d500 { /* PM GPIO 22 */
+		status = "okay";
+		qcom,master-en = <0x0>;
+	};
+};
+
+&pmi8994_gpios {
+	gpio@c100 { /* PMI GPIO 2 */
+		status = "okay";
+		qcom,master-en = <0x0>;
+	};
+
+	gpio@c300 { /* PMI GPIO 4 */
+		status = "okay";
+		qcom,master-en = <0x0>;
+	};
+
+	gpio@c400 { /* PMI GPIO 5 */
+		status = "okay";
+		qcom,master-en = <0x0>;
+	};
+
+	gpio@c500 { /* PMI GPIO 6 */
+		status = "okay";
+		qcom,master-en = <0x0>;
+	};
+
+	gpio@c600 { /* PMI GPIO 7 */
+		status = "okay";
+		qcom,master-en = <0x0>;
+	};
+
+	gpio@c700 { /* PMI GPIO 8 */
+		status = "okay";
+		qcom,master-en = <0x0>;
+	};
+
+	gpio@c800 { /* PMI GPIO 9 */
+		status = "okay";
+		qcom,master-en = <0x0>;
+	};
+
+	gpio@c900 { /* PMI GPIO 10 */
+		status = "okay";
+		qcom,master-en = <0x0>;
+	};
+};
+
+&soc {
+	lge,power-sysfs {
+		sysfs,node =
+			/* group , user_node, kernel node */
+			/* ADC/MPP */
+			"adc", "thermal", "/sys/class/thermal/",
+			"adc", "xo_therm", "/sys/class/hwmon/hwmon1/device/xo_therm",
+			"adc", "batt_therm", "/sys/class/power_supply/battery/temp",
+			"adc", "batt_id", "/sys/class/power_supply/battery_id/batt_id",
+			"adc", "pa_therm0", "/sys/class/hwmon/hwmon1/device/pa_therm0",
+			"adc", "pa_therm1", "NULL",
+			"adc", "usb_in", "/sys/class/hwmon/hwmon2/device/usbin",
+			"adc", "vcoin", "/sys/class/hwmon/hwmon1/device/vcoin",
+			"adc", "vph_pwr", "/sys/class/hwmon/hwmon2/device/vph_pwr",
+			"adc", "usb_id", "/sys/class/hwmon/hwmon1/device/usb_id_lv_pu",
+			/* Battery */
+			"battery", "capacity", "/sys/class/power_supply/battery/capacity",
+			"battery", "health", "/sys/class/power_supply/battery/health",
+			"battery", "present", "/sys/class/power_supply/battery/present",
+			"battery", "pseudo_batt", "/sys/class/power_supply/battery/pseudo_batt",
+			"battery", "status", "/sys/class/power_supply/battery/status",
+			"battery", "temp", "/sys/class/power_supply/battery/temp",
+			"battery", "valid_batt_id", "/sys/class/power_supply/battery/valid_batt_id",
+			"battery", "voltage_now", "/sys/class/power_supply/battery/voltage_now",
+			"battery", "condition", "/sys/class/power_supply/battery/battery_condition",
+			"battery", "time_to_full_now", "/sys/class/power_supply/battery/time_to_full_now",
+			/* Charger */
+			"charger", "ac_online", "NULL",
+			"charger", "usb_online", "/sys/class/power_supply/usb/online",
+			"charger", "present", "/sys/class/power_supply/usb/present",
+			"charger", "wlc_online", "NULL",
+			"charger", "type", "/sys/class/power_supply/usb/type",
+			"charger", "time_out", "NULL",
+			"charger", "charging_enabled", "/sys/class/power_supply/battery/charging_enabled",
+			"charger", "ibat_current", "/sys/class/power_supply/battery/current_now",
+			"charger", "ichg_current", "/sys/class/power_supply/usb/current_max",
+			"charger", "iusb_control", "NULL",
+			"charger", "thermal_mitigation", "/sys/class/power_supply/battery/system_temp_level",
+			"charger", "wlc_thermal_mitigation", "NULL",
+			"charger", "usb_parallel_chg_status", "NULL",
+			"charger", "usb_parallel_charging_enabled", "NULL",
+			"charger", "incompatible", "/sys/class/power_supply/usb/incompatible_chg",
+			"charger", "ext_pwr", "/sys/class/power_supply/battery/ext_pwr",
+			/* LCD Backlight */
+			"lcd", "brightness", "/sys/class/leds/lcd-backlight/brightness",
+			"lcd", "max_brightness", "/sys/class/leds/lcd-backlight/max_brightness",
+			/* KEY LED */
+			"key_led", "red_brightness", "/sys/class/leds/red/brightness",
+			"key_led", "green_brightness", "/sys/class/leds/green/brightness",
+			"key_led", "blue_brightness", "/sys/class/leds/blue/brightness",
+			/* CPU */
+			"cpu", "cpu_idle_modes", "/sys/module/lpm_levels/system/",
+			/* GPU */
+			"gpu", "busy", "/sys/class/kgsl/kgsl-3d0/gpubusy",
+			/* PLATFORM */
+			"platform", "speed_bin", "NULL",
+			"platform", "pvs_bin", "NULL",
+			"platform", "power_state", "/sys/power/autosleep",
+			"platform", "poweron_alarm", "/sys/module/qpnp_rtc/parameters/poweron_alarm",
+			"platform", "pcb_rev", "/sys/class/hwmon/hwmon1/device/pcb_rev",
+			/* testmode */
+			"testmode", "charge", "/sys/class/power_supply/battery/device/at_charge",
+			"testmode", "chcomp", "/sys/class/power_supply/battery/device/at_chcomp",
+			"testmode", "chgmodeoff", "/sys/class/power_supply/battery/charging_enabled",
+			"testmode", "fuelrst", "/sys/bus/i2c/drivers/max17048/6-0036/fuelrst",
+			"testmode", "rtc_time", "/dev/rtc0",
+			"testmode", "pmrst", "/sys/class/power_supply/charger_controller/device/at_pmrst",
+			"testmode", "battexit", "/sys/class/power_supply/battery/present";
+	};
+};

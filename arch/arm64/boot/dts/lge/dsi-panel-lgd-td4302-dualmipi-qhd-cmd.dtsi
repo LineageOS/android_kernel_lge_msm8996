@@ -1,0 +1,133 @@
+/* Copyright (c) 2014, Code Aurora Forum. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&mdss_mdp {
+	dsi_dual_lgd_td4302_cmd: qcom,mdss_dsi_lgd_td4302_1440p_mipi_cmd {
+		qcom,mdss-dsi-panel-name = "LGD Synaptics TD4302 1440p Dual cmd mode dsi panel";
+		qcom,mdss-dsi-panel-type = "dsi_cmd_mode";
+		qcom,mdss-dsi-panel-framerate = <60>;
+		qcom,mdss-dsi-virtual-channel-id = <0>;
+		qcom,mdss-dsi-stream = <0>;
+		qcom,mdss-dsi-panel-width = <720>;
+		qcom,mdss-dsi-panel-height = <2560>;
+		qcom,mdss-dsi-h-front-porch = <60>;
+		qcom,mdss-dsi-h-back-porch = <80>;
+		qcom,mdss-dsi-h-pulse-width = <12>;
+		qcom,mdss-dsi-h-sync-skew = <0>;
+		qcom,mdss-dsi-v-front-porch = <150>;
+		qcom,mdss-dsi-v-back-porch = <155>;
+		qcom,mdss-dsi-v-pulse-width = <1>;
+		qcom,mdss-dsi-h-left-border = <0>;
+		qcom,mdss-dsi-h-right-border = <0>;
+		qcom,mdss-dsi-v-top-border = <0>;
+		qcom,mdss-dsi-v-bottom-border = <0>;
+		qcom,mdss-dsi-bpp = <24>;
+		qcom,mdss-dsi-color-order = "rgb_swap_rgb";
+		qcom,mdss-dsi-underflow-color = <0xff>;
+		qcom,mdss-dsi-border-color = <0>;
+		qcom,mdss-dsi-h-sync-pulse = <0>;
+		qcom,mdss-dsi-traffic-mode = "burst_mode";
+		qcom,mdss-dsi-lane-map = "lane_map_0123";
+		qcom,mdss-dsi-bllp-eof-power-mode;
+		qcom,mdss-dsi-bllp-power-mode;
+
+		qcom,partial-update-enabled;
+		qcom,partial-update-roi-merge;
+		qcom,panel-roi-alignment = <4 4 4 4 32 32>;
+		qcom,dcs-cmd-by-left;
+
+		qcom,mdss-dsi-lane-0-state;
+		qcom,mdss-dsi-lane-1-state;
+		qcom,mdss-dsi-lane-2-state;
+		qcom,mdss-dsi-lane-3-state;
+		qcom,mdss-dsi-hor-line-idle = <0 40 256>,
+						<40 120 128>,
+						<120 240 64>;
+		qcom,mdss-dsi-panel-timings = [EB 38 26 01 6A 6C 2C 3C 2F 03 04 00];
+		qcom,mdss-dsi-reset-sequence = <0 10>, <1 200>;
+		qcom,mdss-dsi-t-clk-post = <0x02>;
+		qcom,mdss-dsi-t-clk-pre = <0x2C>;
+		qcom,mdss-dsi-bl-max-level = <4095>;
+		qcom,mdss-dsi-dma-trigger = "trigger_sw";
+		qcom,mdss-dsi-mdp-trigger = "none";
+		qcom,mdss-dsi-te-pin-select = <1>;
+		qcom,mdss-dsi-wr-mem-start = <0x2c>;
+		qcom,mdss-dsi-wr-mem-continue = <0x3c>;
+		qcom,mdss-dsi-te-dcs-command = <1>;
+		qcom,mdss-dsi-te-check-enable;
+		qcom,mdss-dsi-te-using-te-pin;
+		qcom,ulps-enabled;
+		qcom,mdss-dsi-lp11-init;
+		qcom,mdss-dsi-tx-eot-append;
+		/* lge,mdss-dsi-vblank-mode; */
+		qcom,mdss-dsi-on-command = [ /* for vblank mode */
+			/* Write_Display_Brightness */
+			39 01 00 00 00 00 02 51 FF
+
+			/* Write_CTRL_Display */
+			39 01 00 00 00 00 02 53 0C
+
+			/* Write_CABC */
+			39 01 00 00 00 00 02 55 00
+
+			/* set_partial_area */
+			39 01 00 00 00 00 05 30 00 00 02 A7
+
+			/* set_display_on + 120ms */
+			05 01 00 00 00 00 01 11
+
+			/* exit_sleep_mode */
+			05 01 00 00 78 00 01 29
+		];
+		qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
+		qcom,mdss-dsi-off-command = [
+			/* Display Off */
+			05 01 00 00 00 00 01 28
+			/* Sleep In + 120ms */
+			05 01 00 00 78 00 01 10
+			];
+		qcom,mdss-dsi-off-command-state = "dsi_hs_mode";
+
+		qcom,blmap-size = <256>;
+		qcom,blmap = <
+			  0
+			  18 18 18 18 18 18 18 18 18 18
+			  18 18 18 18 18 18 19 19 19 19
+			  19 19 20 20 21 22 23 24 25 26
+			  27 28 29 30 31 32 33 35 36 38
+			  39 41 42 43 45 46 48 49 51 54
+			  57 60 63 66 69 72 75 78 81 83
+			  86 89 92 95 98 101 104 107 110 113
+			  116 119 122 126 130 135 139 143 148 152
+			  156 161 165 169 174 178 183 188 193 198
+			  203 208 213 218 223 228 233 238 244 251
+			  257 264 270 277 283 290 296 303 310 316
+			  322 328 334 340 346 352 358 364 370 376
+			  382 389 396 404 412 420 427 435 443 451
+			  458 466 474 482 491 501 511 521 531 540
+			  550 560 570 580 590 599 608 617 626 635
+			  644 653 662 671 680 689 698 708 718 729
+			  739 750 760 771 782 792 803 813 824 835
+			  846 857 868 880 891 902 914 925 936 948
+			  959 970 982 995 1008 1021 1034 1047 1061 1074
+			  1087 1100 1113 1126 1140 1153 1166 1179 1192 1205
+			  1218 1231 1244 1257 1270 1283 1296 1310 1327 1344
+			  1361 1379 1396 1413 1430 1448 1465 1482 1500 1515
+			  1530 1545 1560 1575 1590 1605 1620 1635 1650 1665
+			  1680 1695 1714 1734 1753 1773 1792 1812 1832 1851
+			  1871 1890 1910 1930 1951 1972 1994 2015 2037 2058
+			  2080 2101 2123 2144 2166
+		>;
+		qcom,mdss-pan-physical-width-dimension = <66>;
+		qcom,mdss-pan-physical-height-dimension = <117>;
+	};
+};

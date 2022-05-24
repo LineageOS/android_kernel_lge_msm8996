@@ -1,0 +1,59 @@
+/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/ {
+	aliases {
+		spi12 = &spi_12;
+	};
+
+	soc {
+		spi_12: spi@75ba000{    /* BLSP-2 QUP6 */
+			td4302 {
+				compatible = "lge,td4302";
+				reg = <2>;
+				status = "ok";
+				interrupt-parent = <&tlmm>;
+				interrupts = <125 0x2008>;
+				irqflags = <0x00000002>;
+				spi-max-frequency = <5000000>;
+
+				pinctrl-names = "touch_pin_active", "touch_pin_sleep";
+				pinctrl-0 = <&ts_reset_active &ts_int_active>;
+				pinctrl-1 = <&ts_reset_suspend &ts_int_suspend>;
+
+				reset-gpio = <&tlmm 89 0x00>;
+				irq-gpio = <&tlmm 125 0x2008>;
+
+				/*Caps*/
+				max_x = <1439>;
+				max_y = <2559>;
+				max_pressure = <0xff>;
+				max_width = <15>;
+				max_orientation = <1>;
+				max_id = <10>;
+
+				/*role*/
+				hw_reset_delay = <90>;
+				sw_reset_delay = <10>;
+				use_lpwg = <1>;
+				use_lpwg_test = <1>;
+
+				/* firmware */
+				fw_image = "touch/h1/DO_NOT_INSERT.img";
+
+				panel_spec = "touch/h1/h1_limit.txt";
+				panel_spec_mfts = "touch/h1/h1_limit_mfts.txt";
+			};
+		};
+	};
+};
+

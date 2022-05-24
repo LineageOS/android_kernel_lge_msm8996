@@ -1,0 +1,55 @@
+/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "msm8996-elsa-hdmi.dtsi"
+
+&i2c_6 {
+	anx7688-usbc@28 {
+		compatible = "analogix,anx7688-usbc";
+		reg = <0x28>;
+
+		status = "ok";
+
+		interrupt-parent = <&tlmm>;
+		interrupts = <131 0x0>, <46 0x0>;
+
+		vbus-supply = <&smbcharger_charger_otg>;
+		avdd33-supply = <&pm8994_l22>;
+		avdd10-supply = <&pm8994_l27>;
+
+		anx7688,pwren-gpio = <&tlmm 130 0x0>;
+		anx7688,rstn-gpio = <&tlmm 16 0x0>;
+		anx7688,alter-gpio = <&tlmm 46 0>;
+		anx7688,cdet-gpio = <&tlmm 131 0x0>;
+		anx7688,hpd-gpio = <&tlmm 34 0x0>;
+		anx7688,sbu-gpio = <&pm8994_gpios 3 0>;
+		anx7688,vconn-gpio = <&pm8994_gpios 1 0>;
+
+		anx7688,pd-max-volt = <9000>;
+		anx7688,pd-max-power = <27000>;
+		anx7688,pd-min-power = <3000>;
+
+		/* 0: 0V
+		 * 1: 1.8V
+		 * 2: 2.7V
+		 * 3: 3.6V
+		 */
+		anx7688,vsafe0v-level = <3>;
+		anx7688,auto-pd-support;
+
+		qcom,hdmi-tx-map = <&mdss_hdmi_tx>;
+
+		pinctrl-names = "default", "sleep";
+		pinctrl-0	= <&anx7688_cable_det_active &anx7688_alt_active>;
+		pinctrl-1	= <&anx7688_cable_det_sleep &anx7688_alt_sleep>;
+	};
+};

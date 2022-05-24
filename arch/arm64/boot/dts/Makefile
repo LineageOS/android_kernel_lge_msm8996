@@ -9,10 +9,14 @@ dts-dirs += freescale
 dts-dirs += hisilicon
 dts-dirs += marvell
 dts-dirs += mediatek
-dts-dirs += qcom
 dts-dirs += rockchip
 dts-dirs += sprd
 dts-dirs += xilinx
+ifneq ($(CONFIG_MACH_LGE),y)
+dts-dirs += qcom
+else
+dts-dirs += lge
+endif
 
 subdir-y	:= $(dts-dirs)
 

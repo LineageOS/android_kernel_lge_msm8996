@@ -1,0 +1,176 @@
+/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+/{
+	aliases {
+		i2c1 = &i2c_1;
+	};
+};
+
+&rpm_bus {
+	rpm-regulator-ldoa17 {
+		status = "ok";
+		pm8994_l17: regulator-l17 {
+				regulator-min-microvolt = <2800000>;
+				regulator-max-microvolt = <3300000>;
+				qcom,init-voltage = <2800000>;
+				qcom,vdd-voltage-level = <2800000 3300000>;
+				regulator-always-on;
+				status = "ok";
+			};
+	};
+};
+
+&soc {
+	i2c_1: i2c@7575000 { /* BLSP1 QUP1 */
+		compatible = "qcom,i2c-msm-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "qup_phys_addr";
+		reg = <0x7575000 0x1000>;
+		interrupt-names = "qup_irq";
+		interrupts = <0 95 0>;
+		dmas = <&dma_blsp1 6 64 0x20000020 0x20>,
+			<&dma_blsp1 7 32 0x20000020 0x20>;
+		dma-names = "tx", "rx";
+		qcom,master-id = <86>;
+		qcom,clk-freq-out = <400000>;
+		qcom,clk-freq-in  = <19200000>;
+		clock-names = "iface_clk", "core_clk";
+		clocks = <&clock_gcc clk_gcc_blsp1_ahb_clk>,
+			 <&clock_gcc clk_gcc_blsp1_qup1_i2c_apps_clk>;
+		pinctrl-names = "default", "i2c_active", "i2c_sleep";
+		pinctrl-0 = <&i2c_1_default>;
+		pinctrl-1 = <&i2c_1_active>;
+		pinctrl-2 = <&i2c_1_sleep>;
+	};
+
+	tlmm: pinctrl@01010000 {
+		i2c_1 {
+			i2c_1_default: i2c_1_default {
+				mux {
+					pins = "gpio2", "gpio3";
+					function = "blsp_i2c1";
+				};
+
+				config {
+					pins = "gpio2", "gpio3";
+					drive-strength = <2>;
+					bias-pull-up;
+				};
+			};
+
+			i2c_1_active: i2c_1_active {
+				mux {
+					pins = "gpio2", "gpio3";
+					function = "blsp_i2c1";
+				};
+
+				config {
+					pins = "gpio2", "gpio3";
+					drive-strength = <2>;
+					bias-pull-up;
+				};
+			};
+
+			i2c_1_sleep: i2c_1_sleep {
+				mux {
+					pins = "gpio2", "gpio3";
+					function = "blsp_i2c1";
+				};
+
+				config {
+					pins = "gpio2", "gpio3";
+					drive-strength = <2>;
+					bias-pull-up;
+				};
+			};
+		};
+	};
+
+	i2c_1: i2c@7575000 {
+		silabs4705@63 { /* SiLabs FM chip, slave id 0x63*/
+			status = "disabled";
+			compatible = "silabs,si4705";
+			#address-cells = <0>;
+			reg = <0x63>;
+			vdd-supply = <&pm8994_s4>;
+			silabs,vdd-supply-voltage = <1800000 1800000>;
+			va-supply = <&pm8994_l17>;
+			silabs,va-supply-voltage = <2800000 3300000>;
+			pinctrl-names = "default", "pmx_fm_active","pmx_fm_suspend";
+			pinctrl-0 = <&fm_int_default &fm_rst_suspend>;
+			pinctrl-1 = <&fm_int_active &fm_rst_active>;
+			pinctrl-2 = <&fm_int_suspend &fm_rst_suspend>;
+			silabs,reset-gpio = <&tlmm 61 0>;
+			silabs,int-gpio = <&tlmm 62 1>;
+			silabs,status-gpio = <&tlmm 57 0>;
+			interrupts = <0 1>;
+			#interrupt-cells = <1>;
+			interrupt-map-mask = <0xffffffff>;
+			interrupt-map = <
+				  0 &tlmm 62 2
+				  1 &tlmm 57 1
+				>;
+			interrupt-names = "silabs_fm_int", "silabs_fm_status_int";
+		};
+    };
+
+	i2c_1: i2c@7575000 {
+		silabs4709@10 { /* SiLabs FM si4709 chip, slave id 0x10*/
+			status = "disabled";
+			compatible = "silabs,si470x";
+			#address-cells = <0>;
+			reg = <0x10>;
+			vdd-supply = <&pm8994_l17>;
+			silabs,vdd-supply-voltage = <2800000 3300000>;
+			va-supply = <&pm8994_l17>;
+			silabs,va-supply-voltage = <2800000 3300000>;
+			pinctrl-names = "default","pmx_fm_active","pmx_fm_suspend";
+			pinctrl-0 = <&fm_int_default &fm_rst_suspend>;
+			pinctrl-1 = <&fm_int_active &fm_rst_active>;
+			pinctrl-2 = <&fm_int_suspend &fm_rst_suspend>;
+			silabs,reset-gpio = <&tlmm 61 0>;
+			silabs,int-gpio = <&tlmm 62 0>;
+			interrupts = <0 1>;
+			#interrupt-cells = <1>;
+			interrupt-map-mask = <0xffffffff>;
+			interrupt-map = <
+				  0 &tlmm 62 2
+				>;
+			interrupt-names = "silabs_fm_int", "silabs_fm_status_int";
+		};
+	};
+
+	i2c_1: i2c@7575000 {
+		rtc6213n@64 { /* Richwave FM Radio chip, slave id 0x64*/
+			status = "disabled";
+			compatible = "rtc6213n";
+			#address-cells = <0>;
+			reg = <0x64>;
+			vdd-supply = <&pm8994_l17>;
+			vdd-supply-voltage = <2800000 3300000>;
+			pinctrl-names = "default","pmx_fm_active","pmx_fm_suspend";
+			pinctrl-0 = <&fm_int_default>;
+			pinctrl-1 = <&fm_int_active>;
+			pinctrl-2 = <&fm_int_suspend>;
+			fmint-gpio = <&tlmm 62 0>;
+			interrupts = <0 1>;
+			#interrupt-cells = <1>;
+			interrupt-map-mask = <0xffffffff>;
+			interrupt-map = <
+				  0 &tlmm 62 2
+				>;
+			interrupt-names = "silabs_fm_int";
+		};
+	};
+};

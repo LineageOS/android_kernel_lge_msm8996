@@ -1,0 +1,76 @@
+/* Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2017, The LineageOS Project. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&i2c_8 { /* BLSP2 QUP2 */
+	pn548 {
+		compatible = "nxp,nfc-548";
+		reg = <0x28>;
+		nxp-nfc-548,irq-gpio = <&tlmm 9 0x00>;
+		nxp-nfc-548,firm-gpio = <&tlmm 11 0x00>;
+		nxp-nfc-548,ven-gpio = <&tlmm 12 0x00>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <9 0>;
+		interrupt-names = "nfc_irq";
+		pinctrl-names = "pmx_nfc_active","pmx_nfc_suspend";
+		pinctrl-0 = <&nfc_active>;
+		pinctrl-1 = <&nfc_suspend>;
+	};
+};
+
+&tlmm {
+	i2c_8 {
+		i2c_8_active: i2c_8_active {
+			mux {
+				pins = "gpio6", "gpio7";
+				function = "blsp_i2c8";
+			};
+
+			config {
+				pins = "gpio6", "gpio7";
+				drive-strength = <2>;
+				bias-disable;
+			};
+		};
+
+		i2c_8_sleep: i2c_8_sleep {
+			mux {
+				pins = "gpio6", "gpio7";
+				function = "blsp_i2c8";
+			};
+
+			config {
+				pins = "gpio6", "gpio7";
+				drive-strength = <2>;
+				bias-pull-up;
+			};
+		};
+	};
+
+	nfc_mux {
+		nfc_active: nfc_active {
+			nfc_mux {
+				pins = "gpio9", "gpio11", "gpio12";
+				drive-strength = <6>;
+				bias-pull-up;
+			};
+		};
+
+		nfc_suspend: nfc_suspend {
+			nfc_mux {
+				pins = "gpio9", "gpio11", "gpio12";
+				drive-strength = <6>;
+				bias-disable;
+			};
+		};
+	};
+};

@@ -1,0 +1,227 @@
+/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+/{
+	aliases {
+		spi8 = &spi_8;
+	};
+
+	reserved-memory {
+		removed_regions: removed_regions@85800000 {
+			reg = <0 0x85800000 0 0x2800000>;
+		};
+	};
+};
+
+&soc {
+	qcom_seecom: qseecom@86600000 {
+		reg = <0x86600000 0x1A00000>;
+	};
+
+	/* PIN CONTROL for FPC */
+	tlmm: pinctrl@01010000 {
+		fpc_spi_active {
+			fpc_spi_active: active {
+				mux {
+					pins = "gpio49", "gpio50",
+							"gpio51", "gpio52";
+					function = "blsp_spi9";
+				};
+
+				config {
+					pins = "gpio49", "gpio50",
+							"gpio51", "gpio52";
+					drive-strength = <6>;
+					bias-disable;
+				};
+			};
+		};
+
+		fpc_cs_manual {
+			fpc_cs_low: output-low {
+				mux {
+					pins = "gpio51";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio51";
+					bias-disable;
+					drive_strength = <2>;
+					ouput-low;
+				};
+			};
+			fpc_cs_high: output-high {
+				mux {
+					pins = "gpio51";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio51";
+					bias-disable;
+					drive_strength = <2>;
+					ouput-high;
+				};
+			};
+		};
+
+		fpc_cs_active {
+			fpc_cs_active: spi-active {
+				mux {
+					pins = "gpio51";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio51";
+					bias-disable;
+					drive_strength = <2>;
+				};
+			};
+		};
+
+		fpc_reset {
+			fpc_reset_reset: reset {
+				mux {
+					pins = "gpio40";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio40";
+					bias-disable;
+					drive_strength = <2>;
+					output-low;
+				};
+			};
+			fpc_reset_active: active {
+				mux {
+					pins = "gpio40";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio40";
+					bias-disable;
+					drive_strength = <2>;
+					output-high;
+				};
+			};
+		};
+
+		fpc_irq_active {
+			fpc_irq_active: active {
+				mux {
+					pins = "gpio38";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio38";
+					bias-pull-down;
+					drive_strength = <2>;
+				};
+			};
+		};
+
+	};
+	fpc,btp {
+		status = "ok";
+		compatible = "fpc,btp";
+		interrupt-parent = <&tlmm>;
+		interrupts = <38 0x0>;
+		qcom,qup-id = <8>; /* for tz */
+		use_regulator = <1>;
+		fpc,vddio-supply = <&pm8994_l12>;
+		fpc,gpio_irq	=  <&tlmm 38 0x00>;
+		fpc,gpio_reset	= <&tlmm 40 0x00>;
+		fpc,gpio_cs	= <&tlmm 51 0x00>;
+	};
+
+	spi_8: spi@75B7000 { /* BLSP2 QUP3 */
+		compatible = "qcom,spi-qup-v2";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg-names = "spi_physical", "spi_bam_physical";
+		reg = <0x075B7000 0x600>,
+			<0x07584000 0x2b000>;
+		interrupt-names = "spi_irq", "spi_bam_irq";
+		interrupts = <0 103 0>, <0 239 0>;
+		spi-max-frequency = <19200000>;
+
+		qcom,infinite-mode = <0>;
+		qcom,use-bam;
+		qcom,ver-reg-exists;
+		qcom,bam-consumer-pipe-index = <16>;
+		qcom,bam-producer-pipe-index = <17>;
+		qcom,master-id = <84>;
+		qcom,shared;
+		/*
+		qcom,use-pinctrl;
+		pinctrl-names = "spi_default", "spi_sleep";
+		pinctrl-0 = <&spi_0_active &spi_0_cs_active>;
+		pinctrl-1 = <&spi_0_sleep &spi_0_cs_sleep>;
+		*/
+		clock-names = "iface_clk", "core_clk";
+
+		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
+			 <&clock_gcc clk_gcc_blsp2_qup3_spi_apps_clk>;
+                status = "ok";
+	};
+};
+
+&spi_8 {
+
+	fpc1020@1 {
+		status = "ok";
+		reg = <1>;
+		compatible = "fpc,fpc1020";
+		input-device-name = "fpc1020";
+		interrupt-parent = <&tlmm>;
+		interrupts = <38>;
+		fpc,gpio_cs0	= <&tlmm 51 0>;
+		/*fpc,gpio_cs1	  = <&tlmm 51 0>;*/
+		fpc,gpio_rst	= <&tlmm 40 0>;
+		fpc,gpio_irq	= <&tlmm 38 0>;
+
+		/*vcc_spi-supply  = <&pm8994_s4>;*/
+		/*vdd_ana-supply  = <&pm8994_l32>;*/
+		vdd_io-supply	= <&pm8994_lvs2>; /*default regulator to lvs2 since rev.c*/
+		fpc,use_fpc2050 = <1>;
+		fpc,enable-on-boot;
+		fpc,enable-wakeup;
+		/* EV_MSC, MSC_SCAN */
+		fpc,event-type = <4>;
+		fpc,event-code = <4>;
+		spi-max-frequency = <4800000>;
+		spi-qup-id = <8>;
+		clock-names = "iface_clk", "core_clk";
+		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
+			<&clock_gcc clk_gcc_blsp2_qup3_spi_apps_clk>;
+
+		pinctrl-names = "fpc1020_spi_active",
+					"fpc1020_reset_reset",
+					"fpc1020_reset_active",
+					"fpc1020_cs_low",
+					"fpc1020_cs_high",
+					"fpc1020_cs_active",
+					"fpc1020_irq_active";
+
+		pinctrl-0 = <&fpc_spi_active>;
+		pinctrl-1 = <&fpc_reset_reset>;
+		pinctrl-2 = <&fpc_reset_active>;
+		pinctrl-3 = <&fpc_cs_low>;
+		pinctrl-4 = <&fpc_cs_high>;
+		pinctrl-5 = <&fpc_cs_active>;
+		pinctrl-6 = <&fpc_irq_active>;
+	};
+};

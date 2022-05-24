@@ -1,0 +1,280 @@
+/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+
+/dts-v1/;
+
+#include "../../qcom/msm8996-v3.dtsi"
+#include "../../qcom/msm-pmi8996.dtsi"
+#include "msm8996-h1_kddi_jp.dtsi"
+#include "msm8996-h1_kddi_jp-touch.dtsi"
+#include "msm8996-h1_kddi_jp-camera-rev-b.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. MSM 8996 v3.x + PMI8996 MTP";
+	compatible = "qcom,msm8996-mtp", "qcom,msm8996", "qcom,mtp";
+	qcom,board-id = <0xC08 0>;
+};
+
+&i2c_12 {
+	status = "disabled";
+};
+
+/* Display Function */
+&soc {
+	dsi_panel_pwr_supply: dsi_panel_pwr_supply {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		qcom,panel-supply-entry@0 {
+			reg = <0>;
+			qcom,supply-name = "lab";
+			qcom,supply-min-voltage = <4600000>;
+			qcom,supply-max-voltage = <6000000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+		};
+
+		qcom,panel-supply-entry@1 {
+			reg = <1>;
+			qcom,supply-name = "ibb";
+			qcom,supply-min-voltage = <4600000>;
+			qcom,supply-max-voltage = <6000000>;
+			qcom,supply-enable-load = <100000>;
+			qcom,supply-disable-load = <100>;
+			qcom,supply-post-on-sleep = <20>;
+		};
+	};
+};
+
+&mdss_dsi0 {
+	qcom,dsi-pref-prim-pan = <&dsi_dual_lgd_lg4945_cmd>;
+	lge,extra-gpio-names = "vddio", "vpnl";
+
+	lge,gpio-vddio = <&tlmm 79 0>;
+	lge,gpio-vpnl = <&tlmm 59 0>;
+};
+
+&mdss_dsi1 {
+	qcom,dsi-pref-prim-pan = <&dsi_dual_lgd_lg4945_cmd>;
+	lge,extra-gpio-names = "vddio", "vpnl";
+
+	lge,gpio-vddio = <&tlmm 79 0>;
+	lge,gpio-vpnl = <&tlmm 59 0>;
+};
+
+/* pinctrl for Display function
+ * GPIO79 : LCD_VDD_IO_EN
+ * GPIO59 : LCD_VCL_EN
+ */
+&soc {
+	tlmm: pinctrl@01010000 {
+		compatible = "qcom,msm8996-pinctrl";
+		reg = <0x01010000 0x300000>;
+		interrupts = <0 208 0>;
+		gpio-controller;
+		#gpio-cells = <2>;
+		interrupt-controller;
+		#interrupt-cells = <2>;
+
+		pmx_mdss: pmx_mdss {
+			mdss_dsi_active1: mdss_dsi_active1 {
+				mux {
+					pins = "gpio79";
+					function = "gpio";
+				};
+
+				pmx_mdss {
+					pins = "gpio79";
+					drive-strength = <8>; /* 8 mA */
+					bias-disable = <0>; /* no pull */
+					output-high;
+				};
+			};
+			mdss_dsi_active2: mdss_dsi_active2 {
+				mux {
+					pins = "gpio59";
+					function = "gpio";
+				};
+
+				pmx_mdss {
+					pins = "gpio59";
+					drive-strength = <8>; /* 8 mA */
+					bias-disable = <0>; /* no pull */
+					output-high;
+				};
+			};
+			mdss_dsi_suspend1: mdss_dsi_suspend1 {
+				mux {
+					pins = "gpio79";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio79";
+					drive-strength = <2>; /* 2 mA */
+					bias-pull-down; /* pull down */
+				};
+			};
+			mdss_dsi_suspend2: mdss_dsi_suspend2 {
+				mux {
+					pins = "gpio59";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio59";
+					drive-strength = <2>; /* 2 mA */
+					bias-pull-down; /* pull down */
+				};
+			};
+		};
+	};
+};
+
+&pmi8994_charger {
+    lge,lge_otp_enable;
+};
+
+/* set unused gpio to off */
+&pm8994_gpios {
+	gpio@c300 { /* PM GPIO 4 */
+		status = "okay";
+		qcom,master-en = <0x0>;
+	};
+
+	gpio@c500 { /* PM GPIO 6 */
+		status = "okay";
+		qcom,master-en = <0x0>;
+	};
+
+	gpio@c600 { /* PM GPIO 7 */
+		status = "okay";
+		qcom,master-en = <0x0>;
+	};
+
+	gpio@c800 { /* PM GPIO 9 */
+		status = "okay";
+		qcom,master-en = <0x0>;
+	};
+
+	gpio@c900 { /* PM GPIO 10 */
+		status = "okay";
+		qcom,master-en = <0x0>;
+	};
+
+	gpio@ca00 { /* PM GPIO 11 */
+		status = "okay";
+		qcom,master-en = <0x0>;
+	};
+
+	gpio@cb00 { /* PM GPIO 12 */
+		status = "okay";
+		qcom,master-en = <0x0>;
+	};
+
+	gpio@cc00 { /* PM GPIO 13 */
+		status = "okay";
+		qcom,master-en = <0x0>;
+	};
+
+	gpio@cd00 { /* PM GPIO 14 */
+		status = "okay";
+		qcom,master-en = <0x0>;
+	};
+
+	gpio@d200 { /* PM GPIO 19 */
+		status = "okay";
+		qcom,master-en = <0x0>;
+	};
+
+	gpio@d500 { /* PM GPIO 22 */
+		status = "okay";
+		qcom,master-en = <0x0>;
+	};
+};
+
+&pmi8994_gpios {
+	gpio@c100 { /* PMI GPIO 2 */
+		status = "okay";
+		qcom,master-en = <0x0>;
+	};
+
+	gpio@c300 { /* PMI GPIO 4 */
+		status = "okay";
+		qcom,master-en = <0x0>;
+	};
+
+	gpio@c400 { /* PMI GPIO 5 */
+		status = "okay";
+		qcom,master-en = <0x0>;
+	};
+
+	gpio@c500 { /* PMI GPIO 6 */
+		status = "okay";
+		qcom,master-en = <0x0>;
+	};
+
+	gpio@c600 { /* PMI GPIO 7 */
+		status = "okay";
+		qcom,master-en = <0x0>;
+	};
+
+	gpio@c700 { /* PMI GPIO 8 */
+		status = "okay";
+		qcom,master-en = <0x0>;
+	};
+
+	gpio@c800 { /* PMI GPIO 9 */
+		status = "okay";
+		qcom,master-en = <0x0>;
+	};
+
+	gpio@c900 { /* PMI GPIO 10 */
+		status = "okay";
+		qcom,master-en = <0x0>;
+	};
+};
+
+&soc {
+	sound-9335 {
+		qcom,aux-codec = <&wsa881x_2>;
+	};
+};
+
+&slim_msm {
+	tasha_codec {
+		swr_master {
+			wsa881x_1: wsa881x@21170214 {
+				status = "disabled";
+			};
+			wsa881x_2: wsa881x@21170213 {
+				qcom,spkr-sd-n-gpio = <&pmi8994_gpios 3 0>;
+				status = "ok";
+			};
+		};
+	};
+};
+
+&rpm_bus {
+	rpm-regulator-ldoa18 {
+		status = "okay";
+		pm8994_l18: regulator-l18 {
+			regulator-min-microvolt = <2200000>;
+			regulator-max-microvolt = <2200000>;
+			qcom,init-voltage       = <2200000>;
+			qcom,vdd-voltage-level = <2200000 2200000>;
+			regulator-always-on;
+			status = "okay";
+		};
+	};
+};

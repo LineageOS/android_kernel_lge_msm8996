@@ -1,0 +1,953 @@
+/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "msm8996-elsa_tmo_us-pinctrl.dtsi"
+#include "msm8996-elsa_tmo_us-misc.dtsi"
+#include "msm8996-elsa_tmo_us-panel.dtsi"
+#include "msm8996-elsa_tmo_us-pm.dtsi"
+#include "msm8996-elsa_tmo_us-sound.dtsi"
+#include "msm8996-elsa_tmo_us-connectivity.dtsi"
+#include "msm8996-elsa_tmo_us-nfc.dtsi"
+#include "msm8996-elsa_tmo_us-hdmi.dtsi"
+#include "msm8996-elsa_tmo_us-fingerprint.dtsi"
+#include "msm8996-elsa_tmo_us-usb.dtsi"
+#include "msm8996-elsa_tmo_us-pkm.dtsi"
+
+/ {
+	reserved-memory {
+		ramoops_mem: ramoops_region@c0000000 {
+			compatible = "removed-dma-pool";
+			no-map;
+			reg = <0 0xc0000000 0 0x100000>;
+		};
+
+		crash_fb_mem: crash_fb_mem@c0100000 {
+			linux,contiguous-region;
+			reg = <0 0xc0100000 0 0xc00000>;
+			label = "crash_fb_mem";
+		};
+
+		/delete-node/ cont_splash_mem@83401000;
+
+		cont_splash_mem: cont_splash_mem@84201000 {
+			reg = <0 0x84201000 0 0x15FF000>;
+			label = "cont_splash_mem";
+		};
+
+		/delete-node/ dfps_data_mem@83400000;
+
+		removed_regions: removed_regions@85800000 {
+			reg = <0 0x85800000 0 0x2800000>;
+		};
+
+		modem_mem: modem_region@88800000 {
+			reg = <0 0x88000000 0 0x6900000>;
+		};
+	};
+};
+
+&soc {
+	wdog: qcom,wdt@9830000 {
+		qcom,bark-time = <16000>;
+	};
+
+	ramoops {
+		compatible = "ramoops";
+		mem-size = <0x80000>;
+		mem-address = <0xc0000000>;
+		record-size = <4096>;
+		console-size = <0x40000>;
+		ftrace-size = <0x40000>;
+		dump-oops = <1>;
+	};
+
+	crash_fb {
+		compatible = "crash_fb";
+		mem-addr = <0xc0100000>;
+		mem-size = <0xc00000>;
+	};
+
+	bootlog {
+		compatible = "bootlog";
+	};
+
+	earjack-debugger {
+		compatible = "serial,earjack-debugger";
+		status = "ok";
+		interrupt-parent = <&tlmm>;
+		serial,irq-gpio = <&tlmm 126 0>;
+	};
+
+	lge,monitor-thermal {
+		compatible = "lge,monitor-thermal";
+		status = "ok";
+		lge,hot-poll-time = <10000>;
+		lge,hot-crit-temp = <48>;
+		lge,poll-time = <60000>;
+		qcom,monitor-thermal-vadc = <&pm8994_vadc>;
+	};
+
+
+	lge,friends-manager {
+		compatible = "lge,friends-manager";
+		status = "ok";
+		interrupt-parent = <&tlmm>;
+		lge,friends-detect-gpio = <&tlmm 132 0>;
+		lge,vpwr-sw-en = <&pmi8994_gpios 9 0>;
+		lge,friends-int-gpio = <&tlmm 119 0>;
+		lge,friends-id-gpio = <&tlmm 90 0>;
+		pinctrl-names = "friends_active_pins","friends_sleep_pins";
+		pinctrl-0 = <&friends_detect_active>;
+		pinctrl-1 = <&friends_detect_sleep>;
+	};
+
+	rome_vreg: rome_vreg {
+		status = "disabled";
+	};
+
+	/* I2C configuration */
+/*	i2c_12: i2c@75ba000 {
+		pinctrl-names = "default", "i2c_sleep";
+		pinctrl-0 = <&i2c_12_default>;
+		pinctrl-1 = <&i2c_12_sleep>;
+	};
+*/
+	i2c_7: i2c@75b5000 {
+		pinctrl-names = "default", "i2c_active", "i2c_sleep";
+		pinctrl-0 = <&i2c_7_default>;
+		pinctrl-1 = <&i2c_7_active>;
+		pinctrl-2 = <&i2c_7_sleep>;
+	};
+
+	i2c_6: i2c@757a000 {
+		pinctrl-names = "default", "i2c_active", "i2c_sleep";
+		pinctrl-0 = <&i2c_6_default>;
+		pinctrl-1 = <&i2c_6_active>;
+		pinctrl-2 = <&i2c_6_sleep>;
+	};
+
+	/*delete QCT finger */
+	/delete-node/ qcom,qbt1000;
+
+	/delete-node/ qcom,cnss;
+	/delete-node/ qcom,wil6210;
+
+	qcom_seecom: qseecom@86600000 {
+		reg = <0x86600000 0x1A00000>;
+	};
+
+};
+
+&ufs_ice {
+	status = "ok";
+};
+
+&sdcc1_ice {
+        status = "ok";
+};
+
+&ufsphy1 {
+	status = "ok";
+};
+
+&ufs1 {
+	status = "ok";
+};
+
+&uartblsp2dm1 {
+	status = "ok";
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart_console_active>;
+};
+
+&sdhc_1 {
+	vdd-supply = <&pm8994_l20>;
+	qcom,vdd-voltage-level = <2950000 2950000>;
+	qcom,vdd-current-level = <200 570000>;
+
+	vdd-io-supply = <&pm8994_s4>;
+	qcom,vdd-io-always-on;
+	qcom,vdd-io-voltage-level = <1800000 1800000>;
+	qcom,vdd-io-current-level = <110 325000>;
+
+	pinctrl-names = "active", "sleep";
+	pinctrl-0 = <&sdc1_clk_on &sdc1_cmd_on &sdc1_data_on &sdc1_rclk_on>;
+	pinctrl-1 = <&sdc1_clk_off &sdc1_cmd_off &sdc1_data_off &sdc1_rclk_off>;
+
+	qcom,clk-rates = <400000 20000000 25000000 50000000 96000000 192000000 384000000>;
+	qcom,ice-clk-rates = <300000000>;
+	qcom,nonremovable;
+	qcom,bus-speed-mode = "HS400_1p8v", "HS200_1p8v", "DDR_1p8v";
+
+	status = "ok";
+};
+
+&sdhc_2 {
+	vdd-supply = <&pm8994_l21>;
+	qcom,vdd-voltage-level = <2950000 2950000>;
+	qcom,vdd-current-level = <200 800000>;
+
+	vdd-io-supply = <&pm8994_l13>;
+	qcom,vdd-io-voltage-level = <1800000 2950000>;
+	qcom,vdd-io-current-level = <200 22000>;
+
+	pinctrl-names = "active", "sleep";
+	pinctrl-0 = <&sdc2_clk_on  &sdc2_cmd_on &sdc2_data_on &sdc2_cd_on>;
+	pinctrl-1 = <&sdc2_clk_off &sdc2_cmd_off &sdc2_data_off &sdc2_cd_off>;
+
+	qcom,clk-rates = <400000 20000000 25000000 50000000 100000000 200000000>;
+	qcom,bus-speed-mode = "SDR12", "SDR25", "SDR50", "DDR50", "SDR104";
+
+	/* Though Active-Low-H/W-logic is actually adopted in circuit-diagram,
+	Logic-value is reversed in 3in2-socket not in 2in1-socket.
+	1: Active-Low, 0: Active-High
+	*/
+	cd-gpios = <&tlmm 95 0x1>;
+
+	status = "ok";
+};
+
+&pm8994_vadc {
+	chan@5 {
+		label = "vcoin";
+		reg = <5>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <1>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <0>;
+		qcom,fast-avg-setup = <0>;
+	};
+
+	chan@7 {
+		label = "vph_pwr";
+		reg = <7>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <1>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <0>;
+		qcom,fast-avg-setup = <0>;
+	};
+
+	chan@39 {
+		label = "usb_id_lv";
+		reg = <0x39>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <5>;
+		qcom,fast-avg-setup = <0>;
+	};
+
+        chan@72 {
+		label = "xo_therm";
+		reg = <0x72>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <4>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+		status = "ok";
+	};
+
+	chan@73 {
+		label = "bd_therm_1";
+		reg = <0x73>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+		status = "ok";
+	};
+
+	chan@74 {
+		label = "bd_therm_2";
+		reg = <0x74>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+		status = "ok";
+	};
+
+	chan@75 {
+		label = "pa_therm0";
+		reg = <0x75>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+		status = "ok";
+	};
+
+	chan@76 {
+		label = "pcb_rev";
+		reg = <0x76>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <1>;
+		qcom,fast-avg-setup = <0>;
+	};
+
+	chan@77 {
+		label = "pa_therm1";
+		reg = <0x77>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+		status = "disabled";
+	};
+
+	chan@79 {
+		label = "usb_id_lv_pu";
+		reg = <0x79>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <5>;
+		qcom,fast-avg-setup = <0>;
+	};
+
+	chan@7c {
+		label = "xo_therm_buf";
+		reg = <0x7c>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <4>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+		status = "disabled";
+	};
+};
+
+&pm8994_adc_tm {
+	chan@72 {
+		label = "xo_therm";
+		reg = <0x72>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <4>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+		qcom,btm-channel-number = <0x72>;
+		qcom,thermal-node;
+		status = "ok";
+	};
+
+	chan@73 {
+		label = "bd_therm_1";
+		reg = <0x73>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+		qcom,btm-channel-number = <0x48>;
+		qcom,thermal-node;
+		status = "ok";
+	};
+
+	chan@74 {
+		label = "bd_therm_2";
+		reg = <0x74>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+		qcom,btm-channel-number = <0x68>;
+		qcom,thermal-node;
+		status = "ok";
+	};
+
+	chan@75 {
+		label = "pa_therm0";
+		reg = <0x75>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+		qcom,btm-channel-number = <0x70>;
+		qcom,thermal-node;
+		status = "ok";
+	};
+
+	chan@77 {
+		label = "pa_therm1";
+		reg = <0x77>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+		qcom,btm-channel-number = <0x78>;
+		qcom,thermal-node;
+		status = "disabled";
+	};
+
+	chan@79 {
+		label = "usb_id_lv_pu";
+		reg = <0x79>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <2>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <3>;
+		qcom,btm-channel-number = <0x80>;
+	};
+
+	chan@7c {
+		label = "xo_therm_buf";
+		reg = <0x7c>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "ratiometric";
+		qcom,scale-function = <4>;
+		qcom,hw-settle-time = <2>;
+		qcom,fast-avg-setup = <0>;
+		qcom,btm-channel-number = <0x88>;
+		qcom,thermal-node;
+		status = "disabled";
+	};
+};
+
+&pmi8994_vadc {
+	chan@0 {
+		label = "usbin";
+		reg = <0>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <4>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <0>;
+		qcom,fast-avg-setup = <0>;
+	};
+
+	chan@1 {
+		label = "dcin";
+		reg = <1>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <4>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <0>;
+		qcom,fast-avg-setup = <0>;
+	};
+
+	chan@10 {
+		label = "vbackup_adc";
+		reg = <0x10>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <0>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <1>;
+		qcom,fast-avg-setup = <2>;
+	};
+
+	chan@43 {
+		label = "usb_dp";
+		reg = <0x43>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <1>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <0>;
+		qcom,fast-avg-setup = <0>;
+	};
+
+	chan@44 {
+		label = "usb_dm";
+		reg = <0x44>;
+		qcom,decimation = <0>;
+		qcom,pre-div-channel-scaling = <1>;
+		qcom,calibration-type = "absolute";
+		qcom,scale-function = <0>;
+		qcom,hw-settle-time = <0>;
+		qcom,fast-avg-setup = <0>;
+	};
+};
+
+&usb_otg_switch {
+	status = "okay";
+};
+
+&usb3 {
+	status = "ok";
+	qcom,dwc-vadc = <&pm8994_vadc>;
+	qcom,usbin-vadc = <&pmi8994_vadc>;
+};
+
+&pmi8994_mpps {
+/* Must not define the mpp(mpp 3) on here */
+	mpp@a000 {	/* MPP 1 VBACKUP_ADC */
+		qcom,mode = <4>;			/* Analog input */
+		qcom,invert = <1>;			/* Enable Invert */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,ain-route = <0>;		/* PMI AMUX ch5 */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	mpp@a100 { /* MPP 2 - FLASH_STROBE_TRIG */
+		qcom,mode = <0>;			/* Digital input */
+		qcom,invert = <1>;			/* Enable invert */
+		qcom,vin-sel = <2>;			/* Vin 2 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	mpp@a300 { /* MPP 4 - BAT2_THERM */
+		qcom,mode = <4>;			/* Analog input */
+		qcom,invert = <1>;			/* Enable Invert */
+		qcom,vin-sel = <2>;			/* Vin 2 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,ain_route = <1>;		/* PMI AMUX 6 */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+};
+
+&pmi8994_gpios {
+	gpio@c000 { /* GPIO 1 - BOOST_BYP_BYP */
+		qcom,mode = <1>;			/* Digital output*/
+		qcom,pull = <4>;			/* Pull down 10uA */
+		qcom,vin-sel = <2>;			/* VIN2 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,invert = <0>;			/* Disable Invert */
+		qcom,out-strength = <1>;	/* Low */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@c100 { /* GPIO 2 - HIFI_RESET_N */
+		qcom,mode = <1>;			/* Digital output*/
+		qcom,pull = <0>;			/* Pull down 30uA */
+		qcom,vin-sel = <2>;			/* VIN2 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,invert = <1>;			/* Enable Invert */
+		qcom,out-strength = <1>;	/* Low */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@c200 {	/* GPIO 3 SPKR_AMP_EN2 */
+		qcom,mode = <1>;			/* Digital output*/
+		qcom,pull = <4>;			/* Pull down */
+		qcom,vin-sel = <2>;			/* VIN2 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,invert = <0>;			/* Disable Invert */
+		qcom,out-strength = <1>;	/* Low */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@c300 { /* GPIO 4 - EIS_LDO_EN */
+		qcom,mode = <1>;			/* Digital output*/
+		qcom,pull = <4>;			/* Pull down */
+		qcom,vin-sel = <2>;			/* VIN2 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,invert = <0>;			/* Disable Invert */
+		qcom,out-strength = <1>;	/* Low */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@c400 { /* GPIO 5 - SWAP_CTRL_EN2 */
+		qcom,mode = <1>;			/* Digital output*/
+		qcom,pull = <5>;			/* No pull */
+		qcom,output-type = <0>;		/* CMOS logic */
+		qcom,vin-sel = <2>;			/* VIN2 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,invert = <0>;			/* Enable Invert */
+		qcom,out-strength = <2>;	/* Low */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@c500 { /* GPIO 6 - EIS_GYRO_INT */
+		qcom,mode = <1>;			/* Digital input */
+		qcom,pull = <4>;			/* Pull down */
+		qcom,vin-sel = <2>;			/* VIN2 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,invert = <0>;			/* Disable Invert */
+		qcom,out-strength = <1>;	/* Low */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@c600 { /* GPIO 7 - 2ND_CHG_ENABLE */
+		qcom,mode = <2>;		/* Digital in & output*/
+		qcom,pull = <4>;			/* No Pull */
+		qcom,output-type = <2>;			/* Open Low */
+		qcom,vin-sel = <2>;			/* VIN2 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,invert = <0>;			/* Enable invert */
+		qcom,out-strength = <2>;	/* Low */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@c700 { /* GPIO 8 - IRCC_RESET_N */
+		qcom,mode = <1>;			/* Digital output*/
+		qcom,pull = <0>;			/* Pull up */
+		qcom,vin-sel = <2>;			/* VIN2 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,invert = <1>;			/* Enable Invert */
+		qcom,out-strength = <1>;	/* Low */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@c800 { /* GPIO 9 - 5V_APPSPORT_BOOST_EN */
+		qcom,mode = <1>;			/* Digital output */
+		qcom,pull = <4>;			/* Pull down */
+		qcom,vin-sel = <2>;			/* Vin 2 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,invert = <0>;			/* Disable Invert */
+		qcom,out-strength = <1>;	/* Low */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@c900 { /* GPIO 10 - EIS_CAM_SELECT */
+		qcom,mode = <1>;			/* Digital output */
+		qcom,pull = <4>;			/* Pull down */
+		qcom,vin-sel = <2>;			/* Vin 2 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,invert = <0>;			/* Disable Invert */
+		qcom,out-strength = <1>;	/* Low */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+};
+
+&pmi8994_pwm_4 {
+	qcom,channel-owner = "lcd_bl";
+	qcom,lpg-dtest-line = <4>;
+	qcom,dtest-output = <1>;
+	status = "okay";
+};
+
+&pm8994_mpps {
+/* Must not define the mpps(mpp 1 and 3) on here */
+	mpp@a100 { /* MPP 2 - NC */
+		qcom,mode = <0>;			/* Digital input */
+		qcom,invert = <0>;			/* Diable invert */
+		qcom,vin-sel = <2>;			/* Vin 2 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,master-en = <0>;		/* Disable GPIO */
+		status = "okay";
+	};
+
+	mpp@a300 { /* MPP 4 - NC */
+		qcom,mode = <0>;			/* Digital input */
+		qcom,invert = <0>;			/* Diable invert */
+		qcom,vin-sel = <2>;			/* Vin 2 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,master-en = <0>;		/* Disable GPIO */
+		status = "okay";
+	};
+
+	mpp@a400 { /* MPP 5 - NC */
+		qcom,mode = <0>;			/* Digital input */
+		qcom,invert = <0>;			/* Diable invert */
+		qcom,vin-sel = <2>;			/* Vin 2 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,master-en = <0>;		/* Disable GPIO */
+		status = "okay";
+	};
+
+	mpp@a500 { /* MPP 6 - NC */
+		qcom,mode = <0>;			/* Digital input */
+		qcom,invert = <0>;			/* Diable invert */
+		qcom,vin-sel = <2>;			/* Vin 2 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,master-en = <0>;		/* Disable GPIO */
+		status = "okay";
+	};
+
+	mpp@a600 { /* MPP 7 - NC */
+		qcom,mode = <0>;			/* Digital input */
+		qcom,invert = <0>;			/* Diable invert */
+		qcom,vin-sel = <2>;			/* Vin 2 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,master-en = <0>;		/* Disable GPIO */
+		status = "okay";
+
+	};
+
+	mpp@a700 { /* MPP 8 - NC */
+		qcom,mode = <0>;			/* Analog input */
+		qcom,invert = <0>;			/* Enable Invert */
+		qcom,vin-sel = <2>;			/* Vin 2 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,master-en = <0>;		/* Disable GPIO */
+		status = "okay";
+	};
+};
+
+&pm8994_gpios {
+/* Must not define the gpios(gpio 20 and 21) on here */
+	gpio@c000 { /* GPIO 1 VCONN */
+		qcom,mode = <1>;		/* Digital output */
+		qcom,pull = <0>;
+		qcom,vin-sel = <2>;		/* VIN2 */
+		qcom,src-sel = <2>;		/* GPIO */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@c100 { /* GPIO 2 - VOL_UP_EN */
+		qcom,mode = <0>;			/* Digital input */
+		qcom,pull = <0>;			/* Pull up 30uA */
+		qcom,vin-sel = <2>;			/* Vin 2 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,invert = <1>;			/* Enable Invert */
+		qcom,out-strength = <1>;	/* Low */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@c200 { /* GPIO 3 SBU_SEL */
+		qcom,mode = <1>;		/* Digital output */
+		qcom,output-type = <0>;		/* MOS logic */
+		qcom,vin-sel = <0>;		/* VPH_PWR */
+		qcom,src-sel = <0>;		/* Constant */
+		qcom,out-strength = <1>;	/* High drive strength */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@c300 { /* GPIO 4 - TOUCH_KEY_EN */
+		qcom,mode = <1>;			/* Digital output */
+		qcom,pull = <4>;			/* Pull down */
+		qcom,vin-sel = <2>;			/* Vin 2 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,invert = <0>;			/* Disable Invert */
+		qcom,out-strength = <1>;	/* Low */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@c400 { /* GPIO 5 - SWAP_CTRL_EN1 */
+		qcom,mode = <1>;			/* Digital output */
+		qcom,pull = <4>;			/* Pull down */
+		qcom,vin-sel = <0>;			/* Vin 0 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,invert = <0>;			/* Disable Invert */
+		qcom,out-strength = <2>;	/* Middle */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@c500 { /* GPIO 6 - MENU_KEY_TOUCH_PM */
+		qcom,mode = <0>;			/* Digital input */
+		qcom,pull = <0>;			/* Pull up 30uA */
+		qcom,vin-sel = <2>;			/* Vin 2 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,invert = <1>;			/* Enable Invert */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@c600 { /* GPIO 7 - BACK_KEY_TOUCH_PM */
+		qcom,mode = <0>;			/* Digital input */
+		qcom,pull = <0>;			/* Pull up 30uA */
+		qcom,vin-sel = <2>;			/* Vin 2 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,invert = <1>;			/* Enable Invert */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@c700 { /* GPIO 8 - WLAN_POWER_EN */
+		qcom,mode = <1>;			/* Digital output */
+		qcom,pull = <4>;			/* Pull down */
+		qcom,output-type = <0>;		/* CMOS logic */
+		qcom,vin-sel = <2>;			/* Vin2 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,invert = <0>;			/* Disable Invert */
+		qcom,out-strength = <1>;	/* Low */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@c800 { /* GPIO 9 - HIFI_HPH_SW */
+		qcom,mode = <1>;			/* Digital output */
+		qcom,pull = <4>;			/* Pull down */
+		qcom,vin-sel = <2>;			/* Vin 2 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,invert = <0>;			/* Disable Invert */
+		qcom,out-strength = <1>;	/* Low */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@c900 { /* GPIO 10 - NC */
+		qcom,mode = <0>;			/* Digital input */
+		qcom,pull = <4>;			/* Pull down */
+		qcom,vin-sel = <2>;			/* Vin 2 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,invert = <0>;			/* Disable Invert */
+		qcom,master-en = <0>;		/* Disable GPIO */
+		status = "okay";
+	};
+
+	gpio@ca00 { /* GPIO 11 - HIFI_LDO_SW */
+		qcom,mode = <1>;			/* Digital output */
+		qcom,pull = <4>;			/* Pull down */
+		qcom,vin-sel = <2>;			/* Vin 2 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,invert = <0>;			/* Invert */
+		qcom,out-strength = <1>;	/* Low */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@cb00 { /* GPIO 12 - LCD_AOD_BL_EN */
+		qcom,mode = <1>;			/* Digital output */
+		qcom,pull = <4>;			/* Pull down */
+		qcom,vin-sel = <2>;			/* Vin 2 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,invert = <1>;			/* Invert */
+		qcom,out-strength = <1>;	/* Low */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@cc00 { /* GPIO 13 - HOME_KEY_PM */
+		qcom,mode = <0>;			/* Digital input */
+		qcom,pull = <0>;			/* Pull up 30uA */
+		qcom,vin-sel = <2>;			/* Vin 2 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,invert = <1>;			/* Enable Invert */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@cd00 { /* GPIO 14 - BAT_MISSING_DET */
+		qcom,mode = <0>;			/* Digital input */
+		qcom,pull = <0>;			/* Pull up 30uA */
+		qcom,vin-sel = <2>;			/* Vin 2 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@ce00 { /* GPIO 15 - CODEC_MCLK */
+		qcom,mode = <1>;			/* Digital output */
+		qcom,pull = <5>;			/* No pull */
+		qcom,output-type = <0>;		/* CMOS logic */
+		qcom,vin-sel = <2>;			/* Vin 2 */
+		qcom,src-sel = <2>;			/* Function 2 */
+		qcom,out-strength = <2>;	/* Middle */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@cf00 { /* GPIO 16 - PMI_CLK_IN */
+		qcom,mode = <1>;			/* Digital output */
+		qcom,pull = <5>;			/* No pull */
+		qcom,output-type = <0>;		/* CMOS logic */
+		qcom,vin-sel = <2>;			/* Vin 2 */
+		qcom,src-sel = <2>;			/* Function 2 */
+		qcom,invert = <0>;			/* Disable Invert */
+		qcom,out-strength = <3>;	/* High */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@d000 { /* GPIO 17 - AOD_RTC */
+		qcom,mode = <1>;			/* Digital output */
+		qcom,pull = <5>;			/* No pull */
+		qcom,output-type = <0>;		/* CMOS logic */
+		qcom,vin-sel = <2>;			/* Vin 2 */
+		qcom,src-sel = <3>;			/* Function 2 */
+		qcom,out-strength = <2>;	/* Middle */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@d100 { /* GPIO 18 - WIFI_SLEEP_CLK */
+		qcom,mode = <1>;			/* Digital output */
+		qcom,output-type = <0>;		/* CMOS logic */
+		qcom,invert = <0>;			/* Output low initially */
+		qcom,vin-sel = <2>;			/* VIN 2 */
+		qcom,src-sel = <3>;			/* Function 2 */
+		qcom,out-strength = <2>;	/* Medium */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+
+	gpio@d200 { /* GPIO 19 - EXT_ACC_EN */
+		qcom,mode = <1>;			/* Digital output */
+		qcom,pull = <4>;			/* Pull down */
+		qcom,vin-sel = <2>;			/* Vin 2 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,invert = <0>;			/* Disable Invert */
+		qcom,out-strength = <1>;	/* Low */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+	gpio@d500 { /* GPIO 22 - LDAF_EN */
+		qcom,mode = <1>;			/* Digital output */
+		qcom,pull = <4>;			/* Pull down */
+		qcom,output-type = <0>;		/* CMOS logic */
+		qcom,vin-sel = <2>;			/* Vin 2 */
+		qcom,src-sel = <0>;			/* Constant */
+		qcom,invert = <0>;			/* Disable Invert */
+		qcom,out-strength = <1>;	/* Low */
+		qcom,master-en = <1>;		/* Enable GPIO */
+		status = "okay";
+	};
+};
+
+&blsp1_uart2 {
+	status = "ok";
+};
+
+&pcie1 {
+       status = "disabled";
+};
+
+&pcie2 {
+       status = "disabled";
+};
+
+&pil_modem {
+       /delete-property/ qcom,mx-spike-wa;
+};
