@@ -1013,3 +1013,4 @@ config MFSE_QMI
 	 This option enables the QMI client driver for MFSE service.
 
 source "drivers/soc/qcom/memshare/Kconfig"
+source "drivers/soc/qcom/lge/Kconfig"

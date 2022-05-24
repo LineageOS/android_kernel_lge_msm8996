@@ -751,3 +751,14 @@ config VM_MAX_READAHEAD
 	 This sets the VM_MAX_READAHEAD value to allow the readahead window
 	 to grow to a maximum size of configured. This will benefit sequential
 	 read throughput and thus early boot performance.
+	 
+config LGE_DDR_SECTION_SIZE_CHANGE
+	bool "Enable section size change"
+	depends on MACH_LGE
+	default n
+	help
+	  This change decreases sparse memory model granuality
+	  from 1GiB to 512MiB which in turn can increase
+	  the amount of wasted memory in memmap when the memory
+	  sections aren't aligned. The amount of wastage can be a few
+	  MiB per unaligned section.
