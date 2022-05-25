@@ -479,6 +479,9 @@ static int qpnp_pon_reset_config(struct qpnp_pon *pon,
 {
 	int rc;
 	u16 rst_en_reg;
+#ifdef CONFIG_LGE_PM
+	uint reg;
+#endif
 
 	if (pon->pon_ver == QPNP_PON_GEN1_V1)
 		rst_en_reg = QPNP_PON_PS_HOLD_RST_CTL(pon);
@@ -518,6 +521,30 @@ static int qpnp_pon_reset_config(struct qpnp_pon *pon,
 	 * conservative.
 	 */
 	udelay(500);
+
+	/*
+	 * In case of HARD RESET configure PMIC's
+	 * PS_HOLD_RESET_CTL based on the dt property.
+	 */
+	if ((type == PON_POWER_OFF_HARD_RESET) &&
+			of_find_property(pon->pdev->dev.of_node,
+				"qcom,cfg-shutdown-for-hard-reset", NULL))
+		type = PON_POWER_OFF_SHUTDOWN;
+
+#ifdef CONFIG_LGE_PM
+	/* Change PS_HOLD hard reset and shutdown to xVdd hard reset and shutdown */
+	if (to_spmi_device(pon->pdev->dev.parent)->usid == 2) {
+		/* PMI8996 register : 0x102, PMI8996 v1.0 : 0x00, PMI8996 v1.1 : 0x01 */
+		rc = regmap_read(pon->regmap, 0x102, &reg);
+		/* for PMI8996 v1.0 only */
+		if (reg == 0x00) {
+			if (type == PON_POWER_OFF_HARD_RESET)
+				type = 0x09; //Change to xVdd hard reset for PMI
+			else if(type == PON_POWER_OFF_SHUTDOWN)
+				type = 0x06; //Change th xVdd shutdown for PMI
+		}
+	}
+#endif
 
 	rc = qpnp_pon_masked_write(pon, QPNP_PON_PS_HOLD_RST_CTL(pon),
 				   QPNP_PON_POWER_OFF_MASK, type);
@@ -1089,6 +1116,9 @@ qpnp_config_reset(struct qpnp_pon *pon, struct qpnp_pon_config *cfg)
 	int rc;
 	u8 i;
 	u16 s1_timer_addr, s2_timer_addr;
+#ifdef CONFIG_LGE_PM
+	uint reg = 0x00;
+#endif
 
 	switch (cfg->pon_type) {
 	case PON_KPDPWR:
@@ -1140,6 +1170,21 @@ qpnp_config_reset(struct qpnp_pon *pon, struct qpnp_pon_config *cfg)
 		dev_err(&pon->pdev->dev, "Unable to configure S2 timer\n");
 		return rc;
 	}
+
+#ifdef CONFIG_LGE_PM
+	/* Change PS_HOLD hard reset and shutdown to xVdd hard reset and shutdown */
+	if (to_spmi_device(pon->pdev->dev.parent)->usid == 2) {
+		/* PMI8996 register : 0x102, PMI8996 v1.0 : 0x00, PMI8996 v1.1 : 0x01 */
+		rc = regmap_read(pon->regmap, 0x102, &reg);
+		/* for PMI8996 v1.0 only */
+		if (reg == 0x00) {
+			if (cfg->s2_type == PON_POWER_OFF_HARD_RESET)
+				cfg->s2_type = 0x09; //Change to xVdd hard reset for PMI
+			else if (cfg->s2_type == PON_POWER_OFF_SHUTDOWN)
+				cfg->s2_type = 0x06; //Change th xVdd shutdown for PMI
+		}
+	}
+#endif
 
 	rc = qpnp_pon_masked_write(pon, cfg->s2_cntl_addr,
 				QPNP_PON_S2_CNTL_TYPE_MASK, (u8)cfg->s2_type);

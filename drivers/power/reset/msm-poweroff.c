@@ -315,10 +315,18 @@ static void msm_restart_prepare(const char *cmd)
 			qpnp_pon_set_restart_reason(
 				PON_RESTART_REASON_RECOVERY);
 			__raw_writel(0x77665502, restart_reason);
+		} else if (!strncmp(cmd, "fota", 4)) {
+			qpnp_pon_set_restart_reason(
+				PON_RESTART_REASON_FOTA);
+			__raw_writel(0x77665566, restart_reason);
 		} else if (!strcmp(cmd, "rtc")) {
 			qpnp_pon_set_restart_reason(
 				PON_RESTART_REASON_RTC);
 			__raw_writel(0x77665503, restart_reason);
+		} else if (!strcmp(cmd, "wallpaper_fail")) {
+			qpnp_pon_set_restart_reason(
+				PON_RESTART_REASON_WALLPAPER_FAIL);
+			__raw_writel(0x77665507, restart_reason);
 		} else if (!strcmp(cmd, "dm-verity device corrupted")) {
 			qpnp_pon_set_restart_reason(
 				PON_RESTART_REASON_DMVERITY_CORRUPTED);
@@ -331,6 +339,26 @@ static void msm_restart_prepare(const char *cmd)
 			qpnp_pon_set_restart_reason(
 				PON_RESTART_REASON_KEYS_CLEAR);
 			__raw_writel(0x7766550a, restart_reason);
+#ifdef CONFIG_LGE_LCD_OFF_DIMMING
+		} else if (!strncmp(cmd, "FOTA LCD off", 12)) {
+			__raw_writel(0x77665560, restart_reason);
+			qpnp_pon_set_restart_reason(
+				PON_RESTART_REASON_FOTA_LCD_OFF);
+		} else if (!strncmp(cmd, "FOTA OUT LCD off", 16)) {
+			__raw_writel(0x77665561, restart_reason);
+			qpnp_pon_set_restart_reason(
+				PON_RESTART_REASON_FOTA_OUT_LCD_OFF);
+		} else if (!strncmp(cmd, "LCD off", 7)) {
+			__raw_writel(0x77665562, restart_reason);
+			qpnp_pon_set_restart_reason(
+				PON_RESTART_REASON_LCD_OFF);
+#endif
+#ifdef CONFIG_LGE_PM
+		} else if (!strncmp(cmd, "charge_reset", 12)) {
+			qpnp_pon_set_restart_reason(
+				PON_RESTART_REASON_CHARGE_RESET);
+			__raw_writel(0x776655a0, restart_reason);
+#endif
 		} else if (!strncmp(cmd, "oem-", 4)) {
 			unsigned long code;
 			unsigned long reset_reason;
@@ -417,6 +445,20 @@ static void do_msm_restart(enum reboot_mode reboot_mode, const char *cmd)
 
 	mdelay(10000);
 }
+
+#ifdef CONFIG_LGE_DISPLAY_LABIBB_RECOVERY
+void do_msm_hard_reset(void)
+{
+    pr_notice("Going down for restart now by hard reset\n");
+    qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
+    scm_disable_sdi();
+    halt_spmi_pmic_arbiter();
+    deassert_ps_hold();
+
+    mdelay(10000);
+}
+EXPORT_SYMBOL(do_msm_hard_reset);
+#endif
 
 static void do_msm_poweroff(void)
 {
