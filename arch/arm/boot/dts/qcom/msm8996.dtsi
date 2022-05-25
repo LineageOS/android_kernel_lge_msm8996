@@ -391,7 +391,7 @@
 	};
 
 	uartblsp1dm1: serial@7570000 {
-		compatible = "qcom,msm-lsuart-v14";
+		compatible = "qcom,msm-hsuart-v14";
 		reg = <0x7570000 0x1000>;
 		interrupts = <0 108 0>;
 		status = "disabled";
