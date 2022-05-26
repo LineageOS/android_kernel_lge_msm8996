@@ -209,6 +209,14 @@ endmenu
 
 menu "LGE Specific Patches"
 
+config LGE_PM
+	tristate "MSM8996 LGE POWER Feature"
+	depends on MACH_LGE && SPMI
+	help
+	  Say Y here to enable support for pm8994/pmi8994 chip lge feature.
+	  Power Management, Battery charging, Battery Monitoring System
+	  with battery FET and fuel gauge.
+
 config LGE_HALL_IC
 	bool "Support LGE Smartcover"
 	depends on MACH_LGE
