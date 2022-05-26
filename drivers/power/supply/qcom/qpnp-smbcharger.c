@@ -1150,7 +1150,8 @@ static int get_property_from_fg(struct smbchg_chip *chip,
 }
 
 #define DEFAULT_BATT_CAPACITY	50
-static int get_prop_batt_capacity(struct smbchg_chip *chip)
+__attribute__((always_inline))
+static inline int get_prop_batt_capacity(struct smbchg_chip *chip)
 {
 	int capacity, rc;
 
