@@ -138,15 +138,6 @@ struct somc_charge_error {
 	struct delayed_work	status_reset_work;
 };
 
-struct somc_charge_pin_ctrl {
-	struct pinctrl		*gpio111;
-	struct pinctrl_state	*gpio111_active;
-	struct pinctrl_state	*gpio111_suspend;
-	bool			gpio111_state;
-	int			pon_pon_val;
-	int			vbl_cfg;
-};
-
 struct chg_somc_params {
 	struct somc_thermal_mitigation	thermal;
 	struct somc_low_battery		low_batt;
@@ -164,6 +155,5 @@ struct chg_somc_params {
 	struct somc_hvdcp3		hvdcp3;
 	struct somc_input_current_state	input_current;
 	struct somc_charge_error	charge_error;
-	struct somc_charge_pin_ctrl	pin_ctrl;
 };
 #endif /* __QPNP_SMBCHARGER_EXTENSION_PARAM */
