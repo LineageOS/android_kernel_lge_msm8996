@@ -217,6 +217,13 @@ config LGE_PM
 	  Power Management, Battery charging, Battery Monitoring System
 	  with battery FET and fuel gauge.
 
+config LGE_PM_EMBEDDED_BATTERY
+	bool "Embedded battery"
+	depends on LGE_PM
+	default n
+	help
+	  Enable adjustments for embedded battery.
+
 config LGE_PANEL_MAKER_ID_SUPPORT
 	tristate "Support panel ID feature"
 	depends on MACH_LGE

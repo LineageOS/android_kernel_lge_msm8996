@@ -244,6 +244,34 @@ int lge_get_factory_boot(void)
 	return res;
 }
 
+static enum lge_factory_cable_type lge_factory_cable;
+
+/* Only works if booted with cable inserted */
+int lge_get_factory_cable(void)
+{
+	/*   if boot mode is factory,
+	 *   show cable type.
+	 */
+	switch (lge_boot_mode) {
+	case LGE_BOOT_MODE_QEM_56K:
+	case LGE_BOOT_MODE_PIF_56K:
+		lge_factory_cable = CABLE_56K;
+		break;
+	case LGE_BOOT_MODE_QEM_130K:
+	case LGE_BOOT_MODE_PIF_130K:
+		lge_factory_cable = CABLE_130K;
+		break;
+	case LGE_BOOT_MODE_QEM_910K:
+	case LGE_BOOT_MODE_PIF_910K:
+		lge_factory_cable = CABLE_910K;
+		break;
+	default:
+		lge_factory_cable = NO_INIT_CABLE;
+		break;
+	}
+	return lge_factory_cable;
+}
+
 static int lge_boot_reason = -1;
 
 static int __init lge_check_bootreason(char *reason)
