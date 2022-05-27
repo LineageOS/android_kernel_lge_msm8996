@@ -1219,6 +1219,7 @@ static int get_prop_batt_resistance_id(struct smbchg_chip *chip)
 	return rbatt;
 }
 
+#ifndef CONFIG_QPNP_SMBCHARGER_EXTENSION
 #define DEFAULT_BATT_FULL_CHG_CAPACITY	0
 static int get_prop_batt_full_charge(struct smbchg_chip *chip)
 {
@@ -1231,6 +1232,7 @@ static int get_prop_batt_full_charge(struct smbchg_chip *chip)
 	}
 	return bfc;
 }
+#endif
 
 #define DEFAULT_BATT_VOLTAGE_NOW	0
 static int get_prop_batt_voltage_now(struct smbchg_chip *chip)
@@ -3983,7 +3985,7 @@ static void smbchg_external_power_changed(struct power_supply *psy)
 	if (type == POWER_SUPPLY_TYPE_RETRY_DET) {
 		pr_smb(PR_SOMC,
 			"claimed RETRY_DET, rerun apsd, type %d -> %d\n",
-							usb_supply_type, type);
+							chip->usb_supply_type, type);
 		goto rerun_apsd;
 	}
 #endif
@@ -6091,7 +6093,7 @@ static int smbchg_dp_dm(struct smbchg_chip *chip, int val)
 		if (chip->pulse_cnt &&
 		    chip->somc_params.hvdcp3.thermal_pulse_cnt) {
 			if (chip->schg_version == QPNP_SCHG)
-				rc = set_usb_psy_dp_dm(chip,
+				rc = set_dpdm_psy(chip,
 						POWER_SUPPLY_DP_DM_DM_PULSE);
 			else
 				rc = smbchg_dm_pulse_lite(chip);
@@ -6384,7 +6386,9 @@ static enum power_supply_property smbchg_battery_properties[] = {
 	POWER_SUPPLY_PROP_TEMP,
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 	POWER_SUPPLY_PROP_RESISTANCE_ID,
+#ifndef CONFIG_QPNP_SMBCHARGER_EXTENSION
 	POWER_SUPPLY_PROP_CHARGE_FULL,
+#endif
 	POWER_SUPPLY_PROP_SAFETY_TIMER_ENABLE,
 	POWER_SUPPLY_PROP_INPUT_CURRENT_MAX,
 	POWER_SUPPLY_PROP_INPUT_CURRENT_SETTLED,
@@ -6690,9 +6694,11 @@ static int smbchg_battery_get_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_RESISTANCE_ID:
 		val->intval = get_prop_batt_resistance_id(chip);
 		break;
+#ifndef CONFIG_QPNP_SMBCHARGER_EXTENSION
 	case POWER_SUPPLY_PROP_CHARGE_FULL:
 		val->intval = get_prop_batt_full_charge(chip);
 		break;
+#endif
 	case POWER_SUPPLY_PROP_TEMP:
 		val->intval = get_prop_batt_temp(chip);
 		break;

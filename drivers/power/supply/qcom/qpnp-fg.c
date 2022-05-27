@@ -4638,6 +4638,9 @@ static int fg_restore_soc(struct fg_chip *chip)
 
 #define NOM_CAP_REG			0x4F4
 #define CAPACITY_DELTA_DECIPCT		500
+#ifdef CONFIG_QPNP_FG_EXTENSION
+#define LEARNED_CC_RANGE		13
+#endif
 static int load_battery_aging_data(struct fg_chip *chip)
 {
 	int rc = 0;
@@ -5918,9 +5921,6 @@ done:
 #define RSLOW_COMP_REG			0x528
 #define RSLOW_COMP_C1_OFFSET		0
 #define RSLOW_COMP_C2_OFFSET		2
-#ifdef CONFIG_QPNP_FG_EXTENSION
-#define LEARNED_CC_RANGE		13
-#endif
 static int populate_system_data(struct fg_chip *chip)
 {
 	u8 buffer[24];

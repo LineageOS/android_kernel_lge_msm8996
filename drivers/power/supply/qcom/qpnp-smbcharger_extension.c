@@ -1199,7 +1199,7 @@ static void somc_chg_hvdcp3_thermal_adjust_work(struct work_struct *work)
 	if (chip->therm_lvl_sel >= limit_usb5v_lvl &&
 	    hvdcp3->thermal_pulse_cnt > 0) {
 		if (chip->schg_version == QPNP_SCHG)
-			rc = set_usb_psy_dp_dm(chip,
+			rc = set_dpdm_psy(chip,
 					POWER_SUPPLY_DP_DM_DM_PULSE);
 		else
 			rc = smbchg_dm_pulse_lite(chip);
@@ -1215,7 +1215,7 @@ static void somc_chg_hvdcp3_thermal_adjust_work(struct work_struct *work)
 	} else if (chip->therm_lvl_sel < limit_usb5v_lvl &&
 		   chip->pulse_cnt > hvdcp3->thermal_pulse_cnt) {
 		if (chip->schg_version == QPNP_SCHG)
-			rc = set_usb_psy_dp_dm(chip,
+			rc = set_dpdm_psy(chip,
 					POWER_SUPPLY_DP_DM_DP_PULSE);
 		else
 			rc = smbchg_dp_pulse_lite(chip);
@@ -1789,7 +1789,7 @@ static ssize_t somc_chg_param_store(struct device *dev,
 	struct smbchg_chip *chip = dev_get_drvdata(dev);
 	struct chg_somc_params *params = &chip->somc_params;
 	const ptrdiff_t off = attr - somc_chg_attrs;
-	ret = -EINVAL;
+	int ret = -EINVAL;
 
 	switch (off) {
 	case ATTR_LIMIT_USB_5V_LEVEL:
