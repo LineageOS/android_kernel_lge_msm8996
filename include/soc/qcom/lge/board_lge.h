@@ -1,7 +1,6 @@
 #ifndef __ASM_ARCH_MSM_BOARD_LGE_H
 #define __ASM_ARCH_MSM_BOARD_LGE_H
 
-#ifndef CONFIG_LGE_PM_LGE_POWER_CLASS_BOARD_REVISION
 #if defined(CONFIG_MACH_MSM8996_LUCYE)
 enum hw_rev_type {
 	HW_REV_EVB1 = 0,
@@ -66,12 +65,9 @@ enum hw_rev_type {
 	HW_REV_MAX
 };
 #endif
-#endif
 
-#ifndef CONFIG_LGE_PM_LGE_POWER_CLASS_BOARD_REVISION
 extern char *rev_str[];
 enum hw_rev_type lge_get_board_revno(void);
-#endif
 
 enum lge_boot_mode_type {
 	LGE_BOOT_MODE_NORMAL = 0,

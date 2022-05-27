@@ -30,12 +30,7 @@
 #include <linux/fs.h>
 #include <linux/string.h>
 
-#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_BOARD_REVISION
-#include <soc/qcom/lge/power/lge_board_revision.h>
-#include <soc/qcom/lge/power/lge_power_class.h>
-#else
 #include <soc/qcom/lge/board_lge.h>
-#endif
 
 #define ES9218_DEBUG
 
@@ -1960,29 +1955,6 @@ static int es9218_write_reg(struct i2c_client *client, int reg, u8 value)
 	return ret;
 }
 
-#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_BOARD_REVISION
-static int es9218_hw_rev_check(void)
-{
-    union lge_power_propval lge_val = {0,};
-    struct lge_power *lge_hw_rev_lpc = NULL;
-    int rc,hw_rev;
-
-    lge_hw_rev_lpc = lge_power_get_by_name("lge_hw_rev");
-    if (lge_hw_rev_lpc) {
-        rc = lge_hw_rev_lpc->get_property(lge_hw_rev_lpc, LGE_POWER_PROP_HW_REV_NO, &lge_val);
-        hw_rev = lge_val.intval;
-        pr_info("%s() lg board2 rev_(%d)\n", __func__, hw_rev);
-    } else {
-        pr_err("%s: [SOUND] Failed to get hw_rev property\n", __func__);
-        hw_rev = HW_REV_EVB1;
-    }
-#if defined(CONFIG_MACH_MSM8996_ELSA_KDDI_JP) || defined(CONFIG_MACH_MSM8996_ELSA_DCM_JP) || defined(CONFIG_MACH_MSM8996_ANNA_GLOBAL_COM) || defined(CONFIG_MACH_MSM8996_ANNA_KR)
-	hw_rev = HW_REV_B; //[Temporary] For ANNA JP Board Rev.0 + ESS Rev.b
-#endif
-	return hw_rev;
-}
-#endif
-
 static int es9218_populate_get_pdata(struct device *dev,
 		struct es9218_data *pdata)
 {
@@ -2405,11 +2377,12 @@ static int es9218_probe(struct i2c_client *client,const struct i2c_device_id *id
 			pr_err("Failed to allocate memory\n");
 			return -ENOMEM;
 		}
-#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_BOARD_REVISION
-        pdata->hw_rev = es9218_hw_rev_check();
+#if defined(CONFIG_MACH_MSM8996_ELSA_KDDI_JP) || defined(CONFIG_MACH_MSM8996_ELSA_DCM_JP) || \
+			defined(CONFIG_MACH_MSM8996_ANNA_GLOBAL_COM) || defined(CONFIG_MACH_MSM8996_ANNA_KR)
+		pdata->hw_rev = HW_REV_B; //[Temporary] For ANNA JP Board Rev.0 + ESS Rev.b
 #else
-        pdata->hw_rev = lge_get_board_revno();
-        pr_info("%s() lg board1 rev_(%d)\n", __func__, pdata->hw_rev);
+		pdata->hw_rev = lge_get_board_revno();
+		pr_info("%s() lg board1 rev_(%d)\n", __func__, pdata->hw_rev);
 #endif
 		ret = es9218_populate_get_pdata(&client->dev, pdata);
 		if (ret) {

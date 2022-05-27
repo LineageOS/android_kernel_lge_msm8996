@@ -25,12 +25,7 @@
 #include "es9018.h"
 #include <linux/i2c.h>
 
-#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_BOARD_REVISION
-#include <soc/qcom/lge/power/lge_board_revision.h>
-#include <soc/qcom/lge/power/lge_power_class.h>
-#else
 #include <soc/qcom/lge/board_lge.h>
-#endif
 
 #define ES9018_DEBUG
 
@@ -562,12 +557,6 @@ static int sabre_cfg_custom_filter(struct sabre_custom_filter *sabre_filter)
 static int sabre_bypass2hifi(void)
 {
 	int i;
-#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_BOARD_REVISION
-	union lge_power_propval lge_val = {0,};
-	struct lge_power *lge_hw_rev_lpc = NULL;
-	int rc;
-	int hw_rev = HW_REV_EVB1;
-#endif
 
 	if ( es9018_power_state != ESS_PS_BYPASS ) {
 		pr_err("%s() : invalid state = %s\n", __func__, power_state[es9018_power_state]);
@@ -599,31 +588,14 @@ static int sabre_bypass2hifi(void)
 	}
 	sabre_cfg_custom_filter(&sabre_custom_ft[sabre_cf_num]);
 
-#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_BOARD_REVISION
-	lge_hw_rev_lpc = lge_power_get_by_name("lge_hw_rev");
-	if (lge_hw_rev_lpc) {
-		rc = lge_hw_rev_lpc->get_property(lge_hw_rev_lpc,
-				LGE_POWER_PROP_HW_REV_NO, &lge_val);
-		hw_rev = lge_val.intval;
-	} else {
-		pr_err("[SOUND] Failed to get hw_rev property\n");
-		hw_rev = HW_REV_EVB1;
-	}
-	if (hw_rev <= HW_REV_0_1) {
-#else
 	if (lge_get_board_revno() <= HW_REV_0_1) {
-#endif
 		hph_switch_gpio_L();
 		es9018_power_state = ESS_PS_HIFI;
 	}
 	// es9218
 	else {
 		// es9218 chip rev_A-A register 39 set to 0xcc
-#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_BOARD_REVISION
-	if (hw_rev <= HW_REV_0_1) {
-#else
 	if (lge_get_board_revno() <= HW_REV_0_1) {
-#endif
 			es9018_write_reg(g_es9018_priv->i2c_client, ESS9218_39, 0xcc);
 		}
 		// switch , hifi amp mode setting
@@ -638,33 +610,13 @@ static int sabre_bypass2hifi(void)
 */
 static int sabre_hifi2bypass(void)
 {
-#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_BOARD_REVISION
-	union lge_power_propval lge_val = {0,};
-	struct lge_power *lge_hw_rev_lpc = NULL;
-	int rc;
-	int hw_rev = HW_REV_EVB1;
-#endif
-
 	if ( es9018_power_state < ESS_PS_HIFI )
 		return 0;
 
 	pr_info("%s() : state = %s\n", __func__, power_state[es9018_power_state]);
 	es9018_write_reg(g_es9018_priv->i2c_client,ESS9018_SOFT_START,0x0A);
 	//es9018_write_reg(g_es9018_priv->i2c_client,ESS9218_GPIOCFG,0x70); remove this line
-#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_BOARD_REVISION
-	lge_hw_rev_lpc = lge_power_get_by_name("lge_hw_rev");
-	if (lge_hw_rev_lpc) {
-		rc = lge_hw_rev_lpc->get_property(lge_hw_rev_lpc,
-				LGE_POWER_PROP_HW_REV, &lge_val);
-		hw_rev = lge_val.intval;
-	} else {
-		pr_err("[SOUND] Failed to get hw_rev property\n");
-		hw_rev = HW_REV_EVB1;
-	}
-	if (hw_rev <= HW_REV_0_1) {
-#else
 	if (lge_get_board_revno() <= HW_REV_0_1) {
-#endif
 		// es9018
 		reset_gpio_L();
 		hph_switch_gpio_H();
@@ -724,30 +676,11 @@ static int sabre_audio_active(void)
 */
 static int __sabre_headphone_on(void)
 {
-#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_BOARD_REVISION
-	union lge_power_propval lge_val = {0,};
-	struct lge_power *lge_hw_rev_lpc = NULL;
-	int rc;
-	int hw_rev = HW_REV_EVB1;
-#endif
 	if (es9018_power_state == ESS_PS_CLOSE)	{
 
 		pr_info("%s() : state = %s\n", __func__, power_state[es9018_power_state]);
 
-#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_BOARD_REVISION
-		lge_hw_rev_lpc = lge_power_get_by_name("lge_hw_rev");
-		if (lge_hw_rev_lpc) {
-			rc = lge_hw_rev_lpc->get_property(lge_hw_rev_lpc,
-					LGE_POWER_PROP_HW_REV, &lge_val);
-			hw_rev = lge_val.intval;
-		} else {
-			pr_err("[SOUND] Failed to get hw_rev property\n");
-			hw_rev = HW_REV_EVB1;
-		}
-		if (hw_rev <= HW_REV_0_1) {
-#else
 		if (lge_get_board_revno() <= HW_REV_0_1) {
-#endif
 			// es9018
 			reset_gpio_L();
 			mdelay(1);
