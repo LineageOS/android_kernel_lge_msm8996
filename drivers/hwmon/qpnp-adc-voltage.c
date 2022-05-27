@@ -35,8 +35,7 @@
 #include <linux/power_supply.h>
 #include <linux/thermal.h>
 #ifdef CONFIG_LGE_PM
-#include <soc/qcom/smem.h>
-#include <soc/qcom/lge/power/lge_cable_detect.h>
+#include <soc/qcom/lge/board_lge.h>
 #endif
 
 /* QPNP VADC register definition */
@@ -2245,16 +2244,12 @@ int32_t qpnp_vadc_read(struct qpnp_vadc_chip *vadc,
 	}
 #elif defined(CONFIG_MACH_MSM8996_ELSA) || defined(CONFIG_MACH_MSM8996_ANNA)
 	else if (channel == LR_MUX10_USB_ID_LV) {
-		unsigned int *cable_info = NULL;
-		unsigned int cable_smem_size = 0;
-
-		cable_info = smem_get_entry(SMEM_ID_VENDOR1,
-						&cable_smem_size, 0, 0);
+		cable_info = lge_get_factory_cable();
 
 		if ((cable_info) &&
-			((*cable_info == LT_CABLE_56K) ||
-			(*cable_info == LT_CABLE_130K) ||
-			(*cable_info == LT_CABLE_910K))) {
+			((cable_info == CABLE_56K) ||
+			(cable_info == CABLE_130K) ||
+			(cable_info == CABLE_910K))) {
 			u8 data, gpio3_mode, gpio3_out;
 
 			regmap_bulk_read(vadc->adc->regmap,

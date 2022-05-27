@@ -82,8 +82,16 @@ enum lge_boot_mode_type {
 	LGE_BOOT_MODE_MINIOS	/* LGE_UPDATE for MINIOS2.0 */
 };
 
+enum lge_factory_cable_type {
+	NO_INIT_CABLE = 0,
+	CABLE_56K,
+	CABLE_130K,
+	CABLE_910K
+};
+
 enum lge_boot_mode_type lge_get_boot_mode(void);
 int lge_get_factory_boot(void);
+int lge_get_factory_cable(void);
 extern int lge_get_bootreason(void);
 
 #ifdef CONFIG_LGE_LCD_OFF_DIMMING

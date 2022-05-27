@@ -14,18 +14,11 @@
 
 #include <linux/msm_mdp.h>
 #include "../mdss_fb.h"
-#ifdef CONFIG_LGE_PM_LGE_POWER_CORE
-#include <soc/qcom/lge/power/lge_power_class.h>
-#include <soc/qcom/smem.h>
-#endif
-#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_CABLE_DETECT
-#include <soc/qcom/lge/power/lge_cable_detect.h>
-#else
-#include <soc/qcom/lge/lge_cable_detection.h>
-#endif
 #include <linux/module.h>
-#include <linux/power/lge_battery_id.h>
 #include "lge_mdss_display.h"
+#ifdef CONFIG_LGE_LCD_OFF_DIMMING
+#include <soc/qcom/lge/board_lge.h>
+#endif
 
 #if IS_ENABLED(CONFIG_LGE_DISPLAY_BL_EXTENDED)
 extern int mdss_fb_mode_switch(struct msm_fb_data_type *mfd, u32 mode);
@@ -82,43 +75,26 @@ static inline bool is_blank_called(void)
 static inline bool is_factory_cable(void)
 {
 	unsigned int cable_info;
-#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_CABLE_DETECT
-	cable_info = get_factory_cable();
-#if !defined(CONFIG_LGE_PM_EMBEDDED_BATTERY)
-		if (cable_info == LGEUSB_FACTORY_56K ||
-			cable_info == LGEUSB_FACTORY_130K ||
-			cable_info == LGEUSB_FACTORY_910K) {
-			pr_info("%s : cable_type = factory(%d) \n",__func__, cable_info);
-			return true;
-		} else {
-			return false;
-		}
-#else
-		if (cable_info == LGEUSB_FACTORY_130K ||
-			cable_info == LGEUSB_FACTORY_910K) {
-			pr_info("%s : cable_type = factory(%d) \n",__func__, cable_info);
-			return true;
-		} else {
-			return false;
-		}
-#endif
-#elif defined (CONFIG_LGE_PM_CABLE_DETECTION)
-	cable_info = lge_pm_get_cable_type();
+	cable_info = lge_get_factory_cable();
 
 #if !defined(CONFIG_LGE_PM_EMBEDDED_BATTERY)
-	if (cable_info == CABLE_56K ||
-		cable_info == CABLE_130K ||
-		cable_info == CABLE_910K)
+		if (cable_info == CABLE_56K ||
+			cable_info == CABLE_130K ||
+			cable_info == CABLE_910K) {
+			pr_info("%s : cable_type = factory(%d) \n",__func__, cable_info);
+			return true;
+		} else {
+			return false;
+		}
 #else
-	if (cable_info == CABLE_130K ||
-		cable_info == CABLE_910K)
+		if (cable_info == CABLE_130K ||
+			cable_info == CABLE_910K) {
+			pr_info("%s : cable_type = factory(%d) \n",__func__, cable_info);
+			return true;
+		} else {
+			return false;
+		}
 #endif
-		return true;
-	else
-#else
-	cable_info = NO_INIT_CABLE;
-#endif
-		return false;
 }
 
 void lge_set_blank_called(void)
@@ -134,72 +110,6 @@ static inline bool is_blank_called(void)
 static inline bool is_factory_cable(void)
 {
 	return false;
-}
-#endif
-
-#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_BATTERY_ID_CHECKER
-static bool batt_present = false;
-bool lge_battery_present(void){
-	struct lge_power *lge_batt_id_lpc;
-	union lge_power_propval	lge_val = {0,};
-	uint *smem_batt = 0;
-	uint _smem_batt_id = 0;
-	int rc;
-	if (batt_present == true){
-		return true;
-		}
-	lge_batt_id_lpc = lge_power_get_by_name("lge_batt_id");
-	if (lge_batt_id_lpc) {
-		rc = lge_batt_id_lpc->get_property(lge_batt_id_lpc,
-				LGE_POWER_PROP_PRESENT, &lge_val);
-		batt_present = lge_val.intval;
-	}else{
-		pr_err("[MDSS] Failed to get batt presnet property\n");
-		smem_batt = (uint *)smem_alloc(SMEM_BATT_INFO,
-				sizeof(smem_batt), 0, SMEM_ANY_HOST_FLAG);
-		if (smem_batt == NULL) {
-			pr_err("[MDSS] smem_alloc returns NULL\n");
-			batt_present  = false;
-		} else {
-			_smem_batt_id = *smem_batt;
-			pr_err("[MDSS] Battery was read in sbl is = %d\n",
-					_smem_batt_id);
-			if (_smem_batt_id == BATT_NOT_PRESENT) {
-				pr_err("[MDSS] Set batt_id as DEFAULT\n");
-				batt_present = false;
-			}else{
-				batt_present = true;
-			}
-		}
-	}
-	return batt_present;
-}
-#endif
-
-#ifdef CONFIG_LGE_PM_SUPPORT_LG_POWER_CLASS
-int lge_charger_present(void){
-	struct lge_power *lge_cd_lpc;
-	union lge_power_propval	lge_val = {0,};
-	int chg_present = 0;
-	int rc = 0;
-
-	lge_cd_lpc = lge_power_get_by_name("lge_cable_detect");
-
-	if (lge_cd_lpc) {
-		rc = lge_cd_lpc->get_property(lge_cd_lpc, LGE_POWER_PROP_CHG_PRESENT, &lge_val);
-		chg_present = lge_val.intval;
-	} else {
-		lge_cd_lpc = lge_power_get_by_name("lge_cable_detect");
-		if (lge_cd_lpc) {
-			rc = lge_cd_lpc->get_property(lge_cd_lpc, LGE_POWER_PROP_CHG_PRESENT, &lge_val);
-			chg_present = lge_val.intval;
-		} else {
-			pr_err("cannot get lge_cable_detect lpc\n");
-			/* best effort, guessing not connect */
-			chg_present = 0;
-		}
-	}
-	return chg_present;
 }
 #endif
 
@@ -241,20 +151,12 @@ int lge_br_to_bl (struct msm_fb_data_type *mfd, int br_lvl)
 		br_lvl = 1;
 		pr_info("%s: lcd dimming mode. set value = %d\n",
 							__func__, br_lvl);
-#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_BATTERY_ID_CHECKER
-	} else if (is_factory_cable()
-#if !defined(CONFIG_LGE_PM_EMBEDDED_BATTERY)
-					&& !lge_battery_present()
-#endif
-#elif defined (CONFIG_LGE_PM_BATTERY_ID_CHECKER)
-	} else if (is_factory_cable() && !lge_battery_check()
-#else
-	} else if (is_factory_cable()
-#endif
-			&& !is_blank_called()) {
+#ifdef CONFIG_LGE_LCD_OFF_DIMMING
+	} else if (is_factory_cable() && !is_blank_called()) {
 		br_lvl = 1;
 		pr_info("%s: Detect factory cable. set value = %d\n",
 							__func__, br_lvl);
+#endif
 	}
 	/* modify brightness level */
 
@@ -757,20 +659,12 @@ int lge_br_to_bl_ex (struct msm_fb_data_type *mfd, int br_lvl)
 		br_lvl = 1;
 		pr_info("%s: lcd dimming mode. set value = %d\n",
 							__func__, br_lvl);
-#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_BATTERY_ID_CHECKER
-	} else if (is_factory_cable()
-#if !defined(CONFIG_LGE_PM_EMBEDDED_BATTERY)
-					&& !lge_battery_present()
-#endif
-#elif defined (CONFIG_LGE_PM_BATTERY_ID_CHECKER)
-	} else if (is_factory_cable() && !lge_battery_check()
-#else
-	} else if (is_factory_cable()
-#endif
-			&& !is_blank_called()) {
+#ifdef CONFIG_LGE_LCD_OFF_DIMMING
+	} else if (is_factory_cable() && !is_blank_called()) {
 		br_lvl = 1;
 		pr_info("%s: Detect factory cable. set value = %d\n",
 							__func__, br_lvl);
+#endif
 	}
 
 	/* map brightness level to device backlight level */
