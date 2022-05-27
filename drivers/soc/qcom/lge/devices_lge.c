@@ -6,13 +6,11 @@
 #include <linux/platform_device.h>
 #include <asm/system_misc.h>
 
-#ifndef CONFIG_LGE_PM_LGE_POWER_CLASS_BOARD_REVISION
 static enum hw_rev_type lge_bd_rev = HW_REV_MAX;
-#endif
 
 /* For debugging */
 #ifdef CONFIG_LGE_LCD_TUNING
-#include "../drivers/video/fbdev/msm/msm_dsi.h"
+#include "../../../video/fbdev/msm/msm_dsi.h"
 int tun_lcd[128];
 
 int lcd_set_values(int *tun_lcd_t)
@@ -56,7 +54,6 @@ int lge_use_external_dsv = 0;
 int display_panel_type;
 #endif
 
-#ifndef CONFIG_LGE_PM_LGE_POWER_CLASS_BOARD_REVISION
 #if defined(CONFIG_MACH_MSM8996_LUCYE)
 char *rev_str[] = {"evb1", "evb2", "evb3", "rev_0", "rev_01", "rev_02", "rev_03", "rev_04",
 	"rev_a", "rev_b", "rev_c", "rev_d", "rev_10", "rev_11", "rev_12", "rev_13", "rev_14", "rev_15", "rev_16",
@@ -67,12 +64,10 @@ char *rev_str[] = {"evb1", "evb2", "evb3", "rev_0", "rev_01", "rev_02", "rev_a",
 	"reserved"};
 #else
 char *rev_str[] = {"evb1", "evb2", "evb3", "rev_0", "rev_01", "rev_f", "rev_b", "rev_c",
-	"rev_d", "rev_e", "rev_a", "rev_g", "rev_10", "rev_11", "rev_12","rev_13",
+	"rev_d", "rev_e", "rev_a", "rev_g", "rev_10", "rev_11", "rev_12", "rev_13",
 	"reserved"};
 #endif
-#endif
 
-#ifndef CONFIG_LGE_PM_LGE_POWER_CLASS_BOARD_REVISION
 static int __init board_revno_setup(char *rev_info)
 {
 	int i;
@@ -89,14 +84,11 @@ static int __init board_revno_setup(char *rev_info)
 	return 1;
 }
 __setup("lge.rev=", board_revno_setup);
-#endif
 
-#ifndef CONFIG_LGE_PM_LGE_POWER_CLASS_BOARD_REVISION
 enum hw_rev_type lge_get_board_revno(void)
 {
 	return lge_bd_rev;
 }
-#endif
 
 #ifdef CONFIG_LGE_PANEL_MAKER_ID_SUPPORT
 static enum panel_maker_id_type lge_panel_maker_id = PANEL_MAKER_ID_MAX;

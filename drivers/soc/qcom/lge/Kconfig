@@ -217,6 +217,13 @@ config LGE_PM
 	  Power Management, Battery charging, Battery Monitoring System
 	  with battery FET and fuel gauge.
 
+config LGE_PANEL_MAKER_ID_SUPPORT
+	tristate "Support panel ID feature"
+	depends on MACH_LGE
+	default n
+	help
+	  Say Y here to enable Panel Maker ID feature.
+
 config LGE_HALL_IC
 	bool "Support LGE Smartcover"
 	depends on MACH_LGE
@@ -224,6 +231,13 @@ config LGE_HALL_IC
 	help
 	  Support sending a device-tree defined gpio code when hall IC
 	  is triggered.
+
+config LGE_BOOTLOADER_LOG
+	tristate "Support LGE bootloader log"
+	depends on MACH_LGE
+	default n
+	help
+	  LGE bootloader log.
 
 config LGE_DISABLE_SECOND_SCREEN
 	bool "Disable the secondary screen on elsa devices"
