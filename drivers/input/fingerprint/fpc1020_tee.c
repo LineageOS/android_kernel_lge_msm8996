@@ -887,8 +887,8 @@ static struct spi_driver fpc1020_driver = {
 	},
 	.probe		= fpc1020_probe,
 	.remove		= fpc1020_remove,
-	.suspend	= fpc1020_suspend,
-	.resume		= fpc1020_resume,
+//	.suspend	= fpc1020_suspend,
+//	.resume		= fpc1020_resume,
 };
 
 static int __init fpc1020_init(void)
