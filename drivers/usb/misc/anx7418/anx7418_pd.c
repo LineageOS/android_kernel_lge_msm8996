@@ -504,7 +504,7 @@ static int dswap_req_parse(struct i2c_client *client, const pd_msg_t msg)
 			prop.intval = POWER_SUPPLY_TYPE_USB;
 			power_supply_set_property(anx->usb_psy,
 					POWER_SUPPLY_PROP_TYPE, &prop);
-			anx->usb_psy->desc->type = prop.intval;
+			anx->chg.psy_d.type = prop.intval;
 		}
 		break;
 
