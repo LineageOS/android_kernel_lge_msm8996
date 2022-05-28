@@ -43,7 +43,8 @@ static ssize_t store_sbu2(struct device *dev, struct device_attribute *attr, con
 	struct anx7418 *anx = dev_get_drvdata(dev);
 	int temp = simple_strtoul(buf, NULL, 10);
 
-	if (anx->friends != LGE_ALICE_FRIENDS_CM) {
+	/* if (anx->friends != LGE_ALICE_FRIENDS_CM) { ## LGE_ALICE_FRIENDS removed */
+	if (true) { // LGE_ALICE_FRIENDS isn't defined, so never set the GPIO for it.
 		dev_info(dev, "do not ext-acc_en pin write without alice-cm\n");
 		return count;
 	}

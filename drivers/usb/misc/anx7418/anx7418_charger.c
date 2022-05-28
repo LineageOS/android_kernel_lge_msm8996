@@ -71,13 +71,6 @@ static int chg_get_property(struct power_supply *psy,
 		break;
 
 	case POWER_SUPPLY_PROP_TYPEC_MODE:
-#ifdef CONFIG_LGE_ALICE_FRIENDS
-		if (anx->friends == LGE_ALICE_FRIENDS_CM) {
-			val->intval = POWER_SUPPLY_TYPE_UNKNOWN;
-			break;
-		}
-#endif
-
 		rc = anx7418_read_reg(anx->client, CC_STATUS);
 		dev_dbg(cdev, "%s: CC_STATUS(%02X)\n", __func__, rc);
 
@@ -112,10 +105,6 @@ static int chg_set_property(struct power_supply *psy,
 
 	switch (prop) {
 	case POWER_SUPPLY_PROP_USB_OTG:
-#ifdef CONFIG_LGE_ALICE_FRIENDS
-		if (anx->friends == LGE_ALICE_FRIENDS_CM)
-			goto out;
-#endif
 		if (chg->is_otg == val->intval)
 			break;
 		dev_dbg(cdev, "%s: is_otg(%d)\n", __func__, chg->is_otg);
@@ -136,9 +125,6 @@ static int chg_set_property(struct power_supply *psy,
 		break;
 
 	case POWER_SUPPLY_PROP_PRESENT:
-#ifdef CONFIG_LGE_ALICE_FRIENDS
-		if (anx->friends == LGE_ALICE_FRIENDS_NONE)
-#endif
 		if (anx->is_dbg_acc || anx->mode == DUAL_ROLE_PROP_MODE_NONE) {
 			if (val->intval) {
 				dev_info(cdev, "power on by charger\n");
@@ -165,9 +151,6 @@ static int chg_set_property(struct power_supply *psy,
 		dev_dbg(cdev, "%s: is_present(%d)\n", __func__, chg->is_present);
 
 		if (chg->is_present) {
-#ifdef CONFIG_LGE_ALICE_FRIENDS
-			if (anx->friends == LGE_ALICE_FRIENDS_NONE)
-#endif
 			schedule_delayed_work(&chg->chg_work,
 					msecs_to_jiffies(CHG_WORK_DELAY));
 		} else {
@@ -177,23 +160,6 @@ static int chg_set_property(struct power_supply *psy,
 			chg->ctype_charger = ANX7418_UNKNOWN_CHARGER;
 		}
 
-#ifdef CONFIG_LGE_ALICE_FRIENDS
-		if ((anx->friends == LGE_ALICE_FRIENDS_HM ||
-		     anx->friends == LGE_ALICE_FRIENDS_HM_B) &&
-		     anx->dr != DUAL_ROLE_PROP_DR_HOST) {
-			if (chg->is_present)
-				power_supply_set_present(anx->usb_psy, 1);
-			else
-				power_supply_set_present(anx->usb_psy, 0);
-		}
-		else if (anx->friends == LGE_ALICE_FRIENDS_CM) {
-			if (chg->is_present)
-				schedule_delayed_work(&chg->vconn_work,
-					msecs_to_jiffies(100));
-			else
-				cancel_delayed_work(&chg->vconn_work);
-		}
-#endif
 		break;
 
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
@@ -239,9 +205,6 @@ static int chg_set_property(struct power_supply *psy,
 		return -EINVAL;
 	}
 
-#ifdef CONFIG_LGE_ALICE_FRIENDS
-out:
-#endif
 	return 0;
 }
 
@@ -264,61 +227,6 @@ static int chg_is_writeable(struct power_supply *psy,
 
 	return rc;
 }
-
-#ifdef CONFIG_LGE_ALICE_FRIENDS
-#define CM_VCONN_DELAY		100
-
-static void force_enable_vconn(struct anx7418 *anx)
-{
-	struct i2c_client *client = anx->client;
-	int rc = 0;
-
-	anx7418_write_reg(client, RESET_CTRL_0, R_OCM_RESET);
-
-	gpio_set_value(anx->vconn_gpio, 1);
-
-	rc = anx7418_read_reg(client, R_PULL_UP_DOWN_CTRL_1);
-	rc |= R_VCONN1_EN_PULL_DOWN;
-	anx7418_write_reg(client, R_PULL_UP_DOWN_CTRL_1, rc);
-
-	mdelay(CM_VCONN_DELAY);
-
-	rc = anx7418_read_reg(client, R_PULL_UP_DOWN_CTRL_1);
-	rc &= ~R_VCONN1_EN_PULL_DOWN;
-	anx7418_write_reg(client, R_PULL_UP_DOWN_CTRL_1, rc);
-
-	gpio_set_value(anx->vconn_gpio, 0);
-
-	anx7418_write_reg(client, RESET_CTRL_0, 0);
-	mdelay(50);
-	anx7418_reg_init(anx);
-}
-
-static void vconn_work(struct work_struct *w)
-{
-	struct anx7418_charger *chg = container_of(w,
-			struct anx7418_charger, vconn_work.work);
-	struct anx7418 *anx = chg->anx;
-	struct i2c_client *client = anx->client;
-	struct device *cdev = &client->dev;
-
-	down_read(&anx->rwsem);
-
-	dev_info(cdev, "%s is called\n", __func__);
-
-	if (!atomic_read(&anx->pwr_on)) {
-		goto out;
-	}
-
-	if (anx->dr != DUAL_ROLE_PROP_DR_DEVICE) {
-		force_enable_vconn(anx);
-		dev_info(cdev, "%s: Turn on CC1 Vconn for %dmsec\n",
-				__func__, CM_VCONN_DELAY );
-	}
-out:
-	up_read(&anx->rwsem);
-}
-#endif /* CONFIG_LGE_ALICE_FRIENDS */
 
 static void chg_work(struct work_struct *w)
 {
@@ -414,10 +322,6 @@ int anx7418_charger_init(struct anx7418 *anx)
 
 	chg->anx = anx;
 	INIT_DELAYED_WORK(&chg->chg_work, chg_work);
-
-#ifdef CONFIG_LGE_ALICE_FRIENDS
-	INIT_DELAYED_WORK(&chg->vconn_work, vconn_work);
-#endif
 
 	rc = power_supply_register(cdev, &chg->psy);
 	if (rc < 0) {

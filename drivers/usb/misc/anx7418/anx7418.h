@@ -11,13 +11,7 @@
 #include <linux/rwsem.h>
 #include <linux/usb/class-dual-role.h>
 
-#ifdef CONFIG_LGE_ALICE_FRIENDS
 #include <soc/qcom/lge/board_lge.h>
-#include <../alice_friends/hm.h>
-#endif
-#ifdef CONFIG_LGE_PM_CABLE_DETECTION
-#include <soc/qcom/lge/lge_cable_detection.h>
-#endif
 
 #include "anx7418_i2c.h"
 #include "anx7418_debug.h"
@@ -46,10 +40,10 @@ struct anx7418 {
 	int i2c_irq_gpio;
 	int cable_det_gpio;
 	int cable_det_irq;
-#ifdef CONFIG_LGE_ALICE_FRIENDS
+//CONFIG_LGE_ALICE_FRIENDS START
 	int ext_acc_en_gpio;
 	int ext_acc_en_irq;
-#endif
+//CONFIG_LGE_ALICE_FRIENDS END
 
 	struct anx7418_charger chg;
 
@@ -81,12 +75,6 @@ struct anx7418 {
 	struct dual_role_phy_instance *dual_role;
 #endif
 
-#ifdef CONFIG_LGE_ALICE_FRIENDS
-	enum lge_alice_friends friends;
-	struct mutex hm_mutex;
-	struct hm_instance *hm;
-	struct hm_desc hm_desc;
-#endif
 };
 
 /* ANX7418 I2C registers */
