@@ -10,9 +10,6 @@
 #include <linux/wakelock.h>
 #include <linux/async.h>
 #include <linux/regulator/consumer.h>
-#ifdef CONFIG_LGE_ALICE_FRIENDS
-#include <linux/qpnp/pin.h>
-#endif
 
 #include "anx7418.h"
 #include "anx7418_firmware.h"
@@ -31,90 +28,6 @@ module_param(dfp, uint, S_IRUGO | S_IWUSR);
 MODULE_PARM_DESC(dfp, "FORCED DFP MODE");
 
 static int intf_irq_mask = 0xFF;
-
-#ifdef CONFIG_LGE_ALICE_FRIENDS
-static const char *alice_friends_string(enum lge_alice_friends friends)
-{
-	static const char *const names[] = {
-		[LGE_ALICE_FRIENDS_NONE] = "None",
-		[LGE_ALICE_FRIENDS_CM] = "CM",
-		[LGE_ALICE_FRIENDS_HM] = "HM",
-		[LGE_ALICE_FRIENDS_HM_B] = "HM >= Rev.B",
-	};
-
-	if (friends < 0 || friends >= ARRAY_SIZE(names))
-		return "Undefined";
-
-	return names[friends];
-}
-
-enum {
-	HM_EARJACK_DETACH = 0,
-	HM_EARJACK_ATTACH = 1,
-	HM_NO_INIT = 2,
-};
-
-static int ext_acc_en = HM_NO_INIT;
-
-static irqreturn_t ext_acc_en_irq_thread(int irq, void *_anx)
-{
-	struct anx7418 *anx = _anx;
-	struct device *cdev = &anx->client->dev;
-	int en;
-
-	wake_lock_timeout(&anx->wlock, msecs_to_jiffies(2000));
-
-	mdelay(200);
-
-	mutex_lock(&anx->hm_mutex);
-
-	en = gpio_get_value(anx->ext_acc_en_gpio);
-	dev_info(cdev, "ext_acc_en_gpio: old(%d), new(%d)\n", ext_acc_en, en);
-	if (ext_acc_en == en)
-		goto out;
-
-	ext_acc_en = en;
-
-	if (ext_acc_en == HM_EARJACK_ATTACH) {
-		dev_info(cdev, "HM: Host\n");
-
-		power_supply_set_present(anx->usb_psy, false);
-
-		power_supply_set_usb_otg(anx->usb_psy, 1);
-		anx->dr = DUAL_ROLE_PROP_DR_HOST;
-
-		hm_earjack_changed(anx->hm, true);
-	} else {
-		dev_info(cdev, "HM: Device\n");
-
-		power_supply_set_usb_otg(anx->usb_psy, 0);
-		anx->dr = DUAL_ROLE_PROP_DR_DEVICE;
-
-		hm_earjack_changed(anx->hm, false);
-	}
-
-out:
-	mutex_unlock(&anx->hm_mutex);
-	return IRQ_HANDLED;
-}
-
-int hm_reset(struct hm_instance *hm)
-{
-	struct anx7418 *anx = dev_get_drvdata(hm->mdev.parent);
-	struct device *cdev = &anx->client->dev;
-
-	if (ext_acc_en != HM_EARJACK_ATTACH)
-		return 0;
-
-	dev_info(cdev, "HM: Reset\n");
-
-	gpio_set_value(anx->vconn_gpio, 0);
-	mdelay(1000);
-	gpio_set_value(anx->vconn_gpio, 1);
-
-	return 1;
-}
-#endif
 
 int anx7418_set_mode(struct anx7418 *anx, int mode)
 {
@@ -296,9 +209,6 @@ int __anx7418_pwr_on(struct anx7418 *anx)
 	int i;
 	int rc;
 
-#ifdef CONFIG_LGE_ALICE_FRIENDS
-	if (anx->friends != LGE_ALICE_FRIENDS_CM)
-#endif
 	gpio_set_value(anx->vconn_gpio, 1);
 
 	gpio_set_value(anx->pwr_en_gpio, 1);
@@ -363,9 +273,6 @@ int anx7418_pwr_on(struct anx7418 *anx, int is_on)
 
 	dev_info_ratelimited(cdev, "%s(%d)\n", __func__, is_on);
 
-#ifdef CONFIG_LGE_ALICE_FRIENDS
-	if (anx->friends == LGE_ALICE_FRIENDS_NONE)
-#endif
 	if (!is_on && anx->is_dbg_acc) {
 #ifdef CONFIG_LGE_USB_TYPE_C
 		prop.intval = 1;
@@ -392,28 +299,6 @@ int anx7418_pwr_on(struct anx7418 *anx, int is_on)
 		rc = __anx7418_pwr_on(anx);
 		if (rc < 0)
 			goto set_as_ufp;
-
-#ifdef CONFIG_LGE_ALICE_FRIENDS
-		/* Turn on CC1 VCONN for HM */
-		if (anx->friends == LGE_ALICE_FRIENDS_HM ||
-		    anx->friends == LGE_ALICE_FRIENDS_HM_B) {
-			ext_acc_en_irq_thread(anx->ext_acc_en_irq, anx);
-
-			anx7418_write_reg(client, RESET_CTRL_0,
-					R_OCM_RESET | R_PD_RESET);
-
-			rc = anx7418_read_reg(client, R_PULL_UP_DOWN_CTRL_1);
-			rc |= R_VCONN1_EN_PULL_DOWN;
-			anx7418_write_reg(client, R_PULL_UP_DOWN_CTRL_1, rc);
-			dev_info(cdev, "%s: Turn on CC1 VCONN for HM\n", __func__);
-
-			anx7418_write_reg(client, POWER_DOWN_CTRL,
-					R_POWER_DOWN_OCM | R_POWER_DOWN_PD);
-
-			enable_irq(anx->ext_acc_en_irq);
-			goto out;
-		}
-#endif
 
 		anx_dbg_event("INIT START", 0);
 
@@ -466,9 +351,6 @@ set_as_ufp:
 					 * is connected with a register for distinguish
 					 * factory cables by switch SBU_SEL pin.
 					 */
-#ifdef CONFIG_LGE_ALICE_FRIENDS
-					if (anx->friends == LGE_ALICE_FRIENDS_NONE) {
-#endif
 #ifdef CONFIG_LGE_USB_TYPE_C
 					// Check vbus on?
 					anx->usb_psy->get_property(anx->usb_psy,
@@ -492,9 +374,6 @@ set_as_ufp:
 
 					anx->is_dbg_acc = true;
 					goto set_as_ufp;
-#ifdef CONFIG_LGE_ALICE_FRIENDS
-					}
-#endif
 				}
 			}
 
@@ -503,19 +382,10 @@ set_as_dfp:
 			anx_dbg_event("DFP", 0);
 
 			anx7418_set_mode(anx, DUAL_ROLE_PROP_MODE_DFP);
-#ifdef CONFIG_LGE_ALICE_FRIENDS
-			if (anx->friends != LGE_ALICE_FRIENDS_NONE)
-				anx7418_set_pr(anx, DUAL_ROLE_PROP_PR_SNK);
-			else
-#endif
 			anx7418_set_pr(anx, DUAL_ROLE_PROP_PR_SRC);
 			anx7418_set_dr(anx, DUAL_ROLE_PROP_DR_HOST);
 		}
 #ifdef CONFIG_DUAL_ROLE_USB_INTF
-#ifdef CONFIG_LGE_ALICE_FRIENDS
-		if (!(anx->friends != LGE_ALICE_FRIENDS_NONE &&
-		      anx->mode == DUAL_ROLE_PROP_MODE_DFP))
-#endif
 		dual_role_instance_changed(anx->dual_role);
 #endif
 	} else {
@@ -530,14 +400,6 @@ set_as_dfp:
 			dev_err(cdev, "set_property(CTYPE_CHARGER) error %d\n", rc);
 #endif
 
-#ifdef CONFIG_LGE_ALICE_FRIENDS
-		if (anx->friends != LGE_ALICE_FRIENDS_NONE &&
-		    anx->mode == DUAL_ROLE_PROP_MODE_DFP) {
-			anx7418_set_mode(anx, DUAL_ROLE_PROP_MODE_NONE);
-			anx7418_set_pr(anx, DUAL_ROLE_PROP_PR_NONE);
-			anx7418_set_dr(anx, DUAL_ROLE_PROP_DR_NONE);
-		} else {
-#endif
 		anx7418_set_pr(anx, DUAL_ROLE_PROP_PR_NONE);
 		anx7418_set_dr(anx, DUAL_ROLE_PROP_DR_NONE);
 		if (anx->mode != DUAL_ROLE_PROP_MODE_NONE) {
@@ -546,9 +408,6 @@ set_as_dfp:
 			dual_role_instance_changed(anx->dual_role);
 #endif
 		}
-#ifdef CONFIG_LGE_ALICE_FRIENDS
-		}
-#endif
 	}
 
 out:
@@ -658,10 +517,6 @@ static void i2c_work(struct work_struct *w)
 				dual_role_changed = true;
 #endif
 			} else if (rc == 0x11) {
-#ifdef CONFIG_LGE_ALICE_FRIENDS
-				if (anx->friends == LGE_ALICE_FRIENDS_CM)
-					goto set_dfp;
-#endif
 				// Debug Accerrosy Mode
 				dev_info(cdev, "%s: Debug Accessory Mode\n", __func__);
 				anx_dbg_event("Debug Accessory", 0);
@@ -692,9 +547,6 @@ static void i2c_work(struct work_struct *w)
 						irq & intf_irq_mask);
 				goto done;
 			} else {
-#ifdef CONFIG_LGE_ALICE_FRIENDS
-				if (anx->friends == LGE_ALICE_FRIENDS_NONE)
-#endif
 				if (!anx->is_tried_snk && !lge_get_factory_boot()) {
 					dev_dbg(cdev, "%s: try_snk\n", __func__);
 
@@ -707,9 +559,6 @@ static void i2c_work(struct work_struct *w)
 					anx->is_tried_snk = true;
 					goto done;
 				}
-#ifdef CONFIG_LGE_ALICE_FRIENDS
-set_dfp:
-#endif
 				// DFP
 				dev_info(cdev, "%s: set as DFP\n", __func__);
 				anx_dbg_event("DFP", 0);
@@ -735,13 +584,6 @@ set_dfp:
 		irq &= ~CC_STATUS_CHG;
 	}
 
-#ifdef CONFIG_LGE_ALICE_FRIENDS
-	if (anx->friends != LGE_ALICE_FRIENDS_NONE) {
-		if (!(intf_irq_mask & VBUS_CHG) && (irq & VBUS_CHG))
-			irq &= ~VBUS_CHG;
-	}
-	else
-#endif
 	if (!(intf_irq_mask & VBUS_CHG) && (irq & VBUS_CHG)) {
 		if (status & VBUS_STATUS) {
 			dev_dbg(cdev, "%s: VBUS ON\n", __func__);
@@ -779,8 +621,7 @@ set_dfp:
 
 		} else if (status & DATA_ROLE) {
 			rc = __anx7418_read_reg(client, ANALOG_CTRL_7);
-			if ( (rc & 0x0F) == 0x05 &&
-			     (anx->friends == LGE_ALICE_FRIENDS_NONE)) { // CC1_Rd and CC2_Rd
+			if ( (rc & 0x0F) == 0x05) { // CC1_Rd and CC2_Rd
 
 				dev_info(cdev, "%s: Debug Accessory Mode\n", __func__);
 				anx_dbg_event("Debug Accessory", 0);
@@ -1102,11 +943,6 @@ static int anx7418_gpio_configure(struct anx7418 *anx, bool on)
 				anx->sbu_sel_gpio);
 			goto err_vconn_gpio_dir;
 		}
-#ifdef CONFIG_LGE_ALICE_FRIENDS
-		if (anx->friends != LGE_ALICE_FRIENDS_NONE)
-			rc = gpio_direction_output(anx->sbu_sel_gpio, 1);
-		else
-#endif
 		rc = gpio_direction_output(anx->sbu_sel_gpio, 0);
 		if (rc) {
 			dev_err(dev,
@@ -1164,100 +1000,9 @@ static int anx7418_gpio_configure(struct anx7418 *anx, bool on)
 		goto err_cable_det_gpio_dir;
 	}
 
-#ifdef CONFIG_LGE_ALICE_FRIENDS
-	/* HM/CM has unique value in SBU1 line - HM:270K / CM:330K
-	 * If HM or CM is connected to the phone, we need to control
-	 * SBU2 line for external accessory power enable in HM/CM
-	 */
-	if (anx->friends == LGE_ALICE_FRIENDS_CM) {
-		if (gpio_is_valid(anx->ext_acc_en_gpio)) {
-			struct qpnp_pin_cfg cfg = {
-				.mode = QPNP_PIN_MODE_DIG_OUT,
-				.vin_sel = QPNP_PIN_VIN0,
-				.out_strength = QPNP_PIN_OUT_STRENGTH_LOW,
-				.src_sel = QPNP_PIN_SEL_FUNC_CONSTANT,
-				.master_en = QPNP_PIN_MASTER_ENABLE,
-			};
-
-			rc = gpio_request(anx->ext_acc_en_gpio, "anx7418_ext_acc_en_gpio");
-			if (rc) {
-				dev_err(dev,
-					"unable to request gpio[%d]\n",
-					anx->ext_acc_en_gpio);
-				goto err_i2c_irq_gpio_dir;
-			}
-
-			rc = qpnp_pin_config(anx->ext_acc_en_gpio, &cfg);
-			if (rc) {
-				dev_err(dev,
-					"unable to set pin config for gpio[%d]\n",
-					anx->ext_acc_en_gpio);
-				goto err_ext_acc_en_gpio_dir;
-			}
-
-			rc = gpio_direction_output(anx->ext_acc_en_gpio, 0);
-			if (rc) {
-				dev_err(dev,
-					"unable to set dir for gpio[%d]\n",
-					anx->ext_acc_en_gpio);
-				goto err_ext_acc_en_gpio_dir;
-			}
-		} else {
-			dev_err(dev, "ext_acc_en gpio not provided\n");
-			rc = -EINVAL;
-			goto err_i2c_irq_gpio_dir;
-		}
-
-	} else if (anx->friends == LGE_ALICE_FRIENDS_HM_B) {
-		if (gpio_is_valid(anx->ext_acc_en_gpio)) {
-			struct qpnp_pin_cfg cfg = {
-				.mode = QPNP_PIN_MODE_DIG_IN,
-				.pull = QPNP_PIN_GPIO_PULL_NO,
-				.vin_sel = QPNP_PIN_VIN2,
-				.out_strength = QPNP_PIN_OUT_STRENGTH_LOW,
-				.src_sel = QPNP_PIN_SEL_FUNC_CONSTANT,
-				.master_en = QPNP_PIN_MASTER_ENABLE,
-			};
-
-			rc = gpio_request(anx->ext_acc_en_gpio, "anx7418_ext_acc_en_gpio");
-			if (rc) {
-				dev_err(dev,
-					"unable to request gpio[%d]\n",
-					anx->ext_acc_en_gpio);
-				goto err_i2c_irq_gpio_dir;
-			}
-
-			rc = qpnp_pin_config(anx->ext_acc_en_gpio, &cfg);
-			if (rc) {
-				dev_err(dev,
-					"unable to set pin config for gpio[%d]\n",
-					anx->ext_acc_en_gpio);
-				goto err_ext_acc_en_gpio_dir;
-			}
-
-			rc = gpio_direction_input(anx->ext_acc_en_gpio);
-			if (rc) {
-				dev_err(dev,
-					"unable to set dir for gpio[%d]\n",
-					anx->ext_acc_en_gpio);
-				goto err_ext_acc_en_gpio_dir;
-			}
-		} else {
-			dev_err(dev, "ext_acc_en gpio not provided\n");
-			rc = -EINVAL;
-			goto err_i2c_irq_gpio_dir;
-		}
-	}
-#endif
-
 	return 0;
 
 gpio_free_all:
-#ifdef CONFIG_LGE_ALICE_FRIENDS
-err_ext_acc_en_gpio_dir:
-	if (gpio_is_valid(anx->ext_acc_en_gpio))
-		gpio_free(anx->ext_acc_en_gpio);
-#endif
 err_i2c_irq_gpio_dir:
 	if (gpio_is_valid(anx->i2c_irq_gpio))
 		gpio_free(anx->i2c_irq_gpio);
@@ -1307,11 +1052,6 @@ static int anx7418_parse_dt(struct device *dev, struct anx7418 *anx)
 	anx->i2c_irq_gpio = of_get_named_gpio(np, "anx7418,i2c-irq", 0);
 	dev_dbg(dev, "i2c_irq_gpio [%d]\n", anx->i2c_irq_gpio);
 
-#ifdef CONFIG_LGE_ALICE_FRIENDS
-	anx->ext_acc_en_gpio = of_get_named_gpio(np, "anx7418,ext-acc-en", 0);
-	dev_dbg(dev, "ext_acc_en_gpio [%d]\n", anx->ext_acc_en_gpio);
-#endif
-
 	return 0;
 }
 #else
@@ -1328,20 +1068,6 @@ static int anx7418_probe(struct i2c_client *client,
 	int rc;
 
 	pr_info("%s\n", __func__);
-
-#ifdef CONFIG_LGE_ALICE_FRIENDS
-	if (lge_get_boot_mode() == LGE_BOOT_MODE_CHARGERLOGO) {
-		switch (lge_get_alice_friends()) {
-		case LGE_ALICE_FRIENDS_HM:
-		case LGE_ALICE_FRIENDS_HM_B:
-			pr_err("[BSP-USB] HM & CHARGER_LOGO. ignore probing\n");
-			return -ENODEV;
-
-		default:
-			break;
-		}
-	}
-#endif
 
 	if (!i2c_check_functionality(client->adapter,
 				I2C_FUNC_SMBUS_BYTE_DATA |
@@ -1401,13 +1127,6 @@ static int anx7418_probe(struct i2c_client *client,
 			return rc;
 		}
 	}
-
-#ifdef CONFIG_LGE_ALICE_FRIENDS
-	anx->friends = lge_get_alice_friends();
-	if (anx->friends != LGE_ALICE_FRIENDS_NONE)
-		dev_info(&client->dev, "Alice Friends \"%s\" connected\n",
-				alice_friends_string(anx->friends));
-#endif
 
 #ifdef CONFIG_LGE_USB_TYPE_C
 	anx->usb_psy = power_supply_get_by_name("usb");
@@ -1506,30 +1225,6 @@ static int anx7418_probe(struct i2c_client *client,
 
 	anx7418_debugfs_init(anx);
 
-#ifdef CONFIG_LGE_ALICE_FRIENDS
-	if (anx->friends == LGE_ALICE_FRIENDS_HM ||
-	    anx->friends == LGE_ALICE_FRIENDS_HM_B) {
-		anx->ext_acc_en_irq = gpio_to_irq(anx->ext_acc_en_gpio);
-		irq_set_status_flags(anx->ext_acc_en_irq, IRQ_NOAUTOEN);
-		rc = devm_request_threaded_irq(&client->dev, anx->ext_acc_en_irq,
-			NULL,
-			ext_acc_en_irq_thread,
-			IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
-			"ext_acc_en", anx);
-		if (rc) {
-			dev_err(&client->dev, "Failed to request irq for ext_acc_en\n");
-			goto err_ext_acc_en;
-		}
-		enable_irq_wake(anx->ext_acc_en_irq);
-
-		mutex_init(&anx->hm_mutex);
-
-		anx->hm_desc.reset = hm_reset;
-		anx->hm = devm_hm_instance_register(&client->dev, &anx->hm_desc);
-	}
-#endif
-
-
 	enable_irq(anx->cable_det_irq);
 	enable_irq(anx->client->irq);
 	if (gpio_get_value(anx->cable_det_gpio))
@@ -1546,9 +1241,6 @@ err_update:
 	devm_free_irq(&client->dev, client->irq, anx);
 err_req_irq:
 	devm_free_irq(&client->dev, anx->cable_det_irq, anx);
-#ifdef CONFIG_LGE_ALICE_FRIENDS
-err_ext_acc_en:
-#endif
 err_cable_det_req_irq:
 	anx7418_gpio_configure(anx, false);
 err_gpio_config:

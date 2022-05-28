@@ -173,29 +173,14 @@ static int drp_get_property(struct dual_role_phy_instance *dual_role,
 
 	switch (prop) {
 	case DUAL_ROLE_PROP_MODE:
-#ifdef CONFIG_LGE_ALICE_FRIENDS
-		if (anx->friends == LGE_ALICE_FRIENDS_HM_B)
-			*val = DUAL_ROLE_PROP_MODE_NONE;
-		else
-#endif
 		*val = anx->mode;
 		break;
 
 	case DUAL_ROLE_PROP_PR:
-#ifdef CONFIG_LGE_ALICE_FRIENDS
-		if (anx->friends == LGE_ALICE_FRIENDS_HM_B)
-			*val = DUAL_ROLE_PROP_PR_NONE;
-		else
-#endif
 		*val = anx->pr;
 		break;
 
 	case DUAL_ROLE_PROP_DR:
-#ifdef CONFIG_LGE_ALICE_FRIENDS
-		if (anx->friends == LGE_ALICE_FRIENDS_HM_B)
-			*val = DUAL_ROLE_PROP_DR_NONE;
-		else
-#endif
 		*val = anx->dr;
 		break;
 
