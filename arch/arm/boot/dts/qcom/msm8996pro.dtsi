@@ -1504,6 +1504,7 @@
 				qcom,bus-freq = <3>;
 				qcom,bus-min = <2>;
 				qcom,bus-max = <4>;
+			};
 
 			qcom,gpu-pwrlevel@7 {
 				reg = <7>;
@@ -1560,6 +1561,7 @@
 				qcom,bus-freq = <3>;
 				qcom,bus-min = <2>;
 				qcom,bus-max = <4>;
+			};
 
 			qcom,gpu-pwrlevel@5 {
 				reg = <5>;
