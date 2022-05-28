@@ -84,6 +84,7 @@ struct anx7688_chip {
 	struct power_supply *usb_psy;
 	struct power_supply *batt_psy;
 	struct power_supply usbpd_psy;
+	struct power_supply_desc usbpd_psy_d;
 
 	struct dual_role_phy_instance *dual_role;
 	struct dual_role_phy_desc *desc;
