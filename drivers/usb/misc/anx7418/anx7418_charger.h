@@ -15,6 +15,7 @@ enum anx7418_charger_type {
 struct anx7418_charger {
 	struct anx7418 *anx;
 	struct power_supply psy;
+	struct power_supply_desc psy_d;
 
 	bool is_otg;
 	bool is_present;
