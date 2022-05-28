@@ -2244,7 +2244,7 @@ int32_t qpnp_vadc_read(struct qpnp_vadc_chip *vadc,
 	}
 #elif defined(CONFIG_MACH_MSM8996_ELSA) || defined(CONFIG_MACH_MSM8996_ANNA)
 	else if (channel == LR_MUX10_USB_ID_LV) {
-		cable_info = lge_get_factory_cable();
+		unsigned int cable_info = lge_get_factory_cable();
 
 		if ((cable_info) &&
 			((cable_info == CABLE_56K) ||
