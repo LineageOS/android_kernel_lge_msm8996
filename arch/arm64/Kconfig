@@ -21,7 +21,7 @@ config ARM64
 	select AUDIT_ARCH_COMPAT_GENERIC
 	select ARM_GIC_V2M if PCI_MSI
 	select ARM_GIC_V3
-	select ARM_GIC_V3_ITS if PCI_MSI
+	select ARM_GIC_V3_ITS if (PCI_MSI && !MACH_LGE)
 	select ARM_PSCI_FW
 	select BUILDTIME_EXTABLE_SORT
 	select CLONE_BACKWARDS
