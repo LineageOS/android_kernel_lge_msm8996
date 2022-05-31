@@ -67,7 +67,9 @@
 	};
 };
 
+/*
 &pmi8994_charger {
+	/* Below props are qcom */
 	status = "ok";
 	qcom,iterm-ma = <100>;
 	qcom,fastchg-current-ma = <3200>;
@@ -87,6 +89,8 @@
 	qcom,bmd-algo-disabled;
 	qcom,dc-psy-type = "Wireless";
 	qcom,dc-psy-ma = <900>;
+
+	/* Below props are lge */
 	qcom,usb_id-vadc = <&pm8994_vadc>;
 	qcom,default-hvdcp-icl-ma = <1900>;
 	qcom,default-hvdcp3-icl-ma = <1900>;
@@ -118,7 +122,7 @@
 	lge,cable-620k     = <1800  500 1418000 1585500>;
 	lge,cable-910k     = <1800 1500 1600000 1710500>;
 	lge,cable-none     = <1800  500 1900000 1900000>;
-};
+}; */
 
 / {
 	vendor {
