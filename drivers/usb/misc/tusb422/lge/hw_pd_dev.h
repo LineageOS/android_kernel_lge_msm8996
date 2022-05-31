@@ -16,7 +16,6 @@
 #include <linux/usb/class-dual-role.h>
 
 #include <soc/qcom/lge/board_lge.h>
-#include <soc/qcom/lge/power/lge_board_revision.h>
 
 #if defined(CONFIG_LGE_USB_DEBUGGER) || defined(CONFIG_LGE_USB_MOISTURE_DETECT)
 #include <soc/qcom/lge/power/lge_power_class.h>
@@ -60,7 +59,9 @@ struct hw_pd_dev {
 	struct delayed_work otg_work;
 
 	struct power_supply chg_psy;
+	struct power_supply_desc chg_psy_d;
 	struct power_supply *batt_psy;
+	struct power_supply_desc batt_psy_d;
 
 	bool is_otg;
 	bool is_present;

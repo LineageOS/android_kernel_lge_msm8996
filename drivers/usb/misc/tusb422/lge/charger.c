@@ -14,12 +14,12 @@ static enum power_supply_property chg_properties[] = {
 static const char *chg_to_string(enum power_supply_type type)
 {
 	switch (type) {
-	case POWER_SUPPLY_TYPE_CTYPE:
+	case POWER_SUPPLY_TYPE_TYPEC:
 		return "USB Type-C Charger";
-	case POWER_SUPPLY_TYPE_CTYPE_PD:
+	case POWER_SUPPLY_TYPE_USB_PD:
 		return "USB Type-C PD Charger";
 	default:
-		return "Unknown Charger";
+		return "Generic USB Charger";
 	}
 }
 
@@ -38,7 +38,7 @@ static void set_property_to_battery(struct hw_pd_dev *dev,
 		}
 	}
 
-	rc = dev->batt_psy->set_property(dev->batt_psy, property, prop);
+	rc = dev->batt_psy->desc->set_property(dev->batt_psy, property, prop);
 	if (rc < 0)
 		PRINT("battery psy doesn't support reading prop %d rc = %d\n",
 		      property, rc);
@@ -139,8 +139,8 @@ static int chg_get_property(struct power_supply *psy,
 
 	case POWER_SUPPLY_PROP_TYPE:
 		DEBUG("%s: type(%s)\n", __func__,
-			chg_to_string(dev->chg_psy.type));
-		val->intval = dev->chg_psy.type;
+			chg_to_string(dev->chg_psy_d.type));
+		val->intval = dev->chg_psy_d.type;
 		break;
 
 	case POWER_SUPPLY_PROP_CURRENT_CAPABILITY:
@@ -251,6 +251,8 @@ static int chg_is_writeable(struct power_supply *psy,
 int charger_init(struct hw_pd_dev *dev)
 {
 	struct device *cdev = dev->dev;
+	struct power_supply_config chg_psy_cfg = {};
+	union power_supply_propval prop;
 	int rc;
 
 	dev->usb_psy = power_supply_get_by_name("usb");
@@ -258,27 +260,35 @@ int charger_init(struct hw_pd_dev *dev)
 		PRINT("usb power_supply_get failed\n");
 		return -EPROBE_DEFER;
 	}
-	power_supply_set_present(dev->usb_psy, 0);
+	prop.intval = 0;
+	power_supply_set_property(dev->usb_psy, 
+					POWER_SUPPLY_PROP_PRESENT,&prop);
+	//power_supply_set_present(dev->usb_psy, 0);
 
-	dev->chg_psy.name = "usb_pd";
-	dev->chg_psy.type = POWER_SUPPLY_TYPE_UNKNOWN;
-	dev->chg_psy.get_property = chg_get_property;
-	dev->chg_psy.set_property = chg_set_property;
-	dev->chg_psy.property_is_writeable = chg_is_writeable;
-	dev->chg_psy.properties = chg_properties;
-	dev->chg_psy.num_properties = ARRAY_SIZE(chg_properties);
-	dev->chg_psy.supplied_to = chg_supplicants;
-	dev->chg_psy.num_supplicants = ARRAY_SIZE(chg_supplicants);
+	dev->chg_psy_d.name = "usb_pd";
+	dev->chg_psy_d.type = POWER_SUPPLY_TYPE_UNKNOWN;
+	dev->chg_psy_d.get_property = chg_get_property;
+	dev->chg_psy_d.set_property = chg_set_property;
+	dev->chg_psy_d.property_is_writeable = chg_is_writeable;
+	dev->chg_psy_d.properties = chg_properties;
+	dev->chg_psy_d.num_properties = ARRAY_SIZE(chg_properties);
+	
+	chg_psy_cfg.drv_data = dev;
+	chg_psy_cfg.supplied_to = chg_supplicants;
+	chg_psy_cfg.num_supplicants = ARRAY_SIZE(chg_supplicants);
 
 	INIT_DELAYED_WORK(&dev->otg_work, otg_work);
 
-	rc = power_supply_register(cdev, &dev->chg_psy);
-	if (rc < 0) {
+	dev->chg_psy = *devm_power_supply_register(cdev, &dev->chg_psy_d, &chg_psy_cfg);
+	if (IS_ERR(&dev->chg_psy)) {
 		PRINT("Unalbe to register ctype_psy rc = %d\n", rc);
 		return -EPROBE_DEFER;
 	}
 
-	power_supply_set_supply_type(&dev->chg_psy, POWER_SUPPLY_TYPE_UNKNOWN);
+	prop.intval = POWER_SUPPLY_TYPE_UNKNOWN;
+	power_supply_set_property(&dev->chg_psy, POWER_SUPPLY_PROP_TYPE, &prop);
+	//power_supply_set_supply_type(&dev->chg_psy, POWER_SUPPLY_TYPE_UNKNOWN);
+
 
 #ifdef CONFIG_LGE_USB_MOISTURE_DETECT
 	dev->lge_adc_lpc = lge_power_get_by_name("lge_adc");
