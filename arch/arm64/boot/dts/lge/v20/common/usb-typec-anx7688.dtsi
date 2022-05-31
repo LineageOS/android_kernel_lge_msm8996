@@ -42,6 +42,11 @@
 		qcom,external-typec;
 		qcom,typec-psy-name = "usb_pd";
 		somc,typec-current-max = <3300>;
+		qcom,resume-delta-mv = <300>;
+		qcom,iterm-ma = <100>;
+		qcom,bmd-algo-disabled;
+		qcom,bmd-pin-src="bpd_thm";
+		qcom,jeita-temp-hard-limit = <0>;
 };
 
 &i2c_6 {

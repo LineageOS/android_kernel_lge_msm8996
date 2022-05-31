@@ -21,7 +21,9 @@
 	};
 };
 
+/*
 &pmi8994_charger {
+	/* Below props are qcom */
 	status = "ok";
 	qcom,iterm-ma = <100>;
 	qcom,fastchg-current-ma = <2500>;
@@ -38,6 +40,7 @@
 	qcom,skip-usb-suspend-for-fake-battery;
 	qcom,bmd-algo-disabled;
 
+	/* Below props are lge */
 	qcom,usb_id-vadc = <&pm8994_vadc>;
 	qcom,default-hvdcp-icl-ma = <2000>;
 	/* control for CM devices */
@@ -65,7 +68,7 @@
 	lge,cable-620k     = <1800  500 1418000 1585500>;
 	lge,cable-910k     = <1800 1500 1600000 1710500>;
 	lge,cable-none     = <1800  500 1900000 1900000>;
-};
+}; */
 
 / {
 	vendor {

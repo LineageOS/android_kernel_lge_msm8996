@@ -21,7 +21,9 @@
 	};
 };
 
+/*
 &pmi8994_charger {
+	/* Below props are qcom */
 	status = "ok";
 	qcom,iterm-ma = <100>;
 	qcom,fastchg-current-ma = <3100>;
@@ -39,10 +41,11 @@
 	qcom,skip-usb-suspend-for-fake-battery;
 	qcom,aicl-rerun-period-s = <45>;
 	qcom,bmd-algo-disabled;
+
+	/* Below props are lge */
 #if defined(CONFIG_MACH_MSM8996_ELSA_GLOBAL_CA)
 	qcom,afvc-comp-voltage = <0x01>;
 #endif
-
 	qcom,usb_id-vadc = <&pm8994_vadc>;
 	qcom,default-hvdcp-icl-ma = <1900>;
 	qcom,default-hvdcp3-icl-ma = <1900>;
@@ -72,7 +75,7 @@
 	lge,cable-620k     = <1800  500 1418000 1585500>;
 	lge,cable-910k     = <1800 1500 1600000 1710500>;
 	lge,cable-none     = <1800  500 1900000 1900000>;
-};
+}; */
 
 / {
 	vendor {
