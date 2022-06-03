@@ -69,7 +69,7 @@
 
 /*
 &pmi8994_charger {
-	/* Below props are qcom */
+	// Below props are qcom
 	status = "ok";
 	qcom,iterm-ma = <100>;
 	qcom,fastchg-current-ma = <3200>;
@@ -90,7 +90,7 @@
 	qcom,dc-psy-type = "Wireless";
 	qcom,dc-psy-ma = <900>;
 
-	/* Below props are lge */
+	// Below props are lge
 	qcom,usb_id-vadc = <&pm8994_vadc>;
 	qcom,default-hvdcp-icl-ma = <1900>;
 	qcom,default-hvdcp3-icl-ma = <1900>;
@@ -100,10 +100,10 @@
 	qcom,batt-life-cycle-fcc-ma = <3200 3000 2900 2700>;
 	qcom,batt-life-cycle-vfloat = <4350 4340 4320 4300>;
 
-	/* lge,cable-adc-maxset : size of each cable prop        */
-	/* lge,cable-adc-useset : actual cable adc using set     */
-	/* lge,cable-adc-muxset : usb_id_lv or usb_id_lv_pu      */
-	/* array : 0.TA, 1.USB, 2.set(200k_pu), 3.set(100k_pu)   */
+	// lge,cable-adc-maxset : size of each cable prop
+	// lge,cable-adc-useset : actual cable adc using set
+	// lge,cable-adc-muxset : usb_id_lv or usb_id_lv_pu
+	// array : 0.TA, 1.USB, 2.set(200k_pu), 3.set(100k_pu)
 	lge,cable-adc-maxset  = <4>;
 	lge,cable-adc-useset  = <2>;
 	lge,cable-adc-muxset  = <0x39>;
