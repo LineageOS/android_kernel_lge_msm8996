@@ -23,7 +23,7 @@
 
 /*
 &pmi8994_charger {
-	/* Below props are qcom */
+	// Below props are qcom
 	status = "ok";
 	qcom,iterm-ma = <100>;
 	qcom,fastchg-current-ma = <3100>;
@@ -42,7 +42,7 @@
 	qcom,aicl-rerun-period-s = <45>;
 	qcom,bmd-algo-disabled;
 
-	/* Below props are lge */
+	// Below props are lge
 #if defined(CONFIG_MACH_MSM8996_ELSA_GLOBAL_CA)
 	qcom,afvc-comp-voltage = <0x01>;
 #endif
@@ -53,10 +53,10 @@
 	qcom,acc-detect-gpio = <&tlmm 132 0>;
 	qcom,enable-booster-gpio = <&pmi8994_gpios 9 0>;
 
-	/* lge,cable-adc-maxset : size of each cable prop        */
-	/* lge,cable-adc-useset : actual cable adc using set     */
-	/* lge,cable-adc-muxset : usb_id_lv or usb_id_lv_pu      */
-	/* array : 0.TA, 1.USB, 2.set(200k_pu), 3.set(100k_pu)   */
+	// lge,cable-adc-maxset : size of each cable prop
+	// lge,cable-adc-useset : actual cable adc using set
+	// lge,cable-adc-muxset : usb_id_lv or usb_id_lv_pu
+	// array : 0.TA, 1.USB, 2.set(200k_pu), 3.set(100k_pu)
 	lge,cable-adc-maxset  = <4>;
 	lge,cable-adc-useset  = <2>;
 	lge,cable-adc-muxset  = <0x39>;
