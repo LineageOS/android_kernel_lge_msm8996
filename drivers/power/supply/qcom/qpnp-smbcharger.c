@@ -44,6 +44,10 @@
 #include <linux/extcon.h>
 #include <linux/pmic-voter.h>
 #include "battery.h"
+#ifdef CONFIG_LGE_PM
+#include <soc/qcom/lge/board_lge.h>
+#define LGE_PM_DIS_AICL_IRQ_WAKE
+#endif
 
 #ifdef CONFIG_QPNP_SMBCHARGER_EXTENSION
 #define WAIT_TO_READ_DPDM_AT_PROBE_MS	50
@@ -358,7 +362,9 @@ enum print_reason {
 	PR_THERM	= BIT(10),
 	PR_STEP_CHG	= BIT(11),
 #endif
-
+#ifdef CONFIG_LGE_PM
+	PR_LGE		= BIT(12),
+#endif
 };
 
 enum wake_reason {
@@ -4011,6 +4017,20 @@ rerun_apsd:
 #endif
 }
 
+#ifdef CONFIG_LGE_PM
+#define OTG_CFG_BATTUV          0xF2
+#define CFG_BATTUV_2P7          0x0
+#define CFG_BATTUV_2P9          0x1
+#define CFG_BATTUV_3P1          0x2
+#define CFG_BATTUV_3P3          0x3
+#define CFG_BATTUV_MASK         SMB_MASK(1, 0)
+#define OTG_CFG_ICFG            0xF3
+#define OTG_ILIMIT_250_MA       0x0
+#define OTG_ILIMIT_600_MA       0x1
+#define OTG_ILIMIT_750_MA       0x2
+#define OTG_ILIMIT_1000_MA      0x3
+#define OTG_ILIMIT_MASK         SMB_MASK(1, 0)
+#endif
 static int smbchg_otg_regulator_enable(struct regulator_dev *rdev)
 {
 	int rc = 0;
@@ -4027,6 +4047,34 @@ static int smbchg_otg_regulator_enable(struct regulator_dev *rdev)
 
 	/* sleep to make sure the pulse skip is actually disabled */
 	msleep(20);
+#ifdef CONFIG_LGE_PM
+	rc = smbchg_sec_masked_write(chip, chip->bat_if_base + 0xF6,
+			0x03, 0x03);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't set OTG = %d\n", rc);
+		return rc;
+	}
+#ifndef CONFIG_MACH_MSM8996_H1
+	rc = smbchg_sec_masked_write(chip, chip->otg_base + OTG_CFG_BATTUV,
+			CFG_BATTUV_MASK, CFG_BATTUV_2P9);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't set OTG battery UVLO = %d\n", rc);
+		return rc;
+	}
+	rc = smbchg_sec_masked_write(chip, chip->bat_if_base + 0xF6,
+			0x03, 0x03);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't set OTG frequency = %d\n", rc);
+		return rc;
+	}
+	rc = smbchg_sec_masked_write(chip, chip->otg_base + OTG_CFG_ICFG,
+		OTG_ILIMIT_MASK, OTG_ILIMIT_1000_MA);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't set OTG current limit = %d\n", rc);
+		return rc;
+	}
+#endif
+#endif
 	rc = smbchg_masked_write(chip, chip->bat_if_base + CMD_CHG_REG,
 			OTG_EN_BIT, OTG_EN_BIT);
 	if (rc < 0)
@@ -4042,12 +4090,32 @@ static int smbchg_otg_regulator_disable(struct regulator_dev *rdev)
 	int rc = 0;
 	struct smbchg_chip *chip = rdev_get_drvdata(rdev);
 
+#ifdef CONFIG_LGE_PM
+	rc = smbchg_sec_masked_write(chip, chip->bat_if_base + 0xF6,
+			0x03, 0x02);
+#endif
 	if (!chip->otg_pinctrl) {
 		rc = smbchg_masked_write(chip, chip->bat_if_base + CMD_CHG_REG,
 				OTG_EN_BIT, 0);
 		if (rc < 0)
 			dev_err(chip->dev, "Couldn't disable OTG mode rc=%d\n",
 					rc);
+#ifdef CONFIG_LGE_PM
+#ifndef CONFIG_MACH_MSM8996_H1
+		rc = smbchg_sec_masked_write(chip, chip->bat_if_base + 0xF6,
+					0x03, 0x02);
+		if (rc < 0)
+			dev_err(chip->dev, "Can't control to return frequency rc=%d\n",
+					rc);
+	}
+
+	rc = smbchg_sec_masked_write(chip, chip->otg_base + OTG_CFG_BATTUV,
+			CFG_BATTUV_MASK, CFG_BATTUV_2P7);
+	if (rc < 0) {
+		dev_err(chip->dev, "Couldn't set OTG battery UVLO = %d\n", rc);
+		return rc;
+#endif
+#endif
 	}
 
 	chip->chg_otg_enabled = false;
@@ -4951,7 +5019,11 @@ static void restore_from_hvdcp_detection(struct smbchg_chip *chip)
 	/* Reset back to 5V unregulated */
 	rc = smbchg_sec_masked_write(chip,
 		chip->usb_chgpth_base + USBIN_CHGR_CFG,
+#ifdef CONFIG_LGE_PM
+		ADAPTER_ALLOWANCE_MASK, USBIN_ADAPTER_5V_9V_CONT);
+#else
 		ADAPTER_ALLOWANCE_MASK, USBIN_ADAPTER_5V_UNREGULATED_9V);
+#endif
 	if (rc < 0)
 		pr_err("Couldn't write usb allowance rc=%d\n", rc);
 
@@ -7028,6 +7100,12 @@ static irqreturn_t fastchg_handler(int irq, void *_chip)
 	struct smbchg_chip *chip = _chip;
 
 	pr_smb(PR_INTERRUPT, "p2f triggered\n");
+#ifdef CONFIG_LGE_PM
+	if (!chip->usb_present) {
+		pr_smb(PR_LGE, "illegal interrupt triggered, ignore\n");
+		return IRQ_HANDLED;
+	}
+#endif
 	if (is_usb_present(chip) || is_dc_present(chip)) {
 		smbchg_detect_parallel_charger(chip);
 		smbchg_parallel_usb_check_ok(chip);
@@ -7060,6 +7138,18 @@ static irqreturn_t chg_term_handler(int irq, void *_chip)
 	 */
 	set_property_on_fg(chip, POWER_SUPPLY_PROP_CHARGE_DONE, 1);
 
+#ifdef LGE_PM_DIS_AICL_IRQ_WAKE
+	if (chip->batt_psy) {
+		if (chip->enable_aicl_wake) {
+			pr_smb(PR_LGE, "disable aicl_done_irq\n");
+			disable_irq_wake(chip->aicl_done_irq);
+			chip->enable_aicl_wake = false;
+		}
+	} else {
+		pr_smb(PR_LGE, "smbchg irqs are not registered\n");
+	}
+#endif
+
 	smbchg_parallel_usb_check_ok(chip);
 	if (chip->batt_psy)
 		power_supply_changed(chip->batt_psy);
@@ -7091,6 +7181,17 @@ static irqreturn_t recharge_handler(int irq, void *_chip)
 
 	smbchg_read(chip, &reg, chip->chgr_base + RT_STS, 1);
 	pr_smb(PR_INTERRUPT, "triggered: 0x%02x\n", reg);
+#ifdef LGE_PM_DIS_AICL_IRQ_WAKE
+	if (chip->batt_psy) {
+		if (!chip->enable_aicl_wake) {
+			pr_smb(PR_LGE, "enable aicl_done_irq\n");
+			enable_irq_wake(chip->aicl_done_irq);
+			chip->enable_aicl_wake = true;
+		}
+	} else {
+		pr_smb(PR_LGE, "smbchg irqs are not registered\n");
+	}
+#endif
 	smbchg_parallel_usb_check_ok(chip);
 	if (chip->batt_psy)
 		power_supply_changed(chip->batt_psy);
@@ -7826,8 +7927,13 @@ static int smbchg_hw_init(struct smbchg_chip *chip)
 			TERM_I_SRC_BIT | RECHG_THRESHOLD_SRC_BIT,
 			TERM_SRC_FG | RECHG_THRESHOLD_SRC_BIT);
 	else
+#ifdef CONFIG_LGE_PM
+		rc = smbchg_sec_masked_write(chip, chip->chgr_base + CHGR_CFG1,
+			TERM_I_SRC_BIT, TERM_SRC_FG);
+#else
 		rc = smbchg_sec_masked_write(chip, chip->chgr_base + CHGR_CFG1,
 			TERM_I_SRC_BIT | RECHG_THRESHOLD_SRC_BIT, 0);
+#endif
 
 	if (rc < 0) {
 		dev_err(chip->dev, "Couldn't set chgr_cfg2 rc=%d\n", rc);
@@ -8947,19 +9053,53 @@ static void rerun_hvdcp_det_if_necessary(struct smbchg_chip *chip)
 	if (!(chip->wa_flags & SMBCHG_RESTART_WA))
 		return;
 
+#ifdef CONFIG_LGE_PM
+	/*
+	 * there is possible that DCP read as SDP.
+	 * detecting floated-charger can recovery this problem,
+	 * but not in chargerlogo mode.
+	 * so we rerun apsd here when chargerlogo boot
+	 */
+	read_usb_type(chip, &usb_type_name, &usb_supply_type);
+	if (lge_get_boot_mode() == LGE_BOOT_MODE_CHARGERLOGO &&
+			usb_supply_type == POWER_SUPPLY_TYPE_USB) {
+		pr_smb(PR_STATUS, "Faking Removal\n");
+		rc = fake_insertion_removal(chip, false);
+		msleep(50);
+		pr_smb(PR_STATUS, "Faking Insertion\n");
+		rc = fake_insertion_removal(chip, true);
+	}
+#endif
+
 	read_usb_type(chip, &usb_type_name, &usb_supply_type);
 	if (usb_supply_type == POWER_SUPPLY_TYPE_USB_DCP
 		&& !is_hvdcp_present(chip)) {
 		pr_smb(PR_STATUS, "DCP found rerunning APSD\n");
+#ifdef CONFIG_LGE_PM
+		/* AICL decrease current during voting icl as 300mA cause AICL suspend.
+		   so increase voting current to 500mA to prevent AICL suspend */
+		rc = vote(chip->usb_icl_votable,
+				CHG_SUSPEND_WORKAROUND_ICL_VOTER, true, 500);
+		if (rc < 0)
+			pr_err("Couldn't vote for 300mA for suspend wa, going ahead rc=%d\n",
+					rc);
+#else
 		rc = vote(chip->usb_icl_votable,
 				CHG_SUSPEND_WORKAROUND_ICL_VOTER, true, 300);
 		if (rc < 0)
 			pr_err("Couldn't vote for 300mA for suspend wa, going ahead rc=%d\n",
 					rc);
+#endif
 
 		rc = rerun_apsd(chip);
 		if (rc)
 			pr_err("APSD rerun failed rc=%d\n", rc);
+
+#ifdef CONFIG_LGE_PM
+		/* read usb type too fast after fake removal/insertion can cause miss-reading
+		   usb type. so add some delay between fake insertion and reading type */
+		msleep(100);
+#endif
 
 		read_usb_type(chip, &usb_type_name, &usb_supply_type);
 		if (usb_supply_type != POWER_SUPPLY_TYPE_USB_DCP) {
@@ -9445,6 +9585,21 @@ static void smbchg_shutdown(struct platform_device *pdev)
 
 	if (!(chip->wa_flags & SMBCHG_RESTART_WA))
 		return;
+
+#ifdef CONFIG_LGE_PM
+	/*
+	 * When HVDCP_3 detected, APSD is disabled by hvdcp_opti.
+	 * enabled APSD here to read correct value after reset.
+	 */
+	if (chip->usb_supply_type == POWER_SUPPLY_TYPE_USB_HVDCP_3) {
+		/* enable APSD */
+		rc = smbchg_sec_masked_write(chip,
+				chip->usb_chgpth_base + APSD_CFG,
+				AUTO_SRC_DETECT_EN_BIT, AUTO_SRC_DETECT_EN_BIT);
+		if (rc < 0)
+			pr_err("Couldn't enable APSD rc=%d\n", rc);
+	}
+#endif
 
 	if (!is_hvdcp_present(chip))
 		return;
