@@ -1492,8 +1492,13 @@ static int smb1351_parallel_set_chg_suspend(struct smb1351_charger *chip,
 		}
 		chip->usb_psy_ma = SUSPEND_CURRENT_MA;
 
+#ifdef CONFIG_LGE_PM
+		/* set charging enable by I2C */
+		reg = EN_BY_I2C_0_ENABLE | USBCS_CTRL_BY_I2C;
+#else
 		/* set chg en by pin active low  */
 		reg = chip->parallel_pin_polarity_setting | USBCS_CTRL_BY_I2C;
+#endif
 		rc = smb1351_masked_write(chip, CHG_PIN_EN_CTRL_REG,
 					EN_PIN_CTRL_MASK | USBCS_CTRL_BIT, reg);
 		if (rc) {
