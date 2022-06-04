@@ -20,7 +20,7 @@
 };
 
 &pmi8994_charger {
-		qcom,fastchg-current-ma = <3100>;
+		qcom,fastchg-current-ma = <3200>;
 		somc,usb-9v-current-max = <1900>;
 		qcom,float-voltage-comp = <0x08>;
 		qcom,float-voltage-mv = <4350>;
@@ -35,7 +35,7 @@
 		somc,limit-usb-5v-level = <8>;
 		qcom,external-typec;
 		qcom,typec-psy-name = "usb_pd";
-		somc,typec-current-max = <3300>;
+		somc,typec-current-max = <3000>;
 		qcom,resume-delta-mv = <300>;
 		qcom,iterm-ma = <100>;
 		qcom,bmd-algo-disabled;
