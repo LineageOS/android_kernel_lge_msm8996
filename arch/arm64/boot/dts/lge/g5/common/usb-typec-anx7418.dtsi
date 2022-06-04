@@ -32,7 +32,7 @@
 		somc,limit-usb-5v-level = <8>;
 		qcom,external-typec;
 		qcom,typec-psy-name = "usb_pd";
-		somc,typec-current-max = <2800>;
+		somc,typec-current-max = <2000>;
 		qcom,resume-delta-mv = <300>;
 		qcom,iterm-ma = <100>;
 		qcom,bmd-algo-disabled;
