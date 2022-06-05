@@ -455,9 +455,8 @@ print_vbus_state:
 
 		dev->is_debug_accessory = is_debug_accessory;
 
-#ifdef CONFIG_LGE_USB_FACTORY
-		dev->typec_mode = is_debug_accessory ?
-			POWER_SUPPLY_TYPE_CTYPE_DEBUG_ACCESSORY :
+		dev->typec_mode = //is_debug_accessory ?
+			//POWER_SUPPLY_TYPE_CTYPE_DEBUG_ACCESSORY : // Unavailable prop
 			POWER_SUPPLY_TYPE_UNKNOWN;
 #endif
 
@@ -509,11 +508,8 @@ int hw_pd_dev_init(struct device *dev)
 #ifdef MOISTURE_DETECT_USE_SBU_TEST
 	_hw_pd_dev.moisture_detect_use_sbu = true;
 #else
-#ifdef CONFIG_LGE_USB_FACTORY
-	if (!IS_FACTORY_MODE)
-#endif
-	if (lge_get_board_rev_no() >= HW_REV_1_3)
-		_hw_pd_dev.moisture_detect_use_sbu = true;
+	//if (!IS_FACTORY_MODE && lge_get_board_rev_no() >= HW_REV_1_3) \\ checks from dropped lge files
+	//	_hw_pd_dev.moisture_detect_use_sbu = true;
 #endif
 #ifndef CONFIG_MACH_MSM8996_LUCYE_KR
 		_hw_pd_dev.moisture_detect_use_sbu = false;

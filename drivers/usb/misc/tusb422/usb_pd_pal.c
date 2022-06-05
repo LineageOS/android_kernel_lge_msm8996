@@ -23,7 +23,6 @@
 #include <huawei_platform/usb/hw_pd_dev.h>
 #endif
 
-
 #define TCP_VBUS_CTRL_PD_DETECT (1 << 7)
 
 // TODO: add port number to device tree and use that for port.

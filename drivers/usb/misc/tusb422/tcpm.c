@@ -83,11 +83,12 @@
 #define T_CC_SWING_TIMEOUT_MS		T_CC_DEBOUNCE_MS
 #define CC_SWING_THRESHOLD		((T_CC_DEBOUNCE_MS / T_PD_DEBOUNCE_MS) * 2)
 
-#define T_SBU_CHECK_MS			10000
-#define SBU_DRY_THRESHOLD_MIN \
-	(lge_get_board_rev_no() >= HW_REV_1_3 ? 3000 : 5000)		/* uV */
-#define SBU_DRY_THRESHOLD_MAX \
-	(lge_get_board_rev_no() >= HW_REV_1_3 ? 900000 : 1600000)	/* uV */
+#define T_SBU_CHECK_MS		  10000
+#define SBU_DRY_THRESHOLD_MIN 3000 // safest value
+	//(lge_get_board_rev_no() >= HW_REV_1_3 ? 3000 : 5000)		/* uV */
+
+#define SBU_DRY_THRESHOLD_MAX 900000 // safest value
+	//(lge_get_board_rev_no() >= HW_REV_1_3 ? 900000 : 1600000)	/* uV */
 #endif
 
 #define TCPC_POLLING_DELAY()  tcpm_msleep(1)  /* Delay to wait for next CC and voltage polling period */
@@ -638,7 +639,7 @@ static bool usbpd_is_vbus_present(unsigned int port)
 			dev->typec_psy = 0;
 	}
 	if (dev->typec_psy) {
-		dev->typec_psy->get_property(dev->typec_psy,
+		dev->typec_psy->desc->get_property(dev->typec_psy,
 					     POWER_SUPPLY_PROP_PRESENT,
 					     &prop);
 		return prop.intval;
@@ -753,7 +754,7 @@ static void cc_fault_dry_check(unsigned int port)
 	if (dev->moisture_detect_use_sbu)
 	{
 		sbu_adc = usb_pd_pal_get_sbu_adc(port);
-		if (sbu_adc > SBU_DRY_THRESHOLD_MIN && sbu_adc < SBU_DRY_THRESHOLD_MAX)
+		if ((sbu_adc > SBU_DRY_THRESHOLD_MIN) && (sbu_adc < SBU_DRY_THRESHOLD_MAX))
 		{
 			// Mask cc status alert.
 			tcpc_modify16(port, TCPC_REG_ALERT_MASK, TCPC_ALERT_CC_STATUS, 0);
@@ -933,7 +934,7 @@ if (!(dev->moisture_detect_use_sbu)) {
 				if (sbu_adc < SBU_DRY_THRESHOLD_MIN || sbu_adc > SBU_DRY_THRESHOLD_MAX ||
 						(edge_adc > 0 && edge_adc < EDGE_WET_THRESHOLD_MAX)) {
 #else
-				if (sbu_adc < SBU_DRY_THRESHOLD_MIN || sbu_adc > SBU_DRY_THRESHOLD_MAX) {
+				if ((sbu_adc < SBU_DRY_THRESHOLD_MIN) || (sbu_adc > SBU_DRY_THRESHOLD_MAX)) {
 #endif
 					dev->cc_swing_cnt = 0;// reset cc_swing_cnt
 					tcpm_set_state(dev, TCPC_STATE_UNATTACHED_SNK);
@@ -1709,10 +1710,7 @@ void tcpm_get_msg_header_type(unsigned int port, uint8_t *frame_type, uint16_t *
 // Use this funcion if using an I2C read transfer instead of SMBus block read.
 void tcpm_read_message(unsigned int port, uint8_t *buf, uint8_t len)
 {
-#ifndef CONFIG_LGE_USB_TYPE_C
-	uint8_t i;
-#endif
-	uint8_t byte_cnt;
+	uint8_t byte_cnt, i;
 
 	// Read Rx Byte Cnt.
 	tcpc_read8(port, TCPC_REG_RX_BYTE_CNT, &byte_cnt);
@@ -2541,7 +2539,7 @@ static void alert_cc_status_handler(tcpc_device_t *dev)
 #ifdef CONFIG_LGE_USB_MOISTURE_DETECT
 				case TCPC_STATE_UNATTACHED_SNK:
 				case TCPC_STATE_UNATTACHED_SRC:
-					if (!dev->moisture_detect_disable && IS_CHARGERLOGO)
+					if (!dev->moisture_detect_disable) // && IS_CHARGERLOGO
 					{
 						tcpc_read8(dev->port, TUSB422_REG_INT_STATUS, &irq_status);
 						if ((irq_status & TUSB422_INT_CC_FAULT))

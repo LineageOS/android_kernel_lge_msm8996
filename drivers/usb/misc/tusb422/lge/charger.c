@@ -85,8 +85,8 @@ static void otg_work(struct work_struct *w)
 
 #ifdef CONFIG_LGE_USB_MOISTURE_DETECT
 static int chg_get_sbu_adc(struct hw_pd_dev *dev)
-{
-	union lge_power_propval lge_val;
+{ // Function mostly disabled due to many lge tie-ins.
+	//union lge_power_propval lge_val;
 	int rc;
 
 	if (!dev->lge_adc_lpc) {
@@ -94,17 +94,19 @@ static int chg_get_sbu_adc(struct hw_pd_dev *dev)
 		return -ENODEV;
 	}
 
-	rc = dev->lge_adc_lpc->get_property(dev->lge_adc_lpc,
-					    LGE_POWER_PROP_USB_ID_PHY,
-					    &lge_val);
+	//rc = dev->lge_adc_lpc->get_property(dev->lge_adc_lpc,
+	//				    LGE_POWER_PROP_USB_ID_PHY,
+	//				    &lge_val);
 	if (rc) {
 		dev_err(dev->dev, "failed to get sbu_adc %d\n", rc);
 		return rc;
 	}
 
-	PRINT("SBU_ADC: %d\n", (int)lge_val.int64val);
+	//PRINT("SBU_ADC: %d\n", (int)lge_val.int64val);
 
-	return (int)lge_val.int64val;
+	//return (int)lge_val.int64val;
+	PRINT("SBU ADC DISABLED!!! MOISTURE DETECTION NOT IMPLEMENTED!!!");
+	return -ENODEV;
 }
 #endif
 
@@ -291,7 +293,7 @@ int charger_init(struct hw_pd_dev *dev)
 
 
 #ifdef CONFIG_LGE_USB_MOISTURE_DETECT
-	dev->lge_adc_lpc = lge_power_get_by_name("lge_adc");
+	//dev->lge_adc_lpc = lge_power_get_by_name("lge_adc"); // We don't use LGE's files and structs anymore
 #endif
 
 	return 0;
