@@ -46,6 +46,7 @@
 #include "battery.h"
 #ifdef CONFIG_LGE_PM
 #include <soc/qcom/lge/board_lge.h>
+#include <soc/qcom/lge/lge_batt_detection.h>
 #define LGE_PM_DIS_AICL_IRQ_WAKE
 #endif
 
@@ -53,9 +54,6 @@
 #define WAIT_TO_READ_DPDM_AT_PROBE_MS	50
 #include "qpnp-smbcharger_extension_param.h"
 #include "qpnp-smbcharger_extension_usb.h"
-#endif
-#if defined (CONFIG_MACH_MSM8996_ELSA) || defined (CONFIG_MACH_MSM8996_ANNA) || defined (CONFIG_MACH_MSM8996_H1) || defined (CONFIG_MACH_MSM8996_LUCYE)
-#include "lge/lge_batt_detection.h"
 #endif
 
 /* Mask/Bit helpers */
@@ -3810,7 +3808,7 @@ static int smbchg_config_chg_battery_type(struct smbchg_chip *chip)
 	struct device_node *batt_node, *profile_node;
 	struct device_node *node = chip->pdev->dev.of_node;
 	union power_supply_propval prop = {0,};
-#if defined (CONFIG_MACH_MSM8996_ELSA) || defined (CONFIG_MACH_MSM8996_ANNA) || defined (CONFIG_MACH_MSM8996_H1) || defined (CONFIG_MACH_MSM8996_LUCYE)
+#ifdef CONFIG_LGE_PM
 	const char *batt_string = return_lge_battery_name();
 #endif
 
@@ -3843,7 +3841,7 @@ static int smbchg_config_chg_battery_type(struct smbchg_chip *chip)
 		return 0;
 	}
 
-#if defined (CONFIG_MACH_MSM8996_ELSA) || defined (CONFIG_MACH_MSM8996_ANNA) || defined (CONFIG_MACH_MSM8996_H1) || defined (CONFIG_MACH_MSM8996_LUCYE)
+#ifdef CONFIG_LGE_PM
 	profile_node = of_batterydata_get_best_profile(batt_node,
 				prop.intval / 1000, batt_string);
 #else
