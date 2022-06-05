@@ -41,8 +41,8 @@
 #ifdef CONFIG_QPNP_FG_EXTENSION
 #include "qpnp-fg_extension_param.h"
 #endif
-#if defined (CONFIG_MACH_MSM8996_ELSA) || defined (CONFIG_MACH_MSM8996_ANNA) || defined (CONFIG_MACH_MSM8996_H1) || defined (CONFIG_MACH_MSM8996_LUCYE)
-#include "lge/lge_batt_detection.h"
+#ifdef CONFIG_LGE_PM
+#include <soc/qcom/lge/lge_batt_detection.h>
 #endif
 
 /* Register offsets */
@@ -6906,7 +6906,7 @@ static int fg_batt_profile_init(struct fg_chip *chip)
 	bool tried_again = false, vbat_in_range, profiles_same;
 	u8 reg = 0;
 
-#if defined (CONFIG_MACH_MSM8996_ELSA) || defined (CONFIG_MACH_MSM8996_ANNA) || defined (CONFIG_MACH_MSM8996_H1) || defined (CONFIG_MACH_MSM8996_LUCYE)
+#ifdef CONFIG_LGE_PM
 	fg_batt_type = return_lge_battery_name();
 #endif
 
