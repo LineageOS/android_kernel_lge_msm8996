@@ -49,6 +49,15 @@ static struct device_attribute dual_role_attrs[] = {
 	DUAL_ROLE_ATTR(power_role),
 	DUAL_ROLE_ATTR(data_role),
 	DUAL_ROLE_ATTR(powers_vconn),
+#ifdef CONFIG_LGE_USB_TYPE_C
+	DUAL_ROLE_ATTR(cc1),
+	DUAL_ROLE_ATTR(cc2),
+	DUAL_ROLE_ATTR(pdo1),
+	DUAL_ROLE_ATTR(pdo2),
+	DUAL_ROLE_ATTR(pdo3),
+	DUAL_ROLE_ATTR(pdo4),
+	DUAL_ROLE_ATTR(rdo),
+#endif
 };
 
 struct class *dual_role_class;
@@ -265,28 +274,51 @@ EXPORT_SYMBOL_GPL(dual_role_get_drvdata);
 
 /* port type */
 static char *supported_modes_text[] = {
+#ifdef CONFIG_LGE_USB_TYPE_C
+	"ufp dfp", "dfp", "ufp", "ufp dfp fault"
+#else
 	"ufp dfp", "dfp", "ufp"
+#endif
 };
 
 /* current mode */
 static char *mode_text[] = {
+#ifdef CONFIG_LGE_USB_TYPE_C
+	"ufp", "dfp", "fault", "none"
+#else
 	"ufp", "dfp", "none"
+#endif
 };
 
 /* Power role */
 static char *pr_text[] = {
+#ifdef CONFIG_LGE_USB_TYPE_C
+	"source", "sink", "fault", "none"
+#else
 	"source", "sink", "none"
+#endif
 };
 
 /* Data role */
 static char *dr_text[] = {
+#ifdef CONFIG_LGE_USB_TYPE_C
+	"host", "device", "fault", "none"
+#else
 	"host", "device", "none"
+#endif
 };
 
 /* Vconn supply */
 static char *vconn_supply_text[] = {
 	"n", "y"
 };
+
+#ifdef CONFIG_LGE_USB_TYPE_C
+/* CC */
+static char *cc_text[] = {
+	"Open", "Rp Default", "Rp 1.5A", "Rp 3.0A", "Rd", "Ra"
+};
+#endif
 
 static ssize_t dual_role_show_property(struct device *dev,
 				       struct device_attribute *attr, char *buf)
@@ -352,6 +384,70 @@ static ssize_t dual_role_show_property(struct device *dev,
 					vconn_supply_text[value]);
 		else
 			return -EIO;
+#ifdef CONFIG_LGE_USB_TYPE_C
+	} else if (off == DUAL_ROLE_PROP_CC1 ||
+		   off == DUAL_ROLE_PROP_CC2) {
+		BUILD_BUG_ON(DUAL_ROLE_PROP_CC_TOTAL != ARRAY_SIZE(cc_text));
+		if (value < DUAL_ROLE_PROP_CC_TOTAL)
+			return snprintf(buf, PAGE_SIZE, "%s\n",
+					cc_text[value]);
+		else
+			return -EIO;
+	} else if (off == DUAL_ROLE_PROP_PDO1 ||
+		   off == DUAL_ROLE_PROP_PDO2 ||
+		   off == DUAL_ROLE_PROP_PDO3 ||
+		   off == DUAL_ROLE_PROP_PDO4) {
+		if (value == 0) {
+			*buf = '\0';
+			return 0;
+		}
+
+		switch (DUAL_ROLE_PROP_PDO_GET_TYPE(value)) {
+		case DUAL_ROLE_PROP_PDO_TYPE_FIXED:
+			return snprintf(buf, PAGE_SIZE, "[F] %umV, %umA\n",
+					DUAL_ROLE_PROP_PDO_GET_FIXED_VOLT(value),
+					DUAL_ROLE_PROP_PDO_GET_FIXED_CURR(value));
+		case DUAL_ROLE_PROP_PDO_TYPE_BATTERY:
+			return snprintf(buf, PAGE_SIZE, "[B] Max %umV, Min %umV, %umW \n",
+					DUAL_ROLE_PROP_PDO_GET_BATTERY_MAX_VOLT(value),
+					DUAL_ROLE_PROP_PDO_GET_BATTERY_MIN_VOLT(value),
+					DUAL_ROLE_PROP_PDO_GET_BATTERY_MAX_POWER(value));
+		case DUAL_ROLE_PROP_PDO_TYPE_VARIABLE:
+			return snprintf(buf, PAGE_SIZE, "[V] Max %umV, Min %umV, %umA\n",
+					DUAL_ROLE_PROP_PDO_GET_VARIABLE_MAX_VOLT(value),
+					DUAL_ROLE_PROP_PDO_GET_VARIABLE_MIN_VOLT(value),
+					DUAL_ROLE_PROP_PDO_GET_VARIABLE_MAX_CURR(value));
+		default:
+			*buf = '\0';
+			return 0;
+		}
+	} else if (off == DUAL_ROLE_PROP_RDO) {
+		unsigned int pdo;
+
+		if (value == 0) {
+			*buf = '\0';
+			return 0;
+		}
+
+		ret = dual_role_get_property(dual_role,
+		     DUAL_ROLE_PROP_PDO1 + (DUAL_ROLE_PROP_RDO_GET_OBJ_POS(value) - 1),
+		     &pdo);
+
+		switch (DUAL_ROLE_PROP_PDO_GET_TYPE(pdo)) {
+		case DUAL_ROLE_PROP_PDO_TYPE_FIXED:
+		case DUAL_ROLE_PROP_PDO_TYPE_VARIABLE:
+			return snprintf(buf, PAGE_SIZE, "[%u] %umA\n",
+					DUAL_ROLE_PROP_RDO_GET_OBJ_POS(value),
+					DUAL_ROLE_PROP_RDO_GET_OP_CURR(value));
+		case DUAL_ROLE_PROP_PDO_TYPE_BATTERY:
+			return snprintf(buf, PAGE_SIZE, "[%u] %umW\n",
+					DUAL_ROLE_PROP_RDO_GET_OBJ_POS(value),
+					DUAL_ROLE_PROP_RDO_GET_OP_POWER(value));
+		default:
+			*buf = '\0';
+			return 0;
+		}
+#endif
 	} else
 		return -EIO;
 }
