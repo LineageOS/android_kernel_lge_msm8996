@@ -17,8 +17,8 @@
 			fstab {
 #ifdef CONFIG_LGE_MSM8996_ENABLE_VENDOR
 				vendor {
-                                        dev = "/dev/block/platform/soc/624000.ufshc/by-name/vendor";
-                                };
+					dev = "/dev/block/platform/soc/624000.ufshc/by-name/vendor";
+				};
 #else
 				/delete-node/ vendor;
 #endif
@@ -80,4 +80,16 @@
 		/delete-property/ pinctrl-0;
 		/delete-property/ pinctrl-1;
 	};
+};
+
+/* Delete smb1351 since we're following
+ * Sony's configuration.
+ */
+&i2c_7 {
+	/delete-node/ silabs4705@11;
+	/delete-node/ smb1351-charger@1d;
+};
+
+&pmi8994_charger {
+	qcom,typec-psy-name = "usb_pd";
 };
