@@ -261,6 +261,13 @@ config LGE_HALL_IC
 	  Support sending a device-tree defined gpio code when hall IC
 	  is triggered.
 
+config LGE_IRRC
+	tristate "LGE_IRRC"
+	depends on MACH_LGE
+	default n
+	help
+	  If you say yes here you get support for IrRC.
+
 config LGE_BOOTLOADER_LOG
 	tristate "Support LGE bootloader log"
 	depends on MACH_LGE

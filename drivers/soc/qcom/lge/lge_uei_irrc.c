@@ -1,6 +1,6 @@
 /*
-UEI_IRRC_DRIVER_FOR_APQ8084
-*/
+ * UEI_IRRC_DRIVER_FOR_APQ8084
+ */
 
 #include <linux/err.h>
 #include <linux/delay.h>
