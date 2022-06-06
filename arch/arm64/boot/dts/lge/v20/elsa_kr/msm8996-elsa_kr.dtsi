@@ -24,7 +24,7 @@
 /* #include "msm8996-elsa_kr-tdmb.dtsi" */ // For terrestrial tv receiver
 #include "../../common-nfc.dtsi"
 #include "../../common-fingerprint.dtsi"
-#include "../../common-lineage.dtsi"
+#include "../../common-various.dtsi"
 
 / {
 	reserved-memory {
