@@ -25,7 +25,7 @@
 #include "../common/usb-typec-tusb422.dtsi"
 #include "../../common-nfc.dtsi"
 #include "../../common-fingerprint.dtsi"
-#include "../../common-lineage.dtsi"
+#include "../../common-various.dtsi"
 
 / {
 	reserved-memory {

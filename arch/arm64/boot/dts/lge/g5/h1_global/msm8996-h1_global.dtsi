@@ -24,7 +24,7 @@
 #include "../common/usb-typec-anx7418.dtsi"
 #include "../../common-nfc.dtsi"
 #include "../../common-fingerprint.dtsi"
-#include "../../common-lineage.dtsi"
+#include "../../common-various.dtsi"
 
 / {
 	reserved-memory {
