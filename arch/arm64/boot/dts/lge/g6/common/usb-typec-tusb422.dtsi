@@ -22,25 +22,13 @@
 &pmi8994_charger {
 		qcom,fastchg-current-ma = <3200>;
 		somc,usb-9v-current-max = <1900>;
-		qcom,float-voltage-comp = <0x08>;
-		qcom,float-voltage-mv = <4350>;
-		somc,fastchg-warm-current-ma = <800>;
-		somc,fastchg-cool-current-ma = <800>;
 		somc,thermal-engine-fastchg-current = <3100 2600 2400 1800 1500 1200 800 700 500 300 300 300 300 0 0>;
 		somc,thermal-mitigation-usb-5v = <3100 3100 3100 3100 2600 2600 2600 2600 2600 2400 1200 800 300 0 0>;
 		somc,thermal-mitigation-usb-6v = <2600 2600 2600 2600 2400 2400 2400 2400 2000 1500 900 500 300 0 0>;
 		somc,thermal-mitigation-usb-7v = <2200 2200 2200 2200 1600 1600 1600 1600 1600 1200 900 500 300 0 0>;
 		somc,thermal-mitigation-usb-8v = <1900 1900 1900 1900 1400 1400 1400 1400 1200 900 700 500 300 0 0>;
 		somc,thermal-mitigation-usb-9v = <1900 1900 1900 1900 1400 1400 1400 1400 1000 800 700 500 300 0 0>;
-		somc,limit-usb-5v-level = <8>;
-		qcom,external-typec;
-		qcom,typec-psy-name = "usb_pd";
 		somc,typec-current-max = <3000>;
-		qcom,resume-delta-mv = <300>;
-		qcom,iterm-ma = <100>;
-		qcom,bmd-algo-disabled;
-		qcom,bmd-pin-src="bpd_thm";
-		qcom,jeita-temp-hard-limit = <0>;
 };
 
 &i2c_6 {
