@@ -1,6 +1,6 @@
 /*
-UEI_IRRC_DRIVER_FOR_APQ8084
-*/
+ * UEI_IRRC_DRIVER_FOR_APQ8084
+ */
 
 #include <linux/err.h>
 #include <linux/delay.h>
@@ -18,7 +18,12 @@ UEI_IRRC_DRIVER_FOR_APQ8084
 #include <linux/of_gpio.h>
 #include <linux/regulator/consumer.h>
 
-#include "lge_uei_irrc.h"
+#define UEI_IRRC_NAME "uei_irrc"
+
+struct uei_irrc_pdata_type {
+        int reset_gpio;
+        /* reserved */
+};
 
 struct uei_irrc_pdata_type irrc_data;
 
