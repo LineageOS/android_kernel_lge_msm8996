@@ -230,6 +230,13 @@ config LGE_PM_THERMAL_VTS
 	help
 	  This enables virtual temp sensor driver.
 
+config LGE_PM_UNIFIED_NODE
+	bool "enable LGE PM Unified sysfs node"
+	depends on MACH_LGE
+	default n
+	help
+	  Support LGE PM Unified sysfs node.
+
 config LGE_PANEL_MAKER_ID_SUPPORT
 	tristate "Support panel ID feature"
 	depends on MACH_LGE
