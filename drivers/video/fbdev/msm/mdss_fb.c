@@ -62,7 +62,7 @@
 #include <soc/qcom/lge/board_lge.h>
 #endif
 #ifdef CONFIG_LGE_PM_THERMAL_VTS
-#include <linux/virtual_temp_sensor.h>
+#include <soc/qcom/lge/virtual_temp_sensor.h>
 #endif
 
 #ifdef CONFIG_LGE_DISPLAY_COMMON
