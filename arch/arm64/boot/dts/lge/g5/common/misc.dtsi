@@ -134,11 +134,11 @@
 	uei_irrc {
 		compatible = "uei,irrc";
 		status = "ok";
-		pinctrl-names = "default", "sleep";
-		pinctrl-0 = <&irrc_rst_active &irrc_uart_active>;
-		pinctrl-1 = <&irrc_rst_sleep &irrc_uart_sleep>;
+		pinctrl-names = "ir_active", "ir_sleep";
+		pinctrl-0 = <&irrc_uart_active>;
+		pinctrl-1 = <&irrc_uart_sleep>;
 		interrupt-parent = <&tlmm>;
-		uei,reset-gpio = <&tlmm 73 0x00>;
+		uei,reset-gpio = <&tlmm 73 0>;
 	};
 };
 

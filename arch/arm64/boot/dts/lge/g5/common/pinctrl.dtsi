@@ -2366,19 +2366,19 @@
 				config {
 					pins = "gpio25", "gpio26";
 					drive-strength = <2>;
-					bias-bus-hold;
+					bias-disable;
 				};
 			};
 
 			irrc_uart_sleep: irrc_uart_sleep {
 				mux {
 					pins = "gpio25", "gpio26";
-					function = "blsp_uart6";
+					function = "gpio";
 				};
 				config {
 					pins = "gpio25", "gpio26";
 					drive-strength = <2>;
-					bias-bus-hold;
+					bias-disable;
 				};
 			};
 		};
