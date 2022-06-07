@@ -2518,7 +2518,7 @@
 			irrc_uart_sleep: irrc_uart_sleep {
 				mux {
 					pins = "gpio25", "gpio26";
-					function = "blsp_uart6";
+					function = "gpio";
 				};
 
 				config {

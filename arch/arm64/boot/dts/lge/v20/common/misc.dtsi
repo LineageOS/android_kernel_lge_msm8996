@@ -124,7 +124,7 @@
 	uei_irrc {
 		compatible = "uei,irrc";
 		status = "ok";
-		pinctrl-names = "default", "sleep";
+		pinctrl-names = "ir_active", "ir_sleep";
 		pinctrl-0 = <&irrc_uart_active>;
 		pinctrl-1 = <&irrc_uart_sleep>;
 		interrupt-parent = <&pmi8994_gpios>;

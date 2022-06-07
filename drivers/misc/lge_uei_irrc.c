@@ -18,7 +18,12 @@ UEI_IRRC_DRIVER_FOR_APQ8084
 #include <linux/of_gpio.h>
 #include <linux/regulator/consumer.h>
 
-#include "lge_uei_irrc.h"
+#define UEI_IRRC_NAME "uei_irrc"
+
+struct uei_irrc_pdata_type {
+	int reset_gpio;
+	struct pinctrl *uart_pins;
+};
 
 struct uei_irrc_pdata_type irrc_data;
 
@@ -35,10 +40,26 @@ static int irrc_parse_dt(struct device *dev, struct uei_irrc_pdata_type *pdata)
 
 static int uei_irrc_probe(struct platform_device *pdev)
 {
+	struct pinctrl_state *set_state;
 	int rc = 0;
 
 	if (pdev->dev.of_node) {
 		irrc_parse_dt(&pdev->dev, &irrc_data);
+	}
+
+	/* Get pinctrl if target uses pinctrl */
+	irrc_data.uart_pins = devm_pinctrl_get(&pdev->dev);
+	if (IS_ERR(irrc_data.uart_pins)) {
+		dev_info(&pdev->dev, "IrRC: can't get pinctrl state\n");
+		irrc_data.uart_pins = NULL;
+	}
+
+	if (irrc_data.uart_pins) {
+		set_state = pinctrl_lookup_state(irrc_data.uart_pins, "ir_active");
+		if (IS_ERR(set_state))
+			dev_err(&pdev->dev, "IrRC: can't get pinctrl active state\n");
+		else
+			pinctrl_select_state(irrc_data.uart_pins, set_state);
 	}
 
 	if ((!gpio_is_valid(irrc_data.reset_gpio))) {
@@ -61,15 +82,17 @@ static int uei_irrc_probe(struct platform_device *pdev)
 	}
 
 	gpio_set_value(irrc_data.reset_gpio, 1);
-
 	return rc;
 }
 
 static int uei_irrc_remove(struct platform_device *pdev)
 {
 	struct uei_irrc_pdata_type *pdata = platform_get_drvdata(pdev);
-	pdata = NULL;
 
+	gpio_free(irrc_data.reset_gpio);
+	if (irrc_data.uart_pins)
+		devm_pinctrl_put(irrc_data.uart_pins);
+	pdata = NULL;
 	return 0;
 }
 
@@ -80,11 +103,35 @@ static void uei_irrc_shutdown(struct platform_device *pdev)
 
 static int uei_irrc_suspend(struct platform_device *pdev, pm_message_t state)
 {
+	struct pinctrl_state *set_state;
+
+	if (irrc_data.uart_pins) {
+		set_state = pinctrl_lookup_state(irrc_data.uart_pins, "ir_sleep");
+		if (IS_ERR(set_state))
+			dev_err(&pdev->dev, "IrRC: can't get pinctrl sleep state\n");
+		else
+			pinctrl_select_state(irrc_data.uart_pins, set_state);
+	}
+	gpio_set_value(irrc_data.reset_gpio, 0);
+	dev_info(&pdev->dev, "IrRC: uei suspend\n");
+
 	return 0;
 }
 
 static int uei_irrc_resume(struct platform_device *pdev)
 {
+	struct pinctrl_state *set_state;
+
+	if (irrc_data.uart_pins) {
+		set_state = pinctrl_lookup_state(irrc_data.uart_pins, "ir_active");
+		if (IS_ERR(set_state))
+			dev_err(&pdev->dev, "IrRC: can't get pinctrl active state\n");
+		else
+			pinctrl_select_state(irrc_data.uart_pins, set_state);
+	}
+	gpio_set_value(irrc_data.reset_gpio, 1);
+	dev_info(&pdev->dev, "IrRC: uei resume\n");
+
 	return 0;
 }
 
