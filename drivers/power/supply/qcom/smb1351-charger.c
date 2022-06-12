@@ -1526,6 +1526,30 @@ static int smb1351_parallel_set_chg_suspend(struct smb1351_charger *chip,
 			pr_err("Couldn't set fastchg current rc=%d\n", rc);
 			return rc;
 		}
+
+#ifdef CONFIG_LGE_PM
+		/* adapter allowance to 5~9V */
+		rc = smb1351_masked_write(chip, FLEXCHARGER_REG,
+					CHG_CONFIG_MASK, 0);
+		if (rc) {
+			pr_err("Couldn't set charger config adapter rc = %d\n", rc);
+			return rc;
+		}
+
+		/* jeita disable */
+		rc = smb1351_masked_write(chip, THERM_A_CTRL_REG,
+					SOFT_COLD_TEMP_LIMIT_MASK, 0);
+		if (rc) {
+			pr_err("Couldn't set soft cold limit rc = %d\n", rc);
+			return rc;
+		}
+		rc = smb1351_masked_write(chip, THERM_A_CTRL_REG,
+					SOFT_HOT_TEMP_LIMIT_MASK, 0);
+		if (rc) {
+			pr_err("Couldn't set soft hot limit rc = %d\n", rc);
+			return rc;
+		}
+#endif
 		chip->parallel_charger_suspended = false;
 	} else {
 		rc = smb1351_usb_suspend(chip, CURRENT, true);
@@ -1614,6 +1638,10 @@ static int smb1351_parallel_set_property(struct power_supply *psy,
 		 */
 		if (!chip->parallel_charger_suspended)
 			rc = smb1351_usb_suspend(chip, USER, !val->intval);
+#ifdef CONFIG_LGE_PM
+		else
+			chip->usb_suspended_status &= ~USER;
+#endif
 		break;
 	case POWER_SUPPLY_PROP_INPUT_SUSPEND:
 		rc = smb1351_parallel_set_chg_suspend(chip, val->intval);
@@ -3218,7 +3246,12 @@ static int smb1351_parallel_charger_probe(struct i2c_client *client,
 
 	i2c_set_clientdata(client, chip);
 
+/* qpnp-smbcharger looks for "usb-parallel" */
+#ifdef CONFIG_LGE_PM
+	chip->parallel_psy_d.name = "usb-parallel";
+#else
 	chip->parallel_psy_d.name = "parallel";
+#endif
 	chip->parallel_psy_d.type = POWER_SUPPLY_TYPE_PARALLEL;
 	chip->parallel_psy_d.get_property = smb1351_parallel_get_property;
 	chip->parallel_psy_d.set_property = smb1351_parallel_set_property;
