@@ -82,12 +82,18 @@
 	};
 };
 
-/* Delete smb1351 since we're following
- * Sony's configuration.
- */
 &i2c_7 {
 	/delete-node/ silabs4705@11;
-	/delete-node/ smb1351-charger@1d;
+};
+
+&i2c_7 {
+	smb1351-charger@1d {
+		compatible = "qcom,smb1351-charger";
+		reg = <0x1d>;
+		qcom,float-voltage-mv = <4350>;
+		qcom,recharge-disabled;
+		qcom,parallel-charger;
+	};
 };
 
 &pmi8994_charger {
