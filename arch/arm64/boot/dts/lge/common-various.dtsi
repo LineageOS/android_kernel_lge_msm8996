@@ -112,8 +112,4 @@
 	qcom,bmd-pin-src="bpd_thm";
 	qcom,external-typec;
 	qcom,typec-psy-name = "usb_pd";
-#ifdef CONFIG_MACH_MSM8996_LUCYE
-	qcom,dc-psy-type = "Wireless";
-	qcom,dc-psy-ma = <900>;
-#endif
 };

@@ -26,15 +26,15 @@
 };
 
 &pmi8994_charger {
-		qcom,fastchg-current-ma = <3100>;
-		somc,usb-9v-current-max = <1900>;
-		somc,thermal-engine-fastchg-current = <3100 2600 2400 1800 1500 1200 800 700 500 300 300 300 300 0 0>;
-		somc,thermal-mitigation-usb-5v = <3100 3100 3100 3100 2600 2600 2600 2600 2600 2400 1200 800 300 0 0>;
-		somc,thermal-mitigation-usb-6v = <2600 2600 2600 2600 2400 2400 2400 2400 2000 1500 900 500 300 0 0>;
-		somc,thermal-mitigation-usb-7v = <2200 2200 2200 2200 1600 1600 1600 1600 1600 1200 900 500 300 0 0>;
-		somc,thermal-mitigation-usb-8v = <1900 1900 1900 1900 1400 1400 1400 1400 1200 900 700 500 300 0 0>;
-		somc,thermal-mitigation-usb-9v = <1900 1900 1900 1900 1400 1400 1400 1400 1000 800 700 500 300 0 0>;
-		somc,typec-current-max = <2000>;
+	qcom,fastchg-current-ma = <3100>;
+	somc,usb-9v-current-max = <1900>;
+	somc,thermal-engine-fastchg-current = <3100 2600 2400 1800 1500 1200 800 700 500 300 300 300 300 0 0>;
+	somc,thermal-mitigation-usb-5v = <3100 3100 3100 3100 2600 2600 2600 2600 2600 2400 1200 800 300 0 0>;
+	somc,thermal-mitigation-usb-6v = <2600 2600 2600 2600 2400 2400 2400 2400 2000 1500 900 500 300 0 0>;
+	somc,thermal-mitigation-usb-7v = <2200 2200 2200 2200 1600 1600 1600 1600 1600 1200 900 500 300 0 0>;
+	somc,thermal-mitigation-usb-8v = <1900 1900 1900 1900 1400 1400 1400 1400 1200 900 700 500 300 0 0>;
+	somc,thermal-mitigation-usb-9v = <1900 1900 1900 1900 1400 1400 1400 1400 1000 800 700 500 300 0 0>;
+	somc,typec-current-max = <2000>;
 };
 
 &i2c_6 {
