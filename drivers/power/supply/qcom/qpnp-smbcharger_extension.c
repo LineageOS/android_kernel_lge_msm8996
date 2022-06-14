@@ -138,63 +138,77 @@ static int somc_chg_get_current_ma(struct smbchg_chip *chip,
 {
 	int current_limit_ma = 0;
 
-	if (type == POWER_SUPPLY_TYPE_USB)
-		current_limit_ma = DEFAULT_SDP_MA;
-	else if (type == POWER_SUPPLY_TYPE_USB)
+	if (type == POWER_SUPPLY_TYPE_USB) {
 		/* Flow chart: C-1 SDP */
 		current_limit_ma = DEFAULT_SDP_MA;
-	else if (type == POWER_SUPPLY_TYPE_USB_CDP)
+		pr_smb(PR_LGE, "Selected: C-1, SDP\n");
+	} else if (type == POWER_SUPPLY_TYPE_USB_CDP) {
 		/* Flow chart: C-1 CDP */
 		current_limit_ma = DEFAULT_CDP_MA;
-	else if (type == POWER_SUPPLY_TYPE_USB_HVDCP)
+		pr_smb(PR_LGE, "Selected: C-1, CDP\n");
+	} else if (type == POWER_SUPPLY_TYPE_USB_HVDCP) {
 		/* Flow chart: C-5 */
 		current_limit_ma =
 			chip->somc_params.thermal.usb_9v_current_max ?
 			chip->somc_params.thermal.usb_9v_current_max :
 			smbchg_default_hvdcp_icl_ma;
-	else if (type == POWER_SUPPLY_TYPE_USB_HVDCP_3)
-		if (chip->typec_current_ma > CURRENT_1500_MA)
+		pr_smb(PR_LGE, "Selected: C-5, HVDCP\n");
+	} else if (type == POWER_SUPPLY_TYPE_USB_HVDCP_3) {
+		if (chip->typec_current_ma > CURRENT_1500_MA) {
 			/* Flow chart: C-7 */
 			current_limit_ma = somc_chg_get_typec_current_ma(chip,
 							chip->typec_current_ma);
-		else if (!chip->typec_current_ma)
+			pr_smb(PR_LGE, "Selected: C-7, HVDCP3\n");
+		} else if (!chip->typec_current_ma) {
 			/* Flow chart: C-8 */
 			current_limit_ma =
 				chip->somc_params.thermal.usb_9v_current_max ?
 				chip->somc_params.thermal.usb_9v_current_max :
 				smbchg_default_hvdcp_icl_ma;
-		else
+			pr_smb(PR_LGE, "Selected: C-8, HVDCP3\n");
+		} else {
 			/* Flow chart: C-6 */
 			current_limit_ma = CURRENT_1500_MA;
-	else if (chip->somc_params.chg_det.sub_type ==
-				POWER_SUPPLY_SUB_TYPE_PROPRIETARY)
+			pr_smb(PR_LGE, "Selected: C-6, 1.5A\n");
+		}
+	} else if (chip->somc_params.chg_det.sub_type ==
+				POWER_SUPPLY_SUB_TYPE_PROPRIETARY) {
 		/* Flow chart: C-10 OUT OF RANGE */
 		/* Flow chart: C-11 PROPRIETARY 1.5A*/
 		current_limit_ma = CURRENT_1500_MA;
-	else if (chip->somc_params.chg_det.sub_type ==
-				POWER_SUPPLY_SUB_TYPE_PROPRIETARY_1000MA)
+		pr_smb(PR_LGE, "Selected: C-10, C-11, 1.5A, Proprietary\n");
+	} else if (chip->somc_params.chg_det.sub_type ==
+				POWER_SUPPLY_SUB_TYPE_PROPRIETARY_1000MA) {
 		/* Flow chart: C-11 PROPRIETARY 1A*/
 		current_limit_ma = DEFAULT_PROP1000_MA;
-	else if (chip->somc_params.chg_det.sub_type ==
-				POWER_SUPPLY_SUB_TYPE_PROPRIETARY_500MA)
+		pr_smb(PR_LGE, "Selected: C-11, 1A, Proprietary\n");
+	} else if (chip->somc_params.chg_det.sub_type ==
+				POWER_SUPPLY_SUB_TYPE_PROPRIETARY_500MA) {
 		/* Flow chart: C-11 PROPRIETARY 0.5A */
 		current_limit_ma = DEFAULT_PROP500_MA;
-	else if (is_usb_present(chip) &&
-				chip->somc_params.chg_det.settled_not_hvdcp)
-		if (chip->typec_current_ma > CURRENT_1500_MA)
+		pr_smb(PR_LGE, "Selected: C-11, 0.5A, Proprietary\n");
+	} else if (is_usb_present(chip) &&
+				chip->somc_params.chg_det.settled_not_hvdcp) {
+		if (chip->typec_current_ma > CURRENT_1500_MA) {
 			/* Flow chart: C-3 */
 #ifndef CURRENT_LIMIT_TO_1500_DURING_DCP_CHARGING
 			current_limit_ma = somc_chg_get_typec_current_ma(chip,
 							chip->typec_current_ma);
+			pr_smb(PR_LGE, "Selected: C-3, Type-C Max\n");
 #else
 			current_limit_ma = smbchg_default_dcp_icl_ma;
+			pr_smb(PR_LGE, "Selected: C-3, DCP\n");
 #endif
-		else
+		} else {
 			/* Flow chart: C-2, C-4 */
 			current_limit_ma = smbchg_default_dcp_icl_ma;
-	else
+			pr_smb(PR_LGE, "Selected: C-2, C-4, DCP\n");
+		}
+	} else {
 		/* Unknown, and DCP before detection of HVDCP */
 		current_limit_ma = smbchg_default_dcp_icl_ma;
+		pr_smb(PR_LGE, "Selected: Unknown, DCP\n");
+	}
 
 	pr_smb(PR_MISC, "type=%d, sub_type=%d, cur=%dma\n", type,
 					chip->somc_params.chg_det.sub_type,
@@ -969,11 +983,20 @@ static void somc_chg_therm_remove_tb(struct smbchg_chip *chip)
 
 	if (params->thermal.usb_5v)
 		devm_kfree(chip->dev, params->thermal.usb_5v);
+	if (params->thermal.usb_6v)
+		devm_kfree(chip->dev, params->thermal.usb_6v);
+	if (params->thermal.usb_7v)
+		devm_kfree(chip->dev, params->thermal.usb_7v);
+	if (params->thermal.usb_8v)
+		devm_kfree(chip->dev, params->thermal.usb_8v);
 	if (params->thermal.usb_9v)
 		devm_kfree(chip->dev, params->thermal.usb_9v);
 	if (params->thermal.current_ma)
 		devm_kfree(chip->dev, params->thermal.current_ma);
 	params->thermal.usb_5v = NULL;
+	params->thermal.usb_6v = NULL;
+	params->thermal.usb_7v = NULL;
+	params->thermal.usb_8v = NULL;
 	params->thermal.usb_9v = NULL;
 	params->thermal.current_ma = NULL;
 }

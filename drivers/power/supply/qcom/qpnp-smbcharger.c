@@ -2104,9 +2104,9 @@ static void smbchg_detect_parallel_charger(struct smbchg_chip *chip)
 	union power_supply_propval pval = {0, };
 
 	if (parallel_psy) {
-		pval.intval = true;
+		pval.intval = false;
 		rc = power_supply_set_property(parallel_psy,
-				POWER_SUPPLY_PROP_PRESENT, &pval);
+				POWER_SUPPLY_PROP_INPUT_SUSPEND, &pval);
 		chip->parallel_charger_detected = rc ? false : true;
 		if (rc)
 			pr_debug("parallel-charger absent rc=%d\n", rc);
@@ -2222,8 +2222,8 @@ static void smbchg_parallel_usb_disable(struct smbchg_chip *chip)
 	power_supply_set_property(parallel_psy, POWER_SUPPLY_PROP_CURRENT_MAX,
 					&pval);
 
-	pval.intval = false;
-	power_supply_set_property(parallel_psy, POWER_SUPPLY_PROP_PRESENT,
+	pval.intval = true;
+	power_supply_set_property(parallel_psy, POWER_SUPPLY_PROP_INPUT_SUSPEND,
 					&pval);
 
 	fcc_ma = get_effective_result_locked(chip->fcc_votable);
@@ -2321,7 +2321,7 @@ static void smbchg_parallel_usb_enable(struct smbchg_chip *chip,
 		return;
 
 	pr_smb(PR_STATUS, "Attempting to enable parallel charger\n");
-	pval.intval = chip->vfloat_mv + 50;
+	pval.intval = (chip->vfloat_mv + 50) * 1000;
 	rc = power_supply_set_property(parallel_psy,
 			POWER_SUPPLY_PROP_VOLTAGE_MAX, &pval);
 	if (rc < 0) {
@@ -2339,8 +2339,8 @@ static void smbchg_parallel_usb_enable(struct smbchg_chip *chip,
 			* (100 - smbchg_main_chg_icl_percent) / 100;
 	taper_irq_en(chip, true);
 
-	pval.intval = true;
-	power_supply_set_property(parallel_psy, POWER_SUPPLY_PROP_PRESENT,
+	pval.intval = false;
+	power_supply_set_property(parallel_psy, POWER_SUPPLY_PROP_INPUT_SUSPEND,
 			&pval);
 
 	pval.intval = new_parallel_cl_ma * 1000;
@@ -2389,6 +2389,7 @@ static void smbchg_parallel_usb_enable(struct smbchg_chip *chip,
 	pr_smb(PR_STATUS, "FCC = %d[%d, %d]\n", fcc_ma, main_fastchg_current_ma,
 					supplied_parallel_fcc_ma);
 
+	pr_smb(PR_LGE, "Parallel charger enabled\n");
 	chip->parallel.enabled_once = true;
 }
 
@@ -3376,7 +3377,7 @@ static int smbchg_float_voltage_set(struct smbchg_chip *chip, int vfloat_mv)
 	}
 
 	if (parallel_psy) {
-		prop.intval = vfloat_mv + 50;
+		prop.intval = (vfloat_mv + 50) * 1000;
 		rc = power_supply_set_property(parallel_psy,
 				POWER_SUPPLY_PROP_VOLTAGE_MAX, &prop);
 		if (rc)
@@ -5119,9 +5120,9 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 	power_supply_changed(chip->usb_psy);
 
 	if (parallel_psy && chip->parallel_charger_detected) {
-		pval.intval = false;
+		pval.intval = true;
 		power_supply_set_property(parallel_psy,
-				POWER_SUPPLY_PROP_PRESENT, &pval);
+				POWER_SUPPLY_PROP_INPUT_SUSPEND, &pval);
 	}
 	if (chip->parallel.avail && chip->aicl_done_irq
 			&& chip->enable_aicl_wake) {

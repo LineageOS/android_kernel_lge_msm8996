@@ -1520,6 +1520,8 @@ static int smb1351_parallel_set_chg_suspend(struct smb1351_charger *chip,
 			return rc;
 		}
 
+		/* set fast charging current limit */
+		chip->target_fastchg_current_max_ma = SMB1351_CHG_FAST_MIN_MA;
 		rc = smb1351_fastchg_current_set(chip,
 					chip->target_fastchg_current_max_ma);
 		if (rc) {
@@ -2255,7 +2257,7 @@ static int smb1351_usbin_uv_handler(struct smb1351_charger *chip, u8 status)
 static int smb1351_usbin_ov_handler(struct smb1351_charger *chip, u8 status)
 {
 	int rc;
-	u8 reg;
+	u8 reg = 0;
 	union power_supply_propval pval = {0, };
 
 	rc = smb1351_read_reg(chip, IRQ_E_REG, &reg);
@@ -2989,44 +2991,44 @@ static int create_debugfs_entries(struct smb1351_charger *chip)
 	if (!chip->debug_root) {
 		pr_err("Couldn't create debug dir\n");
 	} else {
-		ent = debugfs_create_file("config_registers", S_IFREG | S_IRUGO,
+		ent = debugfs_create_file("config_registers", S_IFREG | 0444,
 					  chip->debug_root, chip,
 					  &cnfg_debugfs_ops);
 		if (!ent)
 			pr_err("Couldn't create cnfg debug file\n");
 
-		ent = debugfs_create_file("status_registers", S_IFREG | S_IRUGO,
+		ent = debugfs_create_file("status_registers", S_IFREG | 0444,
 					  chip->debug_root, chip,
 					  &status_debugfs_ops);
 		if (!ent)
 			pr_err("Couldn't create status debug file\n");
 
-		ent = debugfs_create_file("cmd_registers", S_IFREG | S_IRUGO,
+		ent = debugfs_create_file("cmd_registers", S_IFREG | 0444,
 					  chip->debug_root, chip,
 					  &cmd_debugfs_ops);
 		if (!ent)
 			pr_err("Couldn't create cmd debug file\n");
 
-		ent = debugfs_create_x32("address", S_IFREG | S_IWUSR | S_IRUGO,
+		ent = debugfs_create_x32("address", S_IFREG | 0644,
 					  chip->debug_root,
 					  &(chip->peek_poke_address));
 		if (!ent)
 			pr_err("Couldn't create address debug file\n");
 
-		ent = debugfs_create_file("data", S_IFREG | S_IWUSR | S_IRUGO,
+		ent = debugfs_create_file("data", S_IFREG | 0644,
 					  chip->debug_root, chip,
 					  &poke_poke_debug_ops);
 		if (!ent)
 			pr_err("Couldn't create data debug file\n");
 
 		ent = debugfs_create_file("force_irq",
-					  S_IFREG | S_IWUSR | S_IRUGO,
+					  S_IFREG | 0644,
 					  chip->debug_root, chip,
 					  &force_irq_ops);
 		if (!ent)
 			pr_err("Couldn't create data debug file\n");
 
-		ent = debugfs_create_file("irq_count", S_IFREG | S_IRUGO,
+		ent = debugfs_create_file("irq_count", S_IFREG | 0444,
 					  chip->debug_root, chip,
 					  &irq_count_debugfs_ops);
 		if (!ent)
@@ -3369,7 +3371,7 @@ static const struct dev_pm_ops smb1351_pm_ops = {
 	.resume		= smb1351_resume,
 };
 
-static struct of_device_id smb1351_match_table[] = {
+static const struct of_device_id smb1351_match_table[] = {
 	{ .compatible = "qcom,smb1351-charger",},
 	{ },
 };
