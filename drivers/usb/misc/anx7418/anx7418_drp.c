@@ -25,7 +25,7 @@ static bool try_src(struct anx7418 *anx, unsigned long timeout)
 
 	// power_supply_set_usb_otg(&anx->chg.psy, 0);
 	otgprop.intval = 0;
-	power_supply_set_property(&anx->chg.psy, 
+	power_supply_set_property(anx->pd_psy,
 			POWER_SUPPLY_PROP_USB_OTG, &otgprop);
 	anx->pr = DUAL_ROLE_PROP_PR_SNK;
 
@@ -47,7 +47,7 @@ static bool try_src(struct anx7418 *anx, unsigned long timeout)
 	anx7418_set_mode(anx, DUAL_ROLE_PROP_MODE_DFP);
 	// power_supply_set_usb_otg(&anx->chg.psy, 1);
 	otgprop.intval = 1;
-	power_supply_set_property(&anx->chg.psy, 
+	power_supply_set_property(anx->pd_psy,
 			POWER_SUPPLY_PROP_USB_OTG, &otgprop);
 
 	anx->pr = DUAL_ROLE_PROP_PR_SRC;
