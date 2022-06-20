@@ -15,8 +15,8 @@
 
 #include "anx7418_i2c.h"
 #include "anx7418_debug.h"
-#include "anx7418_charger.h"
 #include "anx7418_firmware.h"
+#include <soc/qcom/lge/board_lge.h>
 
 #define IS_INTF_IRQ_SUPPORT(anx) \
 	(anx->otp && (anx->rom_ver >= 0x11 && anx->rom_ver < 0xB1 && anx->rom_ver != 0x16))
@@ -30,6 +30,8 @@ struct anx7418 {
 	struct power_supply *usb_psy;
 	struct power_supply *batt_psy;
 //LGE_USB_TYPE_C END
+	struct power_supply *pd_psy;
+	struct power_supply_desc pd_psy_d;
 	/* gpio */
 	int pwr_en_gpio;
 	int resetn_gpio;
@@ -42,8 +44,6 @@ struct anx7418 {
 	int ext_acc_en_gpio;
 	int ext_acc_en_irq;
 //CONFIG_LGE_ALICE_FRIENDS END
-
-	struct anx7418_charger chg;
 
 	atomic_t pwr_on;
 
@@ -73,6 +73,18 @@ struct anx7418 {
 	struct dual_role_phy_instance *dual_role;
 #endif
 
+	bool is_otg;
+	bool is_present;
+	int curr_max;
+	int volt_max;
+	int ctype_charger;
+	struct delayed_work chg_work;
+};
+
+enum anx7418_charger_type {
+	ANX7418_UNKNOWN_CHARGER = 0,
+	ANX7418_CTYPE_CHARGER,
+	ANX7418_CTYPE_PD_CHARGER,
 };
 
 /* ANX7418 I2C registers */
@@ -443,6 +455,8 @@ struct anx7418 {
 int anx7418_reg_init(struct anx7418 *anx);
 int anx7418_pwr_on(struct anx7418 *anx, int is_on);
 
+int set_property_on_battery(struct anx7418 *anx,
+			enum power_supply_property prop);
 int anx7418_set_mode(struct anx7418 *anx, int mode);
 int anx7418_set_pr(struct anx7418 *anx, int pr);
 int anx7418_set_dr(struct anx7418 *anx, int dr);

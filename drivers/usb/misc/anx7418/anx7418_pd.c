@@ -5,7 +5,6 @@
 
 #include "anx7418.h"
 #include "anx7418_pd.h"
-#include "anx7418_charger.h"
 
 static pdo_t pwr_snk_cap[] = {
 	[0].fixed = {
@@ -397,11 +396,11 @@ static int pwr_src_cap_parse(struct i2c_client *client, const pd_msg_t msg)
 				}
 				rdo_f->pos = i + 1;
 
-				anx->chg.volt_max = PD_VOLT_GET(pdo_f->volt);
-				anx->chg.curr_max = PD_CURR_GET(pdo_f->curr);
+				anx->volt_max = PD_VOLT_GET(pdo_f->volt);
+				anx->curr_max = PD_CURR_GET(pdo_f->curr);
 
-				if (anx->chg.volt_max && anx->chg.curr_max) {
-					anx->chg.ctype_charger =
+				if (anx->volt_max && anx->curr_max) {
+					anx->ctype_charger =
 							ANX7418_CTYPE_PD_CHARGER;
 				}
 
@@ -493,18 +492,25 @@ static int dswap_req_parse(struct i2c_client *client, const pd_msg_t msg)
 	if (IS_INTF_IRQ_SUPPORT(anx))
 		return 0;
 
+	if (!anx->usb_psy) {
+		anx->usb_psy = power_supply_get_by_name("usb");
+		if (!anx->usb_psy)
+			dev_err(cdev, "usb power_supply_get failed\n");
+	}
+
 	switch (anx->dr) {
 	case DUAL_ROLE_PROP_DR_HOST:
 		dev_info(cdev, "Host to Device\n");
 		anx7418_set_dr(anx, DUAL_ROLE_PROP_DR_DEVICE);
 
-		anx->usb_psy->desc->get_property(anx->usb_psy,
-				POWER_SUPPLY_PROP_TYPE, &prop);
-		if (prop.intval == POWER_SUPPLY_TYPE_UNKNOWN){
-			prop.intval = POWER_SUPPLY_TYPE_USB;
-			power_supply_set_property(anx->usb_psy,
+		if (anx->usb_psy) {
+			anx->usb_psy->desc->get_property(anx->usb_psy,
 					POWER_SUPPLY_PROP_TYPE, &prop);
-			anx->chg.psy_d.type = prop.intval;
+			if (prop.intval == POWER_SUPPLY_TYPE_UNKNOWN) {
+				prop.intval = POWER_SUPPLY_TYPE_USB;
+				power_supply_set_property(anx->usb_psy,
+						POWER_SUPPLY_PROP_TYPE, &prop);
+			}
 		}
 		break;
 

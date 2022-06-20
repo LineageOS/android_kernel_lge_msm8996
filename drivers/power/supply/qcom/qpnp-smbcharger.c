@@ -48,6 +48,9 @@
 #include <soc/qcom/lge/board_lge.h>
 #define LGE_PM_DIS_AICL_IRQ_WAKE
 #endif
+#ifdef CONFIG_LGE_USB_TYPE_C
+#define PD_PSY_NAME "usb_pd"
+#endif
 
 #ifdef CONFIG_QPNP_SMBCHARGER_EXTENSION
 #define WAIT_TO_READ_DPDM_AT_PROBE_MS	50
@@ -742,12 +745,20 @@ static enum pwr_path_type smbchg_get_pwr_path(struct smbchg_chip *chip)
 #define USBIN_SRC_DET_BIT		BIT(2)
 #define FMB_STS_MASK			SMB_MASK(3, 0)
 #define USBID_GND_THRESHOLD		0x495
+#ifdef CONFIG_LGE_USB_TYPE_C
+static void get_property_from_typec(struct smbchg_chip *chip,
+				enum power_supply_property property,
+				union power_supply_propval *prop);
+#endif
 static bool is_otg_present_schg(struct smbchg_chip *chip)
 {
 	int rc;
 	u8 reg;
 	u8 usbid_reg[2];
 	u16 usbid_val;
+#ifdef CONFIG_LGE_USB_TYPE_C
+	union power_supply_propval prop = {0,};
+#endif
 	/*
 	 * After the falling edge of the usbid change interrupt occurs,
 	 * there may still be some time before the ADC conversion for USB RID
@@ -760,6 +771,11 @@ static bool is_otg_present_schg(struct smbchg_chip *chip)
 	 */
 
 	msleep(20);
+
+#ifdef CONFIG_LGE_USB_TYPE_C
+	get_property_from_typec(chip, POWER_SUPPLY_PROP_USB_OTG, &prop);
+	return prop.intval ? true : false;
+#endif
 
 	/*
 	 * There is a problem with USBID conversions on PMI8994 revisions
@@ -1289,6 +1305,17 @@ static void get_property_from_typec(struct smbchg_chip *chip,
 				union power_supply_propval *prop)
 {
 	int rc;
+
+#ifdef CONFIG_LGE_USB_TYPE_C
+	if (!chip->typec_psy) {
+		chip->typec_psy = power_supply_get_by_name(PD_PSY_NAME);
+		if (!chip->typec_psy) {
+			pr_smb(PR_LGE, "typec psy isn't prepared\n");
+			prop->intval = 0;
+			return;
+		}
+	}
+#endif
 
 	rc = power_supply_get_property(chip->typec_psy,
 			property, prop);
@@ -3339,7 +3366,7 @@ static int smbchg_float_voltage_comp_set(struct smbchg_chip *chip, int code)
 static int smbchg_float_voltage_set(struct smbchg_chip *chip, int vfloat_mv)
 {
 	struct power_supply *parallel_psy = get_parallel_psy(chip);
-	union power_supply_propval prop;
+	union power_supply_propval prop = {0,};
 	int rc, delta;
 	u8 temp;
 
@@ -5173,7 +5200,9 @@ static bool is_usbin_uv_high(struct smbchg_chip *chip)
 static void handle_usb_insertion(struct smbchg_chip *chip)
 {
 	enum power_supply_type usb_supply_type;
+#ifdef CONFIG_LGE_USB_TYPE_C
 	union power_supply_propval pval = {0, };
+#endif
 	int rc;
 	char *usb_type_name = "null";
 
@@ -9156,6 +9185,8 @@ static int smbchg_probe(struct platform_device *pdev)
 	struct power_supply_config usb_psy_cfg = {};
 	struct power_supply_config batt_psy_cfg = {};
 	struct power_supply_config dc_psy_cfg = {};
+/* don't try to get typec at probe, anx needs vbus first */
+#ifndef CONFIG_LGE_USB_TYPE_C
 #ifdef CONFIG_QPNP_SMBCHARGER_EXTENSION
 #define TYPEC_PROBE_RETRY_MAX	5
 	static int typec_retry_cnt;
@@ -9193,6 +9224,7 @@ static int smbchg_probe(struct platform_device *pdev)
 		}
 #endif
 	}
+#endif
 
 	vadc_dev = NULL;
 	if (of_find_property(pdev->dev.of_node, "qcom,dcin-vadc", NULL)) {
@@ -9524,6 +9556,19 @@ static int smbchg_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Unable to request irqs rc = %d\n", rc);
 		goto unregister_led_class;
 	}
+
+#if 0 //CONFIG_LGE_USB_TYPE_C
+	typec_psy = power_supply_get_by_name(PD_PSY_NAME);
+	if (!typec_psy) {
+		dev_err(&pdev->dev,
+			"Type-C supply not found, deferring probe\n");
+		if (typec_retry_cnt++ < TYPEC_PROBE_RETRY_MAX) {
+			msleep(50);
+			return -EPROBE_DEFER;
+		}
+	}
+	chip->typec_psy = typec_psy;
+#endif
 
 	rerun_hvdcp_det_if_necessary(chip);
 
