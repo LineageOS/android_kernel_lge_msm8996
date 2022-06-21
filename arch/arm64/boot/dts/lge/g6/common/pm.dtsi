@@ -297,17 +297,7 @@
 };
 
 &pm8994_gpios {
-/* Gpio 1 and 3 is set on relevant usb-type-c */
 /* Must not define the gpios(gpio 20 and 21) on here */
-	gpio@c000 { /* GPIO 1 VCONN */
-		qcom,mode = <1>;		/* Digital output */
-		qcom,pull = <0>;
-		qcom,vin-sel = <2>;		/* VIN2 */
-		qcom,src-sel = <2>;		/* GPIO */
-		qcom,master-en = <1>;		/* Enable GPIO */
-		status = "okay";
-	};
-
 	gpio@c100 { /* GPIO 2 - VOL_UP_EN */
 		qcom,mode = <0>;			/* Digital input */
 		qcom,pull = <0>;			/* Pull up 30uA */
@@ -315,16 +305,6 @@
 		qcom,src-sel = <0>;			/* Constant */
 		qcom,invert = <1>;			/* Enable Invert */
 		qcom,out-strength = <1>;	/* Low */
-		qcom,master-en = <1>;		/* Enable GPIO */
-		status = "okay";
-	};
-
-	gpio@c200 { /* GPIO 3 SBU_SEL */
-		qcom,mode = <1>;		/* Digital output */
-		qcom,output-type = <0>;		/* MOS logic */
-		qcom,vin-sel = <0>;		/* VPH_PWR */
-		qcom,src-sel = <0>;		/* Constant */
-		qcom,out-strength = <1>;	/* High drive strength */
 		qcom,master-en = <1>;		/* Enable GPIO */
 		status = "okay";
 	};
@@ -470,6 +450,7 @@
 		qcom,master-en = <1>;		/* Enable GPIO */
 		status = "okay";
 	};
+
 	gpio@d500 { /* GPIO 22 - NC */
 		qcom,master-en = <0>;		/* Disable GPIO */
 		status = "okay";
