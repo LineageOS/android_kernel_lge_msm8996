@@ -85,14 +85,6 @@
  */
 &soc {
 	tlmm: pinctrl@1010000 {
-		compatible = "qcom,msm8996-pinctrl";
-		reg = <0x01010000 0x300000>;
-		interrupts = <0 208 0>;
-		gpio-controller;
-		#gpio-cells = <2>;
-		interrupt-controller;
-		#interrupt-cells = <2>;
-
 		pmx_mdss: pmx_mdss {
 			mdss_dsi_active1: mdss_dsi_active1 {
 				mux {
