@@ -12,14 +12,6 @@
 
 &soc {
 	tlmm: pinctrl@1010000 {
-		compatible = "qcom,msm8996-pinctrl";
-		reg = <0x01010000 0x300000>;
-		interrupts = <0 208 0>;
-		gpio-controller;
-		#gpio-cells = <2>;
-		interrupt-controller;
-		#interrupt-cells = <2>;
-
 		uart_console_active: uart_console_active {
 			config {
 				drive-strength = <2>; /* Same as qcom, keep to show original */
