@@ -24,10 +24,6 @@
 	qcom,board-id = <0x308 0>;
 };
 
-&i2c_12 {
-	status = "disabled";
-};
-
 &i2c_6 {
 	tusb422@20 {
 		status = "disabled";

@@ -44,13 +44,13 @@
 		status = "disabled";
 	};
 
-	spi_12: spi@75BA000 { /* BLSP2 QUP6 */
+	spi_12: spi@75ba000 { /* BLSP2 QUP6 */
 		compatible = "qcom,spi-qup-v2";
 		#address-cells = <1>;
 		#size-cells = <0>;
 		reg-names = "spi_physical", "spi_bam_physical";
-		reg = <0x075BA000 0x600>,
-		      <0x07584000 0x2b000>;
+		reg = <0x75ba000 0x600>,
+		      <0x7584000 0x2b000>;
 		interrupt-names = "spi_irq", "spi_bam_irq";
 		interrupts = <0 106 0>, <0 239 0>;
 		spi-max-frequency = <19200000>;

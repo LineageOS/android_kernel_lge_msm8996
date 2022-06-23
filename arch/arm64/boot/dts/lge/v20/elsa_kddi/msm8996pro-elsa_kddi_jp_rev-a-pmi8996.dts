@@ -29,16 +29,6 @@
 	qcom,board-id = <0x608 0>;
 };
 
-&i2c_12 {
-	status = "disabled";
-};
-
-&i2c_7 {
-	smb1351-charger@1d {
-		qcom,float-voltage-mv = <4350>;
-	};
-};
-
 /* Display Function */
 &soc {
 	dsi_panel_pwr_supply: dsi_panel_pwr_supply {

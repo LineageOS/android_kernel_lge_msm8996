@@ -4537,7 +4537,3 @@
 #include "msm-arm-smmu-8996.dtsi"
 #include "msm8996-vidc.dtsi"
 #include "msm8996-bus.dtsi"
-
-//[B]fix build error at Pre_ES4 migration
-/delete-node/ &spi_12;
-//[E]fix build error

@@ -84,34 +84,9 @@
 		qcom,monitor-thermal-vadc = <&pm8994_vadc>;
 	};
 
-	rome_vreg: rome_vreg {
-		status = "disabled";
-	};
-
 	/* From pkm dtsi */
 	lge-pkm-drv {
 		compatible = "lge-pkm-drv";
-	};
-
-	/* I2C configuration */
-/*	i2c_12: i2c@75ba000 {
-		pinctrl-names = "default", "i2c_sleep";
-		pinctrl-0 = <&i2c_12_default>;
-		pinctrl-1 = <&i2c_12_sleep>;
-	};
-*/
-	i2c_7: i2c@75b5000 {
-		pinctrl-names = "default", "i2c_active", "i2c_sleep";
-		pinctrl-0 = <&i2c_7_default>;
-		pinctrl-1 = <&i2c_7_active>;
-		pinctrl-2 = <&i2c_7_sleep>;
-	};
-
-	i2c_6: i2c@757a000 {
-		pinctrl-names = "default", "i2c_active", "i2c_sleep";
-		pinctrl-0 = <&i2c_6_default>;
-		pinctrl-1 = <&i2c_6_active>;
-		pinctrl-2 = <&i2c_6_sleep>;
 	};
 
 	/*delete QCT finger */
@@ -470,16 +445,6 @@
 		qcom,hw-settle-time = <0>;
 		qcom,fast-avg-setup = <0>;
 	};
-};
-
-&usb_otg_switch {
-	status = "okay";
-};
-
-&usb3 {
-	status = "ok";
-	qcom,dwc-vadc = <&pm8994_vadc>;
-	qcom,usbin-vadc = <&pmi8994_vadc>;
 };
 
 &pmi8994_mpps {
