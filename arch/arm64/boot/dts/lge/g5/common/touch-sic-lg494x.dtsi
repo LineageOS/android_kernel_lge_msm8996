@@ -16,39 +16,14 @@
 	};
 
 	soc {
-		spi_12: spi@75ba000{    /* BLSP-2 QUP6 */
-			status = "ok";
-			compatible = "qcom,spi-qup-v2";
-
-			#address-cells = <1>;
-			#size-cells = <0>;
-
-			reg-names = "spi_physical", "spi_bam_physical";
-			reg = <0x75ba000 0x600>, <0x7584000 0x2b000>;
-
-			interrupt-names = "spi_irq", "spi_bam_irq";
-			interrupts = <0 106 0>, <0 239 0>;
-
+		spi@75ba000 { /* BLSP-2 QUP6 */
 			spi-max-frequency = <15000000>;
-			qcom,master-id = <84>;
-
-			clock-names = "iface_clk", "core_clk";
-			clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
-					 <&clock_gcc clk_gcc_blsp2_qup6_spi_apps_clk>;
-
-			/* Assign runtime functions to pins */
+			qcom,rt-priority;
+			qcom,use-bam;
 			qcom,use-pinctrl;
-			pinctrl-names = "spi_default","spi_sleep";
 			pinctrl-0 = <&spi_ts_active &spi_ts_cs_active>;
 			pinctrl-1 = <&spi_ts_suspend &spi_ts_cs_suspend>;
-
-			qcom,infinite-mode = <0>;
-			qcom,ver-reg-exists;
-
-			qcom,use-bam;
-			qcom,bam-consumer-pipe-index = <22>;
-			qcom,bam-producer-pipe-index = <23>;
-			qcom,rt-priority;
+			status = "ok";
 
 			lg4946 {
 				compatible = "lge,lg4946";

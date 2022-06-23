@@ -57,7 +57,12 @@
 		status = "ok";
 	};
 
+	rome_vreg {
+		status = "disabled";
+	};
+
 	i2c@75ba000 {
+		status = "disabled";
 		/delete-node/ synaptics@20;
 	};
 
@@ -82,18 +87,21 @@
 	};
 };
 
-&i2c_7 {
-	/delete-node/ silabs4705@11;
+&vendor {
+	/delete-node/ bt_qca6174;
 };
 
 &i2c_7 {
 	smb1351-charger@1d {
-		compatible = "qcom,smb1351-charger";
-		reg = <0x1d>;
 		qcom,float-voltage-mv = <4350>;
+		/delete-property/ qcom,recharge-mv;
 		qcom,recharge-disabled;
-		qcom,parallel-charger;
 	};
+
+	/delete-node/ silabs4705@11;
+	/delete-node/ hl7509-regulator@68;
+	/delete-node/ ncp6335d-regulator@68;
+	/delete-node/ max20010-regulator@38;
 };
 
 &pmi8994_charger {

@@ -25,10 +25,6 @@
 	qcom,board-id = <0x408 0>;
 };
 
-&i2c_12 {
-	status = "disabled";
-};
-
 /* Display Function */
 &soc {
 	dsi_panel_pwr_supply: dsi_panel_pwr_supply {
