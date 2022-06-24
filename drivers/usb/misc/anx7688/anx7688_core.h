@@ -83,7 +83,8 @@ struct anx7688_chip {
 
 	struct power_supply *usb_psy;
 	struct power_supply *batt_psy;
-	struct power_supply usbpd_psy;
+	struct power_supply *usbpd_psy;
+
 	struct power_supply_desc usbpd_psy_d;
 
 	struct dual_role_phy_instance *dual_role;
@@ -110,6 +111,7 @@ struct anx7688_chip {
 	int is_present;
 	int volt_max;
 	int curr_max;
+	int typec_state;
 	int charger_type;
 	bool is_vconn_on;
 	bool is_sbu_switched;
