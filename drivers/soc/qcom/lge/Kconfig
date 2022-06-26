@@ -237,6 +237,15 @@ config LGE_PM_UNIFIED_NODE
 	help
 	  Support LGE PM Unified sysfs node.
 
+config LGE_USB_TYPE_C
+	bool "Enable LG TypeC integration"
+	depends on LGE_PM
+	help
+	  Say Y here if you are compiling to an LGE msm8996/pro device
+	  and its usb drivers depend on LGE_USB_TYPE_C in some capacity
+	  (ANX7688, ANX7418 and TUSB422 do) for extra code activation
+	  or functionality.
+
 config LGE_PANEL_MAKER_ID_SUPPORT
 	tristate "Support panel ID feature"
 	depends on MACH_LGE
