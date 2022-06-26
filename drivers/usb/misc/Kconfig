@@ -293,14 +293,6 @@ config USB_QCOM_DIAG_BRIDGE
 	  To compile this driver as a module, choose M here: the
 	  module will be called diag_bridge.  If unsure, choose N.
 
-config LGE_USB_TYPE_C
-	bool "Enable dummy LGE_USB_TYPE_C used by some USB drivers"
-	help
-	  Say Y here if you are compiling to an LGE msm8996/pro device and
-	  its usb drivers depend on LGE_USB_TYPE_C in some capacity
-	  (ANX7688, ANX7418 and TUSB422 do) for extra code activation or
-	  functionality.
-
 source "drivers/usb/misc/anx7418/Kconfig"
 source "drivers/usb/misc/anx7688/Kconfig"
 source "drivers/usb/misc/tusb422/Kconfig"

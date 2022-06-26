@@ -2061,9 +2061,20 @@ static int smbchg_set_fastchg_current_raw(struct smbchg_chip *chip,
 			"Cannot find %dma current_table using %d\n",
 			current_ma, CURRENT_500_MA);
 
+#ifdef CONFIG_MACH_MSM8996_LUCYE
+		/* In the case of LUCYE using PMI8996, the value of
+		 * SMBCHG_CHGR_FCC_CFG - PMI8996(0x10F2) for FCC_500MA_VAL is 0x2, not 0x4.
+		 */
+		i = find_smaller_in_array(chip->tables.usb_ilim_ma_table,
+					CURRENT_500_MA, chip->tables.usb_ilim_ma_len);
+		rc = smbchg_sec_masked_write(chip, chip->chgr_base + FCC_CFG,
+					FCC_MASK,
+					i & FCC_MASK);
+#else
 		rc = smbchg_sec_masked_write(chip, chip->chgr_base + FCC_CFG,
 					FCC_MASK,
 					FCC_500MA_VAL);
+#endif
 		if (rc < 0)
 			dev_err(chip->dev, "Couldn't set %dmA rc=%d\n",
 					CURRENT_500_MA, rc);
@@ -2104,7 +2115,7 @@ static int smbchg_set_fastchg_current_raw(struct smbchg_chip *chip,
 #ifdef CONFIG_LGE_PM
 #ifdef CONFIG_MACH_MSM8996_LUCYE
 #define PARALLEL_CHG_THRESHOLD_CURRENT	500
-#elif defined(CONFIG_MACH_MSM8996_H1)
+#elif CONFIG_MACH_MSM8996_H1
 #define PARALLEL_CHG_THRESHOLD_CURRENT	600
 #else
 #define PARALLEL_CHG_THRESHOLD_CURRENT	1000
@@ -2243,6 +2254,7 @@ static void smbchg_parallel_usb_disable(struct smbchg_chip *chip)
 
 	if (!parallel_psy || !chip->parallel_charger_detected)
 		return;
+
 	pr_smb(PR_STATUS, "disabling parallel charger\n");
 	chip->parallel.last_disabled = ktime_get_boottime();
 	taper_irq_en(chip, false);
@@ -2349,6 +2361,17 @@ static void smbchg_parallel_usb_enable(struct smbchg_chip *chip,
 
 	if (!parallel_psy || !chip->parallel_charger_detected)
 		return;
+
+#ifdef CONFIG_MACH_MSM8996_H1
+	if (lge_get_board_revno() == HW_REV_0_1) {
+		pr_smb(PR_LGE, "disable parallel charging at Rev0_1\n");
+		if (chip->parallel.current_max_ma != 0) {
+			pr_smb(PR_STATUS, "disabling parallel charger\n");
+			smbchg_parallel_usb_disable(chip);
+		}
+		return;
+	}
+#endif
 
 	pr_smb(PR_STATUS, "Attempting to enable parallel charger\n");
 	pval.intval = chip->vfloat_mv + 50;
