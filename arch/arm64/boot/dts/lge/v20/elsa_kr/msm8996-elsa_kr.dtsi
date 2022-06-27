@@ -850,10 +850,6 @@
 	};
 };
 
-&blsp1_uart2 {
-	status = "ok";
-};
-
 &pcie1 {
        status = "disabled";
 };
@@ -861,6 +857,7 @@
 &pcie2 {
        status = "disabled";
 };
+
 &pil_modem {
        /delete-property/ qcom,mx-spike-wa;
 };
