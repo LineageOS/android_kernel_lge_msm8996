@@ -93,7 +93,6 @@ struct anx7688_chip {
 
 	struct regulator *avdd33;
 	struct regulator *avdd10;
-	struct regulator *vbus_out;
 
 	int cdet_irq;
 	int alter_irq;

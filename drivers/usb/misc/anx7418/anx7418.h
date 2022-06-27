@@ -27,7 +27,6 @@ struct anx7418 {
 	/* regulator */
 	struct regulator *avdd33;
 //LGE_USB_TYPE_C START
-	struct regulator *vbus_reg;
 	struct power_supply *usb_psy;
 	struct power_supply *batt_psy;
 //LGE_USB_TYPE_C END

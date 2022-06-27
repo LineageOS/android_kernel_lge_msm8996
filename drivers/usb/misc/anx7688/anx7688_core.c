@@ -261,26 +261,20 @@ static int dual_role_set_prop(struct dual_role_phy_instance *dual_role,
 		switch (*val) {
 		case DUAL_ROLE_PROP_PR_SRC:
 			//power_supply_set_usb_otg(&chip->usbpd_psy, 1);
-			otgprop.intval = 1;
-			power_supply_set_property(chip->usbpd_psy, 
-			POWER_SUPPLY_PROP_USB_OTG, &otgprop);
+			chip->is_otg = 1;
 			chip->power_role = DUAL_ROLE_PROP_PR_SRC;
 			break;
 		case DUAL_ROLE_PROP_PR_SNK:
 			if (chip->power_role == DUAL_ROLE_PROP_PR_SRC){
 				//power_supply_set_usb_otg(&chip->usbpd_psy, 0);
-				otgprop.intval = 0;
-				power_supply_set_property(chip->usbpd_psy, 
-					POWER_SUPPLY_PROP_USB_OTG, &otgprop);
+				chip->is_otg = 0;
 			}
 			chip->power_role = DUAL_ROLE_PROP_PR_SNK;
 			break;
 		case DUAL_ROLE_PROP_PR_NONE:
 			if (chip->power_role == DUAL_ROLE_PROP_PR_SRC){
 				//power_supply_set_usb_otg(&chip->usbpd_psy, 0);
-				otgprop.intval = 0;				
-				power_supply_set_property(chip->usbpd_psy, 
-					POWER_SUPPLY_PROP_USB_OTG, &otgprop);
+				chip->is_otg = 0;
 			}
 			chip->power_role = DUAL_ROLE_PROP_PR_NONE;
 			break;
@@ -714,25 +708,6 @@ static int usbpd_set_property(struct power_supply *psy,
 	int rc;
 
 	switch (prop) {
-	case POWER_SUPPLY_PROP_USB_OTG:
-		if (chip->is_otg == val->intval)
-			break;
-
-		chip->is_otg = val->intval;
-
-		if (chip->is_otg) {
-			rc = regulator_enable(chip->vbus_out);
-			if (rc)
-				dev_err(cdev, "unable to enable vbus\n");
-		} else {
-			rc = regulator_disable(chip->vbus_out);
-			if (rc)
-				dev_err(cdev, "unable to disable vbus\n");
-
-			/* wait for vbus boost diacharging */
-			mdelay(200);
-		}
-		break;
 	case POWER_SUPPLY_PROP_PRESENT:
 		if (val->intval) {
 			if (chip->mode == DUAL_ROLE_PROP_MODE_NONE) {
@@ -2242,20 +2217,6 @@ static int anx7688_init_regulator(struct anx7688_chip *chip)
 		rc = regulator_set_voltage(chip->avdd10, 1000000, 1000000);
 		if (rc) {
 			dev_err(cdev, "regulator set failed avdd10");
-			return rc;
-		}
-	}
-
-	chip->vbus_out = devm_regulator_get(cdev, "vbus");
-	if (IS_ERR(chip->vbus_out)) {
-		dev_err(cdev, "regulator vbus get failed\n");
-		return -EPROBE_DEFER;
-	}
-
-	if (regulator_count_voltages(chip->vbus_out) > 0) {
-		rc = regulator_set_voltage(chip->vbus_out, 5000000, 5000000);
-		if (rc) {
-			dev_err(cdev, "regulator set failed vbus\n");
 			return rc;
 		}
 	}

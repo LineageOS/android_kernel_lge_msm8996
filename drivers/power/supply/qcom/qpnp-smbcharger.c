@@ -5104,6 +5104,15 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 	cancel_delayed_work_sync(&chip->hvdcp_det_work);
 	smbchg_relax(chip, PM_DETECT_HVDCP);
 	smbchg_change_usb_supply_type(chip, POWER_SUPPLY_TYPE_USB);
+#ifdef CONFIG_LGE_USB_TYPE_C
+	if (chip->typec_psy) {
+		pval.intval = chip->usb_present;
+/*		power_supply_set_property(chip->typec_psy, // already set in 'smbchg_change_usb_supply_type' above
+			POWER_SUPPLY_PROP_TYPE, POWER_SUPPLY_TYPE_UNKNOWN); */ // also, changing supply type rapidly causes panic
+		power_supply_set_property(chip->typec_psy,
+			POWER_SUPPLY_PROP_PRESENT, &pval);
+	}
+#endif
 	extcon_set_cable_state_(chip->extcon, EXTCON_USB, chip->usb_present);
 	smbchg_request_dpdm(chip, false);
 	schedule_work(&chip->usb_set_online_work);
@@ -5212,6 +5221,14 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 	if (chip->typec_psy)
 		update_typec_status(chip);
 	smbchg_change_usb_supply_type(chip, usb_supply_type);
+
+#ifdef CONFIG_LGE_USB_TYPE_C
+	if (chip->typec_psy) {
+		pval.intval = chip->usb_present;
+		power_supply_set_property(chip->typec_psy,
+			POWER_SUPPLY_PROP_PRESENT, &pval);
+	}
+#endif
 
 	/* Only notify USB if it's not a charger */
 	if (usb_supply_type == POWER_SUPPLY_TYPE_USB ||
@@ -9134,9 +9151,7 @@ static int smbchg_probe(struct platform_device *pdev)
 	struct power_supply *typec_psy = NULL;
 	struct qpnp_vadc_chip *vadc_dev = NULL, *vchg_vadc_dev = NULL;
 	struct qpnp_vadc_chip *vusb_vadc_dev = NULL;
-#ifndef CONFIG_LGE_USB_TYPE_C
 	const char *typec_psy_name;
-#endif
 	struct power_supply_config usb_psy_cfg = {};
 	struct power_supply_config batt_psy_cfg = {};
 	struct power_supply_config dc_psy_cfg = {};
