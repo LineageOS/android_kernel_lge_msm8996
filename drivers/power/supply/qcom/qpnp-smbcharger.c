@@ -49,9 +49,6 @@
 #include <soc/qcom/lge/lge_batt_detection.h>
 #define LGE_PM_DIS_AICL_IRQ_WAKE
 #endif
-#ifdef CONFIG_LGE_USB_TYPE_C
-#define PD_PSY_NAME "usb_pd"
-#endif
 
 #ifdef CONFIG_QPNP_SMBCHARGER_EXTENSION
 #define WAIT_TO_READ_DPDM_AT_PROBE_MS	50
@@ -1304,17 +1301,6 @@ static void get_property_from_typec(struct smbchg_chip *chip,
 				union power_supply_propval *prop)
 {
 	int rc;
-
-#ifdef CONFIG_LGE_USB_TYPE_C
-	if (!chip->typec_psy) {
-		chip->typec_psy = power_supply_get_by_name(PD_PSY_NAME);
-		if (!chip->typec_psy) {
-			pr_smb(PR_LGE, "typec psy isn't prepared\n");
-			prop->intval = 0;
-			return;
-		}
-	}
-#endif
 
 	rc = power_supply_get_property(chip->typec_psy,
 			property, prop);
@@ -5210,13 +5196,8 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 	smbchg_relax(chip, PM_DETECT_HVDCP);
 	smbchg_change_usb_supply_type(chip, POWER_SUPPLY_TYPE_USB);
 #ifdef CONFIG_LGE_USB_TYPE_C
-	if (!chip->typec_psy) {
-		chip->typec_psy = power_supply_get_by_name(PD_PSY_NAME);
-		if (IS_ERR(chip->typec_psy))
-			chip->typec_psy = 0;
-	}
-	pval.intval = chip->usb_present;
 	if (chip->typec_psy) {
+		pval.intval = chip->usb_present;
 /*		power_supply_set_property(chip->typec_psy, // already set in 'smbchg_change_usb_supply_type' above
 			POWER_SUPPLY_PROP_TYPE, POWER_SUPPLY_TYPE_UNKNOWN); */ // also, changing supply type rapidly causes panic
 		power_supply_set_property(chip->typec_psy,
@@ -5336,15 +5317,11 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 	smbchg_change_usb_supply_type(chip, usb_supply_type);
 
 #ifdef CONFIG_LGE_USB_TYPE_C
-	if (!chip->typec_psy) {
-		chip->typec_psy = power_supply_get_by_name(PD_PSY_NAME);
-		if (IS_ERR(chip->typec_psy))
-			chip->typec_psy = 0;
-	}
-	pval.intval = chip->usb_present;
-	if (chip->typec_psy)
+	if (chip->typec_psy) {
+		pval.intval = chip->usb_present;
 		power_supply_set_property(chip->typec_psy,
 			POWER_SUPPLY_PROP_PRESENT, &pval);
+	}
 #endif
 
 	/* Only notify USB if it's not a charger */
@@ -9274,14 +9251,10 @@ static int smbchg_probe(struct platform_device *pdev)
 	struct power_supply *typec_psy = NULL;
 	struct qpnp_vadc_chip *vadc_dev = NULL, *vchg_vadc_dev = NULL;
 	struct qpnp_vadc_chip *vusb_vadc_dev = NULL;
-#ifndef CONFIG_LGE_USB_TYPE_C
 	const char *typec_psy_name;
-#endif
 	struct power_supply_config usb_psy_cfg = {};
 	struct power_supply_config batt_psy_cfg = {};
 	struct power_supply_config dc_psy_cfg = {};
-/* don't try to get typec at probe, anx needs vbus first */
-#ifndef CONFIG_LGE_USB_TYPE_C
 #ifdef CONFIG_QPNP_SMBCHARGER_EXTENSION
 #define TYPEC_PROBE_RETRY_MAX	5
 	static int typec_retry_cnt;
@@ -9319,7 +9292,6 @@ static int smbchg_probe(struct platform_device *pdev)
 		}
 #endif
 	}
-#endif
 
 	vadc_dev = NULL;
 	if (of_find_property(pdev->dev.of_node, "qcom,dcin-vadc", NULL)) {
@@ -9651,19 +9623,6 @@ static int smbchg_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "Unable to request irqs rc = %d\n", rc);
 		goto unregister_led_class;
 	}
-
-#if 0 //CONFIG_LGE_USB_TYPE_C
-	typec_psy = power_supply_get_by_name(PD_PSY_NAME);
-	if (!typec_psy) {
-		dev_err(&pdev->dev,
-			"Type-C supply not found, deferring probe\n");
-		if (typec_retry_cnt++ < TYPEC_PROBE_RETRY_MAX) {
-			msleep(50);
-			return -EPROBE_DEFER;
-		}
-	}
-	chip->typec_psy = typec_psy;
-#endif
 
 	rerun_hvdcp_det_if_necessary(chip);
 

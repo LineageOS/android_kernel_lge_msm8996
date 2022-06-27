@@ -169,26 +169,6 @@ static int chg_set_property(struct power_supply *psy,
 	int rc;
 
 	switch (prop) {
-	case POWER_SUPPLY_PROP_USB_OTG:
-		if (anx->is_otg == val->intval)
-			break;
-		dev_dbg(cdev, "%s: is_otg(%d)\n", __func__, anx->is_otg);
-		anx->is_otg = val->intval;
-
-		anx_dbg_event("VBUS REG", anx->is_otg);
-		if (anx->is_otg) {
-			rc = regulator_enable(anx->vbus_reg);
-			if (rc)
-				dev_err(cdev, "unable to enable vbus\n");
-			anx_dbg_event("VBUS", 1);
-		} else {
-			rc = regulator_disable(anx->vbus_reg);
-			if (rc)
-				dev_err(cdev, "unable to disable vbus\n");
-			anx_dbg_event("VBUS", 0);
-		}
-		break;
-
 	case POWER_SUPPLY_PROP_PRESENT:
 		if (anx->is_dbg_acc || anx->mode == DUAL_ROLE_PROP_MODE_NONE) {
 			if (val->intval) {
@@ -301,27 +281,20 @@ int anx7418_set_pr(struct anx7418 *anx, int pr)
 	switch (pr) {
 	case DUAL_ROLE_PROP_PR_SRC:
 #ifdef CONFIG_LGE_USB_TYPE_C
-		if (!IS_INTF_IRQ_SUPPORT(anx)) {
-			prop.intval = 1;
-			power_supply_set_property(anx->pd_psy,
-					POWER_SUPPLY_PROP_USB_OTG, &prop);
-		}
+		if (!IS_INTF_IRQ_SUPPORT(anx))
+			anx->is_otg = 1;
 #endif
 		break;
 
 	case DUAL_ROLE_PROP_PR_SNK:
 #ifdef CONFIG_LGE_USB_TYPE_C
-			prop.intval = 0;
-			power_supply_set_property(anx->pd_psy,
-					POWER_SUPPLY_PROP_USB_OTG, &prop);
+			anx->is_otg = 0;
 #endif
 		break;
 
 	case DUAL_ROLE_PROP_PR_NONE:
 #ifdef CONFIG_LGE_USB_TYPE_C
-			prop.intval = 0;
-			power_supply_set_property(anx->pd_psy,
-					POWER_SUPPLY_PROP_USB_OTG, &prop);
+			anx->is_otg = 0;
 #endif
 		break;
 
@@ -349,9 +322,7 @@ int anx7418_set_dr(struct anx7418 *anx, int dr)
 		anx7418_set_dr(anx, DUAL_ROLE_PROP_DR_NONE);
 
 #ifdef CONFIG_LGE_USB_TYPE_C
-		prop.intval = 1;
-		power_supply_set_property(anx->pd_psy,
-				POWER_SUPPLY_PROP_USB_OTG, &prop);
+		anx->is_otg = 1;
 #endif
 		break;
 
@@ -365,10 +336,8 @@ int anx7418_set_dr(struct anx7418 *anx, int dr)
 
 	case DUAL_ROLE_PROP_DR_NONE:
 #ifdef CONFIG_LGE_USB_TYPE_C
-		prop.intval = 0;
 		if (anx->dr == DUAL_ROLE_PROP_DR_HOST)
-			power_supply_set_property(anx->pd_psy,
-					POWER_SUPPLY_PROP_USB_OTG, &prop);
+			anx->is_otg = 0;
 
 /*		if (anx->dr == DUAL_ROLE_PROP_DR_DEVICE)
 			power_supply_set_present(anx->usb_psy, 0); */
@@ -805,9 +774,7 @@ static void i2c_work(struct work_struct *w)
 				anx_dbg_event("DFP", 0);
 
 				anx7418_set_mode(anx, DUAL_ROLE_PROP_MODE_DFP);
-				prop.intval = 1;
-				power_supply_set_property(anx->pd_psy,
-						POWER_SUPPLY_PROP_USB_OTG, &prop);
+				anx->is_otg = 1;
 				anx->pr = DUAL_ROLE_PROP_PR_SRC;
 
 				anx7418_set_dr(anx, DUAL_ROLE_PROP_DR_HOST);
@@ -830,15 +797,11 @@ static void i2c_work(struct work_struct *w)
 	if (!(intf_irq_mask & VBUS_CHG) && (irq & VBUS_CHG)) {
 		if (status & VBUS_STATUS) {
 			dev_dbg(cdev, "%s: VBUS ON\n", __func__);
-			prop.intval = 1;
-			power_supply_set_property(anx->pd_psy,
-					POWER_SUPPLY_PROP_USB_OTG, &prop);
+			anx->is_otg = 1;
 			anx->pr = DUAL_ROLE_PROP_PR_SRC;
 		} else {
 			dev_dbg(cdev, "%s: VBUS OFF\n", __func__);
-			prop.intval = 0;
-			power_supply_set_property(anx->pd_psy,
-					POWER_SUPPLY_PROP_USB_OTG, &prop);
+			anx->is_otg = 0;
 			anx->pr = DUAL_ROLE_PROP_PR_SNK;
 		}
 #ifdef CONFIG_DUAL_ROLE_USB_INTF
@@ -1440,21 +1403,6 @@ static int anx7418_probe(struct i2c_client *client,
 	}
 
 	/* regulator */
-	anx->vbus_reg = devm_regulator_get(&client->dev, "vbus");
-	if (IS_ERR(anx->vbus_reg)) {
-		dev_err(&client->dev, "vbus regulator_get failed\n");
-		return -EPROBE_DEFER;
-	}
-	if (regulator_count_voltages(anx->vbus_reg) > 0) {
-		rc = regulator_set_voltage(anx->vbus_reg, 5000000, 5000000);
-		if (rc) {
-			dev_err(&client->dev,
-				"Regulator set_vtg failed vbus rc=%d\n",
-				rc);
-			return rc;
-		}
-	}
-
 	anx->avdd33 = devm_regulator_get(&client->dev, "avdd33");
 	if (IS_ERR(anx->avdd33)) {
 		dev_err(&client->dev, "avdd33 regulator_get failed\n");
@@ -1468,6 +1416,11 @@ static int anx7418_probe(struct i2c_client *client,
 				rc);
 			return rc;
 		}
+	}
+	rc = regulator_enable(anx->avdd33);
+	if (rc) {
+		dev_err(&client->dev, "unable to enable avdd33\n");
+		return rc;
 	}
 
 #if 0 //CONFIG_LGE_USB_TYPE_C START
@@ -1483,12 +1436,6 @@ static int anx7418_probe(struct i2c_client *client,
 		return -EPROBE_DEFER;
 	}
 #endif //CONFIG_LGE_USB_TYPE_C END
-
-	rc = regulator_enable(anx->avdd33);
-	if (rc) {
-		dev_err(&client->dev, "unable to enable avdd33\n");
-		return rc;
-	}
 
 	dev_set_drvdata(&client->dev, anx);
 	anx->client = client;
