@@ -854,10 +854,6 @@
 	};
 };
 
-&blsp1_uart2 {
-	status = "ok";
-};
-
 &pcie1 {
        status = "disabled";
 };
