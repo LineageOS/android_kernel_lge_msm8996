@@ -36,7 +36,7 @@ struct msm_cam_dump_string_info {
 	uint32_t offset;
 };
 /* LGE_CHANGE, camera stability task, Changed to inline function for RTB logging */
-#ifdef CONFIG_MSM_RTB//CONFIG_LGE_CAMERA_RTB_DEBUG
+#ifdef CONFIG_QCOM_RTB
 static inline void msm_camera_io_w(u32 data, void __iomem *addr)
 {
 	writel_relaxed((data), (addr));
@@ -66,7 +66,7 @@ void msm_camera_io_w(u32 data, void __iomem *addr);
 void msm_camera_io_w_mb(u32 data, void __iomem *addr);
 u32 msm_camera_io_r(void __iomem *addr);
 u32 msm_camera_io_r_mb(void __iomem *addr);
-#endif
+#endif /* CONFIG_LGE_CAMERA_RTB_DEBUG */
 
 void msm_camera_io_dump(void __iomem *addr, int size, int enable);
 void msm_camera_io_memcpy(void __iomem *dest_addr,
