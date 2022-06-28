@@ -15,6 +15,18 @@
 	led_flash0: qcom,camera-flash {
 		qcom,flash-type = <1>;
 	};
+
+	qcom,csiphy@a34000 {
+		qcom,clock-rates = <0 0 0 266670000 0 0 320000000 0>;
+	};
+
+	qcom,csiphy@a35000 {
+		qcom,clock-rates = <0 0 0 266670000 0 0 320000000 0>;
+	};
+
+	qcom,csiphy@a36000 {
+		qcom,clock-rates = <0 0 0 266670000 0 0 320000000 0>;
+	};
 };
 
 &cci {

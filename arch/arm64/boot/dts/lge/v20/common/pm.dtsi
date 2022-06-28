@@ -120,10 +120,6 @@
 	qcom,brake-pattern = <0x3 0x3 0x3 0x3>;
 };
 
-&flash_led {
-	qcom,follow-otst2-rb-disabled;
-};
-
 &spmi_bus {
 	qcom,pm8994@0 {
 		 qcom,power-on@800 {
@@ -235,15 +231,6 @@
 		compatible = "lge,store_mode";
 		lge,llk_max = <50>;
 		lge,llk_min = <45>;
-	};
-
-	lge,gpio-debug@fd510000 {
-		compatible = "lge,gpio-debug";
-		reg = <0x01010000 0x400000>;
-		reg-names = "tlmm-base";
-		lge,n-msm-gpio = <0x96>;  /* MSM8996 GPIO 0 to 149 */
-		lge,n-pm-gpio = <0x16>;
-		lge,n-pm-mpp = <0x8>;
 	};
 
 	lge,boost-bypass {

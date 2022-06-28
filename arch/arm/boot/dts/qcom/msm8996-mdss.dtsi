@@ -547,7 +547,7 @@
 				"hpd_core_clk", "hpd_alt_iface_clk",
 				"core_extp_clk";
 
-		/delete-property/ qcom,hdmi-tx-hpd;
+		qcom,hdmi-tx-hpd = <&pm8994_mpps 4 0>;
 		qcom,mdss-fb-map = <&mdss_fb2>;
 		qcom,pluggable;
 
