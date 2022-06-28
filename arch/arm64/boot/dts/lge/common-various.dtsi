@@ -33,15 +33,28 @@
 			};
 		};
 	};
-};
 
-/ {
-	reserved-memory {
+	reserved_memory: reserved-memory {
 		ramoops_mem: ramoops_mem@c0000000 {
 			compatible = "removed-dma-pool";
 			reg = <0 0xc0000000 0 0x00100000>;
 			label = "ramoops_mem";
 			no-map;
+		};
+
+		/delete-node/ peripheral_region@8ea00000;
+		peripheral_mem: peripheral_region@8e900000 {
+			compatible = "removed-dma-pool";
+			no-map;
+			reg = <0 0x8e900000 0 0x2d00000>;
+		};
+
+		adsp_mem: adsp_region {
+			alignment = <0 0x400000>;
+		};
+
+		modem_mem: modem_region@88800000 {
+			reg = <0 0x88800000 0 0x6100000>;
 		};
 	};
 };
@@ -68,6 +81,10 @@
 
 	/delete-node/ gen-vkeys;
 
+	qcom,hdmi_tx@9a0000 {
+		/delete-property/ qcom,hdmi-tx-hpd;
+	};
+
 	qcom,msm-dai-tdm-tert-rx {
 		/delete-property/ pinctrl-names;
 		/delete-property/ pinctrl-0;
@@ -85,6 +102,10 @@
 		/delete-property/ pinctrl-0;
 		/delete-property/ pinctrl-1;
 	};
+};
+
+&flash_led {
+	qcom,vph-pwr-droop-debounce-time = <60>;
 };
 
 &vendor {

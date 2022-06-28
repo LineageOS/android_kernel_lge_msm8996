@@ -183,7 +183,7 @@
 		compatible = "fpc,fpc1020";
 		input-device-name = "fpc1020";
 		interrupt-parent = <&tlmm>;
-		interrupts = <38>;
+		interrupts = <38 0>;
 		fpc,gpio_cs0	= <&tlmm 51 0>;
 		/*fpc,gpio_cs1	  = <&tlmm 51 0>;*/
 		fpc,gpio_rst	= <&tlmm 40 0>;
