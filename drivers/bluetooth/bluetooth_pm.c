@@ -452,7 +452,7 @@ static irqreturn_t bluetooth_pm_hostwake_isr(int irq, void *dev_id)
     }
 
     ret = request_irq(bsi->host_wake_irq, bluetooth_pm_hostwake_isr,
-                IRQF_DISABLED | IRQF_TRIGGER_LOW,
+                IRQF_TRIGGER_LOW,
                 "bluetooth hostwake", NULL);
     if (ret  < 0) {
         printk("%s, Couldn't acquire BT_HOST_WAKE IRQ\n", __func__);
