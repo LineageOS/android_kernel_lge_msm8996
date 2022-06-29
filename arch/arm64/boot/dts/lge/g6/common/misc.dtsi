@@ -16,6 +16,19 @@
 	};
 };
 
+&sdhc_1 {
+	/* LG seemingly doesn't want the lower clock option */
+	qcom,ice-clk-rates = <300000000>;
+};
+
+&sdhc_2 {
+	/* Though Active-Low-H/W-logic is actually adopted in circuit-diagram,
+	Logic-value is reversed in 3in2-socket not in 2in1-socket.
+	1: Active-Low, 0: Active-High
+	*/
+	cd-gpios = <&tlmm 95 0x0>;
+};
+
 /* LED setting */
 &spmi_bus {
 	qcom,pmi8994@3 {
