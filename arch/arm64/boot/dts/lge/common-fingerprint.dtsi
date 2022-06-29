@@ -131,18 +131,19 @@
 		};
 	};
 
+/*  <<<< Not in use >>>>
 	fpc,btp {
 		status = "ok";
 		compatible = "fpc,btp";
 		interrupt-parent = <&tlmm>;
 		interrupts = <38 0x0>;
-		qcom,qup-id = <8>; /* for tz */
+		qcom,qup-id = <8>; // for tz
 		use_regulator = <1>;
 		fpc,vddio-supply = <&pm8994_l12>;
 		fpc,gpio_irq	=  <&tlmm 38 0x00>;
 		fpc,gpio_reset	= <&tlmm 40 0x00>;
 		fpc,gpio_cs	= <&tlmm 51 0x00>;
-	};
+	}; */
 
 	spi_8: spi@75b7000 { /* BLSP2 QUP3 */
 		compatible = "qcom,spi-qup-v2";
@@ -154,7 +155,6 @@
 		interrupt-names = "spi_irq", "spi_bam_irq";
 		interrupts = <0 103 0>, <0 239 0>;
 		spi-max-frequency = <19200000>;
-
 		qcom,infinite-mode = <0>;
 		qcom,use-bam;
 		qcom,ver-reg-exists;
@@ -162,17 +162,18 @@
 		qcom,bam-producer-pipe-index = <17>;
 		qcom,master-id = <84>;
 		qcom,shared;
+
 		/*
 		qcom,use-pinctrl;
 		pinctrl-names = "spi_default", "spi_sleep";
 		pinctrl-0 = <&spi_0_active &spi_0_cs_active>;
 		pinctrl-1 = <&spi_0_sleep &spi_0_cs_sleep>;
 		*/
-		clock-names = "iface_clk", "core_clk";
 
+		clock-names = "iface_clk", "core_clk";
 		clocks = <&clock_gcc clk_gcc_blsp2_ahb_clk>,
-			 <&clock_gcc clk_gcc_blsp2_qup3_spi_apps_clk>;
-                status = "ok";
+			<&clock_gcc clk_gcc_blsp2_qup3_spi_apps_clk>;
+		status = "ok";
 	};
 };
 

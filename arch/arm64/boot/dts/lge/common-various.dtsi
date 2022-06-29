@@ -79,6 +79,10 @@
 		/delete-node/ synaptics@20;
 	};
 
+	spi@7575000 {
+		status = "disabled";
+	};
+
 	/delete-node/ gen-vkeys;
 
 	qcom,hdmi_tx@9a0000 {
@@ -123,6 +127,10 @@
 	/delete-node/ hl7509-regulator@68;
 	/delete-node/ ncp6335d-regulator@68;
 	/delete-node/ max20010-regulator@38;
+};
+
+&i2c_8 {
+	/delete-node/ nq@28;
 };
 
 &pmi8994_charger {
