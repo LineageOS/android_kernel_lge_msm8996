@@ -16,6 +16,23 @@
 	};
 };
 
+&sdhc_1 {
+	/* LG seemingly doesn't want the lower clock option */
+	qcom,ice-clk-rates = <300000000>;
+};
+
+&sdhc_2 {
+	/* Though Active-Low-H/W-logic is actually adopted in circuit-diagram,
+	Logic-value is reversed in 3in2-socket not in 2in1-socket.
+	1: Active-Low, 0: Active-High
+	*/
+#if defined(CONFIG_MACH_MSM8996_ELSA_DCM_JP) || defined(CONFIG_MACH_MSM8996_ELSA_KDDI_JP)
+	cd-gpios = <&tlmm 79 0x0>;
+#else
+	cd-gpios = <&tlmm 95 0x1>; /* same as msm8996-mtp.dtsi */
+#endif
+};
+
 /* LED setting */
 &spmi_bus {
 	qcom,pmi8994@3 {
