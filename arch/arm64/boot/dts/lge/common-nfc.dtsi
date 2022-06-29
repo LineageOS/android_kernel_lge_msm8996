@@ -12,8 +12,6 @@
  */
 
 &i2c_8 { /* BLSP2 QUP2 */
-	/delete-node/ nq@28;
-
 	pn548@28 {
 		compatible = "nxp,nfc-548";
 		reg = <0x28>;

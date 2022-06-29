@@ -20,6 +20,10 @@
 
 &soc {
 	//Enable i2c_1 if FM Chip is installed
+	spi@7575000 {
+		status = "ok";
+	};
+
 	i2c_1: i2c@7575000 {
 		silabs4709@10 {	/* SiLabs FM chip, slave id 0x10*/
 			status = "ok";
