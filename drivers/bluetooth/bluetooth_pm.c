@@ -77,7 +77,7 @@ DECLARE_DELAYED_WORK(sleep_workqueue, bluetooth_pm_sleep_work);
 #define bluetooth_pm_tx_idle()         schedule_delayed_work(&sleep_workqueue, 0)
 
 //BT_S : [CONBT-2112] LGC_BT_COMMON_IMP_KERNEL_V4L2_SLEEP_DRIVER
-#define TX_TIMER_INTERVAL   300 //(Uint : ms)
+#define TX_TIMER_INTERVAL   2 //(Uint : sec)
 
 #define RX_TIMER_INTERVAL   5 //(Uint : sec)
 //BT_E : [CONBT-2112] LGC_BT_COMMON_IMP_KERNEL_V4L2_SLEEP_DRIVER
@@ -233,7 +233,8 @@ void bluetooth_pm_wakeup(void)
         {
             printk("%s - Start Timer : check hostwake status when timer expired\n", __func__);
 //BT_S : [CONBT-2112] LGC_BT_COMMON_IMP_KERNEL_V4L2_SLEEP_DRIVER
-            mod_timer(&rx_timer, jiffies + (RX_TIMER_INTERVAL * HZ));
+            mod_timer(&rx_timer, jiffies +
+                    msecs_to_jiffies(RX_TIMER_INTERVAL * 1000));
 //BT_E : [CONBT-2112] LGC_BT_COMMON_IMP_KERNEL_V4L2_SLEEP_DRIVER
         }
     }
@@ -316,7 +317,8 @@ static void bluetooth_pm_hostwake_task(unsigned long data)
         bluetooth_pm_rx_busy();
 
 //BT_S : [CONBT-2112] LGC_BT_COMMON_IMP_KERNEL_V4L2_SLEEP_DRIVER
-        mod_timer(&rx_timer, jiffies + (RX_TIMER_INTERVAL * HZ));
+        mod_timer(&rx_timer, jiffies +
+                msecs_to_jiffies(RX_TIMER_INTERVAL * 1000));
 //BT_E : [CONBT-2112] LGC_BT_COMMON_IMP_KERNEL_V4L2_SLEEP_DRIVER
     //}
     //else
@@ -531,7 +533,7 @@ EXPORT_SYMBOL(bluetooth_pm_sleep_start);
         printk("%s, Couldn't disable hostwake IRQ wakeup mode\n", __func__);
     free_irq(bsi->host_wake_irq, NULL);
 
-    wake_lock_timeout(&bsi->wake_lock, HZ / 2);
+    wake_lock_timeout(&bsi->wake_lock, msecs_to_jiffies(500));
 }
 //BT_S : [CONBT-2112] LGC_BT_COMMON_IMP_KERNEL_V4L2_SLEEP_DRIVER
 EXPORT_SYMBOL(bluetooth_pm_sleep_stop);
@@ -545,7 +547,8 @@ void bluetooth_pm_outgoing_data(void)
     //printk("+++ %s\n", __func__);
 
     //Always restart BT TX Timer
-    mod_timer(&tx_timer, jiffies + msecs_to_jiffies(TX_TIMER_INTERVAL));
+    mod_timer(&tx_timer, jiffies +
+            msecs_to_jiffies(TX_TIMER_INTERVAL * 1000));
 
     //printk("%s, Spin Lock\n", __func__);
 

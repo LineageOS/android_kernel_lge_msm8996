@@ -537,7 +537,8 @@ int fmc_send_cmd(struct fmdrv_ops *fmdev, unsigned char fmreg_index,
             return ret;
     }
 
-    timeleft = wait_for_completion_timeout(wait_completion, FM_DRV_TX_TIMEOUT);
+    timeleft = wait_for_completion_timeout(wait_completion,
+            msecs_to_jiffies(FM_DRV_TX_TIMEOUT));
     mutex_unlock(&fmdev->wait_completion_lock);
     if (!timeleft)
     {

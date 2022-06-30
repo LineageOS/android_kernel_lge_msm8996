@@ -1202,7 +1202,7 @@ long brcm_sh_ldisc_register(struct sh_proto_s *new_proto)
         {
             jiffi2 = jiffies;
             diff = (long)jiffi2 - (long)jiffi1;
-            if ( ((diff *1000)/HZ) >= 1000)
+            if ( ((diff * HZ * 10) / HZ) >= 1000)
                 is_print_reg_error = 1;
         }
 // BRCM_LOCAL [CSP#1018143] : Cannot radio0 open
@@ -2143,7 +2143,8 @@ long brcm_sh_ldisc_write(struct sk_buff *skb)
                 brcm_hci_write(hu, skb->data, skb->len);
 #endif
             brcm_hci_uart_tx_wakeup(hu);
-            if (!wait_for_completion_timeout(&hu->cmd_rcvd, msecs_to_jiffies(5000))) {
+            if (!wait_for_completion_timeout(&hu->cmd_rcvd,
+                    msecs_to_jiffies(CMD_WR_TIME))) {
                 pr_err(" waiting for command response - timed out");
                 mutex_unlock(&cmd_credit);
                 return 0;
