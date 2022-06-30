@@ -1970,13 +1970,11 @@ static bool pkt_equals_hci_ev(struct sk_buff *skb, uint16_t hci_event)
 *******************************************************************************/
 static bool ignore_hci_cmd(struct sk_buff *skb)
 {
+    int cmd_cnt = 0;
+
     if(skb->len < 3 || (skb->len > 0 && (skb->data)[0] != 0x01)) {
         return false;
     }
-
-    static bool reset_received, is_bt_init, is_bt_init_end;
-    int cmd_cnt = 0;
-    unsigned char first_byte, second_byte;
 
     for( ; cmd_cnt < IGNORE_CMD_SIZE; cmd_cnt++) {
         if(pkt_equals_hci_ev(skb, IGNORE_CMDS[cmd_cnt])) {
