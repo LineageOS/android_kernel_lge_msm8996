@@ -40,6 +40,8 @@
 #include "include/v4l2_logs.h"
 #include "brcm_bt_drv.h"
 
+#define WRITE_RETRY_CNT 5
+
 /* set this module parameter to enable debug info */
 int bt_dbg_param = 0;
 
@@ -302,18 +304,19 @@ static ssize_t brcm_bt_drv_read(struct file *f, char __user *buf, size_t
         skb_size = skb->len;
 
          /* copy packet to user-space */
+         spin_unlock_irqrestore(&bt_dev_p->rx_q_lock, flags);
          if(copy_to_user(buf, skb->data, sizeof(char) * skb_size)){
             /* free the skb */
             /*kfree_skb(skb);*/
             printk("copy to user failed\n");
-            spin_unlock_irqrestore(&bt_dev_p->rx_q_lock, flags);
             return -EFAULT;
          }
          else {
             /* free the skb after copying to user space. Return the size of skb */
+            spin_lock_irqsave(&bt_dev_p->rx_q_lock, flags);
             skb = skb_dequeue(&bt_dev_p->rx_q);
-            kfree_skb(skb);
             spin_unlock_irqrestore(&bt_dev_p->rx_q_lock, flags);
+            kfree_skb(skb);
             return skb_size;
          }
     }
@@ -453,6 +456,7 @@ static void bt_send_data_ldisc(struct work_struct *w)
     struct sk_buff *skb;
     int len = 0;
     unsigned long flags;
+    unsigned int i;
 
     BT_DRV_DBG(V4L2_DBG_TX, "sending data to ldisc");
 
@@ -460,9 +464,11 @@ static void bt_send_data_ldisc(struct work_struct *w)
     //if (atomic_read(&bt_dev_p->tx_cnt))
 //BT_S : [CONBT-3553][CSP#1062558] App Watchdog crash during BT ON/OFF Test
     //while (atomic_read(&bt_dev_p->tx_cnt))
-    while (atomic_read(&bt_dev_p->tx_cnt) > 0)
+    //while (atomic_read(&bt_dev_p->tx_cnt) > 0)
 //BT_E : [CONBT-3553][CSP#1062558] App Watchdog crash during BT ON/OFF Test
 //BT_E : [CONBT-2297][CASE#966325] improve a2dp chopping
+
+    for (i = 0; i < WRITE_RETRY_CNT && atomic_read(&bt_dev_p->tx_cnt); i++)
     {
         spin_lock_irqsave(&bt_dev_p->tx_q_lock, flags);
         skb = skb_dequeue(&bt_dev_p->tx_q);

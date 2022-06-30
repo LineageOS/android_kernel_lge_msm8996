@@ -191,7 +191,7 @@ void bluetooth_pm_wakeup(void)
 
     spin_lock_irqsave(&rw_lock, irq_flags);
 
-    if (test_bit(BT_ASLEEP, &flags)) {
+    if (test_bit(BT_ASLEEP, &flags) && (bsi->uport != NULL)) {
         printk("%s, waking up...\n", __func__);
 
 //BT_S : [CONBT-1475] LGC_BT_COMMON_IMP_KERNEL_UART_HCI_COMMAND_TIMEOUT
