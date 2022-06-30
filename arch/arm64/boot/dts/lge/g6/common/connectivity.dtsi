@@ -33,6 +33,13 @@
 
 		pinctrl-names = "bt_default";
 		pinctrl-0 = <&bt_default>;
+
+		qcom,msm-bus,name = "lge_bt_pm";
+		qcom,msm-bus,num-cases = <2>;
+		qcom,msm-bus,num-paths = <1>;
+		qcom,msm-bus,vectors-KBps =
+			<10027  512    0      0 >,    /* No vote */
+			<10027  512 3200000 3200000>; /* Max. bandwidth */
 	};
 #else
 / {
