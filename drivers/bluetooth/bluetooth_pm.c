@@ -22,6 +22,7 @@
 #include <linux/termios.h>
 #include <linux/bitops.h>
 #include <linux/param.h>
+#include <linux/msm-bus.h>
 
 //[S] Bluetooth Bring-up
 #include <linux/slab.h>
@@ -48,6 +49,8 @@ struct bluetooth_pm_data {
     struct rfkill *rfkill;
     struct wake_lock wake_lock;
     struct uart_port *uport;
+    struct msm_bus_scale_pdata *msm_bus_tbl;
+    u32 msm_bus_perf;
 };
 
 //[S] Bluetooth Bring-up
@@ -118,6 +121,10 @@ static unsigned long uart_on_jiffies;
 /** Lock for state transitions */
 static spinlock_t rw_lock;
 
+/* Initially the vote up state is unknown */
+static int bus_vote_up = -1;
+static DEFINE_MUTEX(bus_vote_up_lock);
+
 struct proc_dir_entry *bluetooth_dir, *sleep_dir;
 
 /*
@@ -136,6 +143,32 @@ static void hsuart_power(int on)
         msm_hs_set_mctrl(bsi->uport, 0);
         msm_hs_request_clock_off(bsi->uport);
     }
+}
+
+static int bluetooth_pm_vote_bus(bool enable)
+{
+	int ret = 0;
+
+	if (!bsi->msm_bus_perf)
+		return -ENODEV;
+
+	mutex_lock(&bus_vote_up_lock);
+
+	/* Already voted ? */
+	if (bus_vote_up == (int)enable) {
+		mutex_unlock(&bus_vote_up_lock);
+		return 0;
+	}
+
+	ret = msm_bus_scale_client_update_request(
+				bsi->msm_bus_perf, (int)enable);
+	if (ret)
+		pr_err("bus scale request failure: %d\n", ret);
+	else
+		bus_vote_up = (int)enable;
+
+	mutex_unlock(&bus_vote_up_lock);
+	return ret;
 }
 
 /**
@@ -294,9 +327,11 @@ static void bluetooth_pm_sleep_work(struct work_struct *work)
     if (bluetooth_pm_can_sleep()) {
         printk("%s, bluetooth_pm_can_sleep is true. Call BT Sleep\n", __func__);
         bluetooth_pm_sleep();
+        bluetooth_pm_vote_bus(false);
     } else {
         printk("%s, bluetooth_pm_can_sleep is false. Call BT Wake Up\n", __func__);
         bluetooth_pm_wakeup();
+        bluetooth_pm_vote_bus(true);
     }
 
     //printk("--- %s\n", __func__);
@@ -566,6 +601,8 @@ void bluetooth_pm_outgoing_data(void)
 
     spin_unlock_irqrestore(&rw_lock, irq_flags);
 
+    bluetooth_pm_vote_bus(true);
+
     //printk("%s, Spin Unlock\n", __func__);
 
     //printk("--- %s\n", __func__);
@@ -828,6 +865,17 @@ static int bluetooth_pm_probe(struct platform_device *pdev)
         printk("%s: bdev is null  \n", __func__);
         return -ENOMEM;
     }
+
+    bsi->msm_bus_tbl = msm_bus_cl_get_pdata(pdev);
+    if (bsi->msm_bus_tbl) {
+        bsi->msm_bus_perf = msm_bus_scale_register_client(
+                            bsi->msm_bus_tbl);
+        if (bsi->msm_bus_perf == 0) {
+            pr_err("Error configuring MSM bus client. Bus voting "
+                "will be unavailable.\n");
+            bsi->msm_bus_tbl = NULL;
+		}
+	}
 
     bdev->gpio_bt_reset = bsi->bt_reset;
     bdev->gpio_bt_host_wake = bsi->host_wake;
