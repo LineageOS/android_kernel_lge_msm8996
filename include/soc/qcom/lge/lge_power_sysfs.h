@@ -120,8 +120,8 @@ const char *default_pwr_sysfs_path[PWR_SYSFS_PATH_NUM][3] = {
 	{"charger", "iusb_control", "NULL"},
 	{"charger", "thermal_mitigation", "/sys/class/power_supply/battery/system_temp_level"},
 	{"charger", "wlc_thermal_mitigation", "NULL"},
-	{"charger", "usb_parallel_chg_status", "/sys/class/power_supply/usb-parallel/status"},
-	{"charger", "usb_parallel_charging_enabled", "/sys/class/power_supply/usb-parallel/charging_enabled"},
+	{"charger", "usb_parallel_chg_status", "/sys/class/power_supply/parallel/status"},
+	{"charger", "usb_parallel_charging_enabled", "/sys/class/power_supply/parallel/charging_enabled"},
 	{"charger", "quick_charging_state", "/sys/module/lge_charging_controller/parameters/quick_charging_state"},
 #else
 	{"charger", "ac_online", "/sys/class/power_supply/ac/online"},
