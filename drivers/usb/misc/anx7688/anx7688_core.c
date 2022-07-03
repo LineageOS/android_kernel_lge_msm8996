@@ -284,51 +284,56 @@ static int dual_role_set_prop(struct dual_role_phy_instance *dual_role,
 		}
 		break;
 	case DUAL_ROLE_PROP_DR:
-	if(chip->usb_psy){
 		switch (*val) {
 		case DUAL_ROLE_PROP_DR_HOST:
 			if (chip->data_role == DUAL_ROLE_PROP_DR_DEVICE) {
 				//power_supply_set_present(chip->usb_psy, 0);				
-				presentprop.intval = 0;
-				power_supply_set_property(chip->usb_psy, 
-					POWER_SUPPLY_PROP_PRESENT,&presentprop);
+				//presentprop.intval = 0;
+				//power_supply_set_property(chip->usb_psy, 
+				//	POWER_SUPPLY_PROP_PRESENT,&presentprop);
+				chip->is_present = 0;
 				mdelay(100);
 			}
 
 			//power_supply_set_usb_otg(chip->usb_psy, 1);
-			otgprop.intval = 1;
-			power_supply_set_property(chip->usb_psy, 
-				POWER_SUPPLY_PROP_USB_OTG, &otgprop);
+			//otgprop.intval = 1;
+			//power_supply_set_property(chip->usb_psy, 
+			//	POWER_SUPPLY_PROP_USB_OTG, &otgprop);
+			chip->is_otg = 1;
 			chip->data_role = DUAL_ROLE_PROP_DR_HOST;
 			break;
 		case DUAL_ROLE_PROP_DR_DEVICE:
 			if (chip->data_role == DUAL_ROLE_PROP_DR_HOST) {
 				//power_supply_set_usb_otg(chip->usb_psy, 0);
-				otgprop.intval = 0;
-				power_supply_set_property(chip->usb_psy, 
-					POWER_SUPPLY_PROP_USB_OTG, &otgprop);
+				//otgprop.intval = 0;
+				//power_supply_set_property(chip->usb_psy, 
+				//	POWER_SUPPLY_PROP_USB_OTG, &otgprop);
+				chip->is_otg = 0;
 				mdelay(100);
 			}
-			presentprop.intval = 1;
+			//presentprop.intval = 1;
 			//power_supply_set_present(chip->usb_psy, 1);
-			power_supply_set_property(chip->usb_psy, 
-					POWER_SUPPLY_PROP_PRESENT, &presentprop);
+			//power_supply_set_property(chip->usb_psy, 
+			//		POWER_SUPPLY_PROP_PRESENT, &presentprop);
+			chip->is_present = 1;
 			chip->data_role = DUAL_ROLE_PROP_DR_DEVICE;
 			break;
 		case DUAL_ROLE_PROP_DR_NONE:
 			if (chip->data_role == DUAL_ROLE_PROP_DR_DEVICE) {
 				//power_supply_set_present(chip->usb_psy, 0);
-				presentprop.intval = 0;
-				power_supply_set_property(chip->usb_psy, 
-					POWER_SUPPLY_PROP_PRESENT, &presentprop);
+				//presentprop.intval = 0;
+				//power_supply_set_property(chip->usb_psy, 
+				//	POWER_SUPPLY_PROP_PRESENT, &presentprop);
+				chip->is_present = 0;
 				mdelay(100);
 			}
 
 			if (chip->data_role == DUAL_ROLE_PROP_DR_HOST) {
 				//power_supply_set_usb_otg(chip->usb_psy, 0);
-				otgprop.intval = 0;
-				power_supply_set_property(chip->usb_psy, 
-					POWER_SUPPLY_PROP_USB_OTG, &otgprop);
+				//otgprop.intval = 0;
+				//power_supply_set_property(chip->usb_psy, 
+				//	POWER_SUPPLY_PROP_USB_OTG, &otgprop);
+				chip->is_otg = 0;
 				mdelay(100);
 			}
 
@@ -338,7 +343,6 @@ static int dual_role_set_prop(struct dual_role_phy_instance *dual_role,
 			dev_err(cdev, "unknown data role\n");
 			return -1;
 		}
-	}
 		break;
 	default:
 		dev_err(cdev, "unknown dual role\n");
