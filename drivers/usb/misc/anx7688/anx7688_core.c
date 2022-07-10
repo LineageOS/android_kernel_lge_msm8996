@@ -865,7 +865,7 @@ static void anx7688_ctype_work(struct work_struct *w)
 				chip->charger_type = USBC_CHARGER;
 			}
 		} else {
-			dev_info(cdev, "%s: default usb Power\n", __func__);
+			dev_dbg(cdev, "%s: default usb Power\n", __func__);
 			chip->volt_max = USBC_VOLT_RPUSB;
 			chip->curr_max = USBC_CURR_RPUSB;
 			chip->charger_type = USBC_UNKNWON_CHARGER;
@@ -887,6 +887,7 @@ static void anx7688_ctype_work(struct work_struct *w)
 		usbpd_set_property_on_batt(chip,
 				POWER_SUPPLY_PROP_CURRENT_CAPABILITY);
 #endif
+		dev_dbg(cdev, "Charger set to USB_C, usbprop_intval: %d, usbpd_type: %d\n", usbprop.intval, chip->usbpd_psy_d.type);
 		break;
 	case USBC_PD_CHARGER:
 #if defined (CONFIG_MACH_MSM8996_ELSA) || defined (CONFIG_MACH_MSM8996_LUCYE) || defined (CONFIG_MACH_MSM8996_ANNA)
@@ -913,11 +914,12 @@ static void anx7688_ctype_work(struct work_struct *w)
 			if ((chip->volt_max == USBC_VOLT_RP3P0) &&
 				(chip->curr_max > USBC_CURR_RESTRICT))
 				chip->curr_max = USBC_CURR_RESTRICT;
-		}
-		usbprop.intval = POWER_SUPPLY_TYPE_USB_PD;
-		chip->usbpd_psy_d.type = usbprop.intval; 
-		dev_dbg(cdev, "Charger set to USB_PD, usbprop_intval: %d, usbpd_type: %d\n", 
-				usbprop.intval, chip->usbpd_psy_d.type);
+		}		
+		usbprop.intval = POWER_SUPPLY_TYPE_USB_PD; // enum POWER_SUPPLY_TYPE_USB_PD = 10
+		chip->usbpd_psy_d.type = usbprop.intval;
+		//power_supply_set_property(chip->usbpd_psy, POWER_SUPPLY_PROP_TYPE, 
+		//					&usbprop);
+		dev_dbg(cdev, "Charger set to USB_PD, usbprop_intval: %d, usbpd_type: %d\n", usbprop.intval, chip->usbpd_psy_d.type);
 #ifdef CONFIG_LGE_PM
 		usbpd_set_property_on_batt(chip,
 				POWER_SUPPLY_PROP_CURRENT_CAPABILITY);
@@ -925,10 +927,9 @@ static void anx7688_ctype_work(struct work_struct *w)
 		break;
 	default:
 		/* unknown charger */
-		usbprop.intval = POWER_SUPPLY_TYPE_USB;
-		chip->usbpd_psy_d.type = usbprop.intval; 
-		dev_dbg(cdev, "Charger set to Generic USB, usbprop_intval: %d, usbpd_type: %d\n", 
-				usbprop.intval, chip->usbpd_psy_d.type);
+		usbprop.intval = POWER_SUPPLY_TYPE_USB; // enum POWER_SUPPLY_TYPE_USB = 4
+		chip->usbpd_psy_d.type = usbprop.intval;
+		dev_dbg(cdev, "Charger set to Generic USB, usbprop_intval: %d, usbpd_type: %d\n", usbprop.intval, chip->usbpd_psy_d.type);
 #ifdef CONFIG_LGE_PM
 		usbpd_set_property_on_batt(chip,
 				POWER_SUPPLY_PROP_CURRENT_CAPABILITY);
@@ -940,19 +941,18 @@ static void anx7688_ctype_work(struct work_struct *w)
 	so only enable them when debugging. */
 #ifdef DEBUG 
 	if(chip->charger_type == BIT(0))
-		dev_info(cdev, "USB_CHARGER_TYPE:USB\n");
+		dev_dbg(cdev, "USB_CHARGER_TYPE:USB\n");
 	else if(chip->charger_type == BIT(1))
-		dev_info(cdev, "USB_CHARGER_TYPE:USB_C\n");
+		dev_dbg(cdev, "USB_CHARGER_TYPE:USB_C\n");
 	else if(chip->charger_type == BIT(2))
-		dev_info(cdev, "USB_CHARGER_TYPE:USB_PD\n");
+		dev_dbg(cdev, "USB_CHARGER_TYPE:USB_PD\n");
 
-	/* Check if the charger is a PC USB Port with variable max current */
-	if(chip->charger_type == BIT(0)) 
+	if(chip->charger_type == BIT(0)) // Check if the charger is a PC USB Port with variable max current
 		dev_dbg(cdev, "%s: %s, %dmV, %dmA to %dmA\n", __func__,
 				usbc_to_string(chip->usbpd_psy_d.type),
 				chip->volt_max, chip->curr_max, chip->curr_max+500);	
 	else
-		dev_info(cdev, "%s: %s, %dmV, %dmA\n", __func__,
+		dev_dbg(cdev, "%s: %s, %dmV, %dmA\n", __func__,
 				usbc_to_string(chip->usbpd_psy_d.type),
 				chip->volt_max, chip->curr_max);
 
@@ -1180,7 +1180,7 @@ static bool anx7688_cc_vadc_check(struct anx7688_chip *chip)
 			max_adc_out = adc_out;
 	}
 
-	dev_info(cdev, "max adc %dmV, error count %d\n",
+	dev_dbg(cdev, "max adc %dmV, error count %d\n",
 			max_adc_out * 50, error_cnt);
 
 	/* rollback previous setting */
@@ -1393,7 +1393,7 @@ static void usbc_chg_ccstatus(struct anx7688_chip *chip)
 		}
 	}
 
-	dev_info(cdev, "CC status 0x%x\n", ret);
+	dev_dbg(cdev, "CC status 0x%x\n", ret);
 	cc1 = ret & 0xF;
 	cc2 = (ret >> 4) & 0xF;
 	chip->cc1 = cc1;
@@ -1503,7 +1503,7 @@ static void usbc_pd_got_power(struct anx7688_chip *chip)
 		}
 	}
 #endif
-	dev_info(cdev, "%s: volt(%dmV), CURR(%dmA)\n", __func__,
+	dev_dbg(cdev, "%s: volt(%dmV), CURR(%dmA)\n", __func__,
 			chip->volt_max, chip->curr_max);
 }
 
@@ -1545,7 +1545,7 @@ static void anx7688_alter_work(struct work_struct *work)
 	}
 
 	alter = OhioReadReg(USBC_ADDR, USBC_INT_STATUS);
-	dev_info(cdev, "INTR:0x%x\n", alter);
+	dev_dbg(cdev, "INTR:0x%x\n", alter);
 
 	OhioWriteReg(USBC_ADDR, USBC_INT_STATUS, alter & ~alter);
 	/* clear interrupt */
