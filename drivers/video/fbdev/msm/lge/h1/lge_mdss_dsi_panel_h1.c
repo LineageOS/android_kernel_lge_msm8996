@@ -210,11 +210,11 @@ int change_vcom_cmds_for_VNL(struct mdss_dsi_ctrl_pdata *ctrl, int restore)
 
 	memcpy(&(ctrl->vcom_cmds.cmds[0].payload[1]), ret_buf, cnt);
 
-	pr_info("[%s] vcom reg before writing: ", restore?"restore":"change");
+	pr_debug("[%s] vcom reg before writing: ", restore?"restore":"change");
 	for ( i = 0; i < cnt + 1; i++) {
-		pr_info("0x%x ", ctrl->vcom_cmds.cmds[0].payload[i]);
+		pr_debug("0x%x ", ctrl->vcom_cmds.cmds[0].payload[i]);
 	}
-	pr_info("\n");
+	pr_debug("\n");
 
 	if (restore)
 		ctrl->vcom_cmds.cmds[0].payload[6] = 0x34;
@@ -227,11 +227,11 @@ int change_vcom_cmds_for_VNL(struct mdss_dsi_ctrl_pdata *ctrl, int restore)
 	lge_force_mdss_dsi_panel_cmd_read(cmd_addr[0], cnt, ret_buf);
 	memcpy(&(ctrl->vcom_cmds.cmds[0].payload[1]), ret_buf, cnt);
 
-	pr_info("[%s] vcom reg after writing: ", restore?"restore":"change");
+	pr_debug("[%s] vcom reg after writing: ", restore?"restore":"change");
 	for ( i = 0; i < cnt + 1; i++) {
-		pr_info("0x%x ", ctrl->vcom_cmds.cmds[0].payload[i]);
+		pr_debug("0x%x ", ctrl->vcom_cmds.cmds[0].payload[i]);
 	}
-	pr_info("\n");
+	pr_debug("\n");
 
 	return ret;
 }

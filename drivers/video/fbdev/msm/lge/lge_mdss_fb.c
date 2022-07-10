@@ -81,7 +81,7 @@ static inline bool is_factory_cable(void)
 		if (cable_info == CABLE_56K ||
 			cable_info == CABLE_130K ||
 			cable_info == CABLE_910K) {
-			pr_info("%s : cable_type = factory(%d) \n",__func__, cable_info);
+			pr_debug("%s : cable_type = factory(%d) \n",__func__, cable_info);
 			return true;
 		} else {
 			return false;
@@ -89,7 +89,7 @@ static inline bool is_factory_cable(void)
 #else
 		if (cable_info == CABLE_130K ||
 			cable_info == CABLE_910K) {
-			pr_info("%s : cable_type = factory(%d) \n",__func__, cable_info);
+			pr_debug("%s : cable_type = factory(%d) \n",__func__, cable_info);
 			return true;
 		} else {
 			return false;
@@ -149,12 +149,12 @@ int lge_br_to_bl (struct msm_fb_data_type *mfd, int br_lvl)
 #endif
 	if (lge_get_bootreason_with_lcd_dimming() && !is_blank_called()) {
 		br_lvl = 1;
-		pr_info("%s: lcd dimming mode. set value = %d\n",
+		pr_debug("%s: lcd dimming mode. set value = %d\n",
 							__func__, br_lvl);
 #ifdef CONFIG_LGE_LCD_OFF_DIMMING
 	} else if (is_factory_cable() && !is_blank_called()) {
 		br_lvl = 1;
-		pr_info("%s: Detect factory cable. set value = %d\n",
+		pr_debug("%s: Detect factory cable. set value = %d\n",
 							__func__, br_lvl);
 #endif
 	}
@@ -172,11 +172,11 @@ int lge_br_to_bl (struct msm_fb_data_type *mfd, int br_lvl)
 #if defined(CONFIG_LGE_DISPLAY_AOD_WITH_MIPI)
 	if (mfd->panel_info->aod_cur_mode == AOD_PANEL_MODE_U2_BLANK ||
 		mfd->panel_info->aod_cur_mode == AOD_PANEL_MODE_U2_UNBLANK)
-		pr_info("[AOD] br_lvl(%d) -> bl_lvl(%d)\n", br_lvl, bl_lvl);
+		pr_debug("[AOD] br_lvl(%d) -> bl_lvl(%d)\n", br_lvl, bl_lvl);
 	else
-		pr_info("%s: br_lvl(%d) -> bl_lvl(%d)\n", lge_get_blmapname(blmaptype), br_lvl, bl_lvl);
+		pr_debug("%s: br_lvl(%d) -> bl_lvl(%d)\n", lge_get_blmapname(blmaptype), br_lvl, bl_lvl);
 #else
-	pr_info("%s: br_lvl(%d) -> bl_lvl(%d)\n", lge_get_blmapname(blmaptype), br_lvl, bl_lvl);
+	pr_debug("%s: br_lvl(%d) -> bl_lvl(%d)\n", lge_get_blmapname(blmaptype), br_lvl, bl_lvl);
 #endif
 	return bl_lvl;
 }
@@ -212,7 +212,7 @@ int lge_is_bl_update_blocked(int bl_lvl)
 	lge_is_bl_ready = true;
 	if(lge_block_bl_update) {
 		lge_bl_lvl_unset = bl_lvl;
-		pr_info("%s: do not control backlight (bl: %d)\n", __func__,
+		pr_debug("%s: do not control backlight (bl: %d)\n", __func__,
 			lge_bl_lvl_unset);
 		return true;
 	}
@@ -230,7 +230,7 @@ int lge_is_bl_update_blocked_ex(int bl_lvl)
 	lge_is_bl_ready_ex = 1;
 	if (lge_block_bl_update) {
 		lge_bl_lvl_unset_ex = bl_lvl;
-		pr_info("%s: do not control backlight (bl: %d)\n", __func__,
+		pr_debug("%s: do not control backlight (bl: %d)\n", __func__,
 			lge_bl_lvl_unset_ex);
 		return 1;
 	}
@@ -277,7 +277,7 @@ ssize_t mdss_fb_set_bl_off_and_block(struct device *dev,
 
 	enable = simple_strtoul(buf, NULL, 10);
 	if (enable) {
-		pr_info("[%s] status : %d, brightness : 0 \n", __func__,
+		pr_debug("[%s] status : %d, brightness : 0 \n", __func__,
 			lge_block_bl_update);
 		mutex_lock(&mfd->bl_lock);
 		lge_block_bl_update = false;
@@ -290,7 +290,7 @@ ssize_t mdss_fb_set_bl_off_and_block(struct device *dev,
 		lge_block_bl_update = true;
 		mutex_unlock(&mfd->bl_lock);
 	} else {
-		pr_info("[%s] status : %d, brightness : %d \n", __func__,
+		pr_debug("[%s] status : %d, brightness : %d \n", __func__,
 			lge_block_bl_update, lge_bl_lvl_unset);
 		mutex_lock(&mfd->bl_lock);
 		lge_block_bl_update = false;
@@ -347,10 +347,10 @@ ssize_t set_recovery_mode(struct device *dev,
 	recovery_val = simple_strtoul(buf, NULL, 10);
 
 	if(recovery_val > 0) {
-		pr_info("%s: RECOVERY when screen crack occured.\n",__func__);
+		pr_debug("%s: RECOVERY when screen crack occured.\n",__func__);
 		lge_panel_recovery_mode();
 	} else {
-		pr_info("%s: NO RECOVERY\n",__func__);
+		pr_debug("%s: NO RECOVERY\n",__func__);
 	}
 
 	return count;
@@ -375,7 +375,7 @@ bool lge_panel_recovery_mode(void)
 		return false;
 	}
 
-	pr_info("%s: RECOVERY when screen crack occured.\n",__func__);
+	pr_debug("%s: RECOVERY when screen crack occured.\n",__func__);
 	mdss_fb_report_panel_dead(mfd_recovery);
 	return true;
 }
@@ -434,7 +434,7 @@ void mdss_fb_set_backlight_ex(struct msm_fb_data_type *mfd, u32 bkl_lvl)
 		if ((mfd->panel_info->aod_cur_mode != AOD_PANEL_MODE_U2_BLANK)
 			&& (mfd->panel_info->aod_cur_mode != AOD_PANEL_MODE_U2_UNBLANK)) {
 			mfd->unset_bl_level_ex = bkl_lvl;
-			pr_info("[AOD] Skip ext-BL ctrl except U2 & U2unblank mode\n");
+			pr_debug("[AOD] Skip ext-BL ctrl except U2 & U2unblank mode\n");
 			return;
 		}
 		else
@@ -536,7 +536,7 @@ static void mdss_fb_set_bl_brightness_aod(struct led_classdev *led_cdev,
 	struct msm_fb_data_type *mfd = dev_get_drvdata(led_cdev->dev->parent);
 #if defined(CONFIG_LGE_DISPLAY_AOD_WITH_MIPI)
 	if (mfd->block_aod_bl) {
-		pr_info("[AOD] Save unset Level : %d\n", value);
+		pr_debug("[AOD] Save unset Level : %d\n", value);
 		mfd->unset_aod_bl = value;
 		return;
 	}
@@ -593,7 +593,7 @@ void mdss_fb_update_backlight_ex(struct msm_fb_data_type *mfd)
 			mfd->bl_level_ex = mfd->unset_bl_level_ex;
 			temp = mfd->bl_level_ex;
 			lge_set_to_blex(mfd);
-			pr_info("[Display] sub backlight sent to panel :%d in %s\n", temp, __func__);
+			pr_debug("[Display] sub backlight sent to panel :%d in %s\n", temp, __func__);
 			pdata->set_backlight(pdata, temp);
 			lge_restore_from_blex(mfd);
 			mfd->bl_level_scaled_ex = mfd->unset_bl_level_ex;
@@ -609,7 +609,7 @@ void lge_aod_bl_ctrl_blank_blank(struct msm_fb_data_type *mfd)
 {
 	if (mfd->panel_info->aod_cur_mode ==
 				AOD_PANEL_MODE_U2_BLANK && mfd->index == 0) {
-		pr_info("[AOD] Don't off backlight when U2 Blank\n");
+		pr_debug("[AOD] Don't off backlight when U2 Blank\n");
 		mfd->unset_bl_level = U32_MAX;
 #if defined (CONFIG_LGE_DISPLAY_BL_EXTENDED)
 		mfd->unset_bl_level_ex = U32_MAX;
@@ -657,12 +657,12 @@ int lge_br_to_bl_ex (struct msm_fb_data_type *mfd, int br_lvl)
 #endif
 	if (lge_get_bootreason_with_lcd_dimming() && !is_blank_called()) {
 		br_lvl = 1;
-		pr_info("%s: lcd dimming mode. set value = %d\n",
+		pr_debug("%s: lcd dimming mode. set value = %d\n",
 							__func__, br_lvl);
 #ifdef CONFIG_LGE_LCD_OFF_DIMMING
 	} else if (is_factory_cable() && !is_blank_called()) {
 		br_lvl = 1;
-		pr_info("%s: Detect factory cable. set value = %d\n",
+		pr_debug("%s: Detect factory cable. set value = %d\n",
 							__func__, br_lvl);
 #endif
 	}
@@ -678,7 +678,7 @@ int lge_br_to_bl_ex (struct msm_fb_data_type *mfd, int br_lvl)
 	if (pinfo->blmap[blmaptype])
 		bl_lvl = pinfo->blmap[blmaptype][br_lvl];
 
-	pr_info("%s: br_lvl(%d) -> bl_lvl(%d)\n", lge_get_blmapname(blmaptype),
+	pr_debug("%s: br_lvl(%d) -> bl_lvl(%d)\n", lge_get_blmapname(blmaptype),
 						br_lvl, bl_lvl);
 	return bl_lvl;
 	return bl_lvl;
@@ -812,7 +812,7 @@ void lge_mdss_fb_ad_set_brightness(struct msm_fb_data_type *mfd, u32 amb_light, 
 			pr_err("[Display] AD Off bl_lvl=%d\n",bl_lvl);
 			mutex_unlock(&mfd->bl_lock);
 		} else {
-			pr_info("Main Backlight already off. Or HL mode. No need to Set\n");
+			pr_debug("Main Backlight already off. Or HL mode. No need to Set\n");
 			// represent AD off state
 			mfd->ad_info.old_ad_br_lvl = -1;
 			mfd->ad_info.ad_weight = 0;
@@ -835,7 +835,7 @@ void lge_mdss_fb_ad_set_brightness(struct msm_fb_data_type *mfd, u32 amb_light, 
 void lge_mdss_fb_aod_release(struct msm_fb_data_type *mfd)
 {
 		if (mfd->index == 0) {
-			pr_info("[AOD] Disable AOD mode when shutdown\n");
+			pr_debug("[AOD] Disable AOD mode when shutdown\n");
 			mfd->panel_info->aod_node_from_user = 0;
 			mfd->panel_info->aod_keep_u2 = AOD_NO_DECISION;
 		}
