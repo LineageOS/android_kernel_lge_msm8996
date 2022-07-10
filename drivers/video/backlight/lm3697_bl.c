@@ -167,7 +167,7 @@ static void lm3697_set_main_current_level(struct i2c_client *client, int level)
 
 	mutex_unlock(&dev->bl_mutex);
 
-	pr_info("[LCD][LM3697] %s : backlight level=%d, cal_value=%d \n", __func__, level, cal_value);
+	pr_debug("[LCD][LM3697] %s : backlight level=%d, cal_value=%d \n", __func__, level, cal_value);
 }
 
 static void lm3697_set_main_current_level_no_mapping(
@@ -194,7 +194,7 @@ static void lm3697_set_main_current_level_no_mapping(
 		lm3697_write_reg(client, 0x24, 0x00);
 	}
 	mutex_unlock(&main_lm3697_dev->bl_mutex);
-	pr_info("[LCD][LM3697] %s : backlight level=%d\n", __func__, level);
+	pr_debug("[LCD][LM3697] %s : backlight level=%d\n", __func__, level);
 }
 
 void lm3697_backlight_on(int level)
@@ -346,7 +346,7 @@ static ssize_t lcd_backlight_store_level(struct device *dev,
 	level = simple_strtoul(buf, NULL, 10);
 
 	lm3697_set_main_current_level_no_mapping(client, level);
-	pr_info("[LCD][DEBUG] write %d direct to "
+	pr_debug("[LCD][DEBUG] write %d direct to "
 			"backlight register\n", level);
 
 	return count;
@@ -360,7 +360,7 @@ static int lm3697_bl_resume(struct i2c_client *client)
 
 static int lm3697_bl_suspend(struct i2c_client *client, pm_message_t state)
 {
-	pr_info("[LCD][DEBUG] %s: new state: %d\n",
+	pr_debug("[LCD][DEBUG] %s: new state: %d\n",
 			__func__, state.event);
 
 	lm3697_lcd_backlight_set_level(saved_main_lcd_level);
@@ -372,7 +372,7 @@ static ssize_t lcd_backlight_show_on_off(struct device *dev,
 {
 	int r = 0;
 
-	pr_info("%s received (prev backlight_status: %s)\n",
+	pr_debug("%s received (prev backlight_status: %s)\n",
 			__func__, backlight_status ? "ON" : "OFF");
 
 	return r;
@@ -388,12 +388,12 @@ static ssize_t lcd_backlight_store_on_off(struct device *dev,
 	if (!count)
 		return -EINVAL;
 
-	pr_info("%s received (prev backlight_status: %s)\n",
+	pr_debug("%s received (prev backlight_status: %s)\n",
 			__func__, backlight_status ? "ON" : "OFF");
 
 	on_off = simple_strtoul(buf, NULL, 10);
 
-	pr_info("[LCD][DEBUG] %d", on_off);
+	pr_debug("[LCD][DEBUG] %d", on_off);
 
 	if (on_off == 1)
 		lm3697_bl_resume(client);
@@ -452,7 +452,7 @@ static ssize_t lcd_backlight_store_partial_on_off(struct device *dev,
 			main_lm3697_dev->output_config);	//HVLED 1,2 Bank A
 		lm3697_write_reg(main_lm3697_dev->client, 0x24, 0x01);	//Enable Bank A
 	}
-	pr_info("[LM3697] %s EXT BL partial on off mode %d \n", __func__, value);
+	pr_debug("[LM3697] %s EXT BL partial on off mode %d \n", __func__, value);
 	return count;
 }
 #endif
@@ -657,7 +657,7 @@ static int lm3697_remove(struct i2c_client *i2c_dev)
 	struct lm3697_device *dev;
 	int gpio = main_lm3697_dev->gpio;
 
-	pr_info("[LCD][LM3697] %s: ++\n", __func__);
+	pr_debug("[LCD][LM3697] %s: ++\n", __func__);
 	device_remove_file(&i2c_dev->dev, &dev_attr_lm3697_level);
 	device_remove_file(&i2c_dev->dev, &dev_attr_lm3697_backlight_on_off);
 	dev = (struct lm3697_device *)i2c_get_clientdata(i2c_dev);
@@ -666,11 +666,11 @@ static int lm3697_remove(struct i2c_client *i2c_dev)
 
 	if (gpio_is_valid(gpio))
 	{
-		pr_info("[LCD][LM3697] %s: gpio %d free \n", __func__, gpio);
+		pr_debug("[LCD][LM3697] %s: gpio %d free \n", __func__, gpio);
 		gpio_free(gpio);
 	}
 
-	pr_info("[LCD][LM3697] %s: -- \n", __func__);
+	pr_debug("[LCD][LM3697] %s: -- \n", __func__);
 	return 0;
 }
 
