@@ -65,7 +65,7 @@ enum TOUCH_DEBUG {
 };
 
 #define TOUCH_I(fmt, args...)					\
-	pr_info("[Touch] "					\
+	pr_debug("[Touch] "					\
 			fmt, ##args)
 
 #define TOUCH_E(fmt, args...)					\
