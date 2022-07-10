@@ -5213,6 +5213,7 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 		"inserted type = %d (%s)", usb_supply_type, usb_type_name);
 
 #ifdef CONFIG_QPNP_SMBCHARGER_EXTENSION
+#ifndef CONFIG_MACH_LGE
 	rc = get_usb_type(chip);
 	/* If APSD returned "OTHER". */
 	if (rc == 1) {
@@ -5245,6 +5246,7 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 						POWER_SUPPLY_SUB_TYPE_FLOATED;
 		}
 	}
+#endif
 #endif
 
 	smbchg_aicl_deglitch_wa_check(chip);
