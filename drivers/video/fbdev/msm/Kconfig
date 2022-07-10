@@ -2,6 +2,11 @@ source "drivers/video/fbdev/msm/msm_dba/Kconfig"
 
 if FB_MSM
 
+config FB_MSM_DEBUG
+	bool "QCOM VIDEO FBDEV debug support"
+	help
+	  Say yes here to enable debugging support for qcom's fb drivers.
+
 config FB_MSM_MDSS_COMMON
 	bool
 
