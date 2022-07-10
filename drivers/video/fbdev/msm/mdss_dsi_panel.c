@@ -296,7 +296,7 @@ void lge_watch_mdss_dsi_panel_cmd_read(struct mdss_dsi_ctrl_pdata *ctrl,
 	mdss_dsi_cmdlist_put(ctrl, &cmdreq);
 
 	//for(i=0;i<cnt;i++)
-	//	pr_info("[Display]Reg[0x%x],buf[%d]=0x%x,mode[%d]\n",cmd0, i, rx_buf[i], ctrl->status_cmds.link_state);
+	//	pr_debug("[Display]Reg[0x%x],buf[%d]=0x%x,mode[%d]\n",cmd0, i, rx_buf[i], ctrl->status_cmds.link_state);
 
 	memcpy(ret_buf, rx_buf, cnt);
 }
@@ -929,7 +929,7 @@ int find_lcd_cmd(void)
 	int i,j;
 	char cmd[128]={0, };
 	memset(read_cmd,0,128*sizeof(char));
-	pr_info("reg_num=%x",reg_num);
+	pr_debug("reg_num=%x",reg_num);
 	if(pdata_base == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
 		return -EINVAL;
@@ -939,7 +939,7 @@ int find_lcd_cmd(void)
 			panel_data);
 	for(i=0;i<ctrl->on_cmds.cmd_cnt;i++)
 	{
-		pr_info("%s:cmd_cnt(find_lcd_cmd)[%d]=%x",__func__,i,ctrl->on_cmds.cmds[i].payload[0]);
+		pr_debug("%s:cmd_cnt(find_lcd_cmd)[%d]=%x",__func__,i,ctrl->on_cmds.cmds[i].payload[0]);
 		if(ctrl->on_cmds.cmds[i].payload[0]==reg_num)
 		{
 			for(j=0;j<ctrl->on_cmds.cmds[i].dchdr.dlen;j++)
@@ -957,7 +957,7 @@ void put_lcd_cmd(void)
 {
 	struct mdss_dsi_ctrl_pdata *ctrl = NULL;
 	int i,j;
-	pr_info("reg_num=%x",reg_num);
+	pr_debug("reg_num=%x",reg_num);
 	if(pdata_base == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
 		return;
@@ -967,13 +967,13 @@ void put_lcd_cmd(void)
 			panel_data);
 	for(i=0;i<ctrl->on_cmds.cmd_cnt;i++)
 	{
-		pr_info("%s:cmd_cnt[%d]=%x",__func__,i,ctrl->on_cmds.cmds[i].payload[0]);
+		pr_debug("%s:cmd_cnt[%d]=%x",__func__,i,ctrl->on_cmds.cmds[i].payload[0]);
 		if(ctrl->on_cmds.cmds[i].payload[0]==reg_num)
 		{
 			for(j=1;j<ctrl->on_cmds.cmds[i].dchdr.dlen;j++)
 			{
 				ctrl->on_cmds.cmds[i].payload[j]=tun_lcd[j];
-				pr_info("%s: cmds[%d].payload[%d]: %x",__func__,i,j,ctrl->on_cmds.cmds[i].payload[j]);
+				pr_debug("%s: cmds[%d].payload[%d]: %x",__func__,i,j,ctrl->on_cmds.cmds[i].payload[j]);
 			}
 			//mdss_dsi_panel_cmds_send(ctrl, &ctrl->on_cmds, CMD_REQ_COMMIT);
 		}
@@ -986,7 +986,7 @@ int get_backlight_map_size(int *bl_size)
 #if defined(CONFIG_LGE_DISPLAY_COMMON)
 	if (pdata_base) {
 		*bl_size = pdata_base->panel_info.blmap_size;
-		pr_info("Current bl map size : %d\n", *bl_size);
+		pr_debug("Current bl map size : %d\n", *bl_size);
 	}
 #else
 	ret = -1;
@@ -1013,7 +1013,7 @@ int set_backlight_map(int bl_size, int *bl_map)
 	if (pdata_base) {
 		pdata_base->panel_info.blmap_size = bl_size;
 		memcpy(pdata_base->panel_info.blmap, bl_map, sizeof(int) * bl_size);
-		pr_info("BL map updated with size %d\n", bl_size);
+		pr_debug("BL map updated with size %d\n", bl_size);
 	}
 #else
 	ret = -1;
@@ -1657,7 +1657,7 @@ static int mdss_dsi_parse_hdr_settings(struct device_node *np,
 				hdr_prop->display_primaries,
 				DISPLAY_PRIMARIES_COUNT);
 		if (rc) {
-			pr_info("%s:%d, Unable to read color primaries,rc:%u",
+			pr_debug("%s:%d, Unable to read color primaries,rc:%u",
 					__func__, __LINE__,
 					hdr_prop->hdr_enabled = false);
 			}
@@ -1666,7 +1666,7 @@ static int mdss_dsi_parse_hdr_settings(struct device_node *np,
 			"qcom,mdss-dsi-panel-peak-brightness",
 			&(hdr_prop->peak_brightness));
 		if (rc) {
-			pr_info("%s:%d, Unable to read hdr brightness, rc:%u",
+			pr_debug("%s:%d, Unable to read hdr brightness, rc:%u",
 				__func__, __LINE__, rc);
 			hdr_prop->hdr_enabled = false;
 		}
@@ -1675,7 +1675,7 @@ static int mdss_dsi_parse_hdr_settings(struct device_node *np,
 			"qcom,mdss-dsi-panel-blackness-level",
 			&(hdr_prop->blackness_level));
 		if (rc) {
-			pr_info("%s:%d, Unable to read hdr brightness, rc:%u",
+			pr_debug("%s:%d, Unable to read hdr brightness, rc:%u",
 				__func__, __LINE__, rc);
 			hdr_prop->hdr_enabled = false;
 		}
@@ -1912,7 +1912,7 @@ static int mdss_dsi_parse_topology_config(struct device_node *np,
 			return -EINVAL;
 		}
 
-		pr_info("%s: cfg_node name %s lm_split:%dx%d pp_split:%s\n",
+		pr_debug("%s: cfg_node name %s lm_split:%dx%d pp_split:%s\n",
 			__func__, cfg_np->name,
 			timing->lm_widths[0], timing->lm_widths[1],
 			pinfo->use_pingpong_split ? "yes" : "no");
@@ -2180,7 +2180,7 @@ static void mdss_dsi_parse_dms_config(struct device_node *np,
 		pinfo->mipi.dms_mode = DYNAMIC_MODE_SWITCH_DISABLED;
 	}
 exit:
-	pr_info("%s: dynamic switch feature enabled: %d\n", __func__,
+	pr_debug("%s: dynamic switch feature enabled: %d\n", __func__,
 		pinfo->mipi.dms_mode);
 	return;
 }
@@ -2373,7 +2373,7 @@ static void mdss_dsi_parse_partial_update_caps(struct device_node *np,
 
 	if (pinfo->mipi.mode == DSI_CMD_MODE) {
 		pinfo->partial_update_enabled = pinfo->partial_update_supported;
-		pr_info("%s: partial_update_enabled=%d\n", __func__,
+		pr_debug("%s: partial_update_enabled=%d\n", __func__,
 					pinfo->partial_update_enabled);
 		ctrl->set_col_page_addr = mdss_dsi_set_col_page_addr;
 		if (pinfo->partial_update_enabled) {
@@ -2403,12 +2403,12 @@ static int mdss_dsi_parse_panel_features(struct device_node *np,
 
 	pinfo->ulps_feature_enabled = of_property_read_bool(np,
 		"qcom,ulps-enabled");
-	pr_info("%s: ulps feature %s\n", __func__,
+	pr_debug("%s: ulps feature %s\n", __func__,
 		(pinfo->ulps_feature_enabled ? "enabled" : "disabled"));
 
 	pinfo->ulps_suspend_enabled = of_property_read_bool(np,
 		"qcom,suspend-ulps-enabled");
-	pr_info("%s: ulps during suspend feature %s", __func__,
+	pr_debug("%s: ulps during suspend feature %s", __func__,
 		(pinfo->ulps_suspend_enabled ? "enabled" : "disabled"));
 
 	mdss_dsi_parse_dms_config(np, ctrl);
@@ -2530,7 +2530,7 @@ static int mdss_dsi_set_refresh_rate_range(struct device_node *pan_node,
 		rc = 0;
 	}
 
-	pr_info("dyn_fps: min = %d, max = %d\n",
+	pr_debug("dyn_fps: min = %d, max = %d\n",
 			pinfo->min_fps, pinfo->max_fps);
 	return rc;
 }
@@ -2836,7 +2836,7 @@ static int mdss_dsi_panel_timing_from_dt(struct device_node *np,
 
 	if (np->name) {
 		pt->timing.name = kstrdup(np->name, GFP_KERNEL);
-		pr_info("%s: found new timing \"%s\" (%pK)\n", __func__,
+		pr_debug("%s: found new timing \"%s\" (%pK)\n", __func__,
 				np->name, &pt->timing);
 	}
 
@@ -3296,10 +3296,10 @@ int mdss_dsi_panel_init(struct device_node *node,
 	pinfo->panel_name[0] = '\0';
 	panel_name = of_get_property(node, "qcom,mdss-dsi-panel-name", NULL);
 	if (!panel_name) {
-		pr_info("%s:%d, Panel name not specified\n",
+		pr_debug("%s:%d, Panel name not specified\n",
 						__func__, __LINE__);
 	} else {
-		pr_info("%s: Panel Name = %s\n", __func__, panel_name);
+		pr_debug("%s: Panel Name = %s\n", __func__, panel_name);
 		strlcpy(&pinfo->panel_name[0], panel_name, MDSS_MAX_PANEL_LEN);
 
 #if defined(CONFIG_LGE_DISPLAY_COMMON)
