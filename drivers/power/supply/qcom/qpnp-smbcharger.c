@@ -2101,6 +2101,15 @@ static int smbchg_set_fastchg_current_raw(struct smbchg_chip *chip,
 #define USBIN_ACTIVE_PWR_SRC_BIT	BIT(1)
 #define DCIN_ACTIVE_PWR_SRC_BIT		BIT(0)
 #define PARALLEL_REENABLE_TIMER_MS	1000
+#ifdef CONFIG_LGE_PM
+#ifdef CONFIG_MACH_MSM8996_LUCYE
+#define PARALLEL_CHG_THRESHOLD_CURRENT	500
+#elif defined(CONFIG_MACH_MSM8996_H1)
+#define PARALLEL_CHG_THRESHOLD_CURRENT	600
+#else
+#define PARALLEL_CHG_THRESHOLD_CURRENT	1000
+#endif
+#else
 #define PARALLEL_CHG_THRESHOLD_CURRENT	1800
 static bool smbchg_is_usbin_active_pwr_src(struct smbchg_chip *chip)
 {
