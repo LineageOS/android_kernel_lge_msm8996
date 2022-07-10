@@ -47,10 +47,10 @@ void lge_set_sre_cmds(struct mdss_dsi_ctrl_pdata *ctrl)
 	char mask = 0x00;
 	if(ctrl->sre_status == SRE_MID) {
 		ctrl->reg_55h_cmds.cmds[0].payload[1] |= SRE_MASK_MID;
-		pr_info("%s: SRE MID\n",__func__);
+		pr_debug("%s: SRE MID\n",__func__);
 	} else if(ctrl->sre_status == SRE_HIGH) {
 		ctrl->reg_55h_cmds.cmds[0].payload[1] |= SRE_MASK_HIGH;
-		pr_info("%s: SRE HIGH\n",__func__);
+		pr_debug("%s: SRE HIGH\n",__func__);
 	} else {
 		mask = SRE_MASK;
 		ctrl->reg_55h_cmds.cmds[0].payload[1] &= (~mask);
@@ -64,63 +64,63 @@ static void lge_set_image_quality_cmds(struct mdss_dsi_ctrl_pdata *ctrl)
 #if defined(CONFIG_LGE_DISPLAY_READER_MODE)
 	switch(lge_get_reader_mode()) {
 		case READER_MODE_STEP_1:
-			pr_info("%s: Reader STEP 1\n",__func__);
+			pr_debug("%s: Reader STEP 1\n",__func__);
 			ctrl->reg_f0h_cmds.cmds[0].payload[1] |= READER_GC_MASK;
 			mdss_dsi_panel_cmds_send(ctrl, &reader_mode_step1_cmds, CMD_REQ_COMMIT);
 			break;
 		case READER_MODE_STEP_2:
-			pr_info("%s: Reader STEP 2\n",__func__);
+			pr_debug("%s: Reader STEP 2\n",__func__);
 			ctrl->reg_f0h_cmds.cmds[0].payload[1] |= READER_GC_MASK;
 			mdss_dsi_panel_cmds_send(ctrl, &reader_mode_step2_cmds, CMD_REQ_COMMIT);
 			break;
 		case READER_MODE_STEP_3:
-			pr_info("%s: Reader STEP 3\n",__func__);
+			pr_debug("%s: Reader STEP 3\n",__func__);
 			ctrl->reg_f0h_cmds.cmds[0].payload[1] |= READER_GC_MASK;
 			mdss_dsi_panel_cmds_send(ctrl, &reader_mode_step3_cmds, CMD_REQ_COMMIT);
 			break;
 		case READER_MODE_STEP_4:
-			pr_info("%s: Reader STEP 4\n",__func__);
+			pr_debug("%s: Reader STEP 4\n",__func__);
 			ctrl->reg_f0h_cmds.cmds[0].payload[1] |= READER_GC_MASK;
 			mdss_dsi_panel_cmds_send(ctrl, &reader_mode_step4_cmds, CMD_REQ_COMMIT);
 			break;
 		case READER_MODE_STEP_5:
-			pr_info("%s: Reader STEP 5\n",__func__);
+			pr_debug("%s: Reader STEP 5\n",__func__);
 			ctrl->reg_f0h_cmds.cmds[0].payload[1] |= READER_GC_MASK;
 			mdss_dsi_panel_cmds_send(ctrl, &reader_mode_step5_cmds, CMD_REQ_COMMIT);
 			break;
 		case READER_MODE_STEP_6:
-			pr_info("%s: Reader STEP 6\n",__func__);
+			pr_debug("%s: Reader STEP 6\n",__func__);
 			ctrl->reg_f0h_cmds.cmds[0].payload[1] |= READER_GC_MASK;
 			mdss_dsi_panel_cmds_send(ctrl, &reader_mode_step6_cmds, CMD_REQ_COMMIT);
 			break;
 		case READER_MODE_STEP_7:
-			pr_info("%s: Reader STEP 7\n",__func__);
+			pr_debug("%s: Reader STEP 7\n",__func__);
 			ctrl->reg_f0h_cmds.cmds[0].payload[1] |= READER_GC_MASK;
 			mdss_dsi_panel_cmds_send(ctrl, &reader_mode_step7_cmds, CMD_REQ_COMMIT);
 			break;
 		case READER_MODE_STEP_8:
-			pr_info("%s: Reader STEP 8\n",__func__);
+			pr_debug("%s: Reader STEP 8\n",__func__);
 			ctrl->reg_f0h_cmds.cmds[0].payload[1] |= READER_GC_MASK;
 			mdss_dsi_panel_cmds_send(ctrl, &reader_mode_step8_cmds, CMD_REQ_COMMIT);
 			break;
 		case READER_MODE_STEP_9:
-			pr_info("%s: Reader STEP 9\n",__func__);
+			pr_debug("%s: Reader STEP 9\n",__func__);
 			ctrl->reg_f0h_cmds.cmds[0].payload[1] |= READER_GC_MASK;
 			mdss_dsi_panel_cmds_send(ctrl, &reader_mode_step9_cmds, CMD_REQ_COMMIT);
 			break;
 		case READER_MODE_STEP_10:
-			pr_info("%s: Reader STEP 10\n",__func__);
+			pr_debug("%s: Reader STEP 10\n",__func__);
 			ctrl->reg_f0h_cmds.cmds[0].payload[1] |= READER_GC_MASK;
 			mdss_dsi_panel_cmds_send(ctrl, &reader_mode_step10_cmds, CMD_REQ_COMMIT);
 			break;
 		default:
-			pr_info("%s: Reader STEP OFF\n",__func__);
+			pr_debug("%s: Reader STEP OFF\n",__func__);
 			break;
 	}
 #endif
 #if defined(CONFIG_LGE_ENHANCE_GALLERY_SHARPNESS)
 	if (ctrl->reg_f2h_cmds.cmds[0].payload[3] == SHARPNESS_VALUE) {
-		pr_info("%s: Sharpness = 0x%02x \n",__func__, SHARPNESS_VALUE);
+		pr_debug("%s: Sharpness = 0x%02x \n",__func__, SHARPNESS_VALUE);
 		ctrl->reg_f2h_cmds.cmds[0].payload[3] = SHARPNESS_VALUE;
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->reg_f2h_cmds, CMD_REQ_COMMIT);
 		goto send;
@@ -128,7 +128,7 @@ static void lge_set_image_quality_cmds(struct mdss_dsi_ctrl_pdata *ctrl)
 #endif
 #if defined(CONFIG_LGE_LCD_DYNAMIC_CABC_MIE_CTRL)
 	if (ctrl->ie_on == 0) {
-		pr_info("%s: IE OFF => SAT:OFF, SH:OFF \n",__func__);
+		pr_debug("%s: IE OFF => SAT:OFF, SH:OFF \n",__func__);
 		mask = (SH_MASK | SAT_MASK);
 		ctrl->reg_f0h_cmds.cmds[0].payload[1] &= (~mask);
 		goto send;
@@ -136,7 +136,7 @@ static void lge_set_image_quality_cmds(struct mdss_dsi_ctrl_pdata *ctrl)
 #endif
 #if defined(CONFIG_LGE_DISPLAY_DOLBY_MODE)
 	if(ctrl->dolby_status > 0) {
-		pr_info("%s: Dolby Mode ON\n", __func__);
+		pr_debug("%s: Dolby Mode ON\n", __func__);
 		/* Dolby Setting : CABC OFF, SRE OFF */
 		mask = (CABC_MASK | SRE_MASK);
 		ctrl->reg_55h_cmds.cmds[0].payload[1] &= (~mask);
@@ -146,14 +146,14 @@ static void lge_set_image_quality_cmds(struct mdss_dsi_ctrl_pdata *ctrl)
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->reg_f2h_cmds, CMD_REQ_COMMIT);
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->reg_f3h_cmds, CMD_REQ_COMMIT);
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->reg_fbh_cmds, CMD_REQ_COMMIT);
-		pr_info("%s: Dolby=%d 55h = 0x%02x, f0h = 0x%02x\n",__func__,ctrl->dolby_status,
+		pr_debug("%s: Dolby=%d 55h = 0x%02x, f0h = 0x%02x\n",__func__,ctrl->dolby_status,
 			ctrl->reg_55h_cmds.cmds[0].payload[1],ctrl->reg_f0h_cmds.cmds[0].payload[1]);
 		goto send;
 	}
 #endif
 #if defined(CONFIG_LGE_DISPLAY_HDR_MODE)
 	if(ctrl->hdr_status > 0) {
-		pr_info("%s: HDR Mode ON\n", __func__);
+		pr_debug("%s: HDR Mode ON\n", __func__);
 		/* Dolby Setting : CABC OFF, SRE OFF, SAT OFF, SH OFF */
 		mask = (CABC_MASK | SRE_MASK);
 		ctrl->reg_55h_cmds.cmds[0].payload[1] &= (~mask);
@@ -161,7 +161,7 @@ static void lge_set_image_quality_cmds(struct mdss_dsi_ctrl_pdata *ctrl)
 		ctrl->reg_f0h_cmds.cmds[0].payload[1] &= (~mask);
 		ctrl->reg_fbh_cmds.cmds[0].payload[4] = CABC_OFF_VALUE;
 		mdss_dsi_panel_cmds_send(ctrl, &ctrl->reg_fbh_cmds, CMD_REQ_COMMIT);
-		pr_info("%s: HDR=%d 55h = 0x%02x, f0h = 0x%02x\n",__func__,ctrl->dolby_status,
+		pr_debug("%s: HDR=%d 55h = 0x%02x, f0h = 0x%02x\n",__func__,ctrl->dolby_status,
 				ctrl->reg_55h_cmds.cmds[0].payload[1],ctrl->reg_f0h_cmds.cmds[0].payload[1]);
 		goto send;
 	}
@@ -169,7 +169,7 @@ static void lge_set_image_quality_cmds(struct mdss_dsi_ctrl_pdata *ctrl)
 send:
 	mdss_dsi_panel_cmds_send(ctrl, &ctrl->reg_55h_cmds, CMD_REQ_COMMIT);
 	mdss_dsi_panel_cmds_send(ctrl, &ctrl->reg_f0h_cmds, CMD_REQ_COMMIT);
-	pr_info("%s : 55h:0x%02x, f0h:0x%02x, f2h(SH):0x%02x, fbh(CABC):0x%02x \n",__func__,
+	pr_debug("%s : 55h:0x%02x, f0h:0x%02x, f2h(SH):0x%02x, fbh(CABC):0x%02x \n",__func__,
 		ctrl->reg_55h_cmds.cmds[0].payload[1],	ctrl->reg_f0h_cmds.cmds[0].payload[1],
 		ctrl->reg_f2h_cmds.cmds[0].payload[3], ctrl->reg_fbh_cmds.cmds[0].payload[4]);
 
@@ -299,7 +299,7 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 					pr_err("%s: failed to enable vregs for %s\n",
 							__func__, __mdss_dsi_pm_name(DSI_PANEL_PM));
 				} else {
-					pr_info("%s: enable vregs for %s\n",
+					pr_debug("%s: enable vregs for %s\n",
 							__func__, __mdss_dsi_pm_name(DSI_PANEL_PM));
 				}
 			}
@@ -325,7 +325,7 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 					pr_err("%s: failed to enable vregs for %s\n",
 							__func__, __mdss_dsi_pm_name(DSI_PANEL_PM));
 				} else {
-					pr_info("%s: enable vregs for %s\n",
+					pr_debug("%s: enable vregs for %s\n",
 							__func__, __mdss_dsi_pm_name(DSI_PANEL_PM));
 				}
 			}
@@ -350,7 +350,7 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 				pr_err("%s: failed to enable vregs for %s\n",
 						__func__, __mdss_dsi_pm_name(DSI_PANEL_PM));
 			} else {
-				pr_info("%s: enable vregs for %s\n",
+				pr_debug("%s: enable vregs for %s\n",
 						__func__, __mdss_dsi_pm_name(DSI_PANEL_PM));
 			}
 		}

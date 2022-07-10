@@ -125,7 +125,7 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 			if (pinfo->aod_cmd_mode != ON_CMD &&
 				pinfo->aod_cmd_mode != ON_AND_AOD &&
 							!pinfo->panel_dead) {
-				pr_info("[Display] reset skip..\n");
+				pr_debug("[Display] reset skip..\n");
 				return rc;
 			}
 #endif
@@ -151,7 +151,7 @@ int mdss_dsi_panel_reset(struct mdss_panel_data *pdata, int enable)
 					pr_err("%s: failed to enable vregs for %s\n",
 							__func__, __mdss_dsi_pm_name(DSI_PANEL_PM));
 				} else {
-					pr_info("%s: enable vregs for %s\n",
+					pr_debug("%s: enable vregs for %s\n",
 							__func__, __mdss_dsi_pm_name(DSI_PANEL_PM));
 				}
 			}
@@ -260,12 +260,12 @@ int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 			{
 #if IS_ENABLED(CONFIG_LGE_DISPLAY_READER_MODE)
 				if(lge_get_reader_mode()){
-					pr_info("[Display]%s: reader mode on\n",__func__);
+					pr_debug("[Display]%s: reader mode on\n",__func__);
 					ctrl->ie_off_cmds.cmds[1].payload[1] = 0x81;
 				}
 				else
 				{
-					pr_info("[Display]%s: reader mode off\n",__func__);
+					pr_debug("[Display]%s: reader mode off\n",__func__);
 					ctrl->ie_off_cmds.cmds[1].payload[1] = 0x01;
 				}
 #endif
@@ -299,7 +299,7 @@ int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 				oem_mdss_mq_cmd_unset(ctrl);
 #endif
 			/*fps to 60 */
-			pr_info("[Display] FPS changed to 60\n");
+			pr_debug("[Display] FPS changed to 60\n");
 			mdss_dsi_panel_cmds_send(ctrl, &ctrl->aod_cmds[AOD_PANEL_CMD_FPS_60], CMD_REQ_COMMIT);
 			goto notify;
 		default:
@@ -318,12 +318,12 @@ int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	{
 #if IS_ENABLED(CONFIG_LGE_DISPLAY_READER_MODE)
 				if(lge_get_reader_mode()){
-					pr_info("[Display]%s: reader mode on\n",__func__);
+					pr_debug("[Display]%s: reader mode on\n",__func__);
 					ctrl->ie_off_cmds.cmds[1].payload[1] = 0x81;
 				}
 				else
 				{
-					pr_info("[Display]%s: reader mode off\n",__func__);
+					pr_debug("[Display]%s: reader mode off\n",__func__);
 					ctrl->ie_off_cmds.cmds[1].payload[1] = 0x01;
 				}
 #endif
@@ -387,7 +387,7 @@ int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 	switch (pinfo->aod_cmd_mode) {
 		case AOD_CMD_ENABLE:
 			/* fps to 30 */
-			pr_info("[Display] FPS changed to 30\n");
+			pr_debug("[Display] FPS changed to 30\n");
 			mdss_dsi_panel_cmds_send(ctrl, &ctrl->aod_cmds[AOD_PANEL_CMD_FPS_30], CMD_REQ_COMMIT);
 #if defined(CONFIG_LGE_DISPLAY_MARQUEE_SUPPORTED)
 			if (pinfo->mq_mode)
@@ -410,7 +410,7 @@ int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 			break;
 		case CMD_SKIP:
 			/* fps to 30 */
-			pr_info("[Display] FPS changed to 30\n");
+			pr_debug("[Display] FPS changed to 30\n");
 			mdss_dsi_panel_cmds_send(ctrl, &ctrl->aod_cmds[AOD_PANEL_CMD_FPS_30], CMD_REQ_COMMIT);
 			goto notify;
 		default:

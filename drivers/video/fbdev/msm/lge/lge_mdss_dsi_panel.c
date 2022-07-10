@@ -57,7 +57,7 @@ static int parse_dt_extra_dcs_cmds(struct device_node *np,
 	rc = of_property_count_strings(np, "lge,mdss-dsi-extra-command-names");
 	if (rc > 0) {
 		ctrl_pdata->lge_extra.num_extra_cmds = rc;
-		pr_info("%s: num_extra_cmds=%d\n", __func__,
+		pr_debug("%s: num_extra_cmds=%d\n", __func__,
 					ctrl_pdata->lge_extra.num_extra_cmds);
 		ctrl_pdata->lge_extra.extra_cmds_array =
 			kmalloc(sizeof(struct lge_cmds_entry) *
@@ -121,7 +121,7 @@ bool lge_change_reader_mode(struct mdss_dsi_ctrl_pdata *ctrl, int new_mode)
 	switch(new_mode) {
 		char mask;
 	case READER_MODE_STEP_1:
-		pr_info("%s: Reader Mode Step 1\n",__func__);
+		pr_debug("%s: Reader Mode Step 1\n",__func__);
 		mdss_dsi_panel_cmds_send(ctrl, &reader_mode_step1_cmds, CMD_REQ_COMMIT);
 		mask = MONO_MASK;
 #if defined(CONFIG_LGE_DISPLAY_LUCYE_COMMON)
@@ -130,7 +130,7 @@ bool lge_change_reader_mode(struct mdss_dsi_ctrl_pdata *ctrl, int new_mode)
 #endif
 		break;
 	case READER_MODE_STEP_2:
-		pr_info("%s: Reader Mode Step 2\n",__func__);
+		pr_debug("%s: Reader Mode Step 2\n",__func__);
 		mdss_dsi_panel_cmds_send(ctrl, &reader_mode_step2_cmds, CMD_REQ_COMMIT);
 		mask = MONO_MASK;
 #if defined(CONFIG_LGE_DISPLAY_LUCYE_COMMON)
@@ -139,7 +139,7 @@ bool lge_change_reader_mode(struct mdss_dsi_ctrl_pdata *ctrl, int new_mode)
 #endif
 		break;
 	case READER_MODE_STEP_3:
-		pr_info("%s: Reader Mode Step 3\n",__func__);
+		pr_debug("%s: Reader Mode Step 3\n",__func__);
 		mdss_dsi_panel_cmds_send(ctrl, &reader_mode_step3_cmds, CMD_REQ_COMMIT);
 		mask = MONO_MASK;
 #if defined(CONFIG_LGE_DISPLAY_LUCYE_COMMON)
@@ -148,7 +148,7 @@ bool lge_change_reader_mode(struct mdss_dsi_ctrl_pdata *ctrl, int new_mode)
 #endif
 		break;
 	case READER_MODE_STEP_4:
-		pr_info("%s: Reader Mode Step 4\n",__func__);
+		pr_debug("%s: Reader Mode Step 4\n",__func__);
 		mdss_dsi_panel_cmds_send(ctrl, &reader_mode_step4_cmds, CMD_REQ_COMMIT);
 		mask = MONO_MASK;
 #if defined(CONFIG_LGE_DISPLAY_LUCYE_COMMON)
@@ -157,7 +157,7 @@ bool lge_change_reader_mode(struct mdss_dsi_ctrl_pdata *ctrl, int new_mode)
 #endif
 		break;
 	case READER_MODE_STEP_5:
-		pr_info("%s: Reader Mode Step 5\n",__func__);
+		pr_debug("%s: Reader Mode Step 5\n",__func__);
 		mdss_dsi_panel_cmds_send(ctrl, &reader_mode_step5_cmds, CMD_REQ_COMMIT);
 		mask = MONO_MASK;
 #if defined(CONFIG_LGE_DISPLAY_LUCYE_COMMON)
@@ -166,7 +166,7 @@ bool lge_change_reader_mode(struct mdss_dsi_ctrl_pdata *ctrl, int new_mode)
 #endif
 		break;
 	case READER_MODE_STEP_6:
-		pr_info("%s: Reader Mode Step 6\n",__func__);
+		pr_debug("%s: Reader Mode Step 6\n",__func__);
 		mdss_dsi_panel_cmds_send(ctrl, &reader_mode_step6_cmds, CMD_REQ_COMMIT);
 		mask = MONO_MASK;
 #if defined(CONFIG_LGE_DISPLAY_LUCYE_COMMON)
@@ -175,7 +175,7 @@ bool lge_change_reader_mode(struct mdss_dsi_ctrl_pdata *ctrl, int new_mode)
 #endif
 		break;
 	case READER_MODE_STEP_7:
-		pr_info("%s: Reader Mode Step 7\n",__func__);
+		pr_debug("%s: Reader Mode Step 7\n",__func__);
 		mdss_dsi_panel_cmds_send(ctrl, &reader_mode_step7_cmds, CMD_REQ_COMMIT);
 		mask = MONO_MASK;
 #if defined(CONFIG_LGE_DISPLAY_LUCYE_COMMON)
@@ -184,7 +184,7 @@ bool lge_change_reader_mode(struct mdss_dsi_ctrl_pdata *ctrl, int new_mode)
 #endif
 		break;
 	case READER_MODE_STEP_8:
-		pr_info("%s: Reader Mode Step 8\n",__func__);
+		pr_debug("%s: Reader Mode Step 8\n",__func__);
 		mdss_dsi_panel_cmds_send(ctrl, &reader_mode_step8_cmds, CMD_REQ_COMMIT);
 		mask = MONO_MASK;
 #if defined(CONFIG_LGE_DISPLAY_LUCYE_COMMON)
@@ -193,7 +193,7 @@ bool lge_change_reader_mode(struct mdss_dsi_ctrl_pdata *ctrl, int new_mode)
 #endif
 		break;
 	case READER_MODE_STEP_9:
-		pr_info("%s: Reader Mode Step 9\n",__func__);
+		pr_debug("%s: Reader Mode Step 9\n",__func__);
 		mdss_dsi_panel_cmds_send(ctrl, &reader_mode_step9_cmds, CMD_REQ_COMMIT);
 		mask = MONO_MASK;
 #if defined(CONFIG_LGE_DISPLAY_LUCYE_COMMON)
@@ -202,7 +202,7 @@ bool lge_change_reader_mode(struct mdss_dsi_ctrl_pdata *ctrl, int new_mode)
 #endif
 		break;
 	case READER_MODE_STEP_10:
-		pr_info("%s: Reader Mode Step 10\n",__func__);
+		pr_debug("%s: Reader Mode Step 10\n",__func__);
 		mdss_dsi_panel_cmds_send(ctrl, &reader_mode_step10_cmds, CMD_REQ_COMMIT);
 		mask = MONO_MASK;
 #if defined(CONFIG_LGE_DISPLAY_LUCYE_COMMON)
@@ -213,7 +213,7 @@ bool lge_change_reader_mode(struct mdss_dsi_ctrl_pdata *ctrl, int new_mode)
 
 	case READER_MODE_OFF:
 	default:
-		pr_info("%s: Reader Mode Step OFF\n",__func__);
+		pr_debug("%s: Reader Mode Step OFF\n",__func__);
 		mdss_dsi_panel_cmds_send(ctrl, &reader_mode_step0_cmds, CMD_REQ_COMMIT);
 		mask = MONO_MASK;
 #if defined(CONFIG_LGE_DISPLAY_LUCYE_COMMON)
@@ -225,7 +225,7 @@ bool lge_change_reader_mode(struct mdss_dsi_ctrl_pdata *ctrl, int new_mode)
 #if defined(CONFIG_LGE_DISPLAY_LUCYE_COMMON)
 	mdss_dsi_panel_cmds_send(ctrl, &ctrl->reg_55h_cmds, CMD_REQ_COMMIT);
 	mdss_dsi_panel_cmds_send(ctrl, &ctrl->reg_f0h_cmds, CMD_REQ_COMMIT);
-	pr_info("%s : 55h:0x%02x, f0h:0x%02x, f2h(SH):0x%02x, fbh(CABC):0x%02x \n",__func__,
+	pr_debug("%s : 55h:0x%02x, f0h:0x%02x, f2h(SH):0x%02x, fbh(CABC):0x%02x \n",__func__,
 		ctrl->reg_55h_cmds.cmds[0].payload[1],	ctrl->reg_f0h_cmds.cmds[0].payload[1],
 		ctrl->reg_f2h_cmds.cmds[0].payload[3], ctrl->reg_fbh_cmds.cmds[0].payload[4]);
 #endif
@@ -314,7 +314,7 @@ void lge_mdss_panel_parse_dt_blmaps(struct device_node *np,
 		if (!of_find_property(np, lge_blmap_name[i], NULL))
 			continue;
 
-		pr_info("%s: found %s\n", __func__, lge_blmap_name[i]);
+		pr_debug("%s: found %s\n", __func__, lge_blmap_name[i]);
 
 		rc = of_property_read_u32_array(np, lge_blmap_name[i], array,
 						pinfo->blmap_size);
@@ -357,10 +357,10 @@ int mdss_panel_parse_blex_settings(struct device_node *np,
 		/* TODO: implement other types of backlight */
 		if (!strcmp(data, "bl_ctrl_lge")) {
 			ctrl_pdata->bkltex_ctrl = BL_OTHERS;
-			pr_info("%s: Configured BL_OTHERS bkltex ctrl\n",
+			pr_debug("%s: Configured BL_OTHERS bkltex ctrl\n",
 								__func__);
 		} else {
-			pr_info("%s: bkltex ctrl configuration fail\n",
+			pr_debug("%s: bkltex ctrl configuration fail\n",
 								__func__);
 		}
 	}
