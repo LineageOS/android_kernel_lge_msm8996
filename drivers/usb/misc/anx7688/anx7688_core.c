@@ -977,10 +977,6 @@ void anx7688_sbu_ctrl(struct anx7688_chip *chip, bool dir)
 		if (!chip->batt_psy)
 			return;
 	}
-	rc = power_supply_set_property(chip->batt_psy,
-			POWER_SUPPLY_PROP_PARALLEL_MODE, &prop);
-	if (rc < 0)
-		dev_err(cdev, "fail to dp alt set %d\n", rc);
 #endif
 #endif
 	gpio_set_value(chip->pdata->sbu_gpio, dir);
