@@ -227,8 +227,8 @@ static int dual_role_set_prop(struct dual_role_phy_instance *dual_role,
 	struct i2c_client *client = dual_role_get_drvdata(dual_role);
         struct anx7688_chip *chip;
 	struct device *cdev;
-	union power_supply_propval presentprop;
-	union power_supply_propval otgprop;
+	//union power_supply_propval presentprop;
+	//union power_supply_propval otgprop;
 
 	if (!client)
 		return -EINVAL;
@@ -708,8 +708,8 @@ static int usbpd_set_property(struct power_supply *psy,
 				const union power_supply_propval *val)
 {
 	struct anx7688_chip *chip = power_supply_get_drvdata(psy);
-	struct device *cdev = &chip->client->dev;
-	int rc;
+	//struct device *cdev = &chip->client->dev;
+	//int rc;
 
 	switch (prop) {
 	case POWER_SUPPLY_PROP_PRESENT:
@@ -967,16 +967,7 @@ void anx7688_sbu_ctrl(struct anx7688_chip *chip, bool dir)
 #ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_SIMPLE
 	chip->dp_alt_mode = !dir;
 #else
-	struct device *cdev = &chip->client->dev;
-	union power_supply_propval prop;
-	int rc;
-
-	prop.intval = !dir;
-	if (!chip->batt_psy) {
-		chip->batt_psy = power_supply_get_by_name("battery");
-		if (!chip->batt_psy)
-			return;
-	}
+	;
 #endif
 #endif
 	gpio_set_value(chip->pdata->sbu_gpio, dir);
