@@ -5222,7 +5222,6 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 		"inserted type = %d (%s)", usb_supply_type, usb_type_name);
 
 #ifdef CONFIG_QPNP_SMBCHARGER_EXTENSION
-#ifndef CONFIG_MACH_LGE
 	rc = get_usb_type(chip);
 	/* If APSD returned "OTHER". */
 	if (rc == 1) {
@@ -5246,6 +5245,7 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 		}
 	/* If APSD returned "SDP". */
 	} else if (rc == 0) {
+#ifndef CONFIG_MACH_LGE
 		rc = is_floated_charger(chip);
 		if (IS_ERR_VALUE(rc)) {
 			pr_err("failed to check floated charger rc=%d\n", rc);
@@ -5254,8 +5254,8 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 			chip->somc_params.chg_det.sub_type =
 						POWER_SUPPLY_SUB_TYPE_FLOATED;
 		}
-	}
 #endif
+	}
 #endif
 
 	smbchg_aicl_deglitch_wa_check(chip);
