@@ -225,7 +225,6 @@ int somc_chg_usbid_stop_id_polling_host_function(
 	}
 }
 
-#ifndef CONFIG_MACH_LGE
 /*
  * Proprietary charger part
  */
@@ -348,6 +347,7 @@ static int get_prop_proprietary_charger(struct smbchg_chip *chip)
 	return ret;
 }
 
+#ifndef CONFIG_MACH_LGE
 static int is_floated_charger(struct smbchg_chip *chip)
 {
 	union power_supply_propval dp_dm = {0, };
