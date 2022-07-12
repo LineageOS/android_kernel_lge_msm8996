@@ -27,6 +27,7 @@
 #include <linux/platform_device.h>
 #include <linux/rfkill.h>
 #include <linux/slab.h>
+#include <linux/delay.h>
 #ifdef CONFIG_BT_MSM_SLEEP
 #include <net/bluetooth/bluesleep.h>
 #endif
@@ -62,7 +63,10 @@ static int bcm43xx_bt_rfkill_set_power(void *data, bool blocked)
 				regOnGpio);
 			return 0;
 		}
-		gpio_set_value(bcm43xx_my_data->reg_on_gpio, 1);
+		gpio_direction_output(bcm43xx_my_data->reg_on_gpio, 0);
+		msleep(30);
+		gpio_direction_output(bcm43xx_my_data->reg_on_gpio, 1);
+		printk("%s: Bluetooth RESET HIGH!!\n", __func__);
 
 #ifdef CONFIG_BT_MSM_SLEEP
 		bluesleep_start(1);
@@ -73,7 +77,8 @@ static int bcm43xx_bt_rfkill_set_power(void *data, bool blocked)
 				regOnGpio);
 			return 0;
 		}
-		gpio_set_value(bcm43xx_my_data->reg_on_gpio, 0);
+		gpio_direction_output(bcm43xx_my_data->reg_on_gpio, 0);
+		printk("%s: Bluetooth RESET LOW!!\n", __func__);
 
 #ifdef CONFIG_BT_MSM_SLEEP
 		bluesleep_stop();
@@ -137,6 +142,14 @@ static int bcm43xx_bluetooth_dev_init(struct platform_device *pdev,
 			__func__);
 		ret = -ENODEV;
 		goto error_gpio;
+	} else {
+		ret = gpio_request_one(my_data->reg_on_gpio, GPIOF_OUT_INIT_LOW,
+				"reg-on-gpio");
+		if (ret) {
+			pr_err("%s: failed to request gpio(%d)\n", __func__,
+					my_data->reg_on_gpio);
+			goto error_gpio;
+		}
 	}
 
 	return 0;
@@ -144,6 +157,8 @@ static int bcm43xx_bluetooth_dev_init(struct platform_device *pdev,
 error_gpio:
 	if (my_data->has_pinctl)
 		pinctrl_select_state(my_data->pinctrl, my_data->gpio_state_suspend);
+    if(my_data->reg_on_gpio)
+        gpio_free(my_data->reg_on_gpio);
 error_pinctrl:
 	return ret;
 
