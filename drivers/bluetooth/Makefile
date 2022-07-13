@@ -24,15 +24,10 @@ obj-$(CONFIG_BT_BCM)		+= btbcm.o
 obj-$(CONFIG_BT_RTL)		+= btrtl.o
 obj-$(CONFIG_BT_QCA)		+= btqca.o
 obj-$(CONFIG_MSM_BT_POWER)	+= bluetooth-power.o
-obj-$(CONFIG_BT_BCM43XX)	+= bcm43xx.o
-obj-$(CONFIG_BT_MSM_SLEEP)	+= msm_bt_sleep.o
-msm_bt_sleep-objs		:= bluesleep.o
 
 obj-$(CONFIG_BTFM_SLIM)				+= btfm_slim.o
 obj-$(CONFIG_BTFM_SLIM)				+= btfm_slim_codec.o
 obj-$(CONFIG_BTFM_SLIM_WCN3990)		+= btfm_slim_wcn3990.o
-obj-$(CONFIG_LGE_BLUETOOTH_PM)	+= bluetooth_pm.o
-obj-$(CONFIG_BRCM_V4L2)		+= brcm_v4l2/
 
 btmrvl-y			:= btmrvl_main.o
 btmrvl-$(CONFIG_DEBUG_FS)	+= btmrvl_debugfs.o
