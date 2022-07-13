@@ -1478,7 +1478,7 @@ static void msm_hs_submit_tx_locked(struct uart_port *uport)
 				msm_uport, flags);
 
 	/* Notify the bluesleep driver of outgoing data, if available. */
-#if defined(CONFIG_BT_MSM_SLEEP) && !defined(CONFIG_LINE_DISCIPLINE_DRIVER)
+#ifdef CONFIG_BT_MSM_SLEEP
 	bluesleep_outgoing_data();
 #endif
 
