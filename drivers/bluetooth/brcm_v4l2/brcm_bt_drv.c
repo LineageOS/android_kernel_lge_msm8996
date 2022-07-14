@@ -277,9 +277,18 @@ static int brcm_bt_drv_close(struct inode *i, struct file *f)
 **
 ** Function - brcm_bt_drv_read
 **
-** Description - Called when user-space program tries to read a packet.
+** Description - Called when user-space program tries to read a packet. It
+**               copies data from the next queued packet into user space and
+**               'len' Bytes are copied from the data of this packet.
+**               If 'len' is smaller than the data size of the current packet,
+**               the packet remains in the queue. In that case, a subsequent
+**               read operation will read data starting from from the last Byte
+**               read of this packet.
+**               If 'len' is larger than the packet, or the remaining Bytes of
+**               the packet, only packet or the remaining Bytes are delivered
+**               respectively.
 **
-** Returns - Number of bytes in packet.
+** Returns - Number of bytes that were read out from the packet.
 *****************************************************************************/
 static ssize_t brcm_bt_drv_read(struct file *f, char __user *buf, size_t
   len, loff_t *off)
@@ -287,6 +296,9 @@ static ssize_t brcm_bt_drv_read(struct file *f, char __user *buf, size_t
     struct sk_buff *skb;
     struct brcm_bt_dev *bt_dev_p = f->private_data;
     size_t skb_size = 0;
+    size_t skb_remaining_len = 0;
+     /* Last read pos if only a fragment was read previously.*/
+    static size_t skb_read_offset;
     unsigned long flags;
 
     spin_lock_irqsave(&bt_dev_p->rx_q_lock, flags);
@@ -301,30 +313,42 @@ static ssize_t brcm_bt_drv_read(struct file *f, char __user *buf, size_t
         goto exit;
     }
     else {
-        skb_size = skb->len;
+        /* Read only len bytes, if the the remaining bytes of the packet are
+         * less, only read them. */
+        skb_remaining_len = skb->len - skb_read_offset;
+        skb_size = (len <= skb_remaining_len) ? len : skb_remaining_len;
 
-         /* copy packet to user-space */
-         spin_unlock_irqrestore(&bt_dev_p->rx_q_lock, flags);
-         if(copy_to_user(buf, skb->data, sizeof(char) * skb_size)){
-            /* free the skb */
-            /*kfree_skb(skb);*/
-            printk("copy to user failed\n");
-            return -EFAULT;
-         }
-         else {
-            /* free the skb after copying to user space. Return the size of skb */
-            spin_lock_irqsave(&bt_dev_p->rx_q_lock, flags);
-            skb = skb_dequeue(&bt_dev_p->rx_q);
-            spin_unlock_irqrestore(&bt_dev_p->rx_q_lock, flags);
-            kfree_skb(skb);
-            return skb_size;
-         }
+        /* copy packet to user-space */
+        if (0 == copy_to_user(buf, skb->data + skb_read_offset, sizeof(char) * skb_size)) {
+            /* Copy success. */
+            if (skb_size < skb_remaining_len) {
+                /* Remaining bytes after read --> increase offset for next read.*/
+                skb_read_offset += skb_size;
+            } else if (skb_size == skb_remaining_len) {
+                /* All bytes of packet read --> dequeue & reset offset. */
+                skb_read_offset = 0;
+                skb = skb_dequeue(&bt_dev_p->rx_q);
+                kfree_skb(skb);
+            } else {
+                /* We read more bytes than the packet had... error! */
+                pr_err("Read exceeded packet size!");
+                goto err;
+            }
+        } else {
+            /* Copy failure. */
+            pr_err("copy to user failed\n");
+            goto err;
+        }
     }
 
 exit:
-         spin_unlock_irqrestore(&bt_dev_p->rx_q_lock, flags);
-         BT_DRV_DBG(V4L2_DBG_RX, "skb_size=%zu", skb_size);
-         return skb_size;
+    spin_unlock_irqrestore(&bt_dev_p->rx_q_lock, flags);
+    BT_DRV_DBG(V4L2_DBG_RX, "skb_size=%d", skb_size);
+    return skb_size;
+err:
+    skb_read_offset = 0;
+    spin_unlock_irqrestore(&bt_dev_p->rx_q_lock, flags);
+    return -EFAULT;
 }
 
 
