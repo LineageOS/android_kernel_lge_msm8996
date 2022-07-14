@@ -1222,11 +1222,6 @@ long brcm_sh_ldisc_register(struct sh_proto_s *new_proto)
         return -EPROTONOSUPPORT;
     }
 
-    if(new_proto->type == PROTO_SH_BT) {
-        pr_err("enabling HCI Filter\n");
-        hci_filter_enabled = true;
-    }
-
     /* check if protocol already registered */
     if (hu->list[new_proto->type] != NULL)
     {
@@ -2081,6 +2076,11 @@ long brcm_sh_ldisc_write(struct sk_buff *skb)
 
     len = skb->len;
 
+    if (pkt_equals_hci_ev(skb, HCI_OP_RESET)) {
+        pr_err("HCI filter enabled");
+        hci_filter_enabled = TRUE;
+    }
+
     /* HCI reset commands & those used during libbt init will be answered
      * by fake responses (not needed), such that no response timeouts occur. */
     if ((hci_filter_enabled && ignore_hci_cmd(skb)))
@@ -2093,7 +2093,7 @@ long brcm_sh_ldisc_write(struct sk_buff *skb)
             }
             /* Adjust length of hci fake response events for packets
              * that would send back parameters. */
-            if(pkt_equals_hci_ev(skb, 0x0c14)) {
+            if(pkt_equals_hci_ev(skb, HCI_OP_READ_LOCAL_NAME)) {
                 hci_response_data_len += READ_CMD_DATA_LEN;
                 hci_response_len += READ_CMD_DATA_LEN;
             }

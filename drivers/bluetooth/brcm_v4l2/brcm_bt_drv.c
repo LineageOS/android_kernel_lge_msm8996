@@ -367,31 +367,51 @@ static ssize_t brcm_bt_write(struct file *f, const char __user *buf,
     struct sk_buff *skb;
     struct brcm_bt_dev *bt_dev;
     unsigned long flags;
+    static uint8_t pkt_type;
+    size_t pkt_len;
 
     bt_dev = f->private_data;
     spin_lock_irqsave(&bt_dev->tx_q_lock, flags);
 
-    if (buf != NULL)
-    {
-        if(!(skb = alloc_skb(len, GFP_ATOMIC)))
-        {
-            BT_DRV_ERR("Error in allocating memory for skb\n");
-            ret=-EFAULT;
-            goto nomem;
-        }
-
-        if(copy_from_user(skb_put(skb, len), buf, len))
-        {
+    if (len == 1) {
+        if(copy_from_user(&pkt_type, buf, len)) {
             BT_DRV_ERR("Error:Could not copy all data bytes from user space\n");
             ret=-EFAULT;
-            goto nomem;
+            goto err;
         }
 
+        spin_unlock_irqrestore(&bt_dev->tx_q_lock, flags);
+        BT_DRV_DBG(V4L2_DBG_TX, "End ret=%d", ret);
+        return len;
     }
-    else {
+
+    if (!pkt_type) {
+        BT_DRV_ERR("Error: The packet type is missing. It must be written in a \
+                sparate write operation before the actual data.\n");
+        ret=-EFAULT;
+        goto err;
+    }
+
+    if (buf != NULL) {
+        pkt_len = len + 1;
+        if (!(skb = alloc_skb(pkt_len, GFP_ATOMIC))) {
+            BT_DRV_ERR("Error in allocating memory for skb\n");
+            ret=-EFAULT;
+            goto err;
+        }
+
+        /* Add the packet type to the data which is sent to the controller. */
+        memcpy(skb_put(skb, 1), &pkt_type, 1);
+
+        if (copy_from_user(skb_put(skb, len), buf, len)) {
+            BT_DRV_ERR("Error:Could not copy all data bytes from user space\n");
+            ret=-EFAULT;
+            goto err;
+        }
+    } else {
         BT_DRV_ERR("Error: Buffer from user space is NULL\n");
         ret=-EFAULT;
-        goto nomem;
+        goto err;
     }
 
     /* writing to tx queue should be atomic */
@@ -409,7 +429,8 @@ static ssize_t brcm_bt_write(struct file *f, const char __user *buf,
     BT_DRV_DBG(V4L2_DBG_TX, "End len=%zu", len);
     return len;
 
-nomem:
+err:
+    pkt_type = NULL;
     spin_unlock_irqrestore(&bt_dev->tx_q_lock, flags);
     BT_DRV_DBG(V4L2_DBG_TX, "End ret=%d", ret);
     return ret;
