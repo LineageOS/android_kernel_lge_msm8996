@@ -238,6 +238,21 @@ static void brcm_bt_drv_prepare(struct brcm_bt_dev* bt_dev)
 
 /*****************************************************************************
 **
+** Function - brcm_bt_drv_reset_queue
+**
+** Description - Performs a reset of BT packet queues.
+**
+*****************************************************************************/
+static int brcm_bt_drv_reset_queue(struct sk_buff_head *list)
+{
+    list->qlen = 0;
+    list->next = list;
+    list->prev = list;
+}
+
+
+/*****************************************************************************
+**
 ** Function - brcm_bt_drv_close
 **
 ** Description - Performs cleanup of BT protocol driver.
@@ -263,8 +278,11 @@ static int brcm_bt_drv_close(struct inode *i, struct file *f)
         }
     }
 
-    skb_queue_purge(&bt_dev_p->tx_q);
-    skb_queue_purge(&bt_dev_p->rx_q);
+    /* Just reset the list pointers, as freeing is done by closing the base
+     * serial node (e.g., the msm one). The actual base problem is that a shared
+     * sk buffer should be used... */
+    brcm_bt_drv_reset_queue(&bt_dev_p->tx_q);
+    brcm_bt_drv_reset_queue(&bt_dev_p->rx_q);
     atomic_set(&bt_dev_p->tx_cnt, 0);
     bt_dev_p->st_write = NULL;
 
