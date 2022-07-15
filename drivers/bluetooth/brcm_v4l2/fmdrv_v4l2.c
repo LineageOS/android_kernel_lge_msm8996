@@ -68,8 +68,9 @@
 #define IOCTL_GET_TMC_CHANNEL _IOR(MAJOR_NUM, 8, char *)
 
 /* BRCM LOCAL[NO CSP] : Required to move sysfs entry registration/deregistration place for SELINUX. */
-#define SYSFS_ENTRY_REGISTRATION_FOR_SELINUX TRUE
+#define SYSFS_ENTRY_REGISTRATION_FOR_SELINUX FALSE
 /* BRCM LOCAL[NO CSP] */
+
 /*These values are set and has to be sent together.*/
 /*Keep them as a set always, never try to further seperate them*/
 /*These are arguments to BRCM vsc HCI command to switch the FM-I2S pins */
