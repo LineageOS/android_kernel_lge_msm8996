@@ -82,6 +82,12 @@
 #define UART_DMA_DESC_NR 8
 #define BUF_DUMP_SIZE 32
 
+#ifdef CONFIG_LGE_BLUETOOTH_PM
+//BT_S : [CONBT-1156] Remove the API that be the cause of system crash
+#define REMOVE_WARN_TO_PREVENT_CRASH
+//BT_E: [CONBT-1156] Remove the API that be the cause of system crash
+#endif
+
 /* If the debug_mask gets set to FATAL_LEV,
  * a fatal error has happened and further IPC logging
  * is disabled so that this problem can be detected
@@ -302,6 +308,12 @@ static int msm_hs_pm_resume(struct device *dev);
 static void msm_hs_pm_suspend(struct device *dev);
 
 
+#ifdef CONFIG_LGE_BLUETOOTH_PM
+//BT_S : [CONBT-1572] LGC_BT_COMMON_IMP_KERNEL_UART_SHUTDOWN_EXCEPTION_HANDLING
+extern void bluetooth_pm_sleep_stop_by_uart(void);
+//BT_E : [CONBT-1572] LGC_BT_COMMON_IMP_KERNEL_UART_SHUTDOWN_EXCEPTION_HANDLING
+#endif
+
 #define UARTDM_TO_MSM(uart_port) \
 	container_of((uart_port), struct msm_hs_port, uport)
 
@@ -411,7 +423,13 @@ static void msm_hs_resource_unvote(struct msm_hs_port *msm_uport)
 	MSM_HS_DBG("%s(): power usage count %d", __func__, rc);
 	if (rc <= 0) {
 		MSM_HS_WARN("%s(): rc zero, bailing\n", __func__);
+//BT_S : [CONBT-1156] Remove the API that be the cause of system crash
+#ifdef REMOVE_WARN_TO_PREVENT_CRASH
+		MSM_HS_WARN("%s(): WARN_ON!!!!\n", __func__);
+#else
 		WARN_ON(1);
+#endif
+//BT_E: [CONBT-1156] Remove the API that be the cause of system crash
 		return;
 	}
 	atomic_dec(&msm_uport->resource_count);
@@ -2814,7 +2832,7 @@ static int msm_hs_startup(struct uart_port *uport)
 
 
 	spin_lock_irqsave(&uport->lock, flags);
-#ifndef CONFIG_BT_MSM_SLEEP
+#if !defined(CONFIG_BT_MSM_SLEEP) || !defined(CONFIG_LGE_BLUETOOTH_PM)
 	atomic_set(&msm_uport->client_count, 0);
 	atomic_set(&msm_uport->client_req_state, 0);
 #endif
@@ -3113,6 +3131,27 @@ get_config_err:
 out:
 	return rc;
 }
+
+#ifdef CONFIG_LGE_BLUETOOTH_PM
+/* LGE_CHANGE_E, [BT][younghyun.kwon@lge.com], 2013-04-10 */
+struct uart_port* msm_hs_get_bt_uport(unsigned int line)
+{
+	struct uart_state *state = msm_hs_driver.state + line;
+
+	/* The uart_driver structure stores the states in an array.
+	 * Thus the corresponding offset from the drv->state returns
+	 * the state for the uart_port that is requested
+	 */
+	if (line == state->uart_port->line)
+		return state->uart_port;
+
+	return NULL;
+
+	/* TODO : Need to check */
+	/* return &q_uart_port[line].uport; */
+}
+EXPORT_SYMBOL(msm_hs_get_bt_uport);
+#endif /* CONFIG_LGE_BLUETOOTH_PM */
 
 /**
  * Initialize SPS HW connected with UART core
@@ -3876,6 +3915,11 @@ static void msm_hs_shutdown(struct uart_port *uport)
 	msm_hs_unconfig_uart_gpios(uport);
 	LOG_USR_MSG(msm_uport->ipc_msm_hs_pwr_ctxt,
 		"%s:UART port closed, Client_Count 0\n", __func__);
+#ifdef CONFIG_LGE_BLUETOOTH_PM
+//BT_S : [CONBT-1572] LGC_BT_COMMON_IMP_KERNEL_UART_SHUTDOWN_EXCEPTION_HANDLING
+	bluetooth_pm_sleep_stop_by_uart();
+//BT_E : [CONBT-1572] LGC_BT_COMMON_IMP_KERNEL_UART_SHUTDOWN_EXCEPTION_HANDLING
+#endif
 }
 
 static void __exit msm_serial_hs_exit(void)
