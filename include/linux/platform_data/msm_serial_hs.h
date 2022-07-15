@@ -60,4 +60,7 @@ int msm_hs_request_clock_on(struct uart_port *uport);
 struct uart_port *msm_hs_get_uart_port(int port_index);
 void msm_hs_set_mctrl(struct uart_port *uport,
 				    unsigned int mctrl);
+#ifdef CONFIG_LGE_BLUETOOTH_PM
+struct uart_port * msm_hs_get_bt_uport(unsigned int line);
+#endif /* CONFIG_LGE_BLUETOOTH_PM */
 #endif
