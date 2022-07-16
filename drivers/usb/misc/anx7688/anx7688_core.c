@@ -227,8 +227,7 @@ static int dual_role_set_prop(struct dual_role_phy_instance *dual_role,
 	struct i2c_client *client = dual_role_get_drvdata(dual_role);
         struct anx7688_chip *chip;
 	struct device *cdev;
-	//union power_supply_propval presentprop;
-	//union power_supply_propval otgprop;
+	union power_supply_propval otgprop;
 
 	if (!client)
 		return -EINVAL;
@@ -260,21 +259,18 @@ static int dual_role_set_prop(struct dual_role_phy_instance *dual_role,
 	case DUAL_ROLE_PROP_PR:
 		switch (*val) {
 		case DUAL_ROLE_PROP_PR_SRC:
-			//power_supply_set_usb_otg(&chip->usbpd_psy, 1);
-			chip->is_otg = 1;
+			chip->is_otg = 1; //power_supply_set_usb_otg(&chip->usbpd_psy, 1);
 			chip->power_role = DUAL_ROLE_PROP_PR_SRC;
 			break;
 		case DUAL_ROLE_PROP_PR_SNK:
 			if (chip->power_role == DUAL_ROLE_PROP_PR_SRC){
-				//power_supply_set_usb_otg(&chip->usbpd_psy, 0);
-				chip->is_otg = 0;
+				chip->is_otg = 0; //power_supply_set_usb_otg(&chip->usbpd_psy, 0);
 			}
 			chip->power_role = DUAL_ROLE_PROP_PR_SNK;
 			break;
 		case DUAL_ROLE_PROP_PR_NONE:
 			if (chip->power_role == DUAL_ROLE_PROP_PR_SRC){
-				//power_supply_set_usb_otg(&chip->usbpd_psy, 0);
-				chip->is_otg = 0;
+				chip->is_otg = 0; //power_supply_set_usb_otg(&chip->usbpd_psy, 0);
 			}
 			chip->power_role = DUAL_ROLE_PROP_PR_NONE;
 			break;
@@ -287,52 +283,29 @@ static int dual_role_set_prop(struct dual_role_phy_instance *dual_role,
 		switch (*val) {
 		case DUAL_ROLE_PROP_DR_HOST:
 			if (chip->data_role == DUAL_ROLE_PROP_DR_DEVICE) {
-				//power_supply_set_present(chip->usb_psy, 0);				
-				//presentprop.intval = 0;
-				//power_supply_set_property(chip->usb_psy, 
-				//	POWER_SUPPLY_PROP_PRESENT,&presentprop);
 				chip->is_present = 0;
 				mdelay(100);
 			}
 
-			//power_supply_set_usb_otg(chip->usb_psy, 1);
-			//otgprop.intval = 1;
-			//power_supply_set_property(chip->usb_psy, 
-			//	POWER_SUPPLY_PROP_USB_OTG, &otgprop);
 			chip->is_otg = 1;
 			chip->data_role = DUAL_ROLE_PROP_DR_HOST;
 			break;
 		case DUAL_ROLE_PROP_DR_DEVICE:
 			if (chip->data_role == DUAL_ROLE_PROP_DR_HOST) {
-				//power_supply_set_usb_otg(chip->usb_psy, 0);
-				//otgprop.intval = 0;
-				//power_supply_set_property(chip->usb_psy, 
-				//	POWER_SUPPLY_PROP_USB_OTG, &otgprop);
 				chip->is_otg = 0;
 				mdelay(100);
 			}
-			//presentprop.intval = 1;
-			//power_supply_set_present(chip->usb_psy, 1);
-			//power_supply_set_property(chip->usb_psy, 
-			//		POWER_SUPPLY_PROP_PRESENT, &presentprop);
+
 			chip->is_present = 1;
 			chip->data_role = DUAL_ROLE_PROP_DR_DEVICE;
 			break;
 		case DUAL_ROLE_PROP_DR_NONE:
 			if (chip->data_role == DUAL_ROLE_PROP_DR_DEVICE) {
-				//power_supply_set_present(chip->usb_psy, 0);
-				//presentprop.intval = 0;
-				//power_supply_set_property(chip->usb_psy, 
-				//	POWER_SUPPLY_PROP_PRESENT, &presentprop);
 				chip->is_present = 0;
 				mdelay(100);
 			}
 
 			if (chip->data_role == DUAL_ROLE_PROP_DR_HOST) {
-				//power_supply_set_usb_otg(chip->usb_psy, 0);
-				//otgprop.intval = 0;
-				//power_supply_set_property(chip->usb_psy, 
-				//	POWER_SUPPLY_PROP_USB_OTG, &otgprop);
 				chip->is_otg = 0;
 				mdelay(100);
 			}
@@ -653,6 +626,7 @@ static enum power_supply_property usbpd_properties[] = {
 	POWER_SUPPLY_PROP_TYPE,
 };
 
+#ifdef DEBUG
 static const char *usbc_to_string(enum power_supply_type type)
 {
 	switch (type) {
@@ -668,12 +642,16 @@ static const char *usbc_to_string(enum power_supply_type type)
 		return "Generic USB Charger";
 	}
 }
+#endif
 
 static int usbpd_get_property(struct power_supply *psy,
 				enum power_supply_property prop,
 				union power_supply_propval *val)
 {
 	struct anx7688_chip *chip = power_supply_get_drvdata(psy);
+
+	if(!chip) // No use trying to get props from a null address, we might even get a NULL pointer deref instead
+		return -ENODEV;
 
 	switch(prop) {
 	case POWER_SUPPLY_PROP_USB_OTG:
@@ -708,8 +686,6 @@ static int usbpd_set_property(struct power_supply *psy,
 				const union power_supply_propval *val)
 {
 	struct anx7688_chip *chip = power_supply_get_drvdata(psy);
-	//struct device *cdev = &chip->client->dev;
-	//int rc;
 
 	switch (prop) {
 	case POWER_SUPPLY_PROP_PRESENT:
@@ -803,11 +779,9 @@ static int usbpd_set_property(struct power_supply *psy,
 			case POWER_SUPPLY_TYPE_USB_HVDCP:
 			case POWER_SUPPLY_TYPE_USB_HVDCP_3:
 				chip->usbpd_psy_d.type = val->intval;
-				//power_supply_set_property(psy, POWER_SUPPLY_PROP_TYPE, val);
 				break;
 			default:
 				chip->usbpd_psy_d.type = POWER_SUPPLY_TYPE_UNKNOWN;
-				//power_supply_set_property(psy, POWER_SUPPLY_PROP_TYPE, def);
 				break;
 		}
 		break;		
@@ -883,9 +857,7 @@ static void anx7688_ctype_work(struct work_struct *w)
 #endif
 	case USBC_CHARGER:
 		usbprop.intval = POWER_SUPPLY_TYPE_TYPEC; // enum POWER_SUPPLY_TYPE_TYPEC = 17
-		chip->usbpd_psy_d.type = usbprop.intval;
-		//power_supply_set_property(chip->usbpd_psy, POWER_SUPPLY_PROP_TYPE, 
-		//					&usbprop);
+		chip->usbpd_psy_d.type = usbprop.intval; // power_supply_set_property(chip->usbpd_psy, POWER_SUPPLY_PROP_TYPE, &usbprop);
 		
 #ifdef CONFIG_LGE_PM
 		usbpd_set_property_on_batt(chip,
@@ -920,9 +892,8 @@ static void anx7688_ctype_work(struct work_struct *w)
 				chip->curr_max = USBC_CURR_RESTRICT;
 		}		
 		usbprop.intval = POWER_SUPPLY_TYPE_USB_PD; // enum POWER_SUPPLY_TYPE_USB_PD = 10
-		chip->usbpd_psy_d.type = usbprop.intval;
-		//power_supply_set_property(chip->usbpd_psy, POWER_SUPPLY_PROP_TYPE, 
-		//					&usbprop);
+		chip->usbpd_psy_d.type = usbprop.intval; // power_supply_set_property(chip->usbpd_psy, POWER_SUPPLY_PROP_TYPE, &usbprop);
+
 		dev_dbg(cdev, "Charger set to USB_PD, usbprop_intval: %d, usbpd_type: %d\n", usbprop.intval, chip->usbpd_psy_d.type);
 #ifdef CONFIG_LGE_PM
 		usbpd_set_property_on_batt(chip,
@@ -932,7 +903,7 @@ static void anx7688_ctype_work(struct work_struct *w)
 	default:
 		/* unknown charger */
 		usbprop.intval = POWER_SUPPLY_TYPE_USB; // enum POWER_SUPPLY_TYPE_USB = 4
-		chip->usbpd_psy_d.type = usbprop.intval;
+		chip->usbpd_psy_d.type = usbprop.intval; // power_supply_set_property(chip->usbpd_psy, POWER_SUPPLY_PROP_TYPE, &usbprop);
 		dev_dbg(cdev, "Charger set to Generic USB, usbprop_intval: %d, usbpd_type: %d\n", usbprop.intval, chip->usbpd_psy_d.type);
 #ifdef CONFIG_LGE_PM
 		usbpd_set_property_on_batt(chip,
@@ -941,6 +912,7 @@ static void anx7688_ctype_work(struct work_struct *w)
 		break;
 	}
 
+#ifdef DEBUG // Not very important, but those if() statements use a tiny bit of cpu time, so only enable them when debugging.
 	if(chip->charger_type == BIT(0))
 		dev_dbg(cdev, "USB_CHARGER_TYPE:USB\n");
 	else if(chip->charger_type == BIT(1))
@@ -956,6 +928,7 @@ static void anx7688_ctype_work(struct work_struct *w)
 		dev_dbg(cdev, "%s: %s, %dmV, %dmA\n", __func__,
 				usbc_to_string(chip->usbpd_psy_d.type),
 				chip->volt_max, chip->curr_max);
+#endif
 
 	anx7688_power_supply_changed(chip->usbpd_psy);
 
@@ -2364,8 +2337,8 @@ static int anx7688_probe(struct i2c_client *client,
 	usb_psy = NULL;
 #endif
 
-// Like sony's fusb301 driver, delegate the batt_psy loading to the
-// "_set_property_on_batt" function instead of doing it here.
+/* Like sony's fusb301 driver, delegate the batt_psy loading to the
+ "_set_property_on_batt" function instead of doing it here. */
 
 	if (!i2c_check_functionality(client->adapter,
 				I2C_FUNC_SMBUS_BYTE_DATA |
