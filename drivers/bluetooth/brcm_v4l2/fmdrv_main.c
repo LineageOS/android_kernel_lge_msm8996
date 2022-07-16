@@ -133,7 +133,7 @@ struct region_info region_configs[] = {
    /*rds_txt is RDS test message, this could be custom message*/
    static char rds_txt[65];
    /*holds the 3 byte RDS tuple data*/
-   static __u8 rds_tupple[3];
+   static __u8 rds_tupple[FM_RDS_TUPLE_LENGTH];
 
    /*CT is time and date information*/
    struct ct
@@ -1006,6 +1006,7 @@ int fmc_transfer_rds_from_cbuff(struct fmdrv_ops *fmdev, struct file *file,
                     char __user * buf, size_t count)
 {
     unsigned int block_count;
+    __u8 tmpbuf[FM_RDS_BLOCK_SIZE];
     unsigned long flags;
     int ret;
 
@@ -1022,22 +1023,21 @@ int fmc_transfer_rds_from_cbuff(struct fmdrv_ops *fmdev, struct file *file,
         }
     }
     /* Calculate block count from byte count */
-    count /= 3;
+    count /= FM_RDS_BLOCK_SIZE;
     block_count = 0;
     ret = 0;
 
-    spin_lock_irqsave(&fmdev->rds_cbuff_lock, flags);
-
     /* Copy RDS blocks from the internal buffer and to user buffer */
     while (block_count < count) {
-        if (fmdev->rx.rds.wr_index == fmdev->rx.rds.rd_index)
-            break;
+        spin_lock_irqsave(&fmdev->rds_cbuff_lock, flags);
 
         /* Always transfer complete RDS blocks */
-        if (copy_to_user
-            (buf, &fmdev->rx.rds.cbuffer[fmdev->rx.rds.rd_index],
-             FM_RDS_BLOCK_SIZE))
+        if (fmdev->rx.rds.wr_index == fmdev->rx.rds.rd_index) {
+            spin_unlock_irqrestore(&fmdev->rds_cbuff_lock, flags);
             break;
+        }
+        memcpy(tmpbuf, &fmdev->rx.rds.cbuffer[fmdev->rx.rds.rd_index],
+                      FM_RDS_BLOCK_SIZE);
 
         /* Increment and wrap the read pointer */
         fmdev->rx.rds.rd_index += FM_RDS_BLOCK_SIZE;
@@ -1046,15 +1046,18 @@ int fmc_transfer_rds_from_cbuff(struct fmdrv_ops *fmdev, struct file *file,
         if (fmdev->rx.rds.rd_index >= fmdev->rx.rds.buf_size)
             fmdev->rx.rds.rd_index = 0;
 
+        spin_unlock_irqrestore(&fmdev->rds_cbuff_lock, flags);
+
+        if (copy_to_user(buf, tmpbuf, FM_RDS_BLOCK_SIZE))
+            break;
+
         /* Increment counters */
         block_count++;
         buf += FM_RDS_BLOCK_SIZE;
         ret += FM_RDS_BLOCK_SIZE;
     }
-    spin_unlock_irqrestore(&fmdev->rds_cbuff_lock, flags);
 
     V4L2_FM_DRV_DBG(V4L2_DBG_RX, "(rds) %s Done copying %d", __func__, ret);
-
     return ret;
 }
 
