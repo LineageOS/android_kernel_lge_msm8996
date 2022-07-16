@@ -20,6 +20,21 @@
 	qcom,msm-obs;
 };
 
+#ifdef CONFIG_BRCM_V4L2
+/ {
+	bt_bluetooth_pm {
+		compatible = "lge,bluetooth_pm";
+		gpio-bt-reset = <&pm8994_gpios 19 0>;
+		gpio-bt-host-wake = <&tlmm 24 0>;
+		gpio-bt-ext-wake = <&tlmm 92 0>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <24 0>;
+		interrupt-names = "host_wake_interrupt";
+
+		pinctrl-names = "bt_default";
+		pinctrl-0 = <&bt_default>;
+	};
+#else
 / {
 	bluesleep {
 		compatible = "qcom,bluesleep";
@@ -37,6 +52,7 @@
 		compatible = "bcm,bcm43xx";
 		bcm,reg-on-gpio = <&pm8994_gpios 19 0>; /* BT_REG_ON */
 	};
+#endif
 
 	/* BCMDHD for Wi-Fi */
 	bcmdhd_wifi {
@@ -76,6 +92,23 @@
 		};
 	};
 
+#ifdef CONFIG_BRCM_V4L2
+	/* gpio pin mux for bluetooth host wake pin */
+	pmx_bt_default {
+		bt_default: bt_default {
+			mux {
+				pins = "gpio24", "gpio92";
+				function = "gpio";
+			};
+
+			config {
+				pins = "gpio24", "gpio92";
+				drive-strength = <2>;
+				bias-disable = <0>;
+			};
+		};
+	};
+#else
 	/* gpio pin mux for bluetooth */
 	pmx_bt_default {
 		bt_default: bt_default {
@@ -106,4 +139,5 @@
 			};
 		};
 	};
+#endif
 };
