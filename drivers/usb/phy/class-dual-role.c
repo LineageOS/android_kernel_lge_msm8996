@@ -274,38 +274,22 @@ EXPORT_SYMBOL_GPL(dual_role_get_drvdata);
 
 /* port type */
 static char *supported_modes_text[] = {
-#ifdef CONFIG_LGE_USB_TYPE_C
-	"ufp dfp", "dfp", "ufp", "ufp dfp fault"
-#else
 	"ufp dfp", "dfp", "ufp"
-#endif
 };
 
 /* current mode */
 static char *mode_text[] = {
-#ifdef CONFIG_LGE_USB_TYPE_C
-	"ufp", "dfp", "fault", "none"
-#else
 	"ufp", "dfp", "none"
-#endif
 };
 
 /* Power role */
 static char *pr_text[] = {
-#ifdef CONFIG_LGE_USB_TYPE_C
-	"source", "sink", "fault", "none"
-#else
 	"source", "sink", "none"
-#endif
 };
 
 /* Data role */
 static char *dr_text[] = {
-#ifdef CONFIG_LGE_USB_TYPE_C
-	"host", "device", "fault", "none"
-#else
 	"host", "device", "none"
-#endif
 };
 
 /* Vconn supply */
