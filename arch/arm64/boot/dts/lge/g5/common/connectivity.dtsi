@@ -20,6 +20,25 @@
 	qcom,msm-obs;
 };
 
+#ifdef CONFIG_BRCM_V4L2
+/ {
+	bt_bluetooth_pm {
+		compatible = "lge,bluetooth_pm";
+		gpio-bt-reset = <&tlmm 81 0>;
+		gpio-bt-host-wake = <&tlmm 24 0>;
+#ifdef CONFIG_MACH_MSM8996_H1_KDDI_JP
+		gpio-bt-ext-wake = <&tlmm 61 0>;
+#else
+		gpio-bt-ext-wake = <&tlmm 92 0>;
+#endif
+		interrupt-parent = <&tlmm>;
+		interrupts = <24 0>;
+		interrupt-names = "host_wake_interrupt";
+
+		pinctrl-names = "bt_default";
+		pinctrl-0 = <&bt_default>;
+	};
+#else
 / {
 	bluesleep {
 		compatible = "qcom,bluesleep";
@@ -44,6 +63,7 @@
 		pinctrl-0 = <&default_gpio_on>;
 		pinctrl-1 = <&sleep_gpio_off>;
 	};
+#endif
 
 	/* BCMDHD for Wi-Fi */
 	bcmdhd_wifi {
@@ -54,6 +74,31 @@
 };
 
 &tlmm {
+#ifdef CONFIG_BRCM_V4L2
+	/* gpio pin mux for bluetooth enable pin */
+	pmx_bt_default {
+		bt_default: bt_default {
+			mux {
+#ifdef CONFIG_MACH_MSM8996_H1_KDDI_JP
+				pins = "gpio81", "gpio24", "gpio61";
+#else
+				pins = "gpio81", "gpio24", "gpio92";
+#endif
+				function = "gpio";
+			};
+
+			config {
+#ifdef CONFIG_MACH_MSM8996_H1_KDDI_JP
+				pins = "gpio81", "gpio24", "gpio61";
+#else
+				pins = "gpio81", "gpio24", "gpio92";
+#endif
+				drive-strength = <2>;
+				bias-disable = <0>;
+			};
+		};
+	};
+#else
 	/* gpio enable pin for bluetooth */
 	bt_enable_pin {
 		default_gpio_on: default_gpio_on {
@@ -129,4 +174,5 @@
 			};
 		};
 	};
+#endif
 };
