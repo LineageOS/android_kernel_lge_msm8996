@@ -110,7 +110,6 @@ struct anx7688_chip {
 	int is_present;
 	int volt_max;
 	int curr_max;
-	int typec_state;
 	int charger_type;
 	bool is_vconn_on;
 	bool is_sbu_switched;
