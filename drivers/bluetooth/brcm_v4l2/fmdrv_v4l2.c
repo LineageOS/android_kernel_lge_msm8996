@@ -1268,6 +1268,7 @@ static struct video_device fm_viddev_template = {
     .name = FM_DRV_NAME,
     .release = video_device_release,
     .vfl_type = VFL_TYPE_RADIO,
+    .vfl_dir = VFL_DIR_RX,
 };
 
 int fm_v4l2_init_video_device(struct fmdrv_ops *fmdev, int radio_nr)
