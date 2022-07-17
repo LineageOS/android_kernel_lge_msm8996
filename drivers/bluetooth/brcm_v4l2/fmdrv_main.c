@@ -1533,7 +1533,9 @@ INIT_WORK(&fmdev->rx_workqueue,fm_receive_data_ldisc);
                                 V4L2_CAP_AUDIO | V4L2_CAP_READWRITE | V4L2_CAP_RDS_CAPTURE;
     fmdev->device_info.type = V4L2_TUNER_RADIO;
     fmdev->device_info.rxsubchans = V4L2_TUNER_SUB_MONO | V4L2_TUNER_SUB_STEREO;
-    fmdev->device_info.tuner_capability =V4L2_TUNER_CAP_STEREO | V4L2_TUNER_CAP_LOW | V4L2_TUNER_CAP_RDS;
+    fmdev->device_info.tuner_capability = V4L2_TUNER_CAP_STEREO | V4L2_TUNER_CAP_LOW |
+                                V4L2_TUNER_CAP_RDS | V4L2_TUNER_CAP_HWSEEK_BOUNDED |
+                                V4L2_TUNER_CAP_HWSEEK_WRAP;
 
 //BRCM_LOCAL [CSP#1011785] : FM radio Kernel crash
     fmdev->rx.abort_flag = FALSE;

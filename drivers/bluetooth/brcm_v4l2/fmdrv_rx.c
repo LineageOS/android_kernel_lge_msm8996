@@ -657,7 +657,7 @@ int fm_rx_seek_station(struct fmdrv_ops *fmdev, unsigned char direction_upward,
         V4L2_FM_DRV_ERR("(fmdrv) Timeout(%d sec),didn't get seek ended interrupt",\
                jiffies_to_msecs(FM_DRV_RX_SEEK_TIMEOUT) / 1000);
         fmdev->rx.fm_rds_flag &= ~FM_RDS_FLAG_SCH_FRZ_BIT;
-        return -ETIMEDOUT;
+        return -ENODATA;
     }
 
     fm_rx_read_curr_rssi_freq(fmdev, FALSE);
