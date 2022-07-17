@@ -886,7 +886,9 @@ static int fm_v4l2_vidioc_querycap(struct file *file, void *priv,
                                     sizeof(capability->card));
     sprintf(capability->bus_info, "UART");
     capability->version = FM_DRV_RADIO_VERSION;
-    capability->capabilities = fmdev->device_info.capabilities;
+    capability->device_caps = fmdev->device_info.capabilities;
+    capability->capabilities = capability->device_caps | V4L2_CAP_DEVICE_CAPS;
+
     return 0;
 }
 
