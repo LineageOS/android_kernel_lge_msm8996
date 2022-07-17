@@ -114,7 +114,7 @@ static int chg_get_property(struct power_supply *psy,
 	struct device *cdev = &anx->client->dev;
 	int rc;
 
-	if (!anx) // Don't check the psy if it doesn't exist yet.
+	if (!anx) /* Don't check the psy if it doesn't exist yet. */
 		return -ENODEV;
 
 	switch(prop) {
@@ -135,7 +135,6 @@ static int chg_get_property(struct power_supply *psy,
 		break;
 
 	case POWER_SUPPLY_PROP_TYPE:
-		// val->intval = anx->pd_psy_d.type;
 		if (anx->mode == DUAL_ROLE_PROP_MODE_UFP)
 			val->intval = POWER_SUPPLY_TYPE_UFP;
 		else if (anx->mode == DUAL_ROLE_PROP_MODE_DFP)
@@ -145,7 +144,7 @@ static int chg_get_property(struct power_supply *psy,
 		break;
 
 	case POWER_SUPPLY_PROP_TYPEC_MODE:
-		dev_info(cdev, "%s: get typec mode\n", __func__);
+		dev_dbg(cdev, "%s: get typec mode\n", __func__);
 		rc = anx7418_read_reg(anx->client, CC_STATUS);
 
 		val->intval = (rc == 0x11) ?
@@ -172,14 +171,14 @@ static int chg_set_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_PRESENT:
 		if (anx->is_dbg_acc || anx->mode == DUAL_ROLE_PROP_MODE_NONE) {
 			if (val->intval) {
-				dev_info(cdev, "power on by charger\n");
+				dev_dbg(cdev, "power on by charger\n");
 				anx7418_set_dr(anx, DUAL_ROLE_PROP_DR_DEVICE);
 			} else {
 				if (anx->dr == DUAL_ROLE_PROP_DR_DEVICE) {
-					dev_info(cdev, "power down by charger\n");
+					dev_dbg(cdev, "power down by charger\n");
 					anx7418_set_dr(anx, DUAL_ROLE_PROP_DR_NONE);
 				} else if (anx->dr == DUAL_ROLE_PROP_DR_NONE) {
-					dev_info(cdev, "PRESENT=false, DR=none\n");
+					dev_dbg(cdev, "PRESENT=false, DR=none\n");
 				}
 			}
 		}
@@ -213,7 +212,7 @@ static int chg_set_property(struct power_supply *psy,
 
 	case POWER_SUPPLY_PROP_TYPE:
 		if (val->intval == anx->pd_psy_d.type) {
-			dev_info(cdev, "%s: type already set (%s)\n", __func__,
+			dev_dbg(cdev, "%s: type already set (%s)\n", __func__,
 						chg_to_string(anx->pd_psy_d.type));
 			break;
 		}
@@ -227,7 +226,7 @@ static int chg_set_property(struct power_supply *psy,
 		case POWER_SUPPLY_TYPE_USB:
 			if (anx->pd_psy_d.type == POWER_SUPPLY_TYPE_UNKNOWN)
 				break;
-			dev_info(cdev, "%s: type USB - setting UNKNOWN\n", __func__);
+			dev_dbg(cdev, "%s: type USB - setting UNKNOWN\n", __func__);
 		default:
 			anx->pd_psy_d.type = POWER_SUPPLY_TYPE_UNKNOWN;
 			break;
@@ -282,19 +281,27 @@ int anx7418_set_pr(struct anx7418 *anx, int pr)
 	case DUAL_ROLE_PROP_PR_SRC:
 #ifdef CONFIG_LGE_USB_TYPE_C
 		if (!IS_INTF_IRQ_SUPPORT(anx))
-			anx->is_otg = 1;
+		{
+			prop.intval = 1;
+			power_supply_set_property(anx->pd_psy, 
+				POWER_SUPPLY_PROP_USB_OTG, &prop);
+		}
 #endif
 		break;
 
 	case DUAL_ROLE_PROP_PR_SNK:
 #ifdef CONFIG_LGE_USB_TYPE_C
-			anx->is_otg = 0;
+			prop.intval = 0;
+			power_supply_set_property(anx->pd_psy, 
+				POWER_SUPPLY_PROP_USB_OTG, &prop);
 #endif
 		break;
 
 	case DUAL_ROLE_PROP_PR_NONE:
 #ifdef CONFIG_LGE_USB_TYPE_C
-			anx->is_otg = 0;
+			prop.intval = 1;
+			power_supply_set_property(anx->pd_psy, 
+				POWER_SUPPLY_PROP_USB_OTG, &prop);
 #endif
 		break;
 
@@ -329,9 +336,10 @@ int anx7418_set_dr(struct anx7418 *anx, int dr)
 	case DUAL_ROLE_PROP_DR_DEVICE:
 		anx7418_set_dr(anx, DUAL_ROLE_PROP_DR_NONE);
 
-/* #ifdef CONFIG_LGE_USB_TYPE_C
-		power_supply_set_present(anx->usb_psy, 1);
-#endif */
+ #ifdef CONFIG_LGE_USB_TYPE_C
+ 		anx->is_present = 1;
+		/* power_supply_set_present(anx->usb_psy, 1); */
+#endif
 		break;
 
 	case DUAL_ROLE_PROP_DR_NONE:
@@ -341,8 +349,9 @@ int anx7418_set_dr(struct anx7418 *anx, int dr)
 			power_supply_set_property(anx->pd_psy,
 					POWER_SUPPLY_PROP_USB_OTG, &prop);
 
-/*		if (anx->dr == DUAL_ROLE_PROP_DR_DEVICE)
-			power_supply_set_present(anx->usb_psy, 0); */
+		if (anx->dr == DUAL_ROLE_PROP_DR_DEVICE)
+			anx->is_present = 1;
+			/* power_supply_set_present(anx->usb_psy, 0); */
 #endif
 		break;
 
@@ -380,7 +389,7 @@ int anx7418_reg_init(struct anx7418 *anx)
 		if (anx->rom_ver >= 0x12) {
 			intf_irq_mask = 0x83;
 
-			// AUTO-PD
+			/* AUTO-PD */
 			__anx7418_write_reg(client, MAX_VOLT_RDO, 0x5A);
 			__anx7418_write_reg(client, MAX_POWER_SYSTEM, 0x24);
 			__anx7418_write_reg(client, MIN_POWER_SYSTEM, 0x06);
@@ -400,7 +409,7 @@ int anx7418_reg_init(struct anx7418 *anx)
 			 */
 			__anx7418_write_reg(client, TIME_CONTROL, 0x18);
 
-			// skip check vbus
+			/* skip check vbus */
 			__anx7418_write_reg(client, 0x6E,
 					__anx7418_read_reg(client, 0x6E) | 1);
 		} else {
@@ -486,9 +495,9 @@ int anx7418_pwr_on(struct anx7418 *anx, int is_on)
 	struct i2c_client *client = anx->client;
 	struct device *cdev = &client->dev;
 	int rc = 0;
-#if 0 //CONFIG_LGE_USB_TYPE_C START
+#if 0 /* CONFIG_LGE_USB_TYPE_C START */
 	union power_supply_propval prop;
-#endif //CONFIG_LGE_USB_TYPE_C END
+#endif /* CONFIG_LGE_USB_TYPE_C END */
 
 	dev_info_ratelimited(cdev, "%s(%d)\n", __func__, is_on);
 
@@ -570,17 +579,17 @@ set_as_ufp:
 					 * is connected with a register for distinguish
 					 * factory cables by switch SBU_SEL pin.
 					 */
-#if 0 //CONFIG_LGE_USB_TYPE_C START
-					// Check vbus on?
+#if 0 /* CONFIG_LGE_USB_TYPE_C START */
+					/* Check vbus on? */
 					power_supply_get_property(anx->usb_psy,
 							POWER_SUPPLY_PROP_DP_DM, &prop);
 					if (prop.intval != POWER_SUPPLY_DP_DM_DPF_DMF) {
-						// vbus not detected
+						/* vbus not detected */
 						dev_err(cdev, "vbus is not detected. ignore it\n");
 						__anx7418_pwr_down(anx);
 						goto out;
 					}
-#endif //CONFIG_LGE_USB_TYPE_C END
+#endif /* CONFIG_LGE_USB_TYPE_C END */
 					gpio_set_value(anx->sbu_sel_gpio, 1);
 
 					anx->is_dbg_acc = true;
@@ -692,7 +701,7 @@ static void i2c_work(struct work_struct *w)
 
 		if (anx->mode == DUAL_ROLE_PROP_MODE_NONE) {
 			if (rc & 0xCC) {
-				// UFP
+				/* UFP */
 				dev_info(cdev, "%s: set as UFP\n", __func__);
 				anx_dbg_event("UFP", 0);
 
@@ -729,7 +738,7 @@ static void i2c_work(struct work_struct *w)
 				dual_role_changed = true;
 #endif
 			} else if (rc == 0x11) {
-				// Debug Accerrosy Mode
+				/* Debug Accessory Mode */
 				dev_info(cdev, "%s: Debug Accessory Mode\n", __func__);
 				anx_dbg_event("Debug Accessory", 0);
 #ifdef CONFIG_LGE_USB_TYPE_C
@@ -747,18 +756,21 @@ static void i2c_work(struct work_struct *w)
 				__anx7418_pwr_down(anx);
 				goto out;
 			} else if (rc == 0x00) {
+				/* No Mode Set = CC Open */
 				dev_dbg(cdev, "%s: CC Open\n", __func__);
 				anx_dbg_event("CC Open", 0);
 				__anx7418_write_reg(client, IRQ_INTF_STATUS,
 						irq & intf_irq_mask);
 				goto done;
 			} else if (rc == 0x22) {
+				/* Audio Accessory Mode */
 				dev_info(cdev, "%s: Audio Accessory Mode\n", __func__);
 				anx_dbg_event("Audio Accessory", 0);
 				__anx7418_write_reg(client, IRQ_INTF_STATUS,
 						irq & intf_irq_mask);
 				goto done;
 			} else {
+				/* Try using SNK (UFP) Mode First */
 				if (!anx->is_tried_snk && !lge_get_factory_boot()) {
 					dev_dbg(cdev, "%s: try_snk\n", __func__);
 
@@ -771,7 +783,7 @@ static void i2c_work(struct work_struct *w)
 					anx->is_tried_snk = true;
 					goto done;
 				}
-				// DFP
+				/* DFP */
 				dev_info(cdev, "%s: set as DFP\n", __func__);
 				anx_dbg_event("DFP", 0);
 
@@ -787,7 +799,7 @@ static void i2c_work(struct work_struct *w)
 		} else {
 			if (anx->pr == DUAL_ROLE_PROP_PR_SNK) {
 				if (rc & 0xCC) {
-					// Rp advertisement
+					/* Rp advertisement */
 					schedule_delayed_work(&anx->chg_work, 0);
 				}
 			}
@@ -833,7 +845,7 @@ static void i2c_work(struct work_struct *w)
 
 		} else if (status & DATA_ROLE) {
 			rc = __anx7418_read_reg(client, ANALOG_CTRL_7);
-			if ( (rc & 0x0F) == 0x05) { // CC1_Rd and CC2_Rd
+			if ( (rc & 0x0F) == 0x05) { /* CC1_Rd and CC2_Rd */
 
 				dev_info(cdev, "%s: Debug Accessory Mode\n", __func__);
 				anx_dbg_event("Debug Accessory", 0);
@@ -1270,7 +1282,7 @@ static void chg_work(struct work_struct *w)
 	int rc;
 
 	down_read(&anx->rwsem);
-	dev_info(cdev, "%s: starting\n", __func__);
+	dev_dbg(cdev, "%s: starting\n", __func__);
 
 	if (!atomic_read(&anx->pwr_on)) {
 		dev_info(cdev, "%s: pwr is off, aborted\n", __func__);
@@ -1283,24 +1295,24 @@ static void chg_work(struct work_struct *w)
 
 	if (anx->ctype_charger != ANX7418_CTYPE_PD_CHARGER) {
 		/* check ctype charger */
-		dev_info(cdev, "%s: checking charger capability\n", __func__);
+		dev_dbg(cdev, "%s: checking charger capability\n", __func__);
 		rc = anx7418_read_reg(client, POWER_DOWN_CTRL);
 
 		if (rc & (CC1_VRD_3P0 | CC2_VRD_3P0)) {
-			// 5V@3A
+			/* 5V@2A */
 			anx->volt_max = 5000;
 			anx->curr_max = 2000;
 			anx->ctype_charger = ANX7418_CTYPE_CHARGER;
 
 		} else if (rc & (CC1_VRD_1P5 | CC2_VRD_1P5)) {
-			// 5V@1.5A
+			/* 5V@1.5A */
 			anx->volt_max = 5000;
 			anx->curr_max = 1500;
 			anx->ctype_charger = ANX7418_CTYPE_CHARGER;
 
 		} else {
-			// Default USB Current
-			dev_info(cdev, "%s: Default USB Power\n", __func__);
+			/* Default USB Current */
+			dev_dbg(cdev, "%s: Default USB Power\n", __func__);
 			anx->volt_max = 5000;
 			anx->curr_max = 0;
 			anx->ctype_charger = ANX7418_UNKNOWN_CHARGER;
@@ -1311,20 +1323,20 @@ static void chg_work(struct work_struct *w)
 	/* Update ctype(ctype-pd) charger */
 	switch (anx->ctype_charger) {
 	case ANX7418_CTYPE_CHARGER:
-		prop.intval = POWER_SUPPLY_TYPE_TYPEC; // enum POWER_SUPPLY_TYPE_TYPEC = 17
+		prop.intval = POWER_SUPPLY_TYPE_TYPEC;
 		power_supply_set_property(anx->pd_psy, POWER_SUPPLY_PROP_TYPE, &prop);
-		dev_info(cdev, "%s: charger type = typec\n", __func__);
+		dev_dbg(cdev, "%s: charger type = typec\n", __func__);
 		break;
 	case ANX7418_CTYPE_PD_CHARGER:
-		prop.intval = POWER_SUPPLY_TYPE_USB_PD; // enum POWER_SUPPLY_TYPE_USB_PD = 10
+		prop.intval = POWER_SUPPLY_TYPE_USB_PD;
 		power_supply_set_property(anx->pd_psy, POWER_SUPPLY_PROP_TYPE, &prop);
-		dev_info(cdev, "%s: charger type = usb_pd\n", __func__);
+		dev_dbg(cdev, "%s: charger type = usb_pd\n", __func__);
 		break;
-	default: // unknown charger
+	default: /* unknown charger */
 		goto out;
 	}
 
-	dev_info(cdev, "%s: %s, %dmV, %dmA\n", __func__,
+	dev_dbg(cdev, "%s: %s, %dmV, %dmA\n", __func__,
 			chg_to_string(anx->pd_psy_d.type),
 			anx->volt_max,
 			anx->curr_max);
@@ -1425,7 +1437,7 @@ static int anx7418_probe(struct i2c_client *client,
 		return rc;
 	}
 
-#if 0 //CONFIG_LGE_USB_TYPE_C START
+#if 0 /* CONFIG_LGE_USB_TYPE_C START */
 	anx->usb_psy = power_supply_get_by_name("usb");
 	if (!anx->usb_psy) {
 		dev_err(&client->dev, "usb power_supply_get failed\n");
@@ -1437,7 +1449,7 @@ static int anx7418_probe(struct i2c_client *client,
 		dev_err(&client->dev, "battery power_supply_get failed\n");
 		return -EPROBE_DEFER;
 	}
-#endif //CONFIG_LGE_USB_TYPE_C END
+#endif /* CONFIG_LGE_USB_TYPE_C END */
 
 	dev_set_drvdata(&client->dev, anx);
 	anx->client = client;
