@@ -281,27 +281,19 @@ int anx7418_set_pr(struct anx7418 *anx, int pr)
 	case DUAL_ROLE_PROP_PR_SRC:
 #ifdef CONFIG_LGE_USB_TYPE_C
 		if (!IS_INTF_IRQ_SUPPORT(anx))
-		{
-			prop.intval = 1;
-			power_supply_set_property(anx->pd_psy, 
-				POWER_SUPPLY_PROP_USB_OTG, &prop);
-		}
+			anx->is_otg = 1;
 #endif
 		break;
 
 	case DUAL_ROLE_PROP_PR_SNK:
 #ifdef CONFIG_LGE_USB_TYPE_C
-			prop.intval = 0;
-			power_supply_set_property(anx->pd_psy, 
-				POWER_SUPPLY_PROP_USB_OTG, &prop);
+			anx->is_otg = 0;
 #endif
 		break;
 
 	case DUAL_ROLE_PROP_PR_NONE:
 #ifdef CONFIG_LGE_USB_TYPE_C
-			prop.intval = 0;
-			power_supply_set_property(anx->pd_psy, 
-				POWER_SUPPLY_PROP_USB_OTG, &prop);
+			anx->is_otg = 0;
 #endif
 		break;
 
@@ -336,10 +328,9 @@ int anx7418_set_dr(struct anx7418 *anx, int dr)
 	case DUAL_ROLE_PROP_DR_DEVICE:
 		anx7418_set_dr(anx, DUAL_ROLE_PROP_DR_NONE);
 
- #ifdef CONFIG_LGE_USB_TYPE_C
- 		anx->is_present = 1;
-		/* power_supply_set_present(anx->usb_psy, 1); */
-#endif
+/* #ifdef CONFIG_LGE_USB_TYPE_C
+		power_supply_set_present(anx->usb_psy, 1);
+#endif */
 		break;
 
 	case DUAL_ROLE_PROP_DR_NONE:
@@ -349,9 +340,8 @@ int anx7418_set_dr(struct anx7418 *anx, int dr)
 			power_supply_set_property(anx->pd_psy,
 					POWER_SUPPLY_PROP_USB_OTG, &prop);
 
-		if (anx->dr == DUAL_ROLE_PROP_DR_DEVICE)
-			anx->is_present = 1;
-			/* power_supply_set_present(anx->usb_psy, 0); */
+		/* if (anx->dr == DUAL_ROLE_PROP_DR_DEVICE)
+			power_supply_set_present(anx->usb_psy, 0); */
 #endif
 		break;
 
