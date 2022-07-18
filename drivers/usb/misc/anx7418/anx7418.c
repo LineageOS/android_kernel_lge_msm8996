@@ -299,7 +299,7 @@ int anx7418_set_pr(struct anx7418 *anx, int pr)
 
 	case DUAL_ROLE_PROP_PR_NONE:
 #ifdef CONFIG_LGE_USB_TYPE_C
-			prop.intval = 1;
+			prop.intval = 0;
 			power_supply_set_property(anx->pd_psy, 
 				POWER_SUPPLY_PROP_USB_OTG, &prop);
 #endif
