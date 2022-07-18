@@ -259,25 +259,19 @@ static int dual_role_set_prop(struct dual_role_phy_instance *dual_role,
 	case DUAL_ROLE_PROP_PR:
 		switch (*val) {
 		case DUAL_ROLE_PROP_PR_SRC:
-			otgprop.intval = 1; 
-            power_supply_set_property(chip->usbpd_psy, 
-                    POWER_SUPPLY_PROP_USB_OTG, &otgprop);
+			chip->is_otg = 1;
 
 			chip->power_role = DUAL_ROLE_PROP_PR_SRC;
 			break;
 		case DUAL_ROLE_PROP_PR_SNK:
 			if (chip->power_role == DUAL_ROLE_PROP_PR_SRC){
-				otgprop.intval = 0; 
-            	power_supply_set_property(chip->usbpd_psy, 
-                    POWER_SUPPLY_PROP_USB_OTG, &otgprop);
+				chip->is_otg = 0;
 			}
 			chip->power_role = DUAL_ROLE_PROP_PR_SNK;
 			break;
 		case DUAL_ROLE_PROP_PR_NONE:
 			if (chip->power_role == DUAL_ROLE_PROP_PR_SRC){
-				otgprop.intval = 0;
-            	power_supply_set_property(chip->usbpd_psy, 
-                    POWER_SUPPLY_PROP_USB_OTG, &otgprop);
+				chip->is_otg = 0;
 			}
 			chip->power_role = DUAL_ROLE_PROP_PR_NONE;
 			break;
@@ -290,7 +284,9 @@ static int dual_role_set_prop(struct dual_role_phy_instance *dual_role,
 		switch (*val) {
 		case DUAL_ROLE_PROP_DR_HOST:
 			if (chip->data_role == DUAL_ROLE_PROP_DR_DEVICE) {
-				chip->is_present = 0;
+				/* presentprop.intval = 0;
+					power_supply_set_property(chip->usb_psy, 
+				 		POWER_SUPPLY_PROP_PRESENT,&presentprop); */
 				mdelay(100);
 			}
 
@@ -303,12 +299,16 @@ static int dual_role_set_prop(struct dual_role_phy_instance *dual_role,
 				mdelay(100);
 			}
 
-			chip->is_present = 1;
+			/* presentprop.intval = 1;
+					power_supply_set_property(chip->usb_psy, 
+				 		POWER_SUPPLY_PROP_PRESENT,&presentprop); */
 			chip->data_role = DUAL_ROLE_PROP_DR_DEVICE;
 			break;
 		case DUAL_ROLE_PROP_DR_NONE:
 			if (chip->data_role == DUAL_ROLE_PROP_DR_DEVICE) {
-				chip->is_present = 0;
+				/* presentprop.intval = 0;
+					power_supply_set_property(chip->usb_psy, 
+				 		POWER_SUPPLY_PROP_PRESENT,&presentprop); */
 				mdelay(100);
 			}
 
