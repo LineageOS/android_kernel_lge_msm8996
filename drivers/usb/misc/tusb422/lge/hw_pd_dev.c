@@ -32,9 +32,6 @@ int set_mode(struct hw_pd_dev *dev, int mode)
 	static const char *const strings[] = {
 		[DUAL_ROLE_PROP_MODE_UFP]	= "UFP",
 		[DUAL_ROLE_PROP_MODE_DFP]	= "DFP",
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECT
-		[DUAL_ROLE_PROP_MODE_FAULT]	= "FAULT",
-#endif
 		[DUAL_ROLE_PROP_MODE_NONE]	= "None",
 	};
 
@@ -44,9 +41,6 @@ int set_mode(struct hw_pd_dev *dev, int mode)
 	switch (mode) {
 	case DUAL_ROLE_PROP_MODE_UFP:
 	case DUAL_ROLE_PROP_MODE_DFP:
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECT
-	case DUAL_ROLE_PROP_MODE_FAULT:
-#endif
 		break;
 	case DUAL_ROLE_PROP_MODE_NONE:
 #ifdef CONFIG_LGE_DP_UNSUPPORT_NOTIFY
@@ -60,13 +54,6 @@ int set_mode(struct hw_pd_dev *dev, int mode)
 	}
 
 	dev->mode = mode;
-
-#ifdef CONFIG_LGE_MBHC_DET_WATER_ON_USB
-    if( mode == DUAL_ROLE_PROP_MODE_FAULT )
-        detect_water_on_usb(true);
-    else
-        detect_water_on_usb(false);
-#endif
 
 	PRINT("%s(%s)\n", __func__, strings[mode]);
 	return 0;
@@ -340,24 +327,6 @@ print_vbus_state:
 		case PD_DPM_TYPEC_UNATTACHED:
 			dev->typec_mode = POWER_SUPPLY_TYPE_UNKNOWN;
 
-#ifdef CONFIG_LGE_PM_WATERPROOF_PROTECTION
-			if (dev->mode == DUAL_ROLE_PROP_MODE_FAULT) {
-
-				prop.intval = 0;
-				set_property_to_battery(dev,
-							POWER_SUPPLY_PROP_INPUT_SUSPEND,
-							&prop);
-
-			}
-#endif
-
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECT
-			if (dev->is_sbu_ov) {
-				enable_irq(dev->cc_protect_irq);
-				dev->is_sbu_ov = false;
-			}
-#endif
-
 			gpiod_direction_output(dev->redriver_sel_gpio, 0);
 			//if (dev->usb_ss_en_gpio)
 			//	gpiod_direction_output(dev->usb_ss_en_gpio, 0);
@@ -389,36 +358,6 @@ print_vbus_state:
 				set_dr(dev, DUAL_ROLE_PROP_DR_DEVICE);
 			}
 			break;
-
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECT
-		case PD_DPM_TYPEC_CC_FAULT:
-			gpiod_direction_output(dev->redriver_sel_gpio, 0);
-			//if (dev->usb_ss_en_gpio)
-			//	gpiod_direction_output(dev->usb_ss_en_gpio, 0);
-			set_mode(dev, DUAL_ROLE_PROP_MODE_FAULT);
-			set_pr(dev, DUAL_ROLE_PROP_PR_NONE);
-			set_dr(dev, DUAL_ROLE_PROP_DR_NONE);
-
-			dev->chg_psy_d.type = POWER_SUPPLY_TYPE_UNKNOWN;
-			dev->curr_max = 0;
-			dev->volt_max = 0;
-
-			if (dev->rp) {
-				dev->rp = 0;
-				prop.intval = 0;
-				set_property_to_battery(dev,
-							POWER_SUPPLY_PROP_CTYPE_RP,
-							&prop);
-			}
-
-#ifdef CONFIG_LGE_PM_WATERPROOF_PROTECTION
-			prop.intval = 1;
-			set_property_to_battery(dev,
-						POWER_SUPPLY_PROP_INPUT_SUSPEND,
-						&prop);
-#endif
-			break;
-#endif
 		}
 		break;
 	}
@@ -467,27 +406,6 @@ print_vbus_state:
 	}
 #endif
 
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECT
-	case PD_DPM_PE_EVENT_GET_SBU_ADC:
-		return chg_get_sbu_adc(dev);
-
-	case PD_DPM_PE_EVENT_SET_MOISTURE_DETECT_USE_SBU:
-		if (!(dev->moisture_detect_use_sbu && IS_CHARGERLOGO))
-			break;
-
-		if (dev->is_present) {
-			int sbu_adc = chg_get_sbu_adc(dev);
-			if (sbu_adc > SBU_WET_THRESHOLD) {
-				PRINT("%s: VBUS/SBU SHORT!!! %d\n", __func__, sbu_adc);
-				tcpm_cc_fault_set(0, TCPC_STATE_CC_FAULT_SBU_ADC);
-				tcpm_cc_fault_timer(0, false);
-			}
-		}
-
-		enable_irq(dev->cc_protect_irq);
-		break;
-#endif
-
 	default:
 		PRINT("%s: Unknown event: %d\n", __func__, event);
 		return -EINVAL;
@@ -504,17 +422,6 @@ int hw_pd_dev_init(struct device *dev)
 	_hw_pd_dev.mode = DUAL_ROLE_PROP_MODE_NONE;
 	_hw_pd_dev.pr = DUAL_ROLE_PROP_PR_NONE;
 	_hw_pd_dev.dr = DUAL_ROLE_PROP_DR_NONE;
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECT
-#ifdef MOISTURE_DETECT_USE_SBU_TEST
-	_hw_pd_dev.moisture_detect_use_sbu = true;
-#else
-	//if (!IS_FACTORY_MODE && lge_get_board_rev_no() >= HW_REV_1_3) \\ checks from dropped lge files
-	//	_hw_pd_dev.moisture_detect_use_sbu = true;
-#endif
-#ifndef CONFIG_MACH_MSM8996_LUCYE_KR
-		_hw_pd_dev.moisture_detect_use_sbu = false;
-#endif
-#endif /* CONFIG_LGE_USB_MOISTURE_DETECT */
 
 	dev_set_drvdata(dev, &_hw_pd_dev);
 
