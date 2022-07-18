@@ -85,10 +85,6 @@ static int tusb422_dual_role_get_prop(struct dual_role_phy_instance *dual_role,
 			*val = DUAL_ROLE_PROP_MODE_DFP;
 		else if (tcpc_dev->state == TCPC_STATE_ATTACHED_SNK)
 			*val = DUAL_ROLE_PROP_MODE_UFP;
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECT
-		else if (IS_STATE_CC_FAULT(tcpc_dev->state))
-			*val = DUAL_ROLE_PROP_MODE_FAULT;
-#endif
 		else
 			*val = DUAL_ROLE_PROP_MODE_NONE;
 		prop_mode = *val;
@@ -103,10 +99,6 @@ static int tusb422_dual_role_get_prop(struct dual_role_phy_instance *dual_role,
 				*val = DUAL_ROLE_PROP_PR_SNK;
 			else
 				*val = DUAL_ROLE_PROP_PR_SRC;
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECT
-		} else if (IS_STATE_CC_FAULT(tcpc_dev->state)) {
-			*val = DUAL_ROLE_PROP_PR_FAULT;
-#endif
 		} else
 			*val = DUAL_ROLE_PROP_PR_NONE;
 		prop_pr = *val;
@@ -121,10 +113,6 @@ static int tusb422_dual_role_get_prop(struct dual_role_phy_instance *dual_role,
 				*val = DUAL_ROLE_PROP_DR_DEVICE;
 			else
 				*val = DUAL_ROLE_PROP_DR_HOST;
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECT
-		} else if (IS_STATE_CC_FAULT(tcpc_dev->state)) {
-			*val = DUAL_ROLE_PROP_DR_FAULT;
-#endif
 		} else
 			*val = DUAL_ROLE_PROP_DR_NONE;
 		prop_dr = *val;
@@ -240,12 +228,6 @@ static int tusb422_dual_role_set_prop(struct dual_role_phy_instance *dual_role,
 			tcpm_try_role_swap(pd_dev->port);
 #endif
 		}
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECT
-		if (*val == DUAL_ROLE_PROP_PR_FAULT)
-			tcpm_cc_fault_test(0, true);
-		else if (*val == DUAL_ROLE_PROP_PR_NONE)
-			tcpm_cc_fault_test(0, false);
-#endif
 		break;
 
 	case DUAL_ROLE_PROP_DR:
@@ -255,12 +237,6 @@ static int tusb422_dual_role_set_prop(struct dual_role_phy_instance *dual_role,
 			if (usb_pd_policy_manager_request(pd_dev->port, PD_POLICY_MNGR_REQ_DR_SWAP))
 				ret = -EBUSY;
 		}
-#endif
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECT
-		if (*val == DUAL_ROLE_PROP_DR_FAULT)
-			tcpm_cc_fault_test(0, true);
-		else if (*val == DUAL_ROLE_PROP_DR_NONE)
-			tcpm_cc_fault_test(0, false);
 #endif
 		break;
 
