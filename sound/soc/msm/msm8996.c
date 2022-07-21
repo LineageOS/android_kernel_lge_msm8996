@@ -8715,7 +8715,7 @@ static struct snd_soc_dai_link msm8996_hdmi_dai_link[] = {
  * When you create new DAI link, you should add new one at the tail of list
  * You should place a dummy DAI instead of removed DAI when you defeature a function */
 
-#define LGE_DAI_LINK_ID_BASE	80
+#define LGE_DAI_LINK_ID_BASE	135 /* Exact amount of default qcom links */
 
 static struct snd_soc_dai_link msm8996_lge_dai_links[] = {
 #ifdef CONFIG_SND_USE_QUAT_MI2S
