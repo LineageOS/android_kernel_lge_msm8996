@@ -15,12 +15,8 @@
 		status = "disabled";
 	};
 
-	/* Delete entries from msm8996-mtp.dtsi */
-	/delete-node/ sound-9335;
-
 	sound-9335 {
 		qcom,model = "msm8996-tasha-snd-card";
-
 		qcom,audio-routing =
 			"AIF4 VI", "MCLK",
 			"RX_BIAS", "MCLK",
@@ -33,7 +29,10 @@
 			"MIC BIAS3", "Digital Mic2",
 			"SpkrLeft IN", "SPK1 OUT";
 
-		qcom,hdmi-audio-rx;
+		/delete-property/ qcom,hph-en1-gpio;
+		/delete-property/ qcom,hph-en0-gpio;
+		/delete-property/ qcom,us-euro-gpios;
+
 		asoc-cpu = <&dai_pri_auxpcm>, <&dai_sec_auxpcm>, <&dai_hdmi>, <&dai_mi2s>, <&dai_mi2s_quat>,
 				<&sb_0_rx>, <&sb_0_tx>, <&sb_1_rx>, <&sb_1_tx>,
 				<&sb_2_rx>, <&sb_2_tx>, <&sb_3_rx>, <&sb_3_tx>,
@@ -89,8 +88,7 @@
 				"msm-dai-q6-tdm.36916", "msm-dai-q6-tdm.36918",
 				"msm-dai-q6-tdm.36913", "msm-dai-q6-tdm.36915",
 				"msm-dai-q6-tdm.36917", "msm-dai-q6-tdm.36919";
-		asoc-codec = <&stub_codec>, <&ext_disp_audio_codec>;
-		asoc-codec-names = "msm-stub-codec.1", "msm-ext-disp-audio-codec-rx";
+
 		qcom,wsa-max-devs = <1>;
 		qcom,wsa-devs = <&wsa881x_213>;
 		qcom,wsa-aux-dev-prefix = "SpkrLeft";
