@@ -1,5 +1,6 @@
 include msm-perf_defconfig
 include mk2000_defconfig
+
 # LG Platform
 CONFIG_MACH_LGE=y
 
@@ -26,9 +27,8 @@ CONFIG_LG_OIS=y
 CONFIG_LGE_CAM_PREVIEW_TUNE=y
 
 # LGE - Sound
-# Having SND_DISABLE_LGE_DAI_LINKS as 'y' is a temporary workaround to get audio working in 4.4.
-CONFIG_SND_DISABLE_LGE_DAI_LINKS=y
-CONFIG_SND_LGE_DSDP_DUAL_AUDIO=y
+# DualAudio disabled as it conflicts with 4.4 audio
+CONFIG_SND_LGE_DSDP_DUAL_AUDIO=n
 
 # LGE - Display
 CONFIG_LGE_VSYNC_SKIP=y

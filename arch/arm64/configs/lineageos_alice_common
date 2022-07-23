@@ -1,4 +1,5 @@
 include lge_msm8996_defconfig
+
 # LG Platform
 CONFIG_MACH_MSM8996_H1=y
 

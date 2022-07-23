@@ -1,4 +1,5 @@
 include lge_msm8996_defconfig
+
 # LG Platform
 CONFIG_MACH_MSM8996_LUCYE=y
 
@@ -43,7 +44,6 @@ CONFIG_LGE_PM_WATERPROOF_PROTECTION=y
 # LGE - Sound
 # ¯\_(ツ)_/¯ we don't have ES9218 on all lucye models
 CONFIG_SND_SOC_ES9218P=y
-CONFIG_SND_USE_SEC_MI2S=y
 CONFIG_SND_USE_TERT_MI2S=y
 CONFIG_SND_USE_KNOWLES_DMIC_DELAY=y
 

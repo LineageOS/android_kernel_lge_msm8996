@@ -653,11 +653,13 @@ config SND_SOC_STI_SAS
 config SND_SOC_ES9018
 	tristate "es9018 Hi-Fi headphones amp"
 	depends on MACH_LGE
+	select SND_USE_SEC_MI2S
 	default n
 
 config SND_SOC_ES9218P
 	tristate "es9218P Hi-Fi headphones amp"
 	depends on MACH_LGE
+	select SND_USE_SEC_MI2S
 	default n
 
 config SND_SOC_TAS2552
