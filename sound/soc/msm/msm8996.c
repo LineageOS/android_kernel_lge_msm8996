@@ -9504,12 +9504,14 @@ static int msm8996_asoc_machine_probe(struct platform_device *pdev)
 
 	ret = snd_soc_register_card(card);
 	if (ret == -EPROBE_DEFER) {
-		if (codec_reg_done)
+		if (codec_reg_done){
+			dev_err(&pdev->dev, "ERROR: Codec registration done beforehand.\n");
 			ret = -EINVAL;
+		}
+		dev_info(&pdev->dev, "Couldn't register the card yet, deferring probe.\n");
 		goto err;
 	} else if (ret) {
-		dev_err(&pdev->dev, "snd_soc_register_card failed (%d)\n",
-			ret);
+		dev_err(&pdev->dev, "snd_soc_register_card failed (%d)\n", ret);
 		goto err;
 	}
 	dev_info(&pdev->dev, "Sound card %s registered\n", card->name);
