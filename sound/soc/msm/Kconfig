@@ -216,6 +216,14 @@ config SND_SOC_MSM8996_VM
 	 also it will enable the machine driver and
 	 the corresponding DAI-links
 
+config SND_DISABLE_LGE_DAI_LINKS
+	bool "Disable LGE 8996 DAI Links"
+	default n
+	help
+	 Select this option to disable LGE's msm8996 DAI Links
+	 normally used to provide extra audio capabilities such
+	 as the Quad-DAC and DSDP Dual Audio.
+
 config SND_LGE_EFFECT
 	bool "LGE DSP EFFECT"
 	default y

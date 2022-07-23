@@ -8710,7 +8710,7 @@ static struct snd_soc_dai_link msm8996_hdmi_dai_link[] = {
 	},
 };
 
-#ifndef CONFIG_SND_DISABLE_DUMMY_DAI
+#ifndef CONFIG_SND_DISABLE_LGE_DAI_LINKS
 static struct snd_soc_dai_link msm8996_lge_dai_links[] = {
 #ifdef CONFIG_SND_USE_QUAT_MI2S
 	{
@@ -8924,7 +8924,7 @@ static struct snd_soc_dai_link msm8996_sec_mi2s_dai_link[] = {
 	},
 };
 #endif
-#endif	/* CONFIG_SND_DISABLE_DUMMY_DAI */
+#endif	/* CONFIG_SND_DISABLE_LGE_DAI_LINKS */
 
 static struct snd_soc_dai_link msm8996_tasha_dai_links[
 			 ARRAY_SIZE(msm8996_common_dai_links) +
@@ -8933,7 +8933,7 @@ static struct snd_soc_dai_link msm8996_tasha_dai_links[
 			 ARRAY_SIZE(msm8996_common_be_dai_links) +
 			 ARRAY_SIZE(msm8996_tasha_be_dai_links) +
 			 ARRAY_SIZE(msm8996_tdm_be_dai_links) +
-#ifndef CONFIG_SND_DISABLE_DUMMY_DAI
+#ifndef CONFIG_SND_DISABLE_LGE_DAI_LINKS
 			 ARRAY_SIZE(msm8996_hdmi_dai_link) +
 			 ARRAY_SIZE(msm8996_lge_dai_links)];
 #else
@@ -9201,7 +9201,7 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 		card->num_links = len_5;
 	}
 
-#ifndef CONFIG_SND_DISABLE_DUMMY_DAI
+#ifndef CONFIG_SND_DISABLE_LGE_DAI_LINKS
 	if (card) {
 		memcpy(msm8996_tasha_dai_links + len_5,
 			   msm8996_lge_dai_links, sizeof(msm8996_lge_dai_links));
@@ -9227,7 +9227,7 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 		}
 	}
 #endif
-#endif	/* CONFIG_SND_DISABLE_DUMMY_DAI */
+#endif	/* CONFIG_SND_DISABLE_LGE_DAI_LINKS */
 
 	return card;
 }

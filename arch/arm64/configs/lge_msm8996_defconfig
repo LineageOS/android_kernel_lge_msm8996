@@ -26,6 +26,8 @@ CONFIG_LG_OIS=y
 CONFIG_LGE_CAM_PREVIEW_TUNE=y
 
 # LGE - Sound
+# Having SND_DISABLE_LGE_DAI_LINKS as 'y' is a temporary workaround to get audio working in 4.4.
+CONFIG_SND_DISABLE_LGE_DAI_LINKS=y
 CONFIG_SND_LGE_DSDP_DUAL_AUDIO=y
 
 # LGE - Display
