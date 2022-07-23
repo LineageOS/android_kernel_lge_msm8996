@@ -6664,8 +6664,13 @@ static struct snd_soc_dai_link msm8996_common_dai_links[] = {
 		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA1
 	},
 	{
+#ifdef CONFIG_MACH_LGE
+		.name = "Dual Audio",
+		.stream_name = "Dual audio",
+#else
 		.name = "MSM8996 Media2",
 		.stream_name = "MultiMedia2",
+#endif
 		.cpu_dai_name = "MultiMedia2",
 		.platform_name = "msm-pcm-dsp.0",
 		.dynamic = 1,
@@ -8743,25 +8748,6 @@ static struct snd_soc_dai_link msm8996_lge_dai_links[] = {
 		.ignore_suspend = 1,
 	},
 #endif	/* CONFIG_SND_USE_QUAT_MI2S */
-#if 0 /* This conflicts with one of the common dais */
-	{
-		.name = "Dual Audio",
-		.stream_name = "Dual audio",
-		.cpu_dai_name = "MultiMedia2",
-		.platform_name = "msm-pcm-dsp.0",
-		.dynamic = 1,
-		.dpcm_playback = 1,
-		.dpcm_capture = 1,
-		.codec_dai_name = "snd-soc-dummy-dai",
-		.codec_name = "snd-soc-dummy",
-		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
-			SND_SOC_DPCM_TRIGGER_POST},
-		.ignore_suspend = 1,
-		/* this dainlink has playback support */
-		.ignore_pmdown_time = 1,
-		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA2,
-	},
-#endif	/* CONFIG_SND_LGE_DSDP_DUAL_AUDIO */
 #ifdef CONFIG_SND_SOC_ES9018
 	{
 		.name = LPASS_BE_SEC_MI2S_RX,
@@ -9105,6 +9091,7 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 	} else {
 		dev_dbg(dev, "%s(): No TDM support\n", __func__);
 	}
+#ifdef CONFIG_MACH_LGE
 #ifdef CONFIG_SND_SOC_ES9218P
 	if (of_property_read_bool(dev->of_node, "lge,es9218p-codec")) {
 		enable_es9218p = true;
@@ -9115,10 +9102,9 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 		len_5 += ARRAY_SIZE(msm8996_sec_mi2s_dai_link);
 	}
 #endif
-#ifdef CONFIG_MACH_LGE
-		memcpy(dailink + len_5, msm8996_lge_dai_links,
-			sizeof(msm8996_lge_dai_links));
-		len_5 += ARRAY_SIZE(msm8996_lge_dai_links);
+	memcpy(dailink + len_5, msm8996_lge_dai_links,
+		sizeof(msm8996_lge_dai_links));
+	len_5 += ARRAY_SIZE(msm8996_lge_dai_links);
 #endif
 	if (card) {
 		card->dai_link = dailink;

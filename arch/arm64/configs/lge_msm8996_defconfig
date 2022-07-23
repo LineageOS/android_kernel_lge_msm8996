@@ -27,8 +27,7 @@ CONFIG_LG_OIS=y
 CONFIG_LGE_CAM_PREVIEW_TUNE=y
 
 # LGE - Sound
-# DualAudio disabled as it conflicts with 4.4 audio
-CONFIG_SND_LGE_DSDP_DUAL_AUDIO=n
+
 
 # LGE - Display
 CONFIG_LGE_VSYNC_SKIP=y
