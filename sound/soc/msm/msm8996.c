@@ -8710,7 +8710,7 @@ static struct snd_soc_dai_link msm8996_hdmi_dai_link[] = {
 	},
 };
 
-#ifndef CONFIG_SND_DISABLE_LGE_DAI_LINKS
+#ifdef CONFIG_MACH_LGE
 static struct snd_soc_dai_link msm8996_lge_dai_links[] = {
 #ifdef CONFIG_SND_USE_QUAT_MI2S
 	{
@@ -8742,67 +8742,11 @@ static struct snd_soc_dai_link msm8996_lge_dai_links[] = {
 		.ops = &msm8996_quat_mi2s_be_ops,
 		.ignore_suspend = 1,
 	},
-#else
-	/* DUMMY DAI Link 136 */
-	{
-		.name = "Dummy DAI 136",
-		.stream_name = "MultiMedia2",
-		.cpu_dai_name = "MultiMedia2",
-		.platform_name = "msm-pcm-dsp.0",
-		.dynamic = 1,
-		.dpcm_playback = 1,
-		.dpcm_capture = 1,
-		.codec_dai_name = "snd-soc-dummy-dai",
-		.codec_name = "snd-soc-dummy",
-		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
-			SND_SOC_DPCM_TRIGGER_POST},
-		.ignore_suspend = 1,
-		/* this dainlink has playback support */
-		.ignore_pmdown_time = 1,
-		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA2,
-	},
-	/* DUMMY DAI Link 137 */
-	{
-		.name = "Dummy DAI 137",
-		.stream_name = "MultiMedia2",
-		.cpu_dai_name = "MultiMedia2",
-		.platform_name = "msm-pcm-dsp.0",
-		.dynamic = 1,
-		.dpcm_playback = 1,
-		.dpcm_capture = 1,
-		.codec_dai_name = "snd-soc-dummy-dai",
-		.codec_name = "snd-soc-dummy",
-		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
-			SND_SOC_DPCM_TRIGGER_POST},
-		.ignore_suspend = 1,
-		/* this dainlink has playback support */
-		.ignore_pmdown_time = 1,
-		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA2,
-	},
-#endif
-#ifdef CONFIG_SND_LGE_DSDP_DUAL_AUDIO
+#endif	/* CONFIG_SND_USE_QUAT_MI2S */
+#if 0 /* This conflicts with one of the common dais */
 	{
 		.name = "Dual Audio",
 		.stream_name = "Dual audio",
-		.cpu_dai_name = "MultiMedia2",
-		.platform_name = "msm-pcm-dsp.0",
-		.dynamic = 1,
-		.dpcm_playback = 1,
-		.dpcm_capture = 1,
-		.codec_dai_name = "snd-soc-dummy-dai",
-		.codec_name = "snd-soc-dummy",
-		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
-			SND_SOC_DPCM_TRIGGER_POST},
-		.ignore_suspend = 1,
-		/* this dainlink has playback support */
-		.ignore_pmdown_time = 1,
-		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA2,
-	},
-#else
-	/* DUMMY DAI Link 138 */
-	{
-		.name = "Dummy DAI 138",
-		.stream_name = "MultiMedia2",
 		.cpu_dai_name = "MultiMedia2",
 		.platform_name = "msm-pcm-dsp.0",
 		.dynamic = 1,
@@ -8833,26 +8777,7 @@ static struct snd_soc_dai_link msm8996_lge_dai_links[] = {
 		.ops = &msm8996_sec_mi2s_be_ops,
 		.ignore_suspend = 1,
 	},
-#else
-	/* DUMMY DAI Link 139 */
-	{
-		.name = "Dummy DAI 139",
-		.stream_name = "MultiMedia2",
-		.cpu_dai_name = "MultiMedia2",
-		.platform_name = "msm-pcm-dsp.0",
-		.dynamic = 1,
-		.dpcm_playback = 1,
-		.dpcm_capture = 1,
-		.codec_dai_name = "snd-soc-dummy-dai",
-		.codec_name = "snd-soc-dummy",
-		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
-			SND_SOC_DPCM_TRIGGER_POST},
-		.ignore_suspend = 1,
-		/* this dainlink has playback support */
-		.ignore_pmdown_time = 1,
-		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA2,
-	},
-#endif /* CONFIG_SND_SOC_ES9018 */
+#endif	/* CONFIG_SND_SOC_ES9018 */
 #ifdef CONFIG_SND_USE_TERT_MI2S
 	{
 		.name = LPASS_BE_TERT_MI2S_RX,
@@ -8868,26 +8793,7 @@ static struct snd_soc_dai_link msm8996_lge_dai_links[] = {
 		.ops = &msm8996_tert_mi2s_be_ops,
 		.ignore_suspend = 1,
 	},
-#else
-	/* DUMMY DAI Link 140 */
-	{
-		.name = "Dummy DAI 140",
-		.stream_name = "MultiMedia2",
-		.cpu_dai_name = "MultiMedia2",
-		.platform_name = "msm-pcm-dsp.0",
-		.dynamic = 1,
-		.dpcm_playback = 1,
-		.dpcm_capture = 1,
-		.codec_dai_name = "snd-soc-dummy-dai",
-		.codec_name = "snd-soc-dummy",
-		.trigger = {SND_SOC_DPCM_TRIGGER_POST,
-			SND_SOC_DPCM_TRIGGER_POST},
-		.ignore_suspend = 1,
-		/* this dainlink has playback support */
-		.ignore_pmdown_time = 1,
-		.be_id = MSM_FRONTEND_DAI_MULTIMEDIA2,
-	},
-#endif /* CONFIG_SND_USE_TERT_MI2S */
+#endif	/* CONFIG_SND_USE_TERT_MI2S */
 	{
         .name = "SLIMBUS_3 Hostless Capture",
         .stream_name = "SLIMBUS3_HOSTLESS Capture",
@@ -8906,7 +8812,7 @@ static struct snd_soc_dai_link msm8996_lge_dai_links[] = {
 
 };
 
-#if defined(CONFIG_SND_USE_SEC_MI2S) && defined(CONFIG_SND_SOC_ES9218P)
+#ifdef CONFIG_SND_SOC_ES9218P
 static struct snd_soc_dai_link msm8996_sec_mi2s_dai_link[] = {
 	{
 		.name = LPASS_BE_SEC_MI2S_RX,
@@ -8923,8 +8829,8 @@ static struct snd_soc_dai_link msm8996_sec_mi2s_dai_link[] = {
 		.ignore_suspend = 1,
 	},
 };
-#endif
-#endif	/* CONFIG_SND_DISABLE_LGE_DAI_LINKS */
+#endif	/* CONFIG_SND_SOC_ES9218P */
+#endif	/* CONFIG_MACH_LGE */
 
 static struct snd_soc_dai_link msm8996_tasha_dai_links[
 			 ARRAY_SIZE(msm8996_common_dai_links) +
@@ -8933,8 +8839,11 @@ static struct snd_soc_dai_link msm8996_tasha_dai_links[
 			 ARRAY_SIZE(msm8996_common_be_dai_links) +
 			 ARRAY_SIZE(msm8996_tasha_be_dai_links) +
 			 ARRAY_SIZE(msm8996_tdm_be_dai_links) +
-#ifndef CONFIG_SND_DISABLE_LGE_DAI_LINKS
+#ifdef CONFIG_MACH_LGE
 			 ARRAY_SIZE(msm8996_hdmi_dai_link) +
+#ifdef CONFIG_SND_SOC_ES9218P
+			 ARRAY_SIZE(msm8996_sec_mi2s_dai_link) +
+#endif
 			 ARRAY_SIZE(msm8996_lge_dai_links)];
 #else
 			 ARRAY_SIZE(msm8996_hdmi_dai_link)];
@@ -9196,38 +9105,25 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 	} else {
 		dev_dbg(dev, "%s(): No TDM support\n", __func__);
 	}
+#ifdef CONFIG_SND_SOC_ES9218P
+	if (of_property_read_bool(dev->of_node, "lge,es9218p-codec")) {
+		enable_es9218p = true;
+		dev_dbg(dev, "%s(): LG G6 board has ESS DAC\n",
+				__func__);
+		memcpy(dailink + len_5, msm8996_sec_mi2s_dai_link,
+			sizeof(msm8996_sec_mi2s_dai_link));
+		len_5 += ARRAY_SIZE(msm8996_sec_mi2s_dai_link);
+	}
+#endif
+#ifdef CONFIG_MACH_LGE
+		memcpy(dailink + len_5, msm8996_lge_dai_links,
+			sizeof(msm8996_lge_dai_links));
+		len_5 += ARRAY_SIZE(msm8996_lge_dai_links);
+#endif
 	if (card) {
 		card->dai_link = dailink;
 		card->num_links = len_5;
 	}
-
-#ifndef CONFIG_SND_DISABLE_LGE_DAI_LINKS
-	if (card) {
-		memcpy(msm8996_tasha_dai_links + len_5,
-			   msm8996_lge_dai_links, sizeof(msm8996_lge_dai_links));
-		card->num_links += ARRAY_SIZE(msm8996_lge_dai_links);
-		dev_info(dev, "%s tasha codec: total qct+lge dai link num is %d\n",
-				__func__, card->num_links);
-	}
-#ifdef CONFIG_SND_SOC_ES9218P // set SEC_MI2S dai if ESS DAC DTSI is enabled
-	if (of_property_read_bool(dev->of_node, "lge,es9218p-codec")) { // check ESS DAC DTSI is enabled
-		int i;
-		int slinks = ARRAY_SIZE(msm8996_tasha_dai_links) - ARRAY_SIZE(msm8996_lge_dai_links);
-		enable_es9218p = true;
-
-		dev_dbg(dev, "%s(): register mi2s dai for es9218p codec\n", __func__);
-		for (i = slinks; i < card->num_links; i++) {
-			struct snd_soc_dai_link *link = msm8996_tasha_dai_links + i;
-
-			if (strstr(msm8996_tasha_dai_links[i].name,"Dummy DAI") != 0) {
-				dev_dbg(dev, "%s(): change DUMMY DAI[%d] to msm8996_sec_mi2s_dai_link\n", __func__, i);
-				memcpy(link, msm8996_sec_mi2s_dai_link, sizeof(msm8996_sec_mi2s_dai_link));
-				break;
-			}
-		}
-	}
-#endif
-#endif	/* CONFIG_SND_DISABLE_LGE_DAI_LINKS */
 
 	return card;
 }
