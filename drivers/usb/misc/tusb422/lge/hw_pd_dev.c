@@ -51,6 +51,7 @@ int set_mode(struct hw_pd_dev *dev, int mode)
 	}
 
 	dev->mode = mode;
+	set_property_on_battery(dev, POWER_SUPPLY_PROP_TYPEC_MODE);
 
 	PRINT("%s(%s)\n", __func__, strings[mode]);
 	return 0;
@@ -59,7 +60,7 @@ int set_mode(struct hw_pd_dev *dev, int mode)
 
 int set_pr(struct hw_pd_dev *dev, int pr)
 {
-	union power_supply_propval prop;
+	union power_supply_propval prop = {0,};
 	static const char *const strings[] = {
 		[DUAL_ROLE_PROP_PR_SRC]		= "Source",
 		[DUAL_ROLE_PROP_PR_SNK]		= "Sink",
@@ -72,17 +73,15 @@ int set_pr(struct hw_pd_dev *dev, int pr)
 	switch (pr) {
 	case DUAL_ROLE_PROP_PR_SRC:
 		prop.intval = 1;
-		power_supply_set_property(&dev->chg_psy, 
+		power_supply_set_property(dev->chg_psy,
 			POWER_SUPPLY_PROP_USB_OTG, &prop);
-		//power_supply_set_usb_otg(&dev->chg_psy, 1);
 		break;
 
 	case DUAL_ROLE_PROP_PR_SNK:
 	case DUAL_ROLE_PROP_PR_NONE:
 		prop.intval = 0;
-		power_supply_set_property(&dev->chg_psy, 
+		power_supply_set_property(dev->chg_psy,
 			POWER_SUPPLY_PROP_USB_OTG, &prop);
-		//power_supply_set_usb_otg(&dev->chg_psy, 0);
 		break;
 
 	default:
@@ -99,7 +98,6 @@ int set_pr(struct hw_pd_dev *dev, int pr)
 
 int set_dr(struct hw_pd_dev *dev, int dr)
 {
-	union power_supply_propval prop;
 	static const char *const strings[] = {
 		[DUAL_ROLE_PROP_DR_HOST]	= "Host",
 		[DUAL_ROLE_PROP_DR_DEVICE]	= "Device",
@@ -112,29 +110,18 @@ int set_dr(struct hw_pd_dev *dev, int dr)
 	switch (dr) {
 	case DUAL_ROLE_PROP_DR_HOST:
 		set_dr(dev, DUAL_ROLE_PROP_DR_NONE);
-		prop.intval = 1;
-		power_supply_set_property(&dev->chg_psy, 
-			POWER_SUPPLY_PROP_USB_OTG, &prop);
 		//power_supply_set_usb_otg(dev->usb_psy, 1);
 		break;
 
 	case DUAL_ROLE_PROP_DR_DEVICE:
 		set_dr(dev, DUAL_ROLE_PROP_DR_NONE);
-		prop.intval = 1;
-		power_supply_set_property(&dev->chg_psy, 
-			POWER_SUPPLY_PROP_USB_OTG, &prop);
 		//power_supply_set_present(dev->usb_psy, 1);
 		break;
 
 	case DUAL_ROLE_PROP_DR_NONE:
-		prop.intval = 0;
 		if (dev->dr == DUAL_ROLE_PROP_DR_HOST)
-			power_supply_set_property(&dev->chg_psy, 
-						POWER_SUPPLY_PROP_USB_OTG, &prop);
 			//power_supply_set_usb_otg(dev->usb_psy, 0);
 		if (dev->dr == DUAL_ROLE_PROP_DR_DEVICE)
-			power_supply_set_property(&dev->chg_psy, 
-						POWER_SUPPLY_PROP_USB_OTG, &prop);
 			//power_supply_set_present(dev->usb_psy, 0);
 		break;
 
@@ -171,7 +158,7 @@ EXPORT_SYMBOL(event_to_string);
 int pd_dpm_handle_pe_event(enum pd_dpm_pe_evt event, void *state)
 {
 	struct hw_pd_dev *dev = &_hw_pd_dev;
-	union power_supply_propval prop;
+	union power_supply_propval prop = {0,};
 
 	CRIT("%s: event: %s\n", __func__, event_to_string(event));
 
@@ -205,6 +192,7 @@ int pd_dpm_handle_pe_event(enum pd_dpm_pe_evt event, void *state)
 	{
 		struct pd_dpm_vbus_state *vbus_state =
 			(struct pd_dpm_vbus_state *)state;
+		int tmpval = 0;
 
 		DEBUG("vbus_type(%d), mv(%d), ma(%d)\n",
 		      vbus_state->vbus_type, vbus_state->mv, vbus_state->ma);
@@ -221,10 +209,10 @@ int pd_dpm_handle_pe_event(enum pd_dpm_pe_evt event, void *state)
 			dev->volt_max = vbus_state->mv;
 			dev->curr_max = vbus_state->ma;
 
-			prop.intval = (dev->curr_max > 500) ? 500 : dev->curr_max;
-			set_property_to_battery(dev,
-						POWER_SUPPLY_PROP_CURRENT_CAPABILITY,
-						&prop);
+			tmpval = dev->curr_max;
+			dev->curr_max = (dev->curr_max > 500) ? 500 : dev->curr_max;
+			set_property_on_battery(dev, POWER_SUPPLY_PROP_CURRENT_CAPABILITY);
+			dev->curr_max = tmpval;
 		} else {
 			uint16_t ma = vbus_state->ma;
 			int rp = 0;
@@ -236,10 +224,7 @@ int pd_dpm_handle_pe_event(enum pd_dpm_pe_evt event, void *state)
 					dev->curr_max = 0;
 					dev->volt_max = 0;
 
-					prop.intval = dev->curr_max;
-					set_property_to_battery(dev,
-								POWER_SUPPLY_PROP_CURRENT_CAPABILITY,
-								&prop);
+					set_property_on_battery(dev, POWER_SUPPLY_PROP_CURRENT_CAPABILITY);
 				}
 				break;
 			}
@@ -279,10 +264,7 @@ int pd_dpm_handle_pe_event(enum pd_dpm_pe_evt event, void *state)
 			dev->volt_max = vbus_state->mv;
 			dev->curr_max = ma;
 
-			prop.intval = dev->curr_max;
-			set_property_to_battery(dev,
-						POWER_SUPPLY_PROP_CURRENT_CAPABILITY,
-						&prop);
+			set_property_on_battery(dev, POWER_SUPPLY_PROP_CURRENT_CAPABILITY);
 		}
 
 print_vbus_state:
@@ -302,12 +284,9 @@ print_vbus_state:
 
 		DEBUG("connected(%d)\n", pd_state->connected);
 
-		if (pd_state->connected == PD_CONNECT_PE_READY_SNK) {
-			prop.intval = dev->curr_max;
-			set_property_to_battery(dev,
-						POWER_SUPPLY_PROP_CURRENT_CAPABILITY,
-						&prop);
-		}
+		if (pd_state->connected == PD_CONNECT_PE_READY_SNK)
+			set_property_on_battery(dev, POWER_SUPPLY_PROP_CURRENT_CAPABILITY);
+
 		break;
 	}
 
@@ -365,8 +344,6 @@ print_vbus_state:
 			(struct pd_dpm_swap_state *)state;
 		switch (swap_state->new_role) {
 		case PD_DATA_ROLE_UFP:
-			prop.intval = POWER_SUPPLY_TYPE_USB;
-			power_supply_set_property(dev->usb_psy, POWER_SUPPLY_PROP_TYPE, &prop);
 			//power_supply_set_supply_type(dev->usb_psy, POWER_SUPPLY_TYPE_USB);
 			set_dr(dev, DUAL_ROLE_PROP_DR_DEVICE);
 			break;
