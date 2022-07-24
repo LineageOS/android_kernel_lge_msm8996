@@ -23,13 +23,15 @@
 #endif
 
 #ifdef CONFIG_LGE_USB_MOISTURE_DETECT
+#include <soc/qcom/lge/power/lge_power_class.h>
+#include <soc/qcom/lge/power/lge_cable_detect.h>
 #include <linux/interrupt.h>
 
 /* must uncomment MOISTURE_DETECT_USE_SBU_TEST */
 //#define MOISTURE_DETECT_USE_SBU_TEST
 
 #define SBU_WET_THRESHOLD \
-	(lge_get_board_rev_no() >= HW_REV_1_3 ? 1750000 : 1796000)	/* uV */
+	(lge_get_board_revno() >= HW_REV_1_3 ? 1750000 : 1796000)	/* uV */
 #endif
 
 #define IS_FACTORY_MODE (lge_get_factory_boot())

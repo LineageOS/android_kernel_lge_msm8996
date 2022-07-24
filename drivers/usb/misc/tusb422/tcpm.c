@@ -85,9 +85,10 @@
 
 #define T_SBU_CHECK_MS			10000
 #define SBU_DRY_THRESHOLD_MIN \
-	(lge_get_board_rev_no() >= HW_REV_1_3 ? 3000 : 5000)		/* uV */
+	(lge_get_board_revno() >= HW_REV_1_3 ? 3000 : 5000)		/* uV */
+
 #define SBU_DRY_THRESHOLD_MAX \
-	(lge_get_board_rev_no() >= HW_REV_1_3 ? 900000 : 1600000)	/* uV */
+	(lge_get_board_revno() >= HW_REV_1_3 ? 900000 : 1600000)	/* uV */
 #endif
 
 #define TCPC_POLLING_DELAY()  tcpm_msleep(1)  /* Delay to wait for next CC and voltage polling period */
