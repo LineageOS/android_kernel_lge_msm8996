@@ -169,7 +169,14 @@ static int chg_get_property(struct power_supply *psy,
 		      dev->typec_mode);
 		val->intval = dev->typec_mode;
 		break;
+#if defined(CONFIG_LGE_USB_MOISTURE_DETECT) && defined(CONFIG_LGE_PM_WATERPROOF_PROTECTION)
+	case POWER_SUPPLY_PROP_INPUT_SUSPEND:
+		dev->sbu_ov_cnt = 0;
 
+		val->intval = (dev->mode == DUAL_ROLE_PROP_MODE_FAULT) ? 1 : 0;
+		DEBUG("%s: input_suspend(%d)\n", __func__, val->intval);
+		break;
+#endif
 	default:
 		return -EINVAL;
 	}
@@ -198,6 +205,23 @@ static int chg_set_property(struct power_supply *psy,
 			break;
 		dev->is_present = val->intval;
 		DEBUG("%s: is_present(%d)\n", __func__, dev->is_present);
+
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECT
+		if (dev->mode == DUAL_ROLE_PROP_MODE_FAULT) {
+			tcpm_cc_fault_timer(0, dev->is_present ? false : true);
+			break;
+		}
+
+		if (dev->moisture_detect_use_sbu && IS_CHARGERLOGO && val->intval) {
+			int sbu_adc = chg_get_sbu_adc(dev);
+			if (sbu_adc > SBU_WET_THRESHOLD) {
+				PRINT("%s: VBUS/SBU SHORT!!! %d\n", __func__, sbu_adc);
+				tcpm_cc_fault_set(0, TCPC_STATE_CC_FAULT_SBU_ADC);
+				tcpm_cc_fault_timer(0, false);
+				break;
+			}
+		}
+#endif
 
 		if (dev->mode == DUAL_ROLE_PROP_MODE_NONE) {
 			if (val->intval) {

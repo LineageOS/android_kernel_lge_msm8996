@@ -1010,11 +1010,10 @@ static int tusb422_tcpm_init(struct tusb422_pwr_delivery *tusb422_pd)
 #ifdef MOISTURE_DETECT_USE_SBU_TEST
 	tusb422_pd->configuration->moisture_detect_use_sbu = true;
 #else
-	// Do nothing here
-	//if (IS_FACTORY_MODE)
-	//	tusb422_pd->configuration->moisture_detect_disable = true;
-	//else if (lge_get_board_rev_no() >= HW_REV_1_3)
-	//	tusb422_pd->configuration->moisture_detect_use_sbu = true;
+	if (IS_FACTORY_MODE)
+		tusb422_pd->configuration->moisture_detect_disable = true;
+	else if (lge_get_board_revno() >= HW_REV_1_3)
+		tusb422_pd->configuration->moisture_detect_use_sbu = true;
 #endif
 #ifndef CONFIG_MACH_MSM8996_LUCYE_KR
 		tusb422_pd->configuration->moisture_detect_use_sbu = false;
