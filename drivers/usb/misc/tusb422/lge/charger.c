@@ -25,64 +25,75 @@ static const char *chg_to_string(enum power_supply_type type)
 	}
 }
 
-static void set_property_to_battery(struct hw_pd_dev *dev,
-				    enum power_supply_property property,
-				    union power_supply_propval *prop)
+int set_property_on_battery(struct hw_pd_dev *dev,
+			enum power_supply_property prop)
 {
-	int rc;
+	int rc = 0;
+	union power_supply_propval ret = {0, };
 
 	if (!dev->batt_psy) {
 		dev->batt_psy = power_supply_get_by_name("battery");
 		if (!dev->batt_psy) {
-			PRINT("battery psy doesn't preapred\n");
-			dev->batt_psy = 0;
-			return;
+			pr_err("no batt psy found\n");
+			return -ENODEV;
 		}
 	}
 
-	rc = dev->batt_psy->desc->set_property(dev->batt_psy, property, prop);
-	if (rc < 0)
-		PRINT("battery psy doesn't support reading prop %d rc = %d\n",
-		      property, rc);
-}
+	switch (prop) {
+	case POWER_SUPPLY_PROP_CURRENT_CAPABILITY:
+		ret.intval = dev->curr_max;
+		rc = power_supply_set_property(dev->batt_psy,
+			POWER_SUPPLY_PROP_CURRENT_CAPABILITY, &ret);
+		if (rc)
+			pr_err("failed to set current max rc=%d\n", rc);
+		else
+			pr_info("current set on batt_psy = %d\n", dev->curr_max);
+		break;
+	case POWER_SUPPLY_PROP_TYPEC_MODE:
+		/*
+		 * Notify the typec mode to charger. This is useful in the DFP
+		 * case where there is no notification of OTG insertion to the
+		 * charger driver.
+		 */
+		if (dev->mode == DUAL_ROLE_PROP_MODE_UFP)
+			ret.intval = POWER_SUPPLY_TYPE_UFP;
+		else if (dev->mode == DUAL_ROLE_PROP_MODE_DFP)
+			ret.intval = POWER_SUPPLY_TYPE_DFP;
+		else
+			ret.intval = POWER_SUPPLY_TYPE_UNKNOWN;
 
-#define OTG_WORK_DELAY 1000
-static void otg_work(struct work_struct *w)
-{
-	struct hw_pd_dev *dev = container_of(w, struct hw_pd_dev,
-					     otg_work.work);
-	struct device *cdev = dev->dev;
-	union power_supply_propval prop;
-	int rc;
+		rc = power_supply_set_property(dev->batt_psy,
+				POWER_SUPPLY_PROP_TYPEC_MODE, &ret);
+		if (rc)
+			pr_err("failed to set typec mode rc=%d\n", rc);
+		else
+			/* Since vbus is enabled some time after notifying this prop, rather than locally */
+			mdelay(50);
+		break;
+	case POWER_SUPPLY_PROP_USB_OTG:
+		/*
+		 * Just using this prop here, as the name seems the most appropriate.
+		 * Still setting POWER_SUPPLY_PROP_TYPEC_MODE in the end.
+		 */
+		if (dev->is_otg)
+			ret.intval = POWER_SUPPLY_TYPE_DFP;
+		else
+			ret.intval = POWER_SUPPLY_TYPE_UFP;
 
-	if (!dev->vbus_reg) {
-		dev->vbus_reg = devm_regulator_get(cdev, "vbus");
-		if (IS_ERR(dev->vbus_reg)) {
-			PRINT("vbus regulator doesn't preapred\n");
-			dev->vbus_reg = 0;
-			schedule_delayed_work(&dev->otg_work,
-					      msecs_to_jiffies(OTG_WORK_DELAY));
-			return;
-		}
+		rc = power_supply_set_property(dev->batt_psy,
+				POWER_SUPPLY_PROP_TYPEC_MODE, &ret);
+		if (rc)
+			pr_err("failed to set typec mode (otg) rc=%d\n", rc);
+		else
+			/* Since vbus is enabled some time after notifying this prop, rather than locally */
+			mdelay(50);
+		break;
+	default:
+		pr_err("invalid request\n");
+		rc = -EINVAL;
 	}
 
-	if (dev->is_otg) {
-		rc = regulator_enable(dev->vbus_reg);
-		if (rc)
-			PRINT("unable to enable vbus\n");
-
-		prop.intval = POWER_SUPPLY_TYPE_DFP;
-		set_property_to_battery(dev, POWER_SUPPLY_PROP_TYPEC_MODE,
-				       &prop);
-	} else {
-		rc = regulator_disable(dev->vbus_reg);
-		if (rc)
-			PRINT("unable to disable vbus\n");
-
-		prop.intval = POWER_SUPPLY_TYPE_UFP;
-		set_property_to_battery(dev, POWER_SUPPLY_PROP_TYPEC_MODE,
-				       &prop);
-	}
+	return rc;
 }
 
 #ifdef CONFIG_LGE_USB_MOISTURE_DETECT
@@ -116,7 +127,7 @@ static int chg_get_property(struct power_supply *psy,
 			    enum power_supply_property prop,
 			    union power_supply_propval *val)
 {
-	struct hw_pd_dev *dev = container_of(psy, struct hw_pd_dev, chg_psy);
+	struct hw_pd_dev *dev = power_supply_get_drvdata(psy);
 
 	switch(prop) {
 	case POWER_SUPPLY_PROP_USB_OTG:
@@ -170,7 +181,7 @@ static int chg_set_property(struct power_supply *psy,
 			    enum power_supply_property prop,
 			    const union power_supply_propval *val)
 {
-	struct hw_pd_dev *dev = container_of(psy, struct hw_pd_dev, chg_psy);
+	struct hw_pd_dev *dev = power_supply_get_drvdata(psy);
 
 	switch (prop) {
 	case POWER_SUPPLY_PROP_USB_OTG:
@@ -179,8 +190,7 @@ static int chg_set_property(struct power_supply *psy,
 		dev->is_otg = val->intval;
 		DEBUG("%s: is_otg(%d)\n", __func__, dev->is_otg);
 
-		cancel_delayed_work(&dev->otg_work);
-		otg_work(&dev->otg_work.work);
+		set_property_on_battery(dev, POWER_SUPPLY_PROP_USB_OTG);
 		break;
 
 	case POWER_SUPPLY_PROP_PRESENT:
@@ -261,18 +271,11 @@ int charger_init(struct hw_pd_dev *dev)
 	chg_psy_cfg.supplied_to = chg_supplicants;
 	chg_psy_cfg.num_supplicants = ARRAY_SIZE(chg_supplicants);
 
-	INIT_DELAYED_WORK(&dev->otg_work, otg_work);
-
-	dev->chg_psy = *devm_power_supply_register(cdev, &dev->chg_psy_d, &chg_psy_cfg);
+	dev->chg_psy = devm_power_supply_register(cdev, &dev->chg_psy_d, &chg_psy_cfg);
 	if (IS_ERR(&dev->chg_psy)) {
-		PRINT("Unalbe to register ctype_psy rc = %d\n", rc);
+		PRINT("Unable to register chg_psy rc = %d\n", rc);
 		return -EPROBE_DEFER;
 	}
-
-	prop.intval = POWER_SUPPLY_TYPE_UNKNOWN;
-	power_supply_set_property(&dev->chg_psy, POWER_SUPPLY_PROP_TYPE, &prop);
-	//power_supply_set_supply_type(&dev->chg_psy, POWER_SUPPLY_TYPE_UNKNOWN);
-
 
 #ifdef CONFIG_LGE_USB_MOISTURE_DETECT
 	//dev->lge_adc_lpc = lge_power_get_by_name("lge_adc"); // We don't use LGE's files and structs anymore

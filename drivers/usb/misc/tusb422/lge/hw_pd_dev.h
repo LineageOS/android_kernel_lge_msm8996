@@ -39,8 +39,11 @@
 struct hw_pd_dev {
 	struct device *dev;
 
-	/* usb */
+	/* psy */
 	struct power_supply *usb_psy;
+	struct power_supply *batt_psy;
+	struct power_supply *chg_psy;
+	struct power_supply_desc chg_psy_d;
 
 	int mode;
 	int pr;
@@ -49,14 +52,9 @@ struct hw_pd_dev {
 	struct gpio_desc *redriver_sel_gpio;
 	struct gpio_desc *usb_ss_en_gpio;
 
-	/* charger */
+	/* otg reg */
 	struct regulator *vbus_reg;
 	struct delayed_work otg_work;
-
-	struct power_supply chg_psy;
-	struct power_supply_desc chg_psy_d;
-	struct power_supply *batt_psy;
-	struct power_supply_desc batt_psy_d;
 
 	bool is_otg;
 	bool is_present;

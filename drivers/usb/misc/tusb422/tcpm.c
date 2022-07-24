@@ -639,9 +639,8 @@ static bool usbpd_is_vbus_present(unsigned int port)
 			dev->typec_psy = 0;
 	}
 	if (dev->typec_psy) {
-		dev->typec_psy->desc->get_property(dev->typec_psy,
-					     POWER_SUPPLY_PROP_PRESENT,
-					     &prop);
+		power_supply_get_property(dev->typec_psy,
+					POWER_SUPPLY_PROP_PRESENT, &prop);
 		return prop.intval;
 	}
 

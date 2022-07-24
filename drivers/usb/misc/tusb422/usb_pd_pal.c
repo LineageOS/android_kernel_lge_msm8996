@@ -19,9 +19,6 @@
 #include "tcpm.h"
 #include "tusb422_common.h"
 #include "usb_pd_policy_engine.h"
-#ifndef CONFIG_LGE_USB_TYPE_C
-#include <huawei_platform/usb/hw_pd_dev.h>
-#endif
 
 #define TCP_VBUS_CTRL_PD_DETECT (1 << 7)
 
