@@ -306,3 +306,8 @@ config LC898123F40
 	  LC898123F40XC is a system LSI integrating an onchip 32bit DSP, a Flash Memory and peripherals including
 	  analog circuits for OIS(Optical Image Stabilization) /AF(Auto Focus) control and H-bridge and linear
 	  drivers.
+
+config DEBUG_MSM_CAMERA_V2
+	bool "MSM Camera V2 debug support"
+	---help---
+	This flag enables support for debugging on Qualcomm's Camera V2 subsystem.

@@ -22,3 +22,5 @@ obj-$(CONFIG_MSMB_JPEG) += jpeg_10/
 obj-$(CONFIG_MSM_JPEGDMA) += jpeg_dma/
 obj-$(CONFIG_MSMB_CAMERA) += msm_buf_mgr/
 obj-$(CONFIG_MSM_FD) += fd/
+
+subdir-ccflags-$(CONFIG_DEBUG_MSM_CAMERA_V2) := -DDEBUG
