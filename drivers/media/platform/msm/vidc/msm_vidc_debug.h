@@ -110,9 +110,9 @@ extern bool msm_vidc_debug_timeout;
 						VIDC_MSG_PRIO2STRING(__level), \
 						## arg); \
 			} else if (msm_vidc_debug_out == VIDC_OUT_FTRACE) { \
-				trace_printk(KERN_DEBUG VIDC_DBG_TAG __fmt, \
+				/* trace_printk(KERN_DEBUG VIDC_DBG_TAG __fmt, \
 						VIDC_MSG_PRIO2STRING(__level), \
-						## arg); \
+						## arg); */ \
 			} \
 		} \
 	} while (0)
