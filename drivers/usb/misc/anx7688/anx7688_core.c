@@ -227,8 +227,6 @@ static int dual_role_set_prop(struct dual_role_phy_instance *dual_role,
 	struct i2c_client *client = dual_role_get_drvdata(dual_role);
         struct anx7688_chip *chip;
 	struct device *cdev;
-	//union power_supply_propval presentprop;
-	//union power_supply_propval otgprop;
 
 	if (!client)
 		return -EINVAL;
@@ -746,13 +744,15 @@ static int usbpd_set_property(struct power_supply *psy,
 						DUAL_ROLE_PROP_DR_NONE);
 			} else if (chip->data_role == DUAL_ROLE_PROP_DR_NONE) {
 				union power_supply_propval prop;
-				if(chip->usb_psy)
+#ifndef ANX7688_DISABLE_USB_PSY
 					power_supply_get_property(chip->usb_psy,
 							POWER_SUPPLY_PROP_PRESENT, &prop);
+#endif
 				if (prop.intval) {
-					if(chip->usb_psy)
+#ifndef ANX7688_DISABLE_USB_PSY
 						power_supply_set_property(chip->usb_psy, 
 							POWER_SUPPLY_PROP_PRESENT, 0);
+#endif
 #ifdef  CONFIG_LGE_USB_TYPE_C
 					anx7688_pwr_down(chip);
 #endif
@@ -1081,6 +1081,10 @@ static void anx7688_detach(struct anx7688_chip *chip)
 
 static void anx7688_snk_detect(struct anx7688_chip *chip)
 {
+#ifndef ANX7688_DISABLE_USB_PSY
+	union power_supply_propval pval = {true, };
+#endif
+
 	chip->mode = DUAL_ROLE_PROP_MODE_DFP;
 	chip->usbpd_psy_d.type = POWER_SUPPLY_TYPE_DFP;
 	dual_role_instance_changed(chip->dual_role);
@@ -1096,11 +1100,11 @@ static void anx7688_snk_detect(struct anx7688_chip *chip)
 		anx7688_set_data_role(chip, DUAL_ROLE_PROP_DR_HOST);
 	}
 
-	if (chip->usb_psy) {
-			union power_supply_propval pval = {true, };
-			power_supply_set_property(chip->usb_psy,
-				POWER_SUPPLY_PROP_USB_OTG, &pval);
-		}
+#ifndef ANX7688_DISABLE_USB_PSY
+		power_supply_set_property(chip->usb_psy,
+			POWER_SUPPLY_PROP_USB_OTG, &pval);
+#endif
+
 	anx_update_state(chip, STATE_ATTACHED_SRC);
 	dual_role_instance_changed(chip->dual_role);
 
@@ -1837,7 +1841,7 @@ static bool anx7688_set_snk(struct anx7688_chip *chip, unsigned long timeout)
 	wake_lock_timeout(&chip->wlock, msecs_to_jiffies(2000));
 
 	if (OhioReadReg(USBC_ADDR, USBC_ANALOG_STATUS) & DFP_OR_UFP) {
-		dev_info(cdev, "same with before role(ufp)\n");
+		dev_dbg(cdev, "same with before role(ufp)\n");
 		return true;
 	}
 
@@ -1890,11 +1894,11 @@ static bool anx7688_set_snk(struct anx7688_chip *chip, unsigned long timeout)
 	anx7688_register_init(chip);
 	anx_update_state(chip, STATE_ATTACHED_SNK);
 
-	dev_info(cdev, "set snk finished\n");
+	dev_dbg(cdev, "set snk finished\n");
 	return true;
 
 set_snk_fail:
-	dev_info(cdev, "set snk failed\n");
+	dev_err(cdev, "set snk failed\n");
 	OhioMaskWriteReg(USBC_ADDR, USBC_ANALOG_STATUS, R_TRY_DRP, 1);
 	OhioWriteReg(USBC_ADDR, USBC_RESET_CTRL_0, 0x00);
 
@@ -1914,7 +1918,7 @@ static inline int anx7688_set_role(struct anx7688_chip *chip, u8 role)
 		return 0;
 	}
 
-	dev_info(cdev, "%s: role change to %d\n", __func__, role);
+	dev_dbg(cdev, "%s: role change to %d\n", __func__, role);
 
 	switch (role) {
 	case ANX_ROLE_DRP:
