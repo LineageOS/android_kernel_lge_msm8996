@@ -68,7 +68,7 @@ int set_property_on_battery(struct hw_pd_dev *dev,
 			pr_err("failed to set typec mode rc=%d\n", rc);
 		else
 			/* Since vbus is enabled some time after notifying this prop, rather than locally */
-			mdelay(50);
+			msleep(30);
 		break;
 	case POWER_SUPPLY_PROP_USB_OTG:
 		/*
@@ -86,7 +86,7 @@ int set_property_on_battery(struct hw_pd_dev *dev,
 			pr_err("failed to set typec mode (otg) rc=%d\n", rc);
 		else
 			/* Since vbus is enabled some time after notifying this prop, rather than locally */
-			mdelay(50);
+			msleep(30);
 		break;
 	default:
 		pr_err("invalid request\n");
