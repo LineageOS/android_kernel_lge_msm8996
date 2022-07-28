@@ -20,21 +20,8 @@ struct somc_usb_ocp {
 	spinlock_t		lock;
 };
 
-struct somc_typec_mode_ctrl {
-	spinlock_t		change_irq_lock;
-	struct delayed_work	start_polling_delay;
-	struct delayed_work	stop_polling_delay;
-	struct workqueue_struct	*polling_wq;
-	bool			user_request_polling;
-	bool			avoid_first_usbid_change;
-	struct wakeup_source	wakeup_source_id_polling;
-};
-
 struct usb_somc_params {
-	struct qpnp_vadc_chip		*vadc_usb_dp;
-	struct qpnp_vadc_chip		*vadc_usb_dm;
 	struct somc_usb_ocp		ocp;
-	struct somc_typec_mode_ctrl	typecctrl;
 };
 
 #endif /* __QPNP_SMBCHARGER_EXTENSION_USB */
