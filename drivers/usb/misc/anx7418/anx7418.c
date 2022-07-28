@@ -11,6 +11,8 @@
 #include <linux/async.h>
 #include <linux/regulator/consumer.h>
 
+#include <soc/qcom/lge/board_lge.h>
+
 #include "anx7418.h"
 #include "anx7418_firmware.h"
 #include "anx7418_pd.h"
@@ -130,6 +132,7 @@ static int chg_get_property(struct power_supply *psy,
 		val->intval = anx->volt_max;
 		break;
 
+	case POWER_SUPPLY_PROP_CURRENT_CAPABILITY:
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
 		val->intval = anx->curr_max;
 		break;
@@ -165,7 +168,6 @@ static int chg_set_property(struct power_supply *psy,
 {
 	struct anx7418 *anx = power_supply_get_drvdata(psy);
 	struct device *cdev = &anx->client->dev;
-	int rc;
 
 	switch (prop) {
 	case POWER_SUPPLY_PROP_PRESENT:
@@ -197,7 +199,6 @@ static int chg_set_property(struct power_supply *psy,
 			anx->volt_max = 0;
 			anx->ctype_charger = ANX7418_UNKNOWN_CHARGER;
 		}
-
 		break;
 
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
@@ -235,6 +236,8 @@ static int chg_set_property(struct power_supply *psy,
 
 		break;
 
+	case POWER_SUPPLY_PROP_TYPEC_MODE:
+		/* Fall through */
 	default:
 		return -EINVAL;
 	}
@@ -435,6 +438,7 @@ int __anx7418_pwr_on(struct anx7418 *anx)
 
 	gpio_set_value(anx->resetn_gpio, 1);
 	anx_dbg_event("RESETN", 1);
+	mdelay(5);
 
 	for (i = 0; i < OCM_STARTUP_TIMEOUT; i++) {
 		rc = i2c_smbus_read_byte_data(client, TX_STATUS);
@@ -447,11 +451,9 @@ int __anx7418_pwr_on(struct anx7418 *anx)
 				break;
 			}
 		}
-
 		if (rc > 0 && rc & OCM_STARTUP) {
 			break;
 		}
-
 		mdelay(1);
 	}
 	anx_dbg_event("OCM STARTUP", rc);
@@ -625,12 +627,11 @@ out:
 	return 0;
 }
 
-static void i2c_work(struct work_struct *w)
+static void i2c_irq_work(struct work_struct *w)
 {
-	struct anx7418 *anx = container_of(w, struct anx7418, i2c_work);
+	struct anx7418 *anx = container_of(w, struct anx7418, i2c_irq_work);
 	struct i2c_client *client = anx->client;
 	struct device *cdev = &client->dev;
-	union power_supply_propval prop = {0,};
 	int irq;
 	int status;
 #ifdef CONFIG_DUAL_ROLE_USB_INTF
@@ -907,7 +908,7 @@ out:
 	up_read(&anx->rwsem);
 }
 
-static irqreturn_t i2c_irq(int irq, void *_anx)
+static irqreturn_t i2c_irq_event(int irq, void *_anx)
 {
 	struct anx7418 *anx = _anx;
 	struct device *cdev = &anx->client->dev;
@@ -915,16 +916,16 @@ static irqreturn_t i2c_irq(int irq, void *_anx)
 	wake_lock_timeout(&anx->wlock, msecs_to_jiffies(2000));
 
 	dev_dbg(cdev, "%s\n", __func__);
-	queue_work_on(0, anx->wq, &anx->i2c_work);
+	queue_work_on(0, anx->wq, &anx->i2c_irq_work);
 	return IRQ_HANDLED;
 }
 
-static void cable_det_work(struct work_struct *w)
+static void cbl_det_work(struct work_struct *w)
 {
-	struct anx7418 *anx = container_of(w, struct anx7418, cable_det_work);
+	struct anx7418 *anx = container_of(w, struct anx7418, cbl_det_work);
 	int det;
 
-	det = gpio_get_value(anx->cable_det_gpio);
+	det = gpio_get_value(anx->cbl_det_gpio);
 
 	anx_dbg_event("CABLE DET", det);
 
@@ -932,47 +933,47 @@ static void cable_det_work(struct work_struct *w)
 }
 
 #ifdef CABLE_DET_PIN_HAS_GLITCH
-static int confirmed_cable_det(struct anx7418 *anx)
+static int confirmed_cbl_det(struct anx7418 *anx)
 {
 	int count = 9;
-	int cable_det_count = 0;
-	int cable_det;
+	int cbl_det_count = 0;
+	int cbl_det;
 
 	do {
-		cable_det = gpio_get_value(anx->cable_det_gpio);
-		if (cable_det)
-			cable_det_count++;
+		cbl_det = gpio_get_value(anx->cbl_det_gpio);
+		if (cbl_det)
+			cbl_det_count++;
 		mdelay(1);
 	} while (count--);
 
-	if (cable_det_count > 7)
+	if (cbl_det_count > 7)
 		return 1;
-	else if (cable_det_count < 3)
+	else if (cbl_det_count < 3)
 		return 0;
 	else
 		return atomic_read(&anx->pwr_on);
 }
 #endif
 
-static irqreturn_t cable_det_irq(int irq, void *_anx)
+static irqreturn_t cbl_det_event(int irq, void *_anx)
 {
 	struct anx7418 *anx = _anx;
 	struct device *cdev = &anx->client->dev;
 #ifdef CABLE_DET_PIN_HAS_GLITCH
-	int cable_det;
+	int cbl_det;
 #endif
 
 	wake_lock_timeout(&anx->wlock, msecs_to_jiffies(2000));
 
 	dev_info_ratelimited(cdev, "%s\n", __func__);
 #ifdef CABLE_DET_PIN_HAS_GLITCH
-	cable_det = confirmed_cable_det(anx);
-	if (cable_det != atomic_read(&anx->pwr_on))
-		cable_det_work(&anx->cable_det_work);
-	else if (anx->is_dbg_acc && !cable_det)
-		cable_det_work(&anx->cable_det_work);
+	cbl_det = confirmed_cbl_det(anx);
+	if (cbl_det != atomic_read(&anx->pwr_on))
+		cbl_det_work(&anx->cbl_det_work);
+	else if (anx->is_dbg_acc && !cbl_det)
+		cbl_det_work(&anx->cbl_det_work);
 #else
-	queue_work_on(0, anx->wq, &anx->cable_det_work);
+	queue_work_on(0, anx->wq, &anx->cbl_det_work);
 #endif
 	return IRQ_HANDLED;
 }
@@ -1075,7 +1076,7 @@ err:
 
 static int anx7418_gpio_configure(struct anx7418 *anx, bool on)
 {
-	struct device *dev = &anx->client->dev;
+	struct device *cdev = &anx->client->dev;
 	int rc = 0;
 
 	if (!on) {
@@ -1084,145 +1085,90 @@ static int anx7418_gpio_configure(struct anx7418 *anx, bool on)
 
 	if (gpio_is_valid(anx->pwr_en_gpio)) {
 		/* configure anx7418 pwr_en gpio */
-		rc = gpio_request(anx->pwr_en_gpio, "anx7418_pwr_en_gpio");
-		if (rc) {
-			dev_err(dev,
-				"unable to request gpio[%d]\n",
-				anx->pwr_en_gpio);
-			goto err_pwr_en_gpio_req;
-		}
-		rc = gpio_direction_output(anx->pwr_en_gpio, 0);
-		if (rc) {
-			dev_err(dev,
-				"unable to set dir for gpio[%d]\n",
-				anx->pwr_en_gpio);
-			goto err_pwr_en_gpio_dir;
-		}
+		rc = gpio_request_one(anx->pwr_en_gpio,
+				GPIOF_OUT_INIT_LOW, "anx7418_pwr_en_gpio");
+		if (rc)
+			dev_err(cdev, "unable to request gpio[%d]\n",
+					anx->pwr_en_gpio);
 	} else {
-		dev_err(dev, "pwr_en gpio not provided\n");
+		dev_err(cdev, "pwr_en gpio not provided\n");
 		rc = -EINVAL;
 		goto err_pwr_en_gpio_req;
 	}
 
 	if (gpio_is_valid(anx->resetn_gpio)) {
 		/* configure anx7418 resetn gpio */
-		rc = gpio_request(anx->resetn_gpio, "anx7418_resetn_gpio");
-		if (rc) {
-			dev_err(dev,
-				"unable to request gpio[%d]\n",
-				anx->resetn_gpio);
-			goto err_pwr_en_gpio_dir;
-		}
-		rc = gpio_direction_output(anx->resetn_gpio, 0);
-		if (rc) {
-			dev_err(dev,
-				"unable to set dir for gpio[%d]\n",
-				anx->resetn_gpio);
-			goto err_resetn_gpio_dir;
-		}
+		rc = gpio_request_one(anx->resetn_gpio,
+				GPIOF_OUT_INIT_LOW, "anx7418_resetn_gpio");
+		if (rc)
+			dev_err(cdev, "unable to request gpio[%d]\n",
+					anx->resetn_gpio);
 	} else {
-		dev_err(dev, "resetn gpio not provided\n");
+		dev_err(cdev, "resetn gpio not provided\n");
 		rc = -EINVAL;
 		goto err_pwr_en_gpio_dir;
 	}
 
 	if (gpio_is_valid(anx->vconn_gpio)) {
 		/* configure anx7418 vconn gpio */
-		rc = gpio_request(anx->vconn_gpio, "anx7418_vconn_gpio");
-		if (rc) {
-			dev_err(dev,
-				"unable to request gpio[%d]\n",
-				anx->vconn_gpio);
-			goto err_resetn_gpio_dir;
-		}
-		rc = gpio_direction_output(anx->vconn_gpio, 0);
-		if (rc) {
-			dev_err(dev,
-				"unable to set dir for gpio[%d]\n",
-				anx->vconn_gpio);
-			goto err_vconn_gpio_dir;
-		}
+		rc = gpio_request_one(anx->vconn_gpio,
+				GPIOF_DIR_OUT, "anx7418_vconn_gpio");
+		if (rc)
+			dev_err(cdev, "unable to request gpio[%d]\n",
+					anx->vconn_gpio);
 	} else {
-		dev_err(dev, "vconn gpio not provided\n");
+		dev_err(cdev, "vconn gpio not provided\n");
 		rc = -EINVAL;
 		goto err_resetn_gpio_dir;
 	}
 
 	if (gpio_is_valid(anx->sbu_sel_gpio)) {
 		/* configure anx7418 sbu_sel gpio */
-		rc = gpio_request(anx->sbu_sel_gpio, "anx7418_sbu_sel_gpio");
-		if (rc) {
-			dev_err(dev,
-				"unable to request gpio[%d]\n",
-				anx->sbu_sel_gpio);
-			goto err_vconn_gpio_dir;
-		}
-		rc = gpio_direction_output(anx->sbu_sel_gpio, 0);
-		if (rc) {
-			dev_err(dev,
-				"unable to set dir for gpio[%d]\n",
-				anx->sbu_sel_gpio);
-			goto err_sbu_sel_gpio_dir;
-		}
+		rc = gpio_request_one(anx->sbu_sel_gpio,
+				GPIOF_DIR_OUT, "anx7418_sbu_sel_gpio");
+		if (rc)
+			dev_err(cdev, "unable to request gpio[%d]\n",
+					anx->sbu_sel_gpio);
 	} else {
-		dev_err(dev, "sbu_sel gpio not provided\n");
+		dev_err(cdev, "sbu_sel gpio not provided\n");
 		rc = -EINVAL;
 		goto err_vconn_gpio_dir;
 	}
 
-	if (gpio_is_valid(anx->cable_det_gpio)) {
-		/* configure anx7418 cable_det gpio */
-		rc = gpio_request(anx->cable_det_gpio, "anx7418_cable_det_gpio");
-		if (rc) {
-			dev_err(dev,
-				"unable to request gpio[%d]\n",
-				anx->cable_det_gpio);
-			goto err_sbu_sel_gpio_dir;
-		}
-		rc = gpio_direction_input(anx->cable_det_gpio);
-		if (rc) {
-			dev_err(dev,
-				"unable to set dir for gpio[%d]\n",
-				anx->cable_det_gpio);
-			goto err_cable_det_gpio_dir;
-		}
+	if (gpio_is_valid(anx->cbl_det_gpio)) {
+		/* configure anx7418 cbl_det gpio */
+		rc = gpio_request_one(anx->cbl_det_gpio,
+				GPIOF_DIR_IN, "anx7418_cbl_det_gpio");
+		if (rc)
+			dev_err(cdev, "unable to request gpio[%d]\n",
+					anx->cbl_det_gpio);
 	} else {
-		dev_err(dev, "cable_det gpio not provided\n");
+		dev_err(cdev, "cbl_det gpio not provided\n");
 		rc = -EINVAL;
 		goto err_sbu_sel_gpio_dir;
 	}
 
 	if (gpio_is_valid(anx->i2c_irq_gpio)) {
 		/* configure anx7418 irq gpio */
-		rc = gpio_request(anx->i2c_irq_gpio, "anx7418_i2c_irq_thread_gpio");
-		if (rc) {
-			dev_err(dev,
-				"unable to request gpio[%d]\n",
-				anx->i2c_irq_gpio);
-			goto err_cable_det_gpio_dir;
-		}
-		rc = gpio_direction_input(anx->i2c_irq_gpio);
-		if (rc) {
-			dev_err(dev,
-				"unable to set dir for gpio[%d]\n",
-				anx->i2c_irq_gpio);
-			goto err_i2c_irq_gpio_dir;
-		}
+		rc = gpio_request_one(anx->i2c_irq_gpio,
+				GPIOF_DIR_IN, "anx7418_i2c_irq_thread_gpio");
+		if (rc)
+			dev_err(cdev, "unable to request gpio[%d]\n",
+					anx->i2c_irq_gpio);
 	} else {
-		dev_err(dev, "irq gpio not provided\n");
+		dev_err(cdev, "irq gpio not provided\n");
 		rc = -EINVAL;
-		goto err_cable_det_gpio_dir;
+		goto err_cbl_det_gpio_dir;
 	}
 
 	return 0;
 
 gpio_free_all:
-err_i2c_irq_gpio_dir:
 	if (gpio_is_valid(anx->i2c_irq_gpio))
 		gpio_free(anx->i2c_irq_gpio);
-err_cable_det_gpio_dir:
-	if (gpio_is_valid(anx->cable_det_gpio))
-		gpio_free(anx->cable_det_gpio);
+err_cbl_det_gpio_dir:
+	if (gpio_is_valid(anx->cbl_det_gpio))
+		gpio_free(anx->cbl_det_gpio);
 err_sbu_sel_gpio_dir:
 	if (gpio_is_valid(anx->sbu_sel_gpio))
 		gpio_free(anx->sbu_sel_gpio);
@@ -1238,7 +1184,7 @@ err_pwr_en_gpio_dir:
 err_pwr_en_gpio_req:
 
 	if (rc < 0)
-		dev_err(dev, "gpio configure failed: rc=%d\n", rc);
+		dev_err(cdev, "gpio configure failed: rc=%d\n", rc);
 	return rc;
 }
 
@@ -1304,7 +1250,7 @@ static void chg_work(struct work_struct *w)
 			/* Default USB Current */
 			dev_dbg(cdev, "%s: Default USB Power\n", __func__);
 			anx->volt_max = 5000;
-			anx->curr_max = 0;
+			anx->curr_max = 500;
 			anx->ctype_charger = ANX7418_UNKNOWN_CHARGER;
 		}
 		set_property_on_battery(anx, POWER_SUPPLY_PROP_CURRENT_CAPABILITY);
@@ -1354,8 +1300,8 @@ static int anx7418_parse_dt(struct device *dev, struct anx7418 *anx)
 	anx->sbu_sel_gpio = of_get_named_gpio(np, "anx7418,sbu-sel", 0);
 	dev_dbg(dev, "sbu_sel_gpio [%d]\n", anx->sbu_sel_gpio);
 
-	anx->cable_det_gpio = of_get_named_gpio(np, "anx7418,cable-det", 0);
-	dev_dbg(dev, "cable_det_gpio [%d]\n", anx->cable_det_gpio);
+	anx->cbl_det_gpio = of_get_named_gpio(np, "anx7418,cable-det", 0);
+	dev_dbg(dev, "cbl_det_gpio [%d]\n", anx->cbl_det_gpio);
 
 	anx->i2c_irq_gpio = of_get_named_gpio(np, "anx7418,i2c-irq", 0);
 	dev_dbg(dev, "i2c_irq_gpio [%d]\n", anx->i2c_irq_gpio);
@@ -1373,6 +1319,7 @@ static int anx7418_probe(struct i2c_client *client,
 			const struct i2c_device_id *id)
 {
 	struct anx7418 *anx;
+	struct device *cdev = &client->dev;
 	struct power_supply_config pd_psy_cfg = {};
 	int rc;
 
@@ -1386,13 +1333,13 @@ static int anx7418_probe(struct i2c_client *client,
 	}
 
 	if (client->dev.of_node) {
-		anx = devm_kzalloc(&client->dev, sizeof(struct anx7418), GFP_KERNEL);
+		anx = devm_kzalloc(cdev, sizeof(struct anx7418), GFP_KERNEL);
 		if (!anx) {
 			pr_err("%s: devm_kzalloc\n", __func__);
 			return -ENOMEM;
 		}
 
-		rc = anx7418_parse_dt(&client->dev, anx);
+		rc = anx7418_parse_dt(cdev, anx);
 		if (rc)
 			return rc;
 	} else {
@@ -1400,60 +1347,55 @@ static int anx7418_probe(struct i2c_client *client,
 	}
 
 	if (!anx) {
-		dev_err(&client->dev,
-				"%s: No platform data found\n",
-				__func__);
+		dev_err(cdev, "%s: No platform data found\n", __func__);
 		return -EINVAL;
 	}
 
-	/* regulator */
-	anx->avdd33 = devm_regulator_get(&client->dev, "avdd33");
+	anx->client = client;
+	i2c_set_clientdata(client, anx);
+
+	/* avdd33 regulator */
+	anx->avdd33 = devm_regulator_get(cdev, "avdd33");
 	if (IS_ERR(anx->avdd33)) {
-		dev_err(&client->dev, "avdd33 regulator_get failed\n");
+		dev_err(cdev, "avdd33: regulator_get failed\n");
 		return -EPROBE_DEFER;
 	}
 	if (regulator_count_voltages(anx->avdd33) > 0) {
 		rc = regulator_set_voltage(anx->avdd33, 3300000, 3300000);
 		if (rc) {
-			dev_err(&client->dev,
-				"Regulator set_vtg failed avdd33 rc=%d\n",
-				rc);
+			dev_err(cdev, "avdd33: set_vtg failed rc=%d\n", rc);
 			return rc;
 		}
 	}
 	rc = regulator_enable(anx->avdd33);
 	if (rc) {
-		dev_err(&client->dev, "unable to enable avdd33\n");
+		dev_err(cdev, "failed to enable avdd33\n");
 		return rc;
 	}
 
 #if 0 /* CONFIG_LGE_USB_TYPE_C START */
 	anx->usb_psy = power_supply_get_by_name("usb");
 	if (!anx->usb_psy) {
-		dev_err(&client->dev, "usb power_supply_get failed\n");
+		dev_err(cdev, "usb power_supply_get failed\n");
 		return -EPROBE_DEFER;
 	}
 
 	anx->batt_psy = power_supply_get_by_name("battery");
 	if (!anx->batt_psy) {
-		dev_err(&client->dev, "battery power_supply_get failed\n");
+		dev_err(cdev, "battery power_supply_get failed\n");
 		return -EPROBE_DEFER;
 	}
 #endif /* CONFIG_LGE_USB_TYPE_C END */
-
-	dev_set_drvdata(&client->dev, anx);
-	anx->client = client;
-
-	INIT_WORK(&anx->cable_det_work, cable_det_work);
-	INIT_WORK(&anx->i2c_work, i2c_work);
 
 	anx->wq = alloc_workqueue("anx_wq",
 			WQ_MEM_RECLAIM | WQ_HIGHPRI | WQ_CPU_INTENSIVE,
 			3);
 	if (!anx->wq) {
-		dev_err(&client->dev, "unable to create workqueue anx_wq\n");
+		dev_err(cdev, "unable to create workqueue anx_wq\n");
 		return -ENOMEM;
 	}
+	INIT_WORK(&anx->cbl_det_work, cbl_det_work);
+	INIT_WORK(&anx->i2c_irq_work, i2c_irq_work);
 	init_rwsem(&anx->rwsem);
 	wake_lock_init(&anx->wlock, WAKE_LOCK_SUSPEND, "anx_wlock");
 
@@ -1463,39 +1405,53 @@ static int anx7418_probe(struct i2c_client *client,
 
 	rc = anx7418_gpio_configure(anx, true);
 	if (rc) {
-		dev_err(&client->dev, "gpio configure failed\n");
+		dev_err(cdev, "gpio configure failed\n");
 		goto err_gpio_config;
 	}
 
-	anx->cable_det_irq = gpio_to_irq(anx->cable_det_gpio);
-	irq_set_status_flags(anx->cable_det_irq, IRQ_NOAUTOEN);
+	/* assign cbl_det irq */
+	anx->cbl_det_irq = gpio_to_irq(anx->cbl_det_gpio);
+	if (anx->cbl_det_irq < 0) {
+		pr_err("%s : failed to get gpio irq, rc=%d\n", __func__,
+					anx->cbl_det_irq);
+		goto err_cbl_det_req_irq;
+	} else {
+		irq_set_status_flags(anx->cbl_det_irq, IRQ_NOAUTOEN);
 #ifdef CABLE_DET_PIN_HAS_GLITCH
-	rc = devm_request_threaded_irq(&client->dev, anx->cable_det_irq,
-			NULL,
-			cable_det_irq,
-			IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
-			"cable_det_irq", anx);
+		rc = devm_request_threaded_irq(cdev, anx->cbl_det_irq,
+				NULL,
+				cbl_det_event,
+				IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
+				"cbl_det_irq", anx);
 #else
-	rc = devm_request_irq(&client->dev, anx->cable_det_irq,
-			cable_det_irq,
-			IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
-			"cable_det_irq", anx);
+		rc = devm_request_irq(cdev, anx->cbl_det_irq,
+				cbl_det_event,
+				IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING | IRQF_ONESHOT,
+				"cbl_det_irq", anx);
 #endif
-	if (rc) {
-		dev_err(&client->dev, "Failed to request irq for cable_det\n");
-		goto err_cable_det_req_irq;
+		if (rc) {
+			dev_err(cdev, "Failed to request irq for cbl_det\n");
+			goto err_cbl_det_req_irq;
+		}
+		enable_irq_wake(anx->cbl_det_irq);
 	}
-	enable_irq_wake(anx->cable_det_irq);
 
+	/* assign i2c_irq irq */
 	client->irq = gpio_to_irq(anx->i2c_irq_gpio);
-	irq_set_status_flags(client->irq, IRQ_NOAUTOEN);
-	rc = devm_request_irq(&client->dev, client->irq,
-			i2c_irq,
-			IRQF_TRIGGER_RISING | IRQF_ONESHOT,
-			"i2c_irq", anx);
-	if (rc) {
-		dev_err(&client->dev, "Failed to request irq for i2c\n");
+	if (client->irq < 0) {
+		pr_err("%s : failed to get gpio irq, rc=%d\n", __func__,
+					client->irq);
 		goto err_req_irq;
+	} else {
+		irq_set_status_flags(client->irq, IRQ_NOAUTOEN);
+		rc = devm_request_irq(cdev, client->irq,
+				i2c_irq_event,
+				IRQF_TRIGGER_RISING | IRQF_ONESHOT,
+				"i2c_irq", anx);
+		if (rc) {
+			dev_err(cdev, "Failed to request irq for i2c\n");
+			goto err_req_irq;
+		}
 	}
 
 	rc = firmware_update(anx);
@@ -1522,9 +1478,9 @@ static int anx7418_probe(struct i2c_client *client,
 
 	INIT_DELAYED_WORK(&anx->chg_work, chg_work);
 
-	anx->pd_psy = devm_power_supply_register(&client->dev, &anx->pd_psy_d, &pd_psy_cfg);
+	anx->pd_psy = devm_power_supply_register(cdev, &anx->pd_psy_d, &pd_psy_cfg);
 	if (IS_ERR(anx->pd_psy)) {
-		dev_err(&client->dev, "Unable to register pd_psy rc = %ld\n", PTR_ERR(anx->pd_psy));
+		dev_err(cdev, "Unable to register pd_psy rc = %ld\n", PTR_ERR(anx->pd_psy));
 		return -EPROBE_DEFER;
 	}
 
@@ -1534,12 +1490,12 @@ static int anx7418_probe(struct i2c_client *client,
 
 	anx7418_debugfs_init(anx);
 
-	enable_irq(anx->cable_det_irq);
-	enable_irq(anx->client->irq);
-	if (gpio_get_value(anx->cable_det_gpio))
-		queue_work_on(0, anx->wq, &anx->cable_det_work);
+	enable_irq(anx->cbl_det_irq);
+	enable_irq(client->irq);
+	if (gpio_get_value(anx->cbl_det_gpio))
+		queue_work_on(0, anx->wq, &anx->cbl_det_work);
 
-	dev_info(&client->dev, "ANX7418 probe done");
+	dev_info(cdev, "ANX7418 probe done");
 	return 0;
 
 err_sysfs_init:
@@ -1547,32 +1503,35 @@ err_sysfs_init:
 err_drp_init:
 #endif
 err_update:
-	devm_free_irq(&client->dev, client->irq, anx);
+	devm_free_irq(cdev, client->irq, anx);
 err_req_irq:
-	devm_free_irq(&client->dev, anx->cable_det_irq, anx);
-err_cable_det_req_irq:
+	devm_free_irq(cdev, anx->cbl_det_irq, anx);
+err_cbl_det_req_irq:
 	anx7418_gpio_configure(anx, false);
 err_gpio_config:
 	wake_lock_destroy(&anx->wlock);
 	destroy_workqueue(anx->wq);
+	i2c_set_clientdata(client, NULL);
 	return rc;
 }
 
 static int anx7418_remove(struct i2c_client *client)
 {
-	struct device *cdev = &client->dev;
-	struct anx7418 *anx = dev_get_drvdata(cdev);
+	struct anx7418 *anx = i2c_get_clientdata(client);
+	struct device *cdev = &anx->client->dev;
 
 	pr_info("%s\n", __func__);
 
-	devm_free_irq(&client->dev, client->irq, anx);
-	devm_free_irq(&client->dev, anx->cable_det_irq, anx);
+	devm_free_irq(cdev, client->irq, anx);
+	devm_free_irq(cdev, anx->cbl_det_irq, anx);
 
 	if (atomic_read(&anx->pwr_on))
 		__anx7418_pwr_down(anx);
 
 	anx7418_gpio_configure(anx, false);
 	wake_lock_destroy(&anx->wlock);
+	i2c_set_clientdata(client, NULL);
+	devm_kfree(cdev, anx);
 
 	return 0;
 }

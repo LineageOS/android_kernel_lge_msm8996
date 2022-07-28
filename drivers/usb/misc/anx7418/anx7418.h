@@ -4,9 +4,7 @@
 #include <linux/module.h>
 #include <linux/i2c.h>
 #include <linux/workqueue.h>
-// CONFIG_LGE_USB_TYPE_C START
 #include <linux/power_supply.h>
-// CONFIG_LGE_USB_TYPE_C END
 #include <linux/wakelock.h>
 #include <linux/rwsem.h>
 #include <linux/usb/class-dual-role.h>
@@ -26,10 +24,8 @@ struct anx7418 {
 
 	/* regulator */
 	struct regulator *avdd33;
-//LGE_USB_TYPE_C START
 	struct power_supply *usb_psy;
 	struct power_supply *batt_psy;
-//LGE_USB_TYPE_C END
 	struct power_supply *pd_psy;
 	struct power_supply_desc pd_psy_d;
 	/* gpio */
@@ -38,8 +34,8 @@ struct anx7418 {
 	int vconn_gpio;
 	int sbu_sel_gpio;
 	int i2c_irq_gpio;
-	int cable_det_gpio;
-	int cable_det_irq;
+	int cbl_det_gpio;
+	int cbl_det_irq;
 //CONFIG_LGE_ALICE_FRIENDS START
 	int ext_acc_en_gpio;
 	int ext_acc_en_irq;
@@ -48,8 +44,8 @@ struct anx7418 {
 	atomic_t pwr_on;
 
 	struct workqueue_struct *wq;
-	struct work_struct cable_det_work;
-	struct work_struct i2c_work;
+	struct work_struct cbl_det_work;
+	struct work_struct i2c_irq_work;
 
 	struct rw_semaphore rwsem;
 	struct wake_lock wlock;

@@ -549,7 +549,7 @@ static int anx7418_dbgfs_fw_open(struct inode *inode, struct file *file)
 	if (ZERO_OR_NULL_PTR(d_fw->fw))
 		return -ENOMEM;
 
-	disable_irq(anx->cable_det_irq);
+	disable_irq(anx->cbl_det_irq);
 	disable_irq(anx->client->irq);
 	if (!atomic_read(&anx->pwr_on))
 		anx7418_pwr_on(anx, 1);
@@ -565,10 +565,10 @@ err:
 	kfree(d_fw);
 
 	anx7418_pwr_on(anx, 0);
-	enable_irq(anx->cable_det_irq);
+	enable_irq(anx->cbl_det_irq);
 	enable_irq(anx->client->irq);
-	if (gpio_get_value(anx->cable_det_gpio))
-		queue_work_on(0, anx->wq, &anx->cable_det_work);
+	if (gpio_get_value(anx->cbl_det_gpio))
+		queue_work_on(0, anx->wq, &anx->cbl_det_work);
 
 	return rc;
 }
@@ -583,10 +583,10 @@ static int anx7418_dbgfs_fw_release(struct inode *inode, struct file *file)
 	kfree(d_fw);
 
 	anx7418_pwr_on(anx, 0);
-	enable_irq(anx->cable_det_irq);
+	enable_irq(anx->cbl_det_irq);
 	enable_irq(anx->client->irq);
-	if (gpio_get_value(anx->cable_det_gpio))
-		queue_work_on(0, anx->wq, &anx->cable_det_work);
+	if (gpio_get_value(anx->cbl_det_gpio))
+		queue_work_on(0, anx->wq, &anx->cbl_det_work);
 
 	return anx7418_dbgfs_release(inode, file);;
 }

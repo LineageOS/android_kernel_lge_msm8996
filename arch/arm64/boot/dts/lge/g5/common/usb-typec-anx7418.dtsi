@@ -46,7 +46,7 @@
 		reg = <0x28>;
 
 		interrupt-parent = <&tlmm>;
-		interrupts = <131 0x0>;
+		interrupts = <131 0>, <132 0>;
 
 		vbus-supply = <&smbcharger_charger_otg>;
 		avdd33-supply = <&pm8994_l30>;
