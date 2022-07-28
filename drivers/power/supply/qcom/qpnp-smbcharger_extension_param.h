@@ -104,7 +104,6 @@ struct somc_smart_charge {
 struct somc_chg_det {
 	bool			settled_not_hvdcp;
 	int			typec_current_max;
-	int			sub_type;
 };
 
 struct somc_hvdcp3 {
