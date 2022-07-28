@@ -6713,11 +6713,6 @@ static int smbchg_battery_set_property(struct power_supply *psy,
 			power_supply_changed(chip->batt_psy);
 		}
 		break;
-	case POWER_SUPPLY_PROP_USB_OTG:
-		rc = somc_chg_usbid_stop_id_polling_host_function(
-							&chip->usb_params,
-							val->intval);
-		break;
 #endif
 	default:
 		return -EINVAL;

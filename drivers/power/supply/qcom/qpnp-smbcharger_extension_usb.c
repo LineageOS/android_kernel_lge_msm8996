@@ -200,31 +200,6 @@ static void somc_chg_usbid_stop_polling(struct usb_somc_params *usb_params)
 					&typecctrl->stop_polling_delay, 0);
 }
 
-int somc_chg_usbid_stop_id_polling_host_function(
-					struct usb_somc_params *usb_params,
-					int force_stop)
-{
-	struct somc_typec_mode_ctrl *typecctrl = &usb_params->typecctrl;
-	struct smbchg_chip *chip = container_of(usb_params,
-						struct smbchg_chip,
-						usb_params);
-
-	if (force_stop != 0) {
-		dev_err(chip->dev, "force stop!!\n");
-		typecctrl->user_request_polling = false;
-	}
-
-	if (!typecctrl->user_request_polling) {
-		/* pseudo disconnection */
-		somc_chg_usbid_stop_polling(usb_params);
-		/* stop host function */
-		update_typec_otg_status(chip, POWER_SUPPLY_TYPE_UFP, true);
-		return 0;
-	} else {
-		return -EBUSY;
-	}
-}
-
 /*
  * Proprietary charger part
  */
