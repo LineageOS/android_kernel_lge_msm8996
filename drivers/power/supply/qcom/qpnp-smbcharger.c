@@ -4867,13 +4867,6 @@ static int smbchg_change_usb_supply_type(struct smbchg_chip *chip,
 	if (chip->typec_psy)
 		power_supply_set_property(chip->typec_psy,
 			POWER_SUPPLY_PROP_TYPE, &pval);		
-	if (!chip->skip_usb_notification) {
-		union power_supply_propval val = {
-				chip->somc_params.chg_det.sub_type, };
-
-		power_supply_set_property(chip->usb_psy,
-				POWER_SUPPLY_PROP_SUB_TYPE, &val);
-	}
 #endif
 
 	/* set the correct buck switching frequency */
@@ -5127,7 +5120,6 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 		chip->typec_current_ma = 0;
 #ifdef CONFIG_QPNP_SMBCHARGER_EXTENSION
 	chip->somc_params.chg_det.settled_not_hvdcp = false;
-	chip->somc_params.chg_det.sub_type = POWER_SUPPLY_SUB_TYPE_FLOATED;
 #endif
 	/* cancel/wait for hvdcp pending work if any */
 	cancel_delayed_work_sync(&chip->hvdcp_det_work);
@@ -5213,43 +5205,6 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 	read_usb_type(chip, &usb_type_name, &usb_supply_type);
 	pr_smb(PR_STATUS,
 		"inserted type = %d (%s)", usb_supply_type, usb_type_name);
-
-#ifdef CONFIG_QPNP_SMBCHARGER_EXTENSION
-	rc = get_usb_type(chip);
-	/* If APSD returned "OTHER". */
-	if (rc == 1) {
-		rc = get_prop_proprietary_charger(chip);
-		if (IS_ERR_VALUE(rc)) {
-			if (rc == -EPROBE_DEFER) {
-				/* change types to notify like as floated. */
-				usb_supply_type = POWER_SUPPLY_TYPE_USB;
-				chip->somc_params.chg_det.sub_type =
-						POWER_SUPPLY_SUB_TYPE_FLOATED;
-			} else if (rc == -ERANGE) {
-				pr_warn("detect OUT OF RANGE of proprietary\n");
-				chip->somc_params.chg_det.sub_type =
-					POWER_SUPPLY_SUB_TYPE_PROPRIETARY;
-			} else {
-				pr_err("Failed to get proprietary prop. rc=%d\n",
-						rc);
-			}
-		} else {
-			chip->somc_params.chg_det.sub_type = rc;
-		}
-	/* If APSD returned "SDP". */
-	} else if (rc == 0) {
-#ifndef CONFIG_MACH_LGE
-		rc = is_floated_charger(chip);
-		if (IS_ERR_VALUE(rc)) {
-			pr_err("failed to check floated charger rc=%d\n", rc);
-		} else if (rc) {
-			pr_smb(PR_SOMC, "may be a FLOATED charger\n");
-			chip->somc_params.chg_det.sub_type =
-						POWER_SUPPLY_SUB_TYPE_FLOATED;
-		}
-#endif
-	}
-#endif
 
 	smbchg_aicl_deglitch_wa_check(chip);
 	if (chip->typec_psy)
