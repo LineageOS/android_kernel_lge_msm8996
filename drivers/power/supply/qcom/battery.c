@@ -26,11 +26,13 @@
 #include <linux/pm_wakeup.h>
 #include <linux/slab.h>
 #include <linux/pmic-voter.h>
+#include <linux/workqueue.h>
 
 #define DRV_MAJOR_VERSION	1
 #define DRV_MINOR_VERSION	0
 
 #define CHG_STATE_VOTER			"CHG_STATE_VOTER"
+#define TAPER_STEPPER_VOTER		"TAPER_STEPPER_VOTER"
 #define TAPER_END_VOTER			"TAPER_END_VOTER"
 #define PL_TAPER_EARLY_BAD_VOTER	"PL_TAPER_EARLY_BAD_VOTER"
 #define PARALLEL_PSY_VOTER		"PARALLEL_PSY_VOTER"
@@ -45,7 +47,6 @@
 struct pl_data {
 	int			pl_mode;
 	int			slave_pct;
-	int			taper_pct;
 	int			slave_fcc_ua;
 	int			main_fcc_ua;
 	int			restricted_current;
@@ -59,9 +60,10 @@ struct pl_data {
 	struct votable		*pl_enable_votable_indirect;
 	struct delayed_work	status_change_work;
 	struct work_struct	pl_disable_forever_work;
-	struct delayed_work	pl_taper_work;
+	struct work_struct	pl_taper_work;
 	struct delayed_work	pl_awake_work;
 	struct delayed_work	fcc_step_update_work;
+	bool			taper_work_running;
 	struct power_supply	*main_psy;
 	struct power_supply	*pl_psy;
 	struct power_supply	*batt_psy;
@@ -328,64 +330,6 @@ static struct class_attribute pl_attributes[] = {
 	__ATTR_NULL,
 };
 
-/***********
- *  TAPER  *
-************/
-#define MINIMUM_PARALLEL_FCC_UA		500000
-#define PL_TAPER_WORK_DELAY_MS		500
-#define TAPER_RESIDUAL_PCT		75
-static void pl_taper_work(struct work_struct *work)
-{
-	struct pl_data *chip = container_of(work, struct pl_data,
-						pl_taper_work.work);
-	union power_supply_propval pval = {0, };
-	int rc;
-
-	/* exit immediately if parallel is disabled */
-	if (get_effective_result(chip->pl_disable_votable)) {
-		pl_dbg(chip, PR_PARALLEL, "terminating parallel not in progress\n");
-		goto done;
-	}
-
-	pl_dbg(chip, PR_PARALLEL, "entering parallel taper work slave_fcc = %d\n",
-			chip->slave_fcc_ua);
-	if (chip->slave_fcc_ua < MINIMUM_PARALLEL_FCC_UA) {
-		pl_dbg(chip, PR_PARALLEL, "terminating parallel's share lower than 500mA\n");
-		vote(chip->pl_disable_votable, TAPER_END_VOTER, true, 0);
-		goto done;
-	}
-
-	rc = power_supply_get_property(chip->batt_psy,
-			       POWER_SUPPLY_PROP_CHARGE_TYPE, &pval);
-	if (rc < 0) {
-		pr_err("Couldn't get batt charge type rc=%d\n", rc);
-		goto done;
-	}
-
-	chip->charge_type = pval.intval;
-	if (pval.intval == POWER_SUPPLY_CHARGE_TYPE_TAPER) {
-		pl_dbg(chip, PR_PARALLEL, "master is taper charging; reducing slave FCC\n");
-
-		vote(chip->pl_awake_votable, TAPER_END_VOTER, true, 0);
-		/* Reduce the taper percent by 25 percent */
-		chip->taper_pct = chip->taper_pct * TAPER_RESIDUAL_PCT / 100;
-		rerun_election(chip->fcc_votable);
-		pl_dbg(chip, PR_PARALLEL, "taper entry scheduling work after %d ms\n",
-				PL_TAPER_WORK_DELAY_MS);
-		schedule_delayed_work(&chip->pl_taper_work,
-				msecs_to_jiffies(PL_TAPER_WORK_DELAY_MS));
-		return;
-	}
-
-	/*
-	 * Master back to Fast Charge, get out of this round of taper reduction
-	 */
-	pl_dbg(chip, PR_PARALLEL, "master is fast charging; waiting for next taper\n");
-
-done:
-	vote(chip->pl_awake_votable, TAPER_END_VOTER, false, 0);
-}
-
 /*********
  *  FCC  *
 **********/
@@ -433,6 +377,7 @@ static void get_fcc_split(struct pl_data *chip, int total_ua,
 	effective_total_ua = max(0, total_ua + hw_cc_delta_ua);
 	slave_limited_ua = min(effective_total_ua, bcl_ua);
 	*slave_ua = (slave_limited_ua * chip->slave_pct) / 100;
+
 	/*
 	 * In USBIN_USBIN configuration with internal rsense parallel
 	 * charger's current goes through main charger's BATFET, keep
@@ -442,8 +387,70 @@ static void get_fcc_split(struct pl_data *chip, int total_ua,
 		*master_ua = max(0, total_ua);
 	else
 		*master_ua = max(0, total_ua - *slave_ua);
+}
 
-	*slave_ua = (*slave_ua * chip->taper_pct) / 100;
+#define MINIMUM_PARALLEL_FCC_UA		500000
+#define PL_TAPER_WORK_DELAY_MS		500
+#define TAPER_RESIDUAL_PCT		90
+#define TAPER_REDUCTION_UA		200000
+static void pl_taper_work(struct work_struct *work)
+{
+	struct pl_data *chip = container_of(work, struct pl_data,
+						pl_taper_work);
+	union power_supply_propval pval = {0, };
+	int rc;
+	int eff_fcc_ua;
+
+	chip->taper_work_running = true;
+	while (true) {
+		if (get_effective_result(chip->pl_disable_votable)) {
+			/*
+			 * if parallel's FCC share is low, simply disable
+			 * parallel with TAPER_END_VOTER
+			 */
+			if (chip->slave_fcc_ua < MINIMUM_PARALLEL_FCC_UA) {
+				pl_dbg(chip, PR_PARALLEL, "terminating: parallel's share is low\n");
+				vote(chip->pl_disable_votable, TAPER_END_VOTER, true, 0);
+			} else {
+				pl_dbg(chip, PR_PARALLEL, "terminating: parallel disabled\n");
+			}
+			goto done;
+		}
+
+		rc = power_supply_get_property(chip->batt_psy,
+				       POWER_SUPPLY_PROP_CHARGE_TYPE, &pval);
+		if (rc < 0) {
+			pr_err("Couldn't get batt charge type rc=%d\n", rc);
+			goto done;
+		}
+
+		chip->charge_type = pval.intval;
+		if (pval.intval == POWER_SUPPLY_CHARGE_TYPE_TAPER) {
+			eff_fcc_ua = get_effective_result(chip->fcc_votable);
+			if (eff_fcc_ua < 0) {
+				pr_err("Couldn't get fcc, exiting taper work\n");
+				goto done;
+			}
+			eff_fcc_ua = eff_fcc_ua - TAPER_REDUCTION_UA;
+			if (eff_fcc_ua < 0) {
+				pr_err("Can't reduce FCC any more\n");
+				goto done;
+			}
+
+			pl_dbg(chip, PR_PARALLEL, "master is taper charging; reducing FCC to %dua\n",
+					eff_fcc_ua);
+			vote(chip->fcc_votable, TAPER_STEPPER_VOTER,
+					true, eff_fcc_ua);
+		} else {
+			pl_dbg(chip, PR_PARALLEL, "master is fast charging; waiting for next taper\n");
+		}
+		/* wait for the charger state to deglitch after FCC change */
+		msleep(PL_TAPER_WORK_DELAY_MS);
+	}
+done:
+	chip->taper_work_running = false;
+	vote(chip->fcc_votable, TAPER_STEPPER_VOTER, false, 0);
+	vote(chip->pl_awake_votable, TAPER_END_VOTER, false, 0);
 }
 
 static void get_fcc_step_update_params(struct pl_data *chip, int main_fcc_ua,
@@ -538,8 +545,8 @@ static int pl_fcc_vote_callback(struct votable *votable, void *data,
 	}
 
 	if (chip->pl_mode != POWER_SUPPLY_PL_NONE) {
-		get_fcc_split(chip, total_fcc_ua,
-			&master_fcc_ua, &slave_fcc_ua);
+		get_fcc_split(chip, total_fcc_ua, &master_fcc_ua,
+				&slave_fcc_ua);
 		if (chip->fcc_step_update) {
 			vote(chip->pl_awake_votable, FCC_STEPPER_VOTER,
 					true, 0);
@@ -932,7 +939,6 @@ static int pl_disable_vote_callback(struct votable *votable,
 	union power_supply_propval pval = {0, };
 	int rc;
 
-	chip->taper_pct = 100;
 	chip->total_settled_ua = 0;
 	chip->pl_settled_ua = 0;
 
@@ -986,10 +992,14 @@ static int pl_disable_vote_callback(struct votable *votable,
 		if (rc < 0) {
 			pr_err("Couldn't get batt charge type rc=%d\n", rc);
 		} else {
-			if (pval.intval == POWER_SUPPLY_CHARGE_TYPE_TAPER) {
+			if (pval.intval == POWER_SUPPLY_CHARGE_TYPE_TAPER
+				&& !chip->taper_work_running) {
 				pl_dbg(chip, PR_PARALLEL,
 					"pl enabled in Taper scheduing work\n");
-				schedule_delayed_work(&chip->pl_taper_work, 0);
+				vote(chip->pl_awake_votable, TAPER_END_VOTER,
+						true, 0);
+				queue_work(system_long_wq,
+						&chip->pl_taper_work);
 			}
 		}
 	} else {
@@ -1130,10 +1140,6 @@ static void handle_main_charge_type(struct pl_data *chip)
 	if ((pval.intval != POWER_SUPPLY_CHARGE_TYPE_FAST)
 		&& (pval.intval != POWER_SUPPLY_CHARGE_TYPE_TAPER)) {
 		vote(chip->pl_disable_votable, CHG_STATE_VOTER, true, 0);
-		chip->taper_pct = 100;
-		vote(chip->pl_disable_votable, TAPER_END_VOTER, false, 0);
-		vote(chip->pl_disable_votable, PL_TAPER_EARLY_BAD_VOTER,
-				false, 0);
 		chip->charge_type = pval.intval;
 		return;
 	}
@@ -1142,8 +1148,11 @@ static void handle_main_charge_type(struct pl_data *chip)
 	if (chip->charge_type == POWER_SUPPLY_CHARGE_TYPE_FAST
 		&& (pval.intval == POWER_SUPPLY_CHARGE_TYPE_TAPER)) {
 		chip->charge_type = pval.intval;
-		pl_dbg(chip, PR_PARALLEL, "taper entry scheduling work\n");
-		schedule_delayed_work(&chip->pl_taper_work, 0);
+		if (!chip->taper_work_running) {
+			pl_dbg(chip, PR_PARALLEL, "taper entry scheduling work\n");
+			vote(chip->pl_awake_votable, TAPER_END_VOTER, true, 0);
+			queue_work(system_long_wq, &chip->pl_taper_work);
+		}
 		return;
 	}
 
@@ -1257,6 +1266,33 @@ static void handle_parallel_in_taper(struct pl_data *chip)
 	}
 }
 
+static void handle_usb_change(struct pl_data *chip)
+{
+	int rc;
+	union power_supply_propval pval = {0, };
+
+	if (!chip->usb_psy)
+		chip->usb_psy = power_supply_get_by_name("usb");
+	if (!chip->usb_psy) {
+		pr_err("Couldn't get usbpsy\n");
+		return;
+	}
+
+	rc = power_supply_get_property(chip->usb_psy,
+			POWER_SUPPLY_PROP_PRESENT, &pval);
+	if (rc < 0) {
+		pr_err("Couldn't get present from USB rc=%d\n", rc);
+		return;
+	}
+
+	if (!pval.intval) {
+		/* USB removed: remove all stale votes */
+		vote(chip->pl_disable_votable, TAPER_END_VOTER, false, 0);
+		vote(chip->pl_disable_votable, PL_TAPER_EARLY_BAD_VOTER,
+				false, 0);
+	}
+}
+
 static void status_change_work(struct work_struct *work)
 {
 	struct pl_data *chip = container_of(work,
@@ -1281,6 +1317,7 @@ static void status_change_work(struct work_struct *work)
 
 	is_parallel_available(chip);
 
+	handle_usb_change(chip);
 	handle_main_charge_type(chip);
 	handle_settled_icl_change(chip);
 	handle_parallel_in_taper(chip);
@@ -1346,7 +1383,7 @@ int qcom_batt_init(void)
 		goto cleanup;
 
 	INIT_DELAYED_WORK(&chip->status_change_work, status_change_work);
-	INIT_DELAYED_WORK(&chip->pl_taper_work, pl_taper_work);
+	INIT_WORK(&chip->pl_taper_work, pl_taper_work);
 	INIT_WORK(&chip->pl_disable_forever_work, pl_disable_forever_work);
 	INIT_DELAYED_WORK(&chip->pl_awake_work, pl_awake_work);
 	INIT_DELAYED_WORK(&chip->fcc_step_update_work, fcc_step_update_work);
@@ -1359,7 +1396,7 @@ int qcom_batt_init(void)
 		goto release_wakeup_source;
 	}
 
-	chip->fv_votable = create_votable("FV", VOTE_MAX,
+	chip->fv_votable = create_votable("FV", VOTE_MIN,
 					pl_fv_vote_callback,
 					chip);
 	if (IS_ERR(chip->fv_votable)) {
@@ -1455,7 +1492,7 @@ void qcom_batt_deinit(void)
 		return;
 
 	cancel_delayed_work_sync(&chip->status_change_work);
-	cancel_delayed_work_sync(&chip->pl_taper_work);
+	cancel_work_sync(&chip->pl_taper_work);
 	cancel_work_sync(&chip->pl_disable_forever_work);
 	cancel_delayed_work_sync(&chip->pl_awake_work);
 	cancel_delayed_work_sync(&chip->fcc_step_update_work);
