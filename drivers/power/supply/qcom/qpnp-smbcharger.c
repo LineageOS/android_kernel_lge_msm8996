@@ -9480,12 +9480,6 @@ static int smbchg_probe(struct platform_device *pdev)
 		dev_err(&pdev->dev, "somc chg register failed rc = %d\n", rc);
 		goto out;
 	}
-
-	rc =  somc_usb_register(chip);
-	if (rc < 0) {
-		dev_err(&pdev->dev, "somc usb register failed rc = %d\n", rc);
-		goto out;
-	}
 #endif
 
 	rc = determine_initial_status(chip);
@@ -9588,7 +9582,6 @@ unregister_led_class:
 		led_classdev_unregister(&chip->led_cdev);
 out:
 #ifdef CONFIG_QPNP_SMBCHARGER_EXTENSION
-	somc_usb_unregister(chip);
 	somc_chg_unregister(chip);
 #endif
 	handle_usb_removal(chip);
@@ -9633,7 +9626,6 @@ static int smbchg_remove(struct platform_device *pdev)
 	destroy_votable(chip->fcc_votable);
 
 #ifdef CONFIG_QPNP_SMBCHARGER_EXTENSION
-	somc_usb_unregister(chip);
 	somc_chg_unregister(chip);
 #endif
 
