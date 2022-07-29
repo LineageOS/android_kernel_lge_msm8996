@@ -274,7 +274,6 @@
 		};
 
 		pmx_fm_int {
-#if !defined(CONFIG_MACH_MSM8996_LUCYE_GLOBAL_COM) || !defined(CONFIG_MACH_MSM8996_LUCYE_GLOBAL_LDU) || !defined(CONFIG_MACH_MSM8996_LUCYE_KR)
 			fm_int_default: fm_int_default {
 				mux {
 					pins = "gpio62";
@@ -287,11 +286,10 @@
 					bias-pull-up;
 				};
 			};
-#endif
 
 			fm_int_active: fm_int_active {
 				mux {
-#if !defined(CONFIG_MACH_MSM8996_LUCYE_GLOBAL_COM) || !defined(CONFIG_MACH_MSM8996_LUCYE_GLOBAL_LDU) || !defined(CONFIG_MACH_MSM8996_LUCYE_KR)
+#ifndef CONFIG_MACH_MSM8996_LUCYE_GLOBAL_COM
 					pins = "gpio62";
 #else
 					pins = "gpio38";
@@ -299,7 +297,7 @@
 				};
 
 				config {
-#if !defined(CONFIG_MACH_MSM8996_LUCYE_GLOBAL_COM) || !defined(CONFIG_MACH_MSM8996_LUCYE_GLOBAL_LDU) || !defined(CONFIG_MACH_MSM8996_LUCYE_KR)
+#ifndef CONFIG_MACH_MSM8996_LUCYE_GLOBAL_COM
 					pins = "gpio62";
 #else
 					pins = "gpio38";
@@ -309,7 +307,7 @@
 
 		fm_int_suspend: fm_int_suspend {
 				mux {
-#if !defined(CONFIG_MACH_MSM8996_LUCYE_GLOBAL_COM) || !defined(CONFIG_MACH_MSM8996_LUCYE_GLOBAL_LDU) || !defined(CONFIG_MACH_MSM8996_LUCYE_KR)
+#ifndef CONFIG_MACH_MSM8996_LUCYE_GLOBAL_COM
 					pins = "gpio62";
 #else
 					pins = "gpio38";
@@ -317,7 +315,7 @@
 				};
 
 				config {
-#if !defined(CONFIG_MACH_MSM8996_LUCYE_GLOBAL_COM) || !defined(CONFIG_MACH_MSM8996_LUCYE_GLOBAL_LDU) || !defined(CONFIG_MACH_MSM8996_LUCYE_KR)
+#ifndef CONFIG_MACH_MSM8996_LUCYE_GLOBAL_COM
 					pins = "gpio62";
 					drive-strength = <2>;
 #else
@@ -331,7 +329,7 @@
 		pmx_fm_status {
 			fm_status_int_active: fm_status_int_active {
 				mux {
-#if !defined(CONFIG_MACH_MSM8996_LUCYE_GLOBAL_COM) || !defined(CONFIG_MACH_MSM8996_LUCYE_GLOBAL_LDU) || !defined(CONFIG_MACH_MSM8996_LUCYE_KR)
+#ifndef CONFIG_MACH_MSM8996_LUCYE_GLOBAL_COM
 					pins = "gpio57";
 #else
 					pins = "gpio78";
@@ -339,7 +337,7 @@
 				};
 
 				config {
-#if !defined(CONFIG_MACH_MSM8996_LUCYE_GLOBAL_COM) || !defined(CONFIG_MACH_MSM8996_LUCYE_GLOBAL_LDU) || !defined(CONFIG_MACH_MSM8996_LUCYE_KR)
+#ifndef CONFIG_MACH_MSM8996_LUCYE_GLOBAL_COM
 					pins = "gpio57";
 #else
 					pins = "gpio78";
@@ -349,7 +347,7 @@
 
 			fm_status_int_suspend: fm_status_int_suspend {
 				mux {
-#if !defined(CONFIG_MACH_MSM8996_LUCYE_GLOBAL_COM) || !defined(CONFIG_MACH_MSM8996_LUCYE_GLOBAL_LDU) || !defined(CONFIG_MACH_MSM8996_LUCYE_KR)
+#ifndef CONFIG_MACH_MSM8996_LUCYE_GLOBAL_COM
 					pins = "gpio57";
 #else
 					pins = "gpio78";
@@ -357,7 +355,7 @@
 				};
 
 				config {
-#if !defined(CONFIG_MACH_MSM8996_LUCYE_GLOBAL_COM) || !defined(CONFIG_MACH_MSM8996_LUCYE_GLOBAL_LDU) || !defined(CONFIG_MACH_MSM8996_LUCYE_KR)
+#ifndef CONFIG_MACH_MSM8996_LUCYE_GLOBAL_COM
 					pins = "gpio57";
 					drive-strength = <2>;
 #else
@@ -371,7 +369,7 @@
 		pmx_fm_rst {
 			fm_rst_active: fm_rst_active {
 				mux {
-#if !defined(CONFIG_MACH_MSM8996_LUCYE_GLOBAL_COM) || !defined(CONFIG_MACH_MSM8996_LUCYE_GLOBAL_LDU) || !defined(CONFIG_MACH_MSM8996_LUCYE_KR)
+#ifndef CONFIG_MACH_MSM8996_LUCYE_GLOBAL_COM
 					pins = "gpio61";
 #else
 					pins = "gpio39";
@@ -379,7 +377,7 @@
 				};
 
 				config {
-#if !defined(CONFIG_MACH_MSM8996_LUCYE_GLOBAL_COM) || !defined(CONFIG_MACH_MSM8996_LUCYE_GLOBAL_LDU) || !defined(CONFIG_MACH_MSM8996_LUCYE_KR)
+#ifndef CONFIG_MACH_MSM8996_LUCYE_GLOBAL_COM
 					pins = "gpio61";
 #else
 					pins = "gpio39";
@@ -389,7 +387,7 @@
 
 			fm_rst_suspend: fm_rst_suspend {
 				mux {
-#if !defined(CONFIG_MACH_MSM8996_LUCYE_GLOBAL_COM) || !defined(CONFIG_MACH_MSM8996_LUCYE_GLOBAL_LDU) || !defined(CONFIG_MACH_MSM8996_LUCYE_KR)
+#ifndef CONFIG_MACH_MSM8996_LUCYE_GLOBAL_COM
 					pins = "gpio61";
 #else
 					pins = "gpio39";
@@ -397,7 +395,7 @@
 				};
 
 				config {
-#if !defined(CONFIG_MACH_MSM8996_LUCYE_GLOBAL_COM) || !defined(CONFIG_MACH_MSM8996_LUCYE_GLOBAL_LDU) || !defined(CONFIG_MACH_MSM8996_LUCYE_KR)
+#ifndef CONFIG_MACH_MSM8996_LUCYE_GLOBAL_COM
 					pins = "gpio61";
 					drive-strength = <2>;
 #else
@@ -411,41 +409,25 @@
 		spi_0 {
 			spi_0_active: spi_0_active {
 				mux {
-#if !defined(CONFIG_MACH_MSM8996_LUCYE_VZW) || !defined(CONFIG_MACH_MSM8996_LUCYE_TRF_US_VZW)
 					pins = "gpio0", "gpio1",
 						"gpio2", "gpio3";
-#else
-					pins = "gpio0", "gpio1";
-#endif
 				};
 
 				config {
-#if !defined(CONFIG_MACH_MSM8996_LUCYE_VZW) || !defined(CONFIG_MACH_MSM8996_LUCYE_TRF_US_VZW)
 					pins = "gpio0", "gpio1",
 						"gpio2", "gpio3";
-#else
-					pins = "gpio0", "gpio1";
-#endif
 				};
 			};
 
 			spi_0_sleep: spi_0_sleep {
 				mux {
-#if !defined(CONFIG_MACH_MSM8996_LUCYE_VZW) || !defined(CONFIG_MACH_MSM8996_LUCYE_TRF_US_VZW)
 					pins = "gpio0", "gpio1",
 						"gpio2", "gpio3";
-#else
-					pins = "gpio0", "gpio1";
-#endif
 				};
 
 				config {
-#if !defined(CONFIG_MACH_MSM8996_LUCYE_VZW) || !defined(CONFIG_MACH_MSM8996_LUCYE_TRF_US_VZW)
 					pins = "gpio0", "gpio1",
 						"gpio2", "gpio3";
-#else
-					pins = "gpio0", "gpio1";
-#endif
 				};
 			};
 		};

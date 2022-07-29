@@ -89,39 +89,55 @@
 
 		sdc2_cd_on: sdc2_cd_on {
 			mux {
-#if !defined(CONFIG_MACH_MSM8996_ELSA_KDDI_JP) || !defined(CONFIG_MACH_MSM8996_ELSA_DCM_JP)
-				pins = "gpio95";
-#else
+/*
+ * Change if: CONFIG_MACH_MSM8996_ELSA_KDDI_JP
+ * or CONFIG_MACH_MSM8996_ELSA_DCM_JP
+ * Currently JP/KR variants not supported anyway.
+ */
+/*
 				pins = "gpio79";
-#endif
+*/
+				pins = "gpio95";
 			};
 
 			config {
-#if !defined(CONFIG_MACH_MSM8996_ELSA_KDDI_JP) || !defined(CONFIG_MACH_MSM8996_ELSA_DCM_JP)
-				pins = "gpio95";
-#else
+/*
+ * Change if: CONFIG_MACH_MSM8996_ELSA_KDDI_JP
+ * or CONFIG_MACH_MSM8996_ELSA_DCM_JP
+ * Currently JP/KR variants not supported anyway.
+ */
+/*
 				pins = "gpio79";
-#endif
+*/
+				pins = "gpio95";
 			};
 		};
 
 		sdc2_cd_off: sdc2_cd_off {
 			mux {
-#if !defined(CONFIG_MACH_MSM8996_ELSA_KDDI_JP) || !defined(CONFIG_MACH_MSM8996_ELSA_DCM_JP)
-				pins = "gpio95";
-#else
+/*
+ * Change if: CONFIG_MACH_MSM8996_ELSA_KDDI_JP
+ * or CONFIG_MACH_MSM8996_ELSA_DCM_JP
+ * Currently JP/KR variants not supported anyway.
+ */
+/*
 				pins = "gpio79";
-#endif
+*/
+				pins = "gpio95";
 			};
 
 			config {
-#if !defined(CONFIG_MACH_MSM8996_ELSA_KDDI_JP) || !defined(CONFIG_MACH_MSM8996_ELSA_DCM_JP)
-				pins = "gpio95";
-				bias-pull-up;		/* pull up */
-#else
+/*
+ * Change if: CONFIG_MACH_MSM8996_ELSA_KDDI_JP
+ * or CONFIG_MACH_MSM8996_ELSA_DCM_JP
+ * Currently JP/KR variants not supported anyway.
+ */
+/*
 				pins = "gpio79";
 				bias-disable;		/* no pull */
-#endif
+*/
+				pins = "gpio95";
+				bias-pull-up;		/* pull up */
 			};
 		};
 
