@@ -392,21 +392,29 @@
 		spi_0 {
 			spi_0_active: spi_0_active {
 				mux {
-#if !defined(CONFIG_MACH_MSM8996_H1_GLOBAL_ESA) && !defined(CONFIG_MACH_MSM8996_H1_KDDI_JP) && !defined(CONFIG_MACH_MSM8996_H1_KR)
-					pins = "gpio0", "gpio1", "gpio3";
-#else
+/*
+ * Change if not: CONFIG_MACH_MSM8996_H1_ATT_US,
+ * CONFIG_MACH_MSM8996_H1_US or CONFIG_MACH_MSM8996_H1_GLOBAL_COM
+ * Currently JP/KR variants not supported anyway.
+ */
+/*
 					pins = "gpio0", "gpio1",
 						"gpio2", "gpio3";
-#endif
+*/
+					pins = "gpio0", "gpio1", "gpio3";
 					function = "blsp_spi1";
 				};
 				config {
-#if !defined(CONFIG_MACH_MSM8996_H1_GLOBAL_ESA) && !defined(CONFIG_MACH_MSM8996_H1_KDDI_JP) && !defined(CONFIG_MACH_MSM8996_H1_KR)
-					pins = "gpio0", "gpio1", "gpio3";
-#else
+/*
+ * Change if not: CONFIG_MACH_MSM8996_H1_ATT_US,
+ * CONFIG_MACH_MSM8996_H1_US or CONFIG_MACH_MSM8996_H1_GLOBAL_COM
+ * Currently JP/KR variants not supported anyway.
+ */
+/*
 					pins = "gpio0", "gpio1",
 						"gpio2", "gpio3";
-#endif
+*/
+					pins = "gpio0", "gpio1", "gpio3";
 					drive-strength = <6>;
 					bias-disable;
 				};
@@ -414,20 +422,24 @@
 
 			spi_0_sleep: spi_0_sleep {
 				mux {
-#if !defined(CONFIG_MACH_MSM8996_H1_GLOBAL_ESA) && !defined(CONFIG_MACH_MSM8996_H1_KDDI_JP) && !defined(CONFIG_MACH_MSM8996_H1_KR)
-					pins = "gpio0", "gpio1", "gpio3";
-#else
+/*
+ * Change if not: CONFIG_MACH_MSM8996_H1_ATT_US,
+ * CONFIG_MACH_MSM8996_H1_US or CONFIG_MACH_MSM8996_H1_GLOBAL_COM
+ * Currently JP/KR variants not supported anyway.
+ */
+/*
 					pins = "gpio0", "gpio1",
 						"gpio2", "gpio3";
-#endif
+*/
+					pins = "gpio0", "gpio1", "gpio3";
 					function = "blsp_spi1";
 				};
-#if !defined(CONFIG_MACH_MSM8996_H1_GLOBAL_ESA) && !defined(CONFIG_MACH_MSM8996_H1_KDDI_JP) && !defined(CONFIG_MACH_MSM8996_H1_KR)
-				config {
-					pins = "gpio0", "gpio1", "gpio3";
-					drive-strength = <6>;
-					bias-disable;
-#else
+/*
+ * Change if not: CONFIG_MACH_MSM8996_H1_ATT_US,
+ * CONFIG_MACH_MSM8996_H1_US or CONFIG_MACH_MSM8996_H1_GLOBAL_COM
+ * Currently JP/KR variants not supported anyway.
+ */
+/*
 				config {
 					pins = "gpio0", "gpio1",
 						"gpio2", "gpio3";
@@ -463,7 +475,11 @@
 						"gpio51", "gpio52";
 					drive-strength = <6>;
 					bias-disable;
-#endif
+*/
+				config {
+					pins = "gpio0", "gpio1", "gpio3";
+					drive-strength = <6>;
+					bias-disable;
 				};
 			};
 		};
@@ -521,7 +537,12 @@
 		pcie0 {
 			pcie0_wake_default: pcie0_wake_default {
 				config {
-#if defined(CONFIG_MACH_MSM8996_H1_ATT_US) || defined(CONFIG_MACH_MSM8996_H1_US)
+/*
+ * Change if: CONFIG_MACH_MSM8996_H1_ATT_US
+ * or CONFIG_MACH_MSM8996_H1_US
+ * Currently JP/KR variants not supported anyway.
+ */
+#ifndef CONFIG_MACH_MSM8996_H1_GLOBAL_COM
 					bias-pull-down;
 					/delete-property/ bias-pull-up;
 #endif
@@ -613,8 +634,12 @@
 			};
 		};
 
-#if !defined(CONFIG_MACH_MSM8996_H1_GLOBAL_COM) || !defined(CONFIG_MACH_MSM8996_H1_ATT_US) || !defined(CONFIG_MACH_MSM8996_H1_US)
-		quat_mi2s {
+/*
+ * Delete if not: CONFIG_MACH_MSM8996_H1_GLOBAL_COM,
+ * CONFIG_MACH_MSM8996_H1_ATT_US or CONFIG_MACH_MSM8996_H1_US
+ * Currently JP/KR variants not supported anyway.
+ */
+/*		quat_mi2s {
 			/delete-node/ quat_mi2s_sleep;
 			/delete-node/ quat_mi2s_active;
 		};
@@ -623,7 +648,7 @@
 			/delete-node/ quat_mi2s_sd0_sleep;
 			/delete-node/ quat_mi2s_sd0_active;
 		};
-#endif
+*/
 
 		cam_sensor_rear_active: cam_sensor_rear_active {
 			config {
@@ -684,9 +709,13 @@
 		};
 
 		/* CoreSight */
-#if defined(CONFIG_MACH_MSM8996_H1_GLOBAL_COM) || defined(CONFIG_MACH_MSM8996_H1_ATT_US) || defined(CONFIG_MACH_MSM8996_H1_US)
+
+/*
+ * Delete if: CONFIG_MACH_MSM8996_H1_GLOBAL_COM,
+ * CONFIG_MACH_MSM8996_H1_ATT_US or CONFIG_MACH_MSM8996_H1_US
+ * Currently JP/KR variants not supported anyway.
+ */
 		/delete-node/ setb_14;
-#endif
 
 		pinctrl_pps: ppsgrp {
 			mux {
