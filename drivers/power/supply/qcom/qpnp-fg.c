@@ -263,7 +263,11 @@ static struct fg_mem_setting settings[FG_MEM_SETTING_MAX] = {
 	SETTING(VBAT_EST_DIFF,	 0x000,   0,      30),
 	SETTING(DELTA_SOC,	 0x450,   3,      1),
 	SETTING(BATT_LOW,	 0x458,   0,      4200),
+#ifdef CONFIG_LGE_PM
+	SETTING(THERM_DELAY,	 0x4AC,   3,      0xA0),
+#else
 	SETTING(THERM_DELAY,	 0x4AC,   3,      0),
+#endif
 };
 
 #define DATA(_idx, _address, _offset, _length,  _value)	\
@@ -321,6 +325,67 @@ static struct fg_mem_data fg_backup_regs[FG_BACKUP_MAX] = {
 	BACKUP(AGING_STORAGE,	0x5E4,   0,      4,     -EINVAL),
 	BACKUP(MAH_TO_SOC,	0x4A0,   0,      4,     -EINVAL),
 };
+
+#ifdef CONFIG_LGE_PM
+#define NUMBER_DELTA_TEMP 25
+static int temp_comp[NUMBER_DELTA_TEMP][2] = {
+	/* Measured  degree *10 ,  delta degree
+	 * delta degree = (Measured Temp - FG temp) * 10 */
+#ifndef CONFIG_MACH_MSM8996_H1
+	{-300, -105},
+	{-200, -45},
+	{-190, -45},
+	{-180, -30},
+	{-170, -30},
+	{-160, -25},
+	{-150, -25},
+	{-100, -30},
+	{ -50, -20},
+	{  0,  -10},
+	{  50, -10},
+	{ 100, -10},
+	{ 150, -10},
+	{ 200, -15},
+	{ 250, -15},
+	{ 300, -20},
+	{ 350, -20},
+	{ 400, -20},
+	{ 450, -20},
+	{ 500, -20},
+	{ 550, -10},
+	{ 600, 0},
+	{ 700, 10},
+	{ 800, 60},
+	{ 900, 100},
+#else
+	{-300, -110},
+	{-200, -110},
+	{-190, -110},
+	{-180, -100},
+	{-170, -90},
+	{-160, -70},
+	{-150, -60},
+	{-100, -50},
+	{ -50, -40},
+	{  0,  -30},
+	{  50, -20},
+	{ 100, -30},
+	{ 150, -20},
+	{ 200, -20},
+	{ 250, -20},
+	{ 300, -30},
+	{ 350, -20},
+	{ 400, -30},
+	{ 450, -20},
+	{ 500, -20},
+	{ 550, -20},
+	{ 600, -20},
+	{ 700, -20},
+	{ 800,  0},
+	{ 900,  0},
+#endif
+};
+#endif
 
 static int fg_debug_mask;
 module_param_named(
@@ -654,6 +719,9 @@ struct fg_chip {
 	bool			batt_info_restore;
 	bool			*batt_range_ocv;
 	int			*batt_range_pct;
+#ifdef CONFIG_LGE_PM
+	int			lge_rid_disable;
+#endif
 #ifdef CONFIG_QPNP_FG_EXTENSION
 	struct fg_somc_params	somc_params;
 #endif
@@ -1030,6 +1098,130 @@ static int fg_set_ram_addr(struct fg_chip *chip, u16 *address)
 
 	return rc;
 }
+
+#ifdef CONFIG_LGE_PM
+#if defined(CONFIG_MACH_MSM8996_ELSA_KDDI_JP) || \
+	defined(CONFIG_MACH_MSM8996_ELSA_DCM_JP) || \
+	defined(CONFIG_MACH_MSM8996_ANNA)
+#define COMP_FACTOR              60     /* -0.6degree/1A */
+#elif defined(CONFIG_MACH_MSM8996_LUCYE)
+#define COMP_FACTOR              66
+#elif defined(CONFIG_MACH_MSM8996_H1)
+#define COMP_FACTOR              68     /* -0.68degree/1A */
+#else
+#define COMP_FACTOR             150     /* -1.7degree/1A */
+#endif
+#define CHG_CURR_SAMPLE_COUNT   3
+/*
+ * Compensate batt temp by charging current
+ * @fg_temp : original temp reading from fuel gauge hw block
+ * @first_ctemp : 1st compensated temp by pre-defined table (temp_comp[][])
+ * @return 2nd compensated temp by charging current
+ */
+static int comp_temp_by_chg_current(int fg_temp, int first_ctemp)
+{
+	struct power_supply *batt_psy;
+	union power_supply_propval pval = {0, };
+	int cnt, chg_current, temp, comp_temp;
+	unsigned int comp_delta;
+	bool is_batt_charging;
+	static int chg_curr_data[CHG_CURR_SAMPLE_COUNT];
+	static int pre_delta;
+
+	cnt = 0;
+	chg_current = 0;
+	temp = first_ctemp;
+	comp_temp = 0;
+	comp_delta = 0;
+	is_batt_charging = false;
+
+	batt_psy = power_supply_get_by_name("battery");
+	if (!batt_psy) {
+		pr_err("battery psy not found\n");
+		return temp;
+	}
+
+	power_supply_get_property(batt_psy,
+			       POWER_SUPPLY_PROP_STATUS, &pval);
+
+	if (pval.intval == POWER_SUPPLY_STATUS_CHARGING)
+		is_batt_charging = true;
+
+	/* sample charging current */
+	if (is_batt_charging == true)
+		chg_current = -(fg_data[FG_DATA_CURRENT].value / 1000);
+	else
+		chg_current = 0;    /* assume 0ma for not charging status */
+
+	/* update sampling data */
+	for (cnt = (CHG_CURR_SAMPLE_COUNT-1); cnt >= 0; cnt--) {
+		if (cnt == 0) {
+			chg_curr_data[cnt] = chg_current;
+			chg_current = 0;
+		} else
+			chg_curr_data[cnt] = chg_curr_data[cnt-1];
+	}
+
+	/* calculate average charging current */
+	for (cnt = (CHG_CURR_SAMPLE_COUNT-1); cnt >= 0; cnt--) {
+		/* at charging initial time, use only current data */
+		if (is_batt_charging == true && cnt != 0) {
+			if (chg_curr_data[cnt] == 0)
+				chg_curr_data[cnt] = chg_curr_data[0];
+		}
+
+		chg_current += chg_curr_data[cnt];
+		pr_debug("chg_curr_data[%d] = %d\n", cnt, chg_curr_data[cnt]);
+	}
+
+	/* assume that temp is proportional to current*current */
+	comp_delta = ((chg_current / CHG_CURR_SAMPLE_COUNT) *
+		(chg_current / CHG_CURR_SAMPLE_COUNT) * COMP_FACTOR) / 10000000;
+	comp_temp = temp - comp_delta;
+
+	if (pre_delta / 10 != (fg_temp - comp_temp) / 10) {
+		pr_info("fg_temp = %d comp_temp1 = %d comp_temp2 = %d "
+			"delta1 = %d delta2 = %d avg_chg_curr = %d "
+			"now_chg_curr = %d batt_charging = %d\n",
+			fg_temp, temp, comp_temp,
+			temp - fg_temp, comp_delta, chg_current / 3,
+			chg_curr_data[0], is_batt_charging);
+		pre_delta = fg_temp - comp_temp;
+	} else
+		pr_debug("fg_temp = %d  comp_temp1 = %d comp_temp2 = %d "
+			 "delta1 = %d delta2 = %d avg_chg_curr = %d "
+			 "now_chg_curr = %d  batt_charging = %d\n",
+			 fg_temp, temp, comp_temp,
+			 temp - fg_temp, comp_delta, chg_current / 3,
+			 chg_curr_data[0], is_batt_charging);
+
+	return comp_temp;
+}
+
+static int calc_tuned_temp(int temp)
+{
+	int i = 0;
+	int delta_temp = 0;
+	while (i < NUMBER_DELTA_TEMP) {
+		if (temp_comp[i][0] > temp)
+			break;
+		else
+			i++;
+	}
+
+	if (i == 0)
+		delta_temp = temp_comp[0][1];
+	else if (i == NUMBER_DELTA_TEMP)
+		delta_temp = temp_comp[NUMBER_DELTA_TEMP-1][1];
+	else
+		delta_temp = (((temp_comp[i][1] - temp_comp[i-1][1]) *
+			       (temp - temp_comp[i-1][0]) /
+			       (temp_comp[i][0] - temp_comp[i-1][0])) +
+			      temp_comp[i-1][1]);
+
+	return comp_temp_by_chg_current(temp, temp + delta_temp);
+}
+#endif
 
 #define BUF_LEN		4
 static int fg_sub_mem_read(struct fg_chip *chip, u8 *val, u16 address, int len,
@@ -2919,6 +3111,9 @@ static void update_temp_data(struct work_struct *work)
 	struct fg_chip *chip = container_of(work,
 				struct fg_chip,
 				update_temp_work.work);
+#ifdef CONFIG_LGE_PM
+	static int prev_temp;
+#endif
 
 	if (chip->fg_restarting)
 		goto resched;
@@ -2988,6 +3183,20 @@ wait:
 			fg_check_ima_error_handling(chip);
 		}
 	}
+
+#ifdef CONFIG_LGE_PM
+	if (fg_debug_mask & FG_MEM_DEBUG_READS)
+		pr_info("[BATT_TEMP] before ,%d,%d\n", temp, fg_data[0].value);
+
+	fg_data[0].value = calc_tuned_temp(fg_data[0].value);
+
+	if (prev_temp / 10 != fg_data[0].value / 10) {
+		prev_temp = fg_data[0].value;
+
+		if (chip->power_supply_registered && fg_data[0].value >= 550)
+			power_supply_changed(chip->bms_psy);
+	}
+#endif
 
 	if (fg_debug_mask & FG_MEM_DEBUG_READS)
 		pr_info("BATT_TEMP %d %d\n", temp, fg_data[0].value);
@@ -7653,6 +7862,11 @@ static int fg_of_init(struct fg_chip *chip)
 			chip->batt_info_restore, fg_batt_valid_ocv,
 			fg_batt_range_pct);
 
+#ifdef CONFIG_LGE_PM
+	chip->lge_rid_disable = of_property_read_bool(node,
+					"lge,lge_rid_disable");
+	pr_info("lge_rid_disable: %d\n", chip->lge_rid_disable);
+#endif
 #ifdef CONFIG_QPNP_FG_EXTENSION
 	rc = somc_chg_fg_of_init(chip, node);
 #endif
@@ -8459,6 +8673,9 @@ static int fg_common_hw_init(struct fg_chip *chip)
 {
 	int rc;
 	u8 val;
+#ifdef CONFIG_LGE_PM
+	u8 unlock_val = 0xA5, disable_val = 0x20;
+#endif
 #ifndef CONFIG_QPNP_FG_EXTENSION
 	int resume_soc_raw;
 #endif
@@ -8535,6 +8752,28 @@ static int fg_common_hw_init(struct fg_chip *chip)
 			THERMAL_COEFF_ADDR, THERMAL_COEFF_N_BYTES,
 			THERMAL_COEFF_OFFSET, 0);
 	}
+
+#ifdef CONFIG_LGE_PM
+	if (chip->lge_rid_disable) {
+		rc = regmap_bulk_write(chip->regmap, 0x11D0, &unlock_val, 1);
+		if (rc) {
+			pr_err("failed to USB_ID current source register unlock %d\n", rc);
+			return rc;
+		}
+		rc = regmap_bulk_write(chip->regmap, 0x11F1, &disable_val, 1);
+		if (rc) {
+			pr_err("failed to USB_ID current source disable %d\n", rc);
+			return rc;
+		}
+	}
+
+	/* batt therm adc read time delay */
+	rc = fg_mem_masked_write(chip, 0x4AC, 0xE0, 0xA0, 3); //40.96 msec delay
+	if (rc) {
+		pr_err("failed to write batt therm adc read time delay %d\n", rc);
+		return rc;
+	}
+#endif
 
 	if (!chip->sw_rbias_ctrl) {
 		rc = fg_mem_masked_write(chip, EXTERNAL_SENSE_SELECT,
