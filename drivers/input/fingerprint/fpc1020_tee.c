@@ -44,7 +44,9 @@
 #include <soc/qcom/scm.h>
 
 #include <linux/wakelock.h>
+#ifdef CONFIG_LGE_USES_NEW_FPC_BLOBS
 #include <linux/input.h>
+#endif
 #define FPC1020_RESET_LOW_US 1000
 #define FPC1020_RESET_HIGH1_US 100
 #define FPC1020_RESET_HIGH2_US 1250
@@ -82,7 +84,9 @@ static const struct vreg_config vreg_conf[] = {
 struct fpc1020_data {
 	struct device *dev;
 	struct spi_device *spi;
+#ifdef CONFIG_LGE_USES_NEW_FPC_BLOBS
 	struct input_dev *input;
+#endif
 	struct pinctrl *fingerprint_pinctrl;
 	struct pinctrl_state *pinctrl_state[ARRAY_SIZE(pctl_names)];
 	struct clk *iface_clk;
@@ -624,7 +628,11 @@ static irqreturn_t fpc1020_irq_handler(int irq, void *handle)
 		wake_lock_timeout(&fpc1020->ttw_wl, msecs_to_jiffies(FPC_TTW_HOLD_TIME));
 	}
 
+#ifdef CONFIG_LGE_USES_NEW_FPC_BLOBS
 	sysfs_notify(&fpc1020->input->dev.kobj, NULL, dev_attr_irq.attr.name);
+#else
+	sysfs_notify(&fpc1020->dev->kobj, NULL, dev_attr_irq.attr.name);
+#endif
 
 	return IRQ_HANDLED;
 }
@@ -774,6 +782,7 @@ static int fpc1020_probe(struct spi_device *spi)
 	}
 #endif
 
+#ifdef CONFIG_LGE_USES_NEW_FPC_BLOBS
 	/* register input device */
 	fpc1020->input = input_allocate_device();
 	if(!fpc1020->input) {
@@ -791,6 +800,7 @@ static int fpc1020_probe(struct spi_device *spi)
 		input_free_device(fpc1020->input);
 		goto exit;
 	}
+#endif
 
 	mutex_init(&fpc1020->lock);
 	rc = devm_request_threaded_irq(dev, gpio_to_irq(fpc1020->irq_gpio),
@@ -811,7 +821,11 @@ static int fpc1020_probe(struct spi_device *spi)
 #endif
 	wake_lock_init(&fpc1020->ttw_wl, WAKE_LOCK_SUSPEND, "fpc_ttw_wl");
 
+#ifdef CONFIG_LGE_USES_NEW_FPC_BLOBS
 	rc = sysfs_create_group(&fpc1020->input->dev.kobj, &attribute_group);
+#else
+	rc = sysfs_create_group(&dev->kobj, &attribute_group);
+#endif
 	if (rc) {
 		dev_err(dev, "could not create sysfs\n");
 		goto exit;
@@ -832,7 +846,11 @@ static int fpc1020_remove(struct spi_device *spi)
 {
 	struct  fpc1020_data *fpc1020 = dev_get_drvdata(&spi->dev);
 
+#ifdef CONFIG_LGE_USES_NEW_FPC_BLOBS
 	sysfs_remove_group(&fpc1020->input->dev.kobj, &attribute_group);
+#else
+	sysfs_remove_group(&spi->dev.kobj, &attribute_group);
+#endif
 	mutex_destroy(&fpc1020->lock);
 	wake_lock_destroy(&fpc1020->ttw_wl);
 	(void)vreg_setup(fpc1020, "vdd_io", false);
