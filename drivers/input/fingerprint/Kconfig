@@ -31,4 +31,12 @@ config INPUT_FINGERPRINT_FPC1020
 	 To compile this driver as a module, choose M here: the module
 	 will be called FPC1022.
 
+config LGE_USES_NEW_FPC_BLOBS
+	bool "LGE Device is using newer FPC blobs"
+	depends on INPUT_FINGERPRINT_FPC1020
+	help
+		Say Y here if the LGE device you're building to has updated
+		FPC blobs that require sysfs calls to use the FPC device
+		'&fpc1020->input->dev.kobj' instead of '&spi->dev.kobj'
+
 endif
