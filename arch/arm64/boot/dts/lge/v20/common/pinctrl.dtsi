@@ -134,7 +134,7 @@
  */
 /*
 				pins = "gpio79";
-				bias-disable;		/* no pull */
+				bias-disable;		// no pull
 */
 				pins = "gpio95";
 				bias-pull-up;		/* pull up */
