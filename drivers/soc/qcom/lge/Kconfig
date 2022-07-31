@@ -224,19 +224,6 @@ config LGE_PM_EMBEDDED_BATTERY
 	help
 	  Enable adjustments for embedded battery.
 
-config LGE_PM_THERMAL_VTS
-	tristate "LGE Virtual Temp Sensor Driver"
-	depends on THERMAL
-	help
-	  This enables virtual temp sensor driver.
-
-config LGE_PM_UNIFIED_NODE
-	bool "enable LGE PM Unified sysfs node"
-	depends on MACH_LGE
-	default n
-	help
-	  Support LGE PM Unified sysfs node.
-
 config LGE_USB_TYPE_C
 	bool "Enable LG TypeC integration"
 	depends on LGE_PM
