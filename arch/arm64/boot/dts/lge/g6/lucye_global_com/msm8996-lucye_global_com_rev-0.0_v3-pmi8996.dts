@@ -428,3 +428,14 @@
 		status = "disabled";
 	};
 };
+
+&soc {
+	qcom,msm-thermal {
+		qcom,freq-mitigation-value = <1190400>;
+	};
+	qcom,bcl {
+		qcom,ibat-monitor {
+			qcom,mitigation-freq-khz = <1190400>;
+		};
+	};
+};

@@ -128,3 +128,14 @@
 &pmi8994_charger {
     lge,lge_otp_enable;
 };
+
+&soc {
+	qcom,msm-thermal {
+		qcom,freq-mitigation-value = <1190400>;
+	};
+	qcom,bcl {
+		qcom,ibat-monitor {
+			qcom,mitigation-freq-khz = <1190400>;
+		};
+	};
+};

@@ -20,6 +20,7 @@
 #include "../msm8996-camera/msm8996-elsa-camera_rev-c.dtsi"
 #include "../msm8996-elsa_storage_type/current_storage_type.dtsi"
 #include "../msm8996-sound/msm8996-elsa-sound_rev-b.dtsi"
+#include "../common/msm8996pro-elsa_bcl_override.dtsi"
 
 / {
 	model = "Qualcomm Technologies, Inc. MSM 8996pro + PMI8996 MTP";
@@ -415,16 +416,5 @@
 &i2c_6 {
 	anx7688-usbc@28 {
 		anx7688,vconn-always-on;
-	};
-};
-
-&soc {
-	qcom,msm-thermal {
-		qcom,freq-mitigation-value = <1056000>;
-	};
-	qcom,bcl {
-		qcom,ibat-monitor {
-			qcom,big-mitigation-freq-khz = <1056000>;
-		};
 	};
 };
