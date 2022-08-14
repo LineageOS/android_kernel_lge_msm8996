@@ -128,32 +128,3 @@
 &pmi8994_charger {
     lge,lge_otp_enable;
 };
-
-&soc {
-	qcom,msm-thermal {
-		qcom,freq-mitigation-value = <1056000>;
-	};
-	qcom,bcl {
-		qcom,ibat-monitor {
-			qcom,big-mitigation-freq-khz = <1056000>;
-		};
-	};
-
-        lge,cable_detect {
-                lge,no-init-cable       = <     0       0    0   0    0     0>;
-                lge,cable-mhl-1k        = <     1    3000  500  500  500  500>;
-                lge,cable-u-28p7k       = <  3001    6000 1800  500 1500 3200>;
-                lge,cable-28p7k         = <  6001  138000 1800  500 1500 3200>;
-                lge,cable-56k           = <138001  330000 1500 1500  500  500>;
-                lge,cable-100k          = <330001  341000 1800  500 1500 3200>;
-                lge,cable-130k          = <341001  429000 1500 1500  500  500>;
-                lge,cable-180k          = <429001  479000 1800  500 1500 3200>;
-                lge,cable-200k          = <479001  501000 1800  500 1500 3200>;
-                lge,cable-220k          = <501001  528000 1800  500 1500 3200>;
-                lge,cable-270k          = <528001  578000 1800  500 1500 3200>;
-                lge,cable-330k          = <578001  633000 1800  500 1500 3200>;
-                lge,cable-620k          = <633001  759000 1800  500 1500 3200>;
-                lge,cable-910k          = <759001  897000 1500 1500  500  500>;
-                lge,cable-none          = <897001 1045000 1800  500 1500 3200>;
-        };
-};

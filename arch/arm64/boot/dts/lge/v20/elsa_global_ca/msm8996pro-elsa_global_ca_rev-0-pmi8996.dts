@@ -18,6 +18,7 @@
 #include "../../../qcom/msm8996-mtp.dtsi"
 #include "msm8996-elsa_global_ca.dtsi"
 #include "../common/camera/camera.dtsi"
+#include "../common/msm8996pro-elsa_bcl_override.dtsi"
 
 / {
 	model = "Qualcomm Technologies, Inc. MSM 8996pro + PMI8996 MTP";
@@ -397,16 +398,5 @@
 		anx7688,vconn-always-on;
 
 		status = "ok";
-	};
-};
-
-&soc {
-	qcom,msm-thermal {
-		qcom,freq-mitigation-value = <1056000>;
-	};
-	qcom,bcl {
-		qcom,ibat-monitor {
-			qcom,big-mitigation-freq-khz = <1056000>;
-		};
 	};
 };

@@ -22,6 +22,7 @@
 #include "msm8996-elsa_kddi_jp-sound_rev-a.dtsi"
 #include "msm8996-elsa_kddi_jp-nfc-rev-a.dtsi"
 #include "msm8996-elsa_kddi_jp_rev-a-isdbt_japan_i2c.dtsi"
+#include "../common/msm8996pro-elsa_bcl_override.dtsi"
 
 / {
 	model = "Qualcomm Technologies, Inc. MSM 8996pro + PMI8996 MTP";

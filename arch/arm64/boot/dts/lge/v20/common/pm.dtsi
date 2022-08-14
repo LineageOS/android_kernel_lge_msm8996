@@ -297,7 +297,7 @@
 		qcom,disable-cx-phase-ctrl;
 		qcom,freq-mitigation-temp = <103>;
 		qcom,freq-mitigation-temp-hysteresis = <15>;
-		qcom,freq-mitigation-value = <1036800>;
+		qcom,freq-mitigation-value = <1190400>;
 		qcom,big-hotplug-temp = <105>;
 		qcom,big-hotplug-temp-hysteresis = <40>;
 	};
@@ -306,9 +306,10 @@
 		/delete-property/ qcom,bcl-soc-hotplug-list;
 		qcom,bcl-freq-control-list = <&CPU0 &CPU1 &CPU2 &CPU3>;
 		qcom,ibat-monitor {
-			qcom,mitigation-freq-khz = <844800>;
-			qcom,big-mitigation-freq-khz = <1036800>;
-			qcom,soc-low-threshold = <0>;
+			qcom,vph-high-threshold-uv = <3200000>;
+			qcom,vph-low-threshold-uv = <3100000>;
+			qcom,soc-low-threshold = <15>;
+			qcom,mitigation-freq-khz = <1190400>;
 		};
 	};
 
