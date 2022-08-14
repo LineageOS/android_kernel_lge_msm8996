@@ -182,7 +182,7 @@ int cancel_seek(struct si470x_device *radio)
 {
 	int retval = 0;
 
-	pr_info("%s enter\n",__func__);
+	pr_debug("%s enter\n",__func__);
 	mutex_lock(&radio->lock);
 
 	/* stop seeking */
@@ -205,7 +205,7 @@ void si470x_search(struct si470x_device *radio, bool on)
 	current_freq_khz = radio->tuned_freq_khz;
 
 	if (on) {
-		pr_info("%s: Queuing the work onto scan work q\n", __func__);
+		pr_debug("%s: Queuing the work onto scan work q\n", __func__);
 		queue_delayed_work(radio->wqueue_scan, &radio->work_scan,
 					msecs_to_jiffies(10));
 	} else {
@@ -220,7 +220,7 @@ void si470x_search(struct si470x_device *radio, bool on)
 int si470x_vidioc_querycap(struct file *file, void *priv,
 		struct v4l2_capability *capability)
 {
-	pr_info("%s enter\n" , __func__);
+	pr_debug("%s enter\n" , __func__);
 	strlcpy(capability->driver, DRIVER_NAME, sizeof(capability->driver));
 	strlcpy(capability->card, DRIVER_CARD, sizeof(capability->card));
 	capability->device_caps = V4L2_CAP_HW_FREQ_SEEK | V4L2_CAP_READWRITE |
@@ -239,7 +239,7 @@ static void si470x_i2c_interrupt_handler(struct si470x_device *radio)
 	int retval = 0;
 	//struct kfifo *data_b;
 
-	pr_info("%s enter\n",__func__);
+	pr_debug("%s enter\n",__func__);
 	/* check Seek/Tune Complete */
 	retval = si470x_get_register(radio, STATUSRSSI);
 	if (retval < 0)
@@ -264,11 +264,11 @@ static void si470x_i2c_interrupt_handler(struct si470x_device *radio)
 		pr_err("%s No RDS group ready\n",__func__);
 		goto end;
 	} else {
-		pr_info("%s start rds handler\n",__func__);
+		pr_debug("%s start rds handler\n",__func__);
 		schedule_work(&radio->rds_worker);
 	}
 end:
-	pr_info("%s exit :%d\n",__func__, retval);
+	pr_debug("%s exit :%d\n",__func__, retval);
 	return;
 }
 
@@ -327,7 +327,7 @@ static int si470x_reg_cfg(struct si470x_device *radio, bool on)
 
 	vreg = radio->dreg;
 
-	pr_info("%s enter : %d \n",__func__, on);
+	pr_debug("%s enter : %d \n",__func__, on);
 
 	if (!vreg) {
 		pr_err("In %s, dreg is NULL\n", __func__);
@@ -335,7 +335,7 @@ static int si470x_reg_cfg(struct si470x_device *radio, bool on)
 	}
 
 	if (on) {
-		pr_info("%s vreg is : %s\n",__func__, vreg->name);
+		pr_debug("%s vreg is : %s\n",__func__, vreg->name);
 		if (vreg->set_voltage_sup) {
 			rc = regulator_set_voltage(vreg->reg,
 						vreg->low_vol_level,
@@ -358,7 +358,7 @@ static int si470x_reg_cfg(struct si470x_device *radio, bool on)
 		}
 			vreg->is_enabled = true;
 	} else {
-		pr_info("%s vreg is off: %s\n",__func__, vreg->name);
+		pr_debug("%s vreg is off: %s\n",__func__, vreg->name);
 		rc = regulator_disable(vreg->reg);
 		if (rc < 0) {
 			pr_err("reg disable(%s) fail. rc=%d\n", vreg->name, rc);
@@ -447,7 +447,7 @@ static int si470x_power_cfg(struct si470x_device *radio, bool on)
 {
 	int rc = 0;
 
-	pr_info("%s enter : %d\n",__func__, on);
+	pr_debug("%s enter : %d\n",__func__, on);
 
 	if (on) {
 		/* Turn ON sequence */
@@ -622,7 +622,7 @@ static int si470x_enable_irq(struct si470x_device *radio)
 		goto open_err_req_irq;
 	}
 
-	pr_info("%s irq number is = %d\n", __func__,radio->irq);
+	pr_debug("%s irq number is = %d\n", __func__,radio->irq);
 
 	retval = request_any_context_irq(radio->irq, si470x_isr,
 			IRQF_TRIGGER_FALLING, DRIVER_NAME, radio);
@@ -631,7 +631,7 @@ static int si470x_enable_irq(struct si470x_device *radio)
 		pr_err("%s Couldn't acquire FM gpio %d, retval:%d\n", __func__,radio->irq,retval);
 		return retval;
 	} else {
-		pr_info("%s FM GPIO %d registered\n", __func__, radio->irq);
+		pr_debug("%s FM GPIO %d registered\n", __func__, radio->irq);
 	}
 	retval = enable_irq_wake(irq);
 	if (retval < 0) {
@@ -657,7 +657,7 @@ int si470x_fops_open(struct file *file)
 	int version_warning = 0;
 	int i = 0;
 
-	pr_info("%s enter\n",__func__);
+	pr_debug("%s enter\n",__func__);
 	if (retval){
 		pr_err("%s fail to open v4l2\n", __func__);
 		return retval;
@@ -691,7 +691,7 @@ int si470x_fops_open(struct file *file)
 		goto done;
 	}
 
-	pr_info("%s DeviceID=0x%4.4hx ChipID=0x%4.4hx\n",__func__,
+	pr_debug("%s DeviceID=0x%4.4hx ChipID=0x%4.4hx\n",__func__,
 			radio->registers[DEVICEID], radio->registers[CHIPID]);
 	if ((radio->registers[CHIPID] & CHIPID_FIRMWARE) < RADIO_FW_VERSION) {
 		pr_err("%s This driver is known to work with "
@@ -711,7 +711,7 @@ int si470x_fops_open(struct file *file)
 		radio->registers[CHANNEL] & CHANNEL_CHAN);
 
 	for(i = 0; i < 16; i++ )
-		pr_info("%s radio->registers[%d] : %x\n",__func__,i,radio->registers[i]);
+		pr_debug("%s radio->registers[%d] : %x\n",__func__,i,radio->registers[i]);
 
 done:
 	if (retval)
@@ -726,7 +726,7 @@ int si470x_fops_release(struct file *file)
 {
 	struct si470x_device *radio = video_drvdata(file);
 
-	pr_info("%s enter \n",__func__);
+	pr_debug("%s enter \n",__func__);
 
 	if (v4l2_fh_is_singular_file(file))
 		/* stop radio */
@@ -750,7 +750,7 @@ static int si470x_i2c_probe(struct i2c_client *client,
 	int i = 0;
 	int kfifo_alloc_rc = 0;
 
-	pr_info("%s enter",__func__);
+	pr_debug("%s enter",__func__);
 	vreg = regulator_get(&client->dev, "va");
 
 	if (IS_ERR(vreg)) {
@@ -768,7 +768,7 @@ static int si470x_i2c_probe(struct i2c_client *client,
 	/* private data allocation and initialization */
 	radio = kzalloc(sizeof(struct si470x_device), GFP_KERNEL);
 	if (!radio) {
-		pr_info("%s error radio allocation",__func__);
+		pr_debug("%s error radio allocation",__func__);
 		retval = -ENOMEM;
 		goto err_initial;
 	}
@@ -810,7 +810,7 @@ static int si470x_i2c_probe(struct i2c_client *client,
 	}
 
 	vreg = regulator_get(&client->dev, "vdd");
-	pr_info("%s regulator_get",__func__);
+	pr_debug("%s regulator_get",__func__);
 
 	if (IS_ERR(vreg)) {
 		pr_err("In %s, vdd supply is not provided\n", __func__);
@@ -846,7 +846,7 @@ static int si470x_i2c_probe(struct i2c_client *client,
 		if (retval == -EINVAL)
 			retval = 0;
 	} else {
-		pr_info("%s si470x_pinctrl_init success\n",__func__);
+		pr_debug("%s si470x_pinctrl_init success\n",__func__);
 	}
 
 	radio->wqueue = NULL;
@@ -911,7 +911,7 @@ static int si470x_i2c_probe(struct i2c_client *client,
 		retval = -ENOMEM;
 		goto err_wqueue;
 	}
-	pr_info("%s: creating work q for scan\n", __func__);
+	pr_debug("%s: creating work q for scan\n", __func__);
 	radio->wqueue_scan  = create_singlethread_workqueue("sifmradioscan");
 
 	if (!radio->wqueue_scan) {

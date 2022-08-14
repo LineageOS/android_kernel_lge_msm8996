@@ -197,7 +197,7 @@ static const struct v4l2_frequency_band bands[] = {
  */
 static int si470x_set_band(struct si470x_device *radio, int band)
 {
-	pr_info("%s enter band%d \n",__func__, band);
+	pr_debug("%s enter band%d \n",__func__, band);
 
 	if (radio->band == band)
 		return 0;
@@ -216,7 +216,7 @@ int si470x_set_chan(struct si470x_device *radio, unsigned short chan)
 	int retval;
 	bool timed_out = false;
 
-	pr_info("%s enter\n",__func__);
+	pr_debug("%s enter\n",__func__);
 	/* start tuning */
 	radio->registers[CHANNEL] &= ~CHANNEL_CHAN;
 	radio->registers[CHANNEL] |= CHANNEL_TUNE | chan;
@@ -257,7 +257,7 @@ done:
  */
 static unsigned int si470x_get_step(struct si470x_device *radio)
 {
-	pr_info("%s enter\n",__func__);
+	pr_debug("%s enter\n",__func__);
 
 	/* Spacing (kHz) */
 	switch ((radio->registers[SYSCONFIG2] & SYSCONFIG2_SPACE) >> 4) {
@@ -281,7 +281,7 @@ static int si470x_get_freq(struct si470x_device *radio, unsigned int *freq)
 {
 	int chan, retval;
 
-	pr_info("%s enter band:%d\n",__func__, radio->band);
+	pr_debug("%s enter band:%d\n",__func__, radio->band);
 
 	/* read channel */
 	retval = si470x_get_register(radio, READCHAN);
@@ -298,7 +298,7 @@ int si470x_set_freq(struct si470x_device *radio, unsigned int freq)
 {
 	unsigned short chan;
 
-	pr_info("%s enter, freq %d\n",__func__, freq/16);
+	pr_debug("%s enter, freq %d\n",__func__, freq/16);
 	freq = clamp(freq, bands[radio->band].rangelow,
 			bands[radio->band].rangehigh);
 	/* Chan = [ Freq (Mhz) - Bottom of Band (MHz) ] / Spacing (kHz) */
@@ -330,7 +330,7 @@ static int si470x_set_seek(struct si470x_device *radio, int direction, int wrap)
 	bool timed_out = false;
 	int i;
 
-	pr_info("%s enter, dir %d , wrap %d\n",__func__, direction, wrap);
+	pr_debug("%s enter, dir %d , wrap %d\n",__func__, direction, wrap);
 
 	/* start seeking */
 	radio->registers[POWERCFG] |= POWERCFG_SEEK;
@@ -352,7 +352,7 @@ static int si470x_set_seek(struct si470x_device *radio, int direction, int wrap)
 
 	if((lge_get_boot_mode() == LGE_BOOT_MODE_QEM_56K)
 		|| (lge_get_boot_mode() == LGE_BOOT_MODE_QEM_910K)){
-		pr_info("%s fm radio AAT TEST MODE\n", __func__);
+		pr_debug("%s fm radio AAT TEST MODE\n", __func__);
 		retval = wait_for_completion_timeout(&radio->completion,
 					msecs_to_jiffies(5000));
 	} else {
@@ -366,7 +366,7 @@ static int si470x_set_seek(struct si470x_device *radio, int direction, int wrap)
 
 		for(i = 0; i < 16; i++ ){
 			si470x_get_register(radio,i);
-			pr_info("%s radio->registers[%d] : %x\n",
+			pr_debug("%s radio->registers[%d] : %x\n",
 					__func__, i, radio->registers[i]);
 		}
 	}
@@ -385,7 +385,7 @@ static int si470x_set_seek(struct si470x_device *radio, int direction, int wrap)
 	if (retval == 0 && timed_out)
 		return -ENODATA;
 
-	pr_info("%s exit %d\n",__func__, retval);
+	pr_debug("%s exit %d\n",__func__, retval);
 	return retval;
 }
 
@@ -398,7 +398,7 @@ void si470x_scan(struct work_struct *work)
 	u32 next_freq_khz;
 	int retval = 0;
 
-	pr_info("%s enter\n", __func__);
+	pr_debug("%s enter\n", __func__);
 
 	radio = container_of(work, struct si470x_device, work_scan.work);
 	radio->seek_tune_status = SEEK_PENDING;
@@ -408,7 +408,7 @@ void si470x_scan(struct work_struct *work)
 		pr_err("%s fail to get freq\n",__func__);
 		goto seek_tune_fail;
 	}
-	pr_info("%s current freq %d\n", __func__, current_freq_khz/16);
+	pr_debug("%s current freq %d\n", __func__, current_freq_khz/16);
 
 	while(1) {
 		if (radio->is_search_cancelled == true) {
@@ -434,7 +434,7 @@ void si470x_scan(struct work_struct *work)
 			pr_err("%s fail to get freq\n",__func__);
 			goto seek_tune_fail;
 		}
-		pr_info("%s next freq %d\n", __func__, next_freq_khz/16);
+		pr_debug("%s next freq %d\n", __func__, next_freq_khz/16);
 
 		if (radio->registers[STATUSRSSI] & STATUSRSSI_SF){
 			pr_err("%s band limit reached. Seek one more.\n",__func__);
@@ -450,7 +450,7 @@ void si470x_scan(struct work_struct *work)
 				pr_err("%s fail to get freq\n",__func__);
 				goto seek_tune_fail;
 			}
-			pr_info("%s next freq %d\n", __func__, next_freq_khz/16);
+			pr_debug("%s next freq %d\n", __func__, next_freq_khz/16);
 			si470x_q_event(radio, SILABS_EVT_TUNE_SUCC);
 			break;
 		}
@@ -519,12 +519,12 @@ static int si470x_vidioc_dqbuf(struct file *file, void *priv,
 	buf_type = buffer->index;
 	buf = (u8 *)buffer->m.userptr;
 	len = buffer->length;
-	pr_info("%s: requesting buffer %d\n", __func__, buf_type);
+	pr_debug("%s: requesting buffer %d\n", __func__, buf_type);
 
 	if ((buf_type < SILABS_FM_BUF_MAX) && (buf_type >= 0)) {
 		data_fifo = &radio->data_buf[buf_type];
 		if (buf_type == SILABS_FM_BUF_EVENTS) {
-			pr_info("%s before wait_event_interruptible \n", __func__);
+			pr_debug("%s before wait_event_interruptible \n", __func__);
 			if (wait_event_interruptible(radio->event_queue,
 						kfifo_len(data_fifo)) < 0) {
 				pr_err("%s err \n", __func__);
@@ -547,7 +547,7 @@ static int si470x_vidioc_dqbuf(struct file *file, void *priv,
 		pr_err("%s Failed to copy %d bytes of data\n", __func__, retval);
 		return -EAGAIN;
 	}
-	pr_info("%s: requesting buffer exit %d\n", __func__, buf_type);
+	pr_debug("%s: requesting buffer exit %d\n", __func__, buf_type);
 	return retval;
 }
 
@@ -568,7 +568,7 @@ int si470x_start(struct si470x_device *radio)
 {
 	int retval, i;
 
-	pr_info("%s enter\n",__func__);
+	pr_debug("%s enter\n",__func__);
 	/* powercfg */
 	radio->registers[POWERCFG] =
 		POWERCFG_DMUTE | POWERCFG_ENABLE | POWERCFG_RDSM;
@@ -581,7 +581,7 @@ int si470x_start(struct si470x_device *radio)
 
 	for(i = 0; i < 16; i++ ){
 		si470x_get_register(radio,i);
-		pr_info("%s radio->registers[%d] : %x\n",
+		pr_debug("%s radio->registers[%d] : %x\n",
 				__func__, i, radio->registers[i]);
 	}
 
@@ -618,7 +618,7 @@ int si470x_stop(struct si470x_device *radio)
 {
 	int retval;
 
-	pr_info("%s enter\n",__func__);
+	pr_debug("%s enter\n",__func__);
 
 	/* sysconfig 1 */
 	radio->registers[SYSCONFIG1] &= ~SYSCONFIG1_RDS;
@@ -644,7 +644,7 @@ static int si470x_rds_on(struct si470x_device *radio)
 {
 	int retval;
 
-	pr_info("%s enter\n",__func__);
+	pr_debug("%s enter\n",__func__);
 
 	/* sysconfig 1 */
 	radio->registers[SYSCONFIG1] |= SYSCONFIG1_RDS;
@@ -674,7 +674,7 @@ static void si470x_get_rds(struct si470x_device *radio)
 	radio->block[3] = radio->registers[RDSD];
 
 	for(i = 0; i < 4; i++)
-		pr_info("%s block[%d] %x \n", __func__, i, radio->block[i]);
+		pr_debug("%s block[%d] %x \n", __func__, i, radio->block[i]);
 
 	radio->bler[0] = (radio->registers[STATUSRSSI] & STATUSRSSI_BLERA) >> 9;
 	radio->bler[1] = (radio->registers[READCHAN] & READCHAN_BLERB) >> 14;
@@ -686,21 +686,21 @@ static void si470x_get_rds(struct si470x_device *radio)
 static void si470x_pi_check(struct si470x_device *radio, u16 current_pi)
 {
 	if (radio->pi != current_pi) {
-		pr_info("%s current_pi %x , radio->pi %x\n"
+		pr_debug("%s current_pi %x , radio->pi %x\n"
 				, __func__, current_pi, radio->pi);
 		radio->pi = current_pi;
 	} else {
-		pr_info("%s Received same PI code\n",__func__);
+		pr_debug("%s Received same PI code\n",__func__);
 	}
 }
 
 static void si470x_pty_check(struct si470x_device *radio, u8 current_pty)
 {
 	if (radio->pty != current_pty) {
-		pr_info("%s PTY code of radio->block[1] = %x\n", __func__, current_pty);
+		pr_debug("%s PTY code of radio->block[1] = %x\n", __func__, current_pty);
 		radio->pty = current_pty;
 	} else {
-		pr_info("%s PTY repeated\n",__func__);
+		pr_debug("%s PTY repeated\n",__func__);
 	}
 }
 
@@ -784,7 +784,7 @@ static void si470x_update_af_list(struct si470x_device *radio)
 
 		if (af_data >= MIN_AF_CNT_CODE && af_data <= MAX_AF_CNT_CODE) {
 
-			pr_info("%s: resetting af info, freq %u, pi %u\n",
+			pr_debug("%s: resetting af info, freq %u, pi %u\n",
 					__func__, tuned_freq_khz, radio->pi);
 			radio->af_info2.inval_freq_cnt = 0;
 			radio->af_info2.cnt = 0;
@@ -795,7 +795,7 @@ static void si470x_update_af_list(struct si470x_device *radio)
 			radio->af_info2.orig_freq_khz = tuned_freq_khz;
 			radio->af_info2.pi = radio->pi;
 
-			pr_info("%s: current freq is %u, AF cnt is %u\n",
+			pr_debug("%s: current freq is %u, AF cnt is %u\n",
 					__func__, tuned_freq_khz, radio->af_info2.cnt);
 
 		} else if (af_data >= MIN_AF_FREQ_CODE &&
@@ -806,14 +806,14 @@ static void si470x_update_af_list(struct si470x_device *radio)
 			af_freq_khz = SCALE_AF_CODE_TO_FREQ_KHZ(af_data);
 			retval = is_valid_freq(radio, af_freq_khz);
 			if (retval == false) {
-				pr_info("%s: Invalid AF\n", __func__);
+				pr_debug("%s: Invalid AF\n", __func__);
 				radio->af_info2.inval_freq_cnt++;
 				continue;
 			}
 
 			retval = is_new_freq(radio, af_freq_khz);
 			if (retval == false) {
-				pr_info("%s: Duplicate AF\n", __func__);
+				pr_debug("%s: Duplicate AF\n", __func__);
 				radio->af_info2.inval_freq_cnt++;
 				continue;
 			}
@@ -821,7 +821,7 @@ static void si470x_update_af_list(struct si470x_device *radio)
 			/* update the AF list */
 			radio->af_info2.af_list[radio->af_info2.size++] =
 				af_freq_khz;
-			pr_info("%s: AF is %u\n", __func__, af_freq_khz);
+			pr_debug("%s: AF is %u\n", __func__, af_freq_khz);
 			if ((radio->af_info2.size +
 						radio->af_info2.inval_freq_cnt ==
 						radio->af_info2.cnt) &&
@@ -859,7 +859,7 @@ static void si470x_update_af_list(struct si470x_device *radio)
 						GET_AF_EVT_LEN(ev.af_size),
 						&lock);
 
-				pr_info("%s: posting AF list evt, curr freq %u\n",
+				pr_debug("%s: posting AF list evt, curr freq %u\n",
 						__func__, ev.tune_freq_khz);
 
 				si470x_q_event(radio,
@@ -877,7 +877,7 @@ static void si470x_update_ps(struct si470x_device *radio, u8 addr, u8 ps)
 	u8 *data;
 	struct kfifo *data_b;
 
-	pr_info("%s enter addr:%x ps:%x \n",__func__, addr, ps);
+	pr_debug("%s enter addr:%x ps:%x \n",__func__, addr, ps);
 
 	if (radio->ps_tmp0[addr] == ps) {
 		if (radio->ps_cnt[addr] < PS_VALIDATE_LIMIT) {
@@ -911,7 +911,7 @@ static void si470x_update_ps(struct si470x_device *radio, u8 addr, u8 ps)
 
 	for (i = 0; i < MAX_PS_LEN; i++) {
 		if (radio->ps_cnt[i] < PS_VALIDATE_LIMIT) {
-			pr_info("%s ps_cnt[%d] %d\n",__func__, i ,radio->ps_cnt[i]);
+			pr_debug("%s ps_cnt[%d] %d\n",__func__, i ,radio->ps_cnt[i]);
 			ps_cmplt = false;
 			return;
 		}
@@ -922,7 +922,7 @@ static void si470x_update_ps(struct si470x_device *radio, u8 addr, u8 ps)
 				(radio->ps_display[i] == radio->ps_tmp0[i]); i++)
 			;
 		if (i == MAX_PS_LEN) {
-			pr_info("%s Same PS string repeated\n",__func__);
+			pr_debug("%s Same PS string repeated\n",__func__);
 			return;
 		}
 
@@ -941,7 +941,7 @@ static void si470x_update_ps(struct si470x_device *radio, u8 addr, u8 ps)
 			data_b = &radio->data_buf[SILABS_FM_BUF_PS_RDS];
 			kfifo_in_locked(data_b, data, PS_EVT_DATA_LEN,
 					&radio->buf_lock[SILABS_FM_BUF_PS_RDS]);
-			pr_info("%s Q the PS event\n", __func__);
+			pr_debug("%s Q the PS event\n", __func__);
 			si470x_q_event(radio, SILABS_EVT_NEW_PS_RDS);
 			kfree(data);
 		} else {
@@ -957,11 +957,11 @@ static void display_rt(struct si470x_device *radio)
 	struct kfifo *data_b;
 	bool rt_cmplt = true;
 
-	pr_info("%s enter\n",__func__);
+	pr_debug("%s enter\n",__func__);
 
 	for (i = 0; i < MAX_RT_LEN; i++) {
 		if (radio->rt_cnt[i] < RT_VALIDATE_LIMIT) {
-			pr_info("%s rt_cnt %d\n", __func__, radio->rt_cnt[i]);
+			pr_debug("%s rt_cnt %d\n", __func__, radio->rt_cnt[i]);
 			rt_cmplt = false;
 			return;
 		}
@@ -975,7 +975,7 @@ static void display_rt(struct si470x_device *radio)
 		for (i = 0; (i < len) &&
 				(radio->rt_display[i] == radio->rt_tmp0[i]); i++);
 		if (i == len) {
-			pr_info("%s Same RT string repeated\n",__func__);
+			pr_debug("%s Same RT string repeated\n",__func__);
 			return;
 		}
 		for (i = 0; i < len; i++)
@@ -991,7 +991,7 @@ static void display_rt(struct si470x_device *radio)
 			data_b = &radio->data_buf[SILABS_FM_BUF_RT_RDS];
 			kfifo_in_locked(data_b, data, OFFSET_OF_RT + len,
 					&radio->buf_lock[SILABS_FM_BUF_RT_RDS]);
-			pr_info("%s Q the RT event\n", __func__);
+			pr_debug("%s Q the RT event\n", __func__);
 			si470x_q_event(radio, SILABS_EVT_NEW_RT_RDS);
 			kfree(data);
 		} else {
@@ -1006,7 +1006,7 @@ static void rt_handler(struct si470x_device *radio, u8 ab_flg,
 	u8 i, errcnt, blermax;
 	bool rt_txt_chg = 0;
 
-	pr_info("%s enter\n",__func__);
+	pr_debug("%s enter\n",__func__);
 
 	if (ab_flg != radio->rt_flag && radio->valid_rt_flg) {
 		for (i = 0; i < sizeof(radio->rt_cnt); i++) {
@@ -1074,8 +1074,8 @@ static void si470x_raw_rds(struct si470x_device *radio)
 
 	aid = radio->block[3];
 	app_grp_typ = radio->block[1] & APP_GRP_typ_MASK;
-	pr_info("%s app_grp_typ = %x\n", __func__, app_grp_typ);
-	pr_info("%s AID = %x", __func__, aid);
+	pr_debug("%s app_grp_typ = %x\n", __func__, app_grp_typ);
+	pr_debug("%s AID = %x", __func__, aid);
 
 	switch (aid) {
 		case ERT_AID:
@@ -1097,7 +1097,7 @@ static void si470x_raw_rds(struct si470x_device *radio)
 			}
 			break;
 		default:
-			pr_info("%s Not handling the AID of %x\n", __func__, aid);
+			pr_debug("%s Not handling the AID of %x\n", __func__, aid);
 			break;
 	}
 }
@@ -1110,7 +1110,7 @@ static void si470x_ev_ert(struct si470x_device *radio)
 	if (radio->ert_len <= 0)
 		return;
 
-	pr_info("%s enter\n", __func__);
+	pr_debug("%s enter\n", __func__);
 	data = kmalloc((radio->ert_len + ERT_OFFSET), GFP_ATOMIC);
 	if (data != NULL) {
 		data[0] = radio->ert_len;
@@ -1139,15 +1139,15 @@ static void si470x_buff_ert(struct si470x_device *radio)
 	if (radio->c_byt_pair_index == byte_pair_index) {
 		for (i = 2; i <= 3; i++) {
 			info_byte = radio->block[i];
-			pr_info("%s info_byte = %x\n", __func__, info_byte);
-			pr_info("%s ert_len = %x\n", __func__, radio->ert_len);
+			pr_debug("%s info_byte = %x\n", __func__, info_byte);
+			pr_debug("%s ert_len = %x\n", __func__, radio->ert_len);
 			if (radio->ert_len > (MAX_ERT_LEN - 2))
 				return;
 			radio->ert_buf[radio->ert_len] = radio->block[i] >> 8;
 			radio->ert_buf[radio->ert_len + 1] =
 				radio->block[i] & 0xFF;
 			radio->ert_len += ERT_CNT_PER_BLK;
-			pr_info("%s utf_8_flag = %d\n", __func__, radio->utf_8_flag);
+			pr_debug("%s utf_8_flag = %d\n", __func__, radio->utf_8_flag);
 			if ((radio->utf_8_flag == 0) &&
 					(info_byte == END_OF_RT)) {
 				radio->ert_len -= ERT_CNT_PER_BLK;
@@ -1272,7 +1272,7 @@ void si470x_rds_handler(struct work_struct *worker)
 		return;
 	}
 
-	pr_info("%s enter\n", __func__);
+	pr_debug("%s enter\n", __func__);
 
 	si470x_get_rds(radio);
 
@@ -1281,13 +1281,13 @@ void si470x_rds_handler(struct work_struct *worker)
 
 	if(radio->bler[1] < CORRECTED_ONE_TO_TWO){
 		grp_type = radio->block[1] >> OFFSET_OF_GRP_TYP;
-		pr_info("%s grp_type = %d\n", __func__, grp_type);
+		pr_debug("%s grp_type = %d\n", __func__, grp_type);
 	} else {
 		pr_err("%s invalid data\n",__func__);
 
 		for(i = 0; i < 16; i++ ){
 			si470x_get_register(radio,i);
-			pr_info("%s radio->registers[%d] : %x\n",
+			pr_debug("%s radio->registers[%d] : %x\n",
 					__func__, i, radio->registers[i]);
 		}
 		return;
@@ -1304,14 +1304,14 @@ void si470x_rds_handler(struct work_struct *worker)
 			/*  fall through */
 		case RDS_TYPE_0B:
 			addr = (radio->block[1] & PS_MASK) * NO_OF_CHARS_IN_EACH_ADD;
-			pr_info("%s RDS is PS\n", __func__);
+			pr_debug("%s RDS is PS\n", __func__);
 			if(radio->bler[3] <= CORRECTED_THREE_TO_FIVE){
 				si470x_update_ps(radio, addr+0, radio->block[3] >> 8);
 				si470x_update_ps(radio, addr+1, radio->block[3] & 0xff);
 			}
 			break;
 		case RDS_TYPE_2A:
-			pr_info("%s RDS is RT 2A group\n", __func__);
+			pr_debug("%s RDS is RT 2A group\n", __func__);
 			rt_blks[0] = (u8)(radio->block[2] >> 8);
 			rt_blks[1] = (u8)(radio->block[2] & 0xFF);
 			rt_blks[2] = (u8)(radio->block[3] >> 8);
@@ -1321,7 +1321,7 @@ void si470x_rds_handler(struct work_struct *worker)
 			rt_handler(radio, ab_flg, CNT_FOR_2A_GRP_RT, addr, rt_blks);
 			break;
 		case RDS_TYPE_2B:
-			pr_info("%s RDS is RT 2B group\n",__func__);
+			pr_debug("%s RDS is RT 2B group\n",__func__);
 			rt_blks[0] = (u8)(radio->block[3] >> 8);
 			rt_blks[1] = (u8)(radio->block[3] & 0xFF);
 			rt_blks[2] = 0;
@@ -1334,15 +1334,15 @@ void si470x_rds_handler(struct work_struct *worker)
 			rt_handler(radio, ab_flg, CNT_FOR_2B_GRP_RT, addr, rt_blks);
 			break;
 		case RDS_TYPE_3A:
-			pr_info("%s RDS is 3A group\n",__func__);
+			pr_debug("%s RDS is 3A group\n",__func__);
 			si470x_raw_rds(radio);
 			break;
 		default:
 			pr_err("%s Not handling the group type %d\n", __func__, grp_type);
 			break;
 	}
-	pr_info("%s rt_plus_carrier = %x\n", __func__, radio->rt_plus_carrier);
-	pr_info("%s ert_carrier = %x\n", __func__, radio->ert_carrier);
+	pr_debug("%s rt_plus_carrier = %x\n", __func__, radio->rt_plus_carrier);
+	pr_debug("%s ert_carrier = %x\n", __func__, radio->ert_carrier);
 	if (radio->rt_plus_carrier && (grp_type == radio->rt_plus_carrier))
 		si470x_rt_plus(radio);
 	else if (radio->ert_carrier && (grp_type == radio->ert_carrier))
@@ -1360,7 +1360,7 @@ static ssize_t si470x_fops_read(struct file *file, char __user *buf,
 	int retval = 0;
 	unsigned int block_count = 0;
 
-	pr_info("%s enter\n",__func__);
+	pr_debug("%s enter\n",__func__);
 
 	/* switch on rds reception */
 	if ((radio->registers[SYSCONFIG1] & SYSCONFIG1_RDS) == 0)
@@ -1418,7 +1418,7 @@ static unsigned int si470x_fops_poll(struct file *file,
 	unsigned long req_events = poll_requested_events(pts);
 	int retval = v4l2_ctrl_poll(file, pts);
 
-	pr_info("%s enter\n",__func__);
+	pr_debug("%s enter\n",__func__);
 
 	if (req_events & (POLLIN | POLLRDNORM)) {
 		/* switch on rds reception */
@@ -1446,7 +1446,7 @@ void si470x_q_event(struct si470x_device *radio,
 
 	data_b = &radio->data_buf[SILABS_FM_BUF_EVENTS];
 
-	pr_info("%s updating event_q with event %x\n", __func__, event);
+	pr_debug("%s updating event_q with event %x\n", __func__, event);
 	if (kfifo_in_locked(data_b,
 				&evt,
 				1,
@@ -1460,7 +1460,7 @@ static int si470x_g_ctrl(struct file *file, void *priv, struct v4l2_control *ctr
 	//	struct si470x_device *radio = video_drvdata(file);
 	int retval = 0;
 
-	pr_info("%s enter, id: %x value: %d\n",__func__, ctrl->id,ctrl->value);
+	pr_debug("%s enter, id: %x value: %d\n",__func__, ctrl->id,ctrl->value);
 
 	switch (ctrl->id) {
 		case V4L2_CID_PRIVATE_SILABS_RDSGROUP_PROC:
@@ -1486,7 +1486,7 @@ static int si470x_enable(struct si470x_device *radio)
 	if((radio->registers[POWERCFG] & POWERCFG_ENABLE)== 0){
 		si470x_start(radio);
 	} else {
-		pr_info("%s already turn on\n",__func__);
+		pr_debug("%s already turn on\n",__func__);
 	}
 
 	if((radio->registers[SYSCONFIG1] &  SYSCONFIG1_STCIEN) == 0){
@@ -1531,7 +1531,7 @@ static int si470x_disable(struct si470x_device *radio)
 	}
 
 	if (radio->mode == FM_TURNING_OFF || radio->mode == FM_RECV) {
-		pr_info("%s: posting SILABS_EVT_RADIO_DISABLED event\n",
+		pr_debug("%s: posting SILABS_EVT_RADIO_DISABLED event\n",
 				__func__);
 		si470x_q_event(radio, SILABS_EVT_RADIO_DISABLED);
 		radio->mode = FM_OFF;
@@ -1559,7 +1559,7 @@ static int si470x_s_ctrl(struct file *file, void *priv, struct v4l2_control *ctr
 	unsigned short de_s;
 	int space_s,snr;
 
-	pr_info("%s enter, ctrl->id: %x, value:%d \n", __func__, ctrl->id, ctrl->value);
+	pr_debug("%s enter, ctrl->id: %x, value:%d \n", __func__, ctrl->id, ctrl->value);
 
 	switch (ctrl->id) {
 		case V4L2_CID_PRIVATE_SILABS_STATE:
@@ -1602,7 +1602,7 @@ static int si470x_s_ctrl(struct file *file, void *priv, struct v4l2_control *ctr
 			retval = si470x_set_register(radio, POWERCFG);
 			break;
 		case V4L2_CID_PRIVATE_SILABS_EMPHASIS:
-			pr_info("%s value : %d\n", __func__, ctrl->value);
+			pr_debug("%s value : %d\n", __func__, ctrl->value);
 			de_s = (u16)ctrl->value;
 			radio->registers[SYSCONFIG1] =
 				( de_s << 11) & SYSCONFIG1_DE;
@@ -1654,7 +1654,7 @@ static int si470x_s_ctrl(struct file *file, void *priv, struct v4l2_control *ctr
 			if(retval < 0)
 				pr_err("%s fail to write snr\n",__func__);
 			si470x_get_register(radio, SYSCONFIG3);
-			pr_info("%s SYSCONFIG3:%x\n", __func__, radio->registers[SYSCONFIG3]);
+			pr_debug("%s SYSCONFIG3:%x\n", __func__, radio->registers[SYSCONFIG3]);
 			break;
 		case V4L2_CID_PRIVATE_SILABS_LP_MODE:
 		case V4L2_CID_PRIVATE_SILABS_ANTENNA:
@@ -1683,11 +1683,11 @@ static int si470x_s_ctrl(struct file *file, void *priv, struct v4l2_control *ctr
 			}
 			break;
 		default:
-			pr_info("%s id: %x in default\n",__func__, ctrl->id);
+			pr_debug("%s id: %x in default\n",__func__, ctrl->id);
 			return -EINVAL;
 	}
 end:
-	pr_info("%s exit id: %x , ret: %d\n",__func__, ctrl->id, retval);
+	pr_debug("%s exit id: %x , ret: %d\n",__func__, ctrl->id, retval);
 	return retval;
 }
 
@@ -1701,7 +1701,7 @@ static int si470x_vidioc_g_tuner(struct file *file, void *priv,
 	struct si470x_device *radio = video_drvdata(file);
 	int retval = 0;
 
-	pr_info("%s enter\n",__func__);
+	pr_debug("%s enter\n",__func__);
 
 	if (tuner->index != 0)
 		return -EINVAL;
@@ -1756,12 +1756,12 @@ static int si470x_vidioc_g_tuner(struct file *file, void *priv,
 	if (tuner->signal > 0x4B)
 		tuner->signal = 0x4B;
 
-	pr_info("%s tuner->signal:%x\n", __func__, tuner->signal);
+	pr_debug("%s tuner->signal:%x\n", __func__, tuner->signal);
 	/* automatic frequency control: -1: freq to low, 1 freq to high */
 	/* AFCRL does only indicate that freq. differs, not if too low/high */
 	tuner->afc = (radio->registers[STATUSRSSI] & STATUSRSSI_AFCRL) ? 1 : 0;
 
-	pr_info("%s exit\n",__func__);
+	pr_debug("%s exit\n",__func__);
 
 	return retval;
 }
@@ -1777,7 +1777,7 @@ static int si470x_vidioc_s_tuner(struct file *file, void *priv,
 	int retval = 0;
 	int band;
 
-	pr_info("%s enter\n",__func__);
+	pr_debug("%s enter\n",__func__);
 
 	if (tuner->index != 0)
 		return -EINVAL;
@@ -1795,7 +1795,7 @@ static int si470x_vidioc_s_tuner(struct file *file, void *priv,
 
 	retval = si470x_set_register(radio, POWERCFG);
 
-	pr_info("%s low:%d high:%d\n", __func__, tuner->rangelow, tuner->rangehigh);
+	pr_debug("%s low:%d high:%d\n", __func__, tuner->rangelow, tuner->rangehigh);
 
 	/* set band */
 	if (tuner->rangelow || tuner->rangehigh) {
@@ -1819,7 +1819,7 @@ static int si470x_vidioc_s_tuner(struct file *file, void *priv,
 			radio->band = band;
 	}
 
-	pr_info("%s exit\n", __func__);
+	pr_debug("%s exit\n", __func__);
 
 	return retval;
 }
@@ -1833,7 +1833,7 @@ static int si470x_vidioc_g_frequency(struct file *file, void *priv,
 	struct si470x_device *radio = video_drvdata(file);
 	int retval = 0;
 
-	pr_info("%s enter\n", __func__);
+	pr_debug("%s enter\n", __func__);
 
 	freq->type = V4L2_TUNER_RADIO;
 	retval = si470x_get_freq(radio, &freq->frequency);
@@ -1850,7 +1850,7 @@ static int si470x_vidioc_s_frequency(struct file *file, void *priv,
 	struct si470x_device *radio = video_drvdata(file);
 	int retval;
 
-	pr_info("%s enter freq:%d\n",__func__, freq->frequency);
+	pr_debug("%s enter freq:%d\n",__func__, freq->frequency);
 
 	if (freq->frequency < bands[radio->band].rangelow ||
 			freq->frequency > bands[radio->band].rangehigh) {
@@ -1874,7 +1874,7 @@ static int si470x_vidioc_s_hw_freq_seek(struct file *file, void *priv,
 	struct si470x_device *radio = video_drvdata(file);
 	int retval = 0;
 
-	pr_info("%s enter\n",__func__);
+	pr_debug("%s enter\n",__func__);
 
 	if (file->f_flags & O_NONBLOCK)
 		return -EWOULDBLOCK;
@@ -1883,7 +1883,7 @@ static int si470x_vidioc_s_hw_freq_seek(struct file *file, void *priv,
 
 	if (radio->g_search_mode == SEEK) {
 		/* seek */
-		pr_info("%s starting seek\n",__func__);
+		pr_debug("%s starting seek\n",__func__);
 		radio->seek_tune_status = SEEK_PENDING;
 		retval = si470x_set_seek(radio, seek->seek_upward, seek->wrap_around);
 		si470x_q_event(radio, SILABS_EVT_TUNE_SUCC);
@@ -1893,15 +1893,15 @@ static int si470x_vidioc_s_hw_freq_seek(struct file *file, void *priv,
 			(radio->g_search_mode == SCAN_FOR_STRONG)) {
 		/* scan */
 		if (radio->g_search_mode == SCAN_FOR_STRONG) {
-			pr_info("%s starting search list\n",__func__);
+			pr_debug("%s starting search list\n",__func__);
 			memset(&radio->srch_list, 0,
 					sizeof(struct si470x_srch_list_compl));
 		} else {
-			pr_info("%s starting scan\n",__func__);
+			pr_debug("%s starting scan\n",__func__);
 		}
 		si470x_search(radio, 1);
 	} else if ((radio->g_search_mode == SEEK_STOP) ){
-		pr_info("%s seek stop\n", __func__);
+		pr_debug("%s seek stop\n", __func__);
 		radio->registers[POWERCFG] &= ~POWERCFG_SEEK;
 		retval = si470x_set_register(radio, POWERCFG);
 	} else {
@@ -1919,7 +1919,7 @@ static int si470x_vidioc_s_hw_freq_seek(struct file *file, void *priv,
 static int si470x_vidioc_enum_freq_bands(struct file *file, void *priv,
 					 struct v4l2_frequency_band *band)
 {
-	pr_info("%s enter\n",__func__);
+	pr_debug("%s enter\n",__func__);
 
 	if (band->tuner != 0)
 		return -EINVAL;
