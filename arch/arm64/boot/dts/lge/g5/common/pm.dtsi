@@ -87,7 +87,7 @@
 	qcom,lge_batt_profile;
 #endif
 	qcom,vbat-estimate-diff-mv = <250>;
-	qcom,fg-cc-cv-threshold-mv = <4390>;
+	qcom,fg-cc-cv-threshold-mv = <4340>; //float-voltage set as 4350 in common-various
 #ifdef CONFIG_MACH_MSM8996_H1_GLOBAL_COM
 	qcom,lge_global_rev;
 #endif

@@ -135,14 +135,12 @@
 
 &pmi8994_charger {
 	somc,limit-usb-5v-level = <8>;
-	somc,fastchg-warm-current-ma = <800>;
-	somc,fastchg-cool-current-ma = <800>;
 	qcom,float-voltage-mv = <4350>;
 	qcom,float-voltage-comp = <0x08>;
 	qcom,jeita-temp-hard-limit = <0>;
 	/delete-property/ qcom,chg-inhibit-fg;
 	qcom,parallel-main-chg-fcc-percent = <40>;
-	qcom,aicl-rerun-period-s = <45>;
+	qcom,aicl-rerun-period-s = <90>;
 	qcom,resume-delta-mv = <300>;
 	qcom,iterm-ma = <100>;
 	qcom,bmd-algo-disabled;
