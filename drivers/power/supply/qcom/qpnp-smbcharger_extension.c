@@ -493,12 +493,23 @@ static void somc_chg_temp_set_fastchg_ma(
 {
 	int rc = 0;
 
-	pr_smb_ext(PR_THERM,
-		"fastchg-ma changed to %dma for temp\n", current_ma);
-	if (current_ma)
-		rc = vote(chip->fcc_votable, TEMP_FCC_VOTER, true, current_ma);
-	else
+	if (current_ma){
+		if(chip->fastchg_current_ma < current_ma) {
+			pr_smb_ext(PR_THERM,
+				"abnormal temp detected but current is below mitigation value, ignoring...\n");
+			rc = vote(chip->fcc_votable, TEMP_FCC_VOTER, false, 0);
+		}
+		else {
+			pr_smb_ext(PR_THERM,
+				"abnormal temp detected, fastchg-ma changed to %dma\n", current_ma);
+			rc = vote(chip->fcc_votable, TEMP_FCC_VOTER, true, current_ma);
+		}
+	} else {
+		pr_smb_ext(PR_THERM,
+			"fastchg-ma restored due to normal temp\n");
 		rc = vote(chip->fcc_votable, TEMP_FCC_VOTER, false, 0);
+	}
+		
 	if (rc < 0)
 		pr_err("Couldn't vote for fastchg current rc=%d\n", rc);
 }
@@ -527,10 +538,14 @@ static void somc_chg_temp_work(struct work_struct *work)
 
 	switch (status) {
 	case TEMP_STATUS_HOT:
+		current_ma = params->temp.hot_current_ma;
+		break;
 	case TEMP_STATUS_WARM:
 		current_ma = params->temp.warm_current_ma;
 		break;
 	case TEMP_STATUS_COLD:
+		current_ma = params->temp.cold_current_ma;
+		break;
 	case TEMP_STATUS_COOL:
 		current_ma = params->temp.cool_current_ma;
 		break;
@@ -2032,6 +2047,12 @@ static int somc_chg_smb_parse_dt(struct smbchg_chip *chip,
 	SOMC_OF_PROP_READ(chip->dev, node,
 		params->temp.cool_current_ma,
 		"fastchg-cool-current-ma", rc, 1);
+	SOMC_OF_PROP_READ(chip->dev, node,
+		params->temp.hot_current_ma,
+		"fastchg-hot-current-ma", rc, 1);
+	SOMC_OF_PROP_READ(chip->dev, node,
+		params->temp.cold_current_ma,
+		"fastchg-cold-current-ma", rc, 1);
 	SOMC_OF_PROP_READ(chip->dev, node,
 		params->thermal.limit_usb5v_lvl,
 		"limit-usb-5v-level", rc, 1);

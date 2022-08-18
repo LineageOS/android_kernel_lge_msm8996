@@ -49,6 +49,8 @@ struct somc_temp_state {
 	u8			temp_val;
 	int			warm_current_ma;
 	int			cool_current_ma;
+	int			 hot_current_ma;
+	int			cold_current_ma;
 };
 
 struct somc_step_chg {
