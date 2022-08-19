@@ -183,7 +183,7 @@
 		qcom,cci-master = <0>;
 	};
 
-	/*actuator0: qcom,actuator@0 {
+	actuator0: qcom,actuator@0 {
 		cell-index = <0>;
 		reg = <0x0>;
 		compatible = "qcom,actuator";
@@ -194,7 +194,7 @@
 		qcom,cam-vreg-min-voltage = <1800000 2800000>;
 		qcom,cam-vreg-max-voltage = <1800000 2800000>;
 		qcom,cam-vreg-op-mode = <2800 175000>;
-	};*/
+	};
 
 	iris0: qcom,iris@0 {
 		cell-index = <0>;
@@ -250,7 +250,7 @@
 		qcom,mount-angle     = <90>;
 
 		qcom,led-flash-src = <&led_flash0>;
-		/*qcom,actuator-src  = <&actuator0>;*/
+		qcom,actuator-src  = <&actuator0>;
 //		qcom,proxy-src     = <&proxy0>;
 		qcom,eeprom-src    = <&eeprom0>;
 		qcom,iris-src      = <&iris0>;

@@ -226,7 +226,7 @@
 		qcom,cci-master = <0>;
 	};
 
-	/*actuator0: qcom,actuator@7c {
+	actuator0: qcom,actuator@7c {
 		cell-index      = <0>;
 		reg             = <0x7c>; //<0x0>;
 		compatible      = "qcom,actuator";
@@ -246,7 +246,7 @@
 		qcom,cam-power-seq-val     = "cam_vio";
 		qcom,cam-power-seq-cfg-val = <1>;
 		qcom,cam-power-seq-delay   = <5>;
-	};*/
+	};
 
 	tcs: qcom,tcs@39 {
 		cell-index = <0>;
@@ -312,7 +312,7 @@
 		qcom,led-flash-src = <&led_flash0>;
 		qcom,eeprom-src    = <&eeprom0>;
 		qcom,ois-src       = <&ois0>;
-		/*qcom,actuator-src  = <&actuator0>;*/
+		qcom,actuator-src  = <&actuator0>;
 		qcom,proxy-src     = <&proxy0>;
 		qcom,tcs-src       = <&tcs>;
 
