@@ -190,7 +190,7 @@
 		qcom,cci-master = <0>;
 	};
 
-	/*actuator0: qcom,actuator@0 {
+	actuator0: qcom,actuator@0 {
 		status = "ok";
 		cell-index = <0>;
 		reg = <0x0>;
@@ -207,7 +207,7 @@
 		qcom,cam-power-seq-val     = "cam_vio";
 		qcom,cam-power-seq-cfg-val = <1>;
 		qcom,cam-power-seq-delay   = <5>;
-	};*/
+	};
 
 	eeprom0: qcom,eeprom@0 {
 		status = "ok";
@@ -251,7 +251,7 @@
 		qcom,mount-angle     = <90>;
 
 		qcom,led-flash-src = <&led_flash0>;
-		/*qcom,actuator-src  = <&actuator0>;*/
+		qcom,actuator-src  = <&actuator0>;
 		qcom,proxy-src     = <&proxy0>;
 		qcom,eeprom-src    = <&eeprom0>;
 		qcom,ois-src       = <&ois>;
