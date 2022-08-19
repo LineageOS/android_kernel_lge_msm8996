@@ -10,6 +10,12 @@
  * GNU General Public License for more details.
  */
 
+/*
+#ifdef CONFIG_MACH_LGE
+#define LGE_LED_REGULATOR_SETUP_WORKAROUND
+#endif
+*/
+
 #include <linux/module.h>
 #include <linux/init.h>
 #include <linux/kernel.h>
@@ -1167,7 +1173,7 @@ static int flash_regulator_setup(struct qpnp_flash_led *led,
 
 error_regulator_setup:
 	while (i--) {
-#ifdef CONFIG_MACH_LGE
+#ifdef LGE_LED_REGULATOR_SETUP_WORKAROUND
 		if (IS_ERR_OR_NULL(flash_node->reg_data[i].regs)) {
 			flash_node->reg_data[i].regs =
 				regulator_get(flash_node->cdev.dev,
@@ -1223,25 +1229,31 @@ error_regulator_enable:
 static int qpnp_flash_led_prepare_v1(struct led_trigger *trig, int options,
 					int *max_current)
 {
+	
 	struct led_classdev *led_cdev = trigger_to_lcdev(trig);
 	struct flash_node_data *flash_node;
 	struct qpnp_flash_led *led;
 	int rc = 0;
 
+	pr_debug("Beginning led preparation\n");
 	if (!led_cdev) {
 		pr_err("Invalid led_trigger provided\n");
 		return -EINVAL;
 	}
 
+	pr_debug("Preparing leds...\n");
 	flash_node = container_of(led_cdev, struct flash_node_data, cdev);
 	led = dev_get_drvdata(&flash_node->pdev->dev);
+	dev_dbg(&led->pdev->dev, "DT Flash and driver LED nodes found. Setting options...\n");
 
 	if (!(options & FLASH_LED_PREPARE_OPTIONS_MASK)) {
 		dev_err(&led->pdev->dev, "Invalid options %d\n", options);
 		return -EINVAL;
 	}
 
+	dev_dbg(&led->pdev->dev, "Options set.\n");
 	if (options & ENABLE_REGULATOR) {
+		dev_dbg(&led->pdev->dev, "Enabling regulator...\n");
 		rc = flash_regulator_enable(led, flash_node, true);
 		if (rc < 0) {
 			dev_err(&led->pdev->dev,
@@ -1251,6 +1263,7 @@ static int qpnp_flash_led_prepare_v1(struct led_trigger *trig, int options,
 	}
 
 	if (options & DISABLE_REGULATOR) {
+		dev_dbg(&led->pdev->dev, "Disabling regulator...\n");
 		rc = flash_regulator_enable(led, flash_node, false);
 		if (rc < 0) {
 			dev_err(&led->pdev->dev,
@@ -1260,6 +1273,7 @@ static int qpnp_flash_led_prepare_v1(struct led_trigger *trig, int options,
 	}
 
 	if (options & QUERY_MAX_CURRENT) {
+		dev_dbg(&led->pdev->dev, "Querying max current for LED...\n");
 		rc = qpnp_flash_led_get_max_avail_current(flash_node, led);
 		if (rc < 0) {
 			dev_err(&led->pdev->dev,
@@ -1269,6 +1283,7 @@ static int qpnp_flash_led_prepare_v1(struct led_trigger *trig, int options,
 		*max_current = rc;
 	}
 
+	dev_dbg(&led->pdev->dev, "LED preparation done!\n");
 	return 0;
 }
 
@@ -1303,7 +1318,7 @@ static void qpnp_flash_led_work(struct work_struct *work)
 #endif
 
 	if (!flash_node->flash_on && flash_node->num_regulators > 0) {
-#ifdef CONFIG_MACH_LGE
+#ifdef LGE_LED_REGULATOR_SETUP_WORKAROUND
 		rc = flash_regulator_setup(led, flash_node, true);
 		rc |= flash_regulator_enable(led, flash_node, true);
 #else
@@ -1745,7 +1760,7 @@ static void qpnp_flash_led_work(struct work_struct *work)
 			goto exit_flash_led_work;
 		}
 
-#ifndef CONFIG_MACH_LGE
+#ifndef LGE_LED_REGULATOR_SETUP_WORKAROUND
 		if (led->strobe_debug && led->dbg_feature_en) {
 			udelay(2000);
 			rc = regmap_read(led->regmap,
@@ -1820,7 +1835,7 @@ turn_off:
 
 		led->open_fault |= (val & FLASH_LED_OPEN_FAULT_DETECTED);
 
-#ifdef CONFIG_MACH_LGE
+#ifdef LGE_LED_REGULATOR_SETUP_WORKAROUND
 		if(temp)
 			dev_err(&led->pdev->dev, "Fault detected (0x%x)\n", temp);
 #endif
@@ -1876,7 +1891,7 @@ exit_flash_led_work:
 		goto exit_flash_led_work;
 	}
 error_enable_gpio:
-#ifdef CONFIG_MACH_LGE
+#ifdef LGE_LED_REGULATOR_SETUP_WORKAROUND
 	if (flash_node->flash_on && flash_node->num_regulators > 0) {
 		flash_regulator_enable(led, flash_node, false);
 		flash_regulator_setup(led, flash_node,false);
@@ -2381,7 +2396,7 @@ static int qpnp_flash_led_parse_common_dt(
 
 	led->pdata->hdrm_sns_ch1_en = of_property_read_bool(node,
 						"qcom,headroom-sense-ch1-enabled");
-#ifdef CONFIG_MACH_LGE
+#ifdef LGE_LED_REGULATOR_SETUP_WORKAROUND
 	//Disable Current change by power detect enable (G4 deliver)
 	led->pdata->power_detect_en = false;
 #else
@@ -2649,7 +2664,7 @@ static int qpnp_flash_led_probe(struct platform_device *pdev)
 				goto error_led_register;
 			}
 
-#ifdef CONFIG_MACH_LGE
+#ifdef LGE_LED_REGULATOR_SETUP_WORKAROUND
 			rc = flash_regulator_setup(led, &led->flash_node[i],
 									false);
 #else
