@@ -957,7 +957,7 @@ static void anx7688_ctype_work(struct work_struct *w)
 				chip->volt_max, chip->curr_max);
 
 	anx7688_power_supply_changed(chip->usbpd_psy);
-
+#endif
 	return;
 }
 

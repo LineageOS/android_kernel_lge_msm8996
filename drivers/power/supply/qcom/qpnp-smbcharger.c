@@ -5173,6 +5173,7 @@ static bool is_usbin_uv_high(struct smbchg_chip *chip)
 static void handle_usb_insertion(struct smbchg_chip *chip)
 {
 	enum power_supply_type usb_supply_type;
+	union power_supply_propval pval = {0, };
 	int rc;
 	char *usb_type_name = "null";
 
