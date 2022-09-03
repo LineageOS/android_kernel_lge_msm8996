@@ -422,28 +422,6 @@ print_vbus_state:
 	case PD_DPM_PE_EVT_PR_SWAP:
 		break;
 
-#if defined(CONFIG_LGE_USB_FACTORY) || defined(CONFIG_LGE_USB_DEBUGGER)
-	case PD_DPM_PE_EVT_DEBUG_ACCESSORY:
-	{
-		bool is_debug_accessory = *(bool *)state;
-
-		if (dev->is_debug_accessory == is_debug_accessory)
-			break;
-
-		dev->is_debug_accessory = is_debug_accessory;
-
-		dev->typec_mode = //is_debug_accessory ?
-			//POWER_SUPPLY_TYPE_CTYPE_DEBUG_ACCESSORY : // Unavailable prop
-			POWER_SUPPLY_TYPE_UNKNOWN;
-#endif
-
-#ifdef CONFIG_LGE_USB_DEBUGGER
-		schedule_work(&dev->usb_debugger_work);
-#endif
-		break;
-	}
-#endif
-
 #ifdef CONFIG_LGE_USB_MOISTURE_DETECT
 	case PD_DPM_PE_EVENT_GET_SBU_ADC:
 		return chg_get_sbu_adc(dev);
