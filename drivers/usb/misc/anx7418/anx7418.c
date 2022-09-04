@@ -313,7 +313,6 @@ int anx7418_set_pr(struct anx7418 *anx, int pr)
 int anx7418_set_dr(struct anx7418 *anx, int dr)
 {
 	struct device *cdev = &anx->client->dev;
-	union power_supply_propval prop = {0,};
 
 	if (anx->dr == dr)
 		return 0;
@@ -337,10 +336,8 @@ int anx7418_set_dr(struct anx7418 *anx, int dr)
 
 	case DUAL_ROLE_PROP_DR_NONE:
 #ifdef CONFIG_LGE_USB_TYPE_C
-		prop.intval = 0;
 		if (anx->dr == DUAL_ROLE_PROP_DR_HOST)
-			power_supply_set_property(anx->pd_psy,
-					POWER_SUPPLY_PROP_USB_OTG, &prop);
+			anx->is_otg = 0;
 
 		/* if (anx->dr == DUAL_ROLE_PROP_DR_DEVICE)
 			power_supply_set_present(anx->usb_psy, 0); */
@@ -596,14 +593,6 @@ set_as_dfp:
 		__anx7418_pwr_down(anx);
 		anx->is_tried_snk = false;
 
-#if defined(CONFIG_LGE_USB_TYPE_C) && defined(CONFIG_LGE_PM_CHARGING_CONTROLLER)
-		prop.intval = 0;
-		rc = anx->chg.psy.set_property(&anx->chg.psy,
-				POWER_SUPPLY_PROP_CTYPE_CHARGER, &prop);
-		if (rc < 0)
-			dev_err(cdev, "set_property(CTYPE_CHARGER) error %d\n", rc);
-#endif
-
 		anx7418_set_pr(anx, DUAL_ROLE_PROP_PR_NONE);
 		anx7418_set_dr(anx, DUAL_ROLE_PROP_DR_NONE);
 		if (anx->mode != DUAL_ROLE_PROP_MODE_NONE) {
@@ -684,32 +673,6 @@ static void i2c_irq_work(struct work_struct *w)
 				/* UFP */
 				dev_info(cdev, "%s: set as UFP\n", __func__);
 				anx_dbg_event("UFP", 0);
-
-#if defined(CONFIG_LGE_USB_TYPE_C) && defined(CONFIG_LGE_PM_CHARGING_CONTROLLER)
-				switch (rc) {
-				case 0x04:
-				case 0x40:
-					prop.intval = 56; // Rp 56K
-					break;
-				case 0x08:
-				case 0x80:
-					prop.intval = 22; // Rp 22K
-					break;
-				case 0x0C:
-				case 0xC0:
-					prop.intval = 10; // Rp 10K
-					break;
-				default:
-					prop.intval = 0;
-					break;
-				}
-				dev_info(cdev, "%s: Rp %dK\n", __func__, prop.intval);
-
-				rc = anx->chg.psy.set_property(&anx->chg.psy,
-						POWER_SUPPLY_PROP_CTYPE_CHARGER, &prop);
-				if (rc < 0)
-					dev_err(cdev, "set_property(CTYPE_CHARGER) error %d\n", rc);
-#endif
 
 				anx7418_set_mode(anx, DUAL_ROLE_PROP_MODE_UFP);
 				anx7418_set_pr(anx, DUAL_ROLE_PROP_PR_SNK);

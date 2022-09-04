@@ -59,23 +59,14 @@
 //  Global variables
 //
 
-#ifdef CONFIG_LGE_USB_TYPE_C
-#define T_CC_DEBOUNCE_MS     100
-#define T_PD_DEBOUNCE_MS     10
-#else
 #define T_CC_DEBOUNCE_MS     110    /* 100 - 200 ms */
 #define T_PD_DEBOUNCE_MS     15     /*  10 - 20 ms */
-#endif
 #define T_DRP_TRY_MS         125    /*  75 - 150 ms */
 #define T_DRP_TRY_WAIT_MS    600    /* 400 - 800 ms */
 #define T_VBUS_OFF_MS        650    /*  ?? - 650 ms */
 #define T_ERROR_RECOVERY_MS  T_VBUS_OFF_MS   /*  25 - ?? ms */
 #define T_TRY_TIMEOUT_MS     800    /* 550 - 1100 ms */
-#ifdef CONFIG_LGE_USB_TYPE_C
-#define T_TRY_ROLE_SWAP_MS   (T_DRP_TRY_WAIT_MS * 3)
-#else
 #define T_TRY_ROLE_SWAP_MS   500    /* custom value not defined by Type-C spec (500 ms minimum) */
-#endif
 
 #ifdef CONFIG_LGE_USB_MOISTURE_DETECT
 #define T_CC_OV_CHECK_MS		1000
@@ -274,22 +265,14 @@ void tcpm_snk_vbus_disable(unsigned int port)
 
 void tcpm_set_voltage_alarm_hi(unsigned int port, uint16_t threshold_25mv)
 {
-#ifdef CONFIG_LGE_USB_TYPE_C
-	PRINT("%s: %umV\n", __func__, threshold_25mv * 25);
-#else
 	INFO("%s: %umV\n", __func__, threshold_25mv * 25);
-#endif
 	tcpc_write16(port, TCPC_REG_VBUS_VOLTAGE_ALARM_HI_CFG, threshold_25mv);
 	return;
 }
 
 void tcpm_set_voltage_alarm_lo(unsigned int port, uint16_t threshold_25mv)
 {
-#ifdef CONFIG_LGE_USB_TYPE_C
-	PRINT("%s: %umV\n", __func__, threshold_25mv * 25);
-#else
 	INFO("%s: %umV\n", __func__, threshold_25mv * 25);
-#endif
 	tcpc_write16(port, TCPC_REG_VBUS_VOLTAGE_ALARM_LO_CFG, threshold_25mv);
 	return;
 }
@@ -307,17 +290,11 @@ void tcpm_set_vconn_enable(unsigned int port, bool enable)
 {
 	if (enable)
 	{
-#ifdef CONFIG_LGE_USB_TYPE_C
-		tusb422_set_vconn_enable(1);
-#endif
 		tcpc_modify8(port, TCPC_REG_POWER_CTRL, 0, TCPC_PWR_CTRL_ENABLE_VCONN);
 	}
 	else
 	{
 		tcpc_modify8(port, TCPC_REG_POWER_CTRL, TCPC_PWR_CTRL_ENABLE_VCONN, 0);
-#ifdef CONFIG_LGE_USB_TYPE_C
-		tusb422_set_vconn_enable(0);
-#endif
 	}
 
 	return;
@@ -1197,11 +1174,7 @@ static void timeout_cc_debounce(unsigned int port)
 		else if ((cc1 == CC_SRC_STATE_RD) &&
 				 (cc2 == CC_SRC_STATE_RD))
 		{
-#if defined(CONFIG_LGE_USB_FACTORY) || defined(CONFIG_LGE_USB_DEBUGGER)
 			tcpm_set_state(dev, TCPC_STATE_UNATTACHED_SRC);
-#else
-			tcpm_set_state(dev, TCPC_STATE_UNORIENTED_DEBUG_ACC_SRC);
-#endif
 		}
 		else if ((cc1 == CC_SRC_STATE_RD) ||
 				 (cc2 == CC_SRC_STATE_RD))
@@ -1248,14 +1221,6 @@ static void timeout_cc_debounce(unsigned int port)
 			{
 				// Disable force discharge.
 				tcpc_modify8(port, TCPC_REG_POWER_CTRL, TCPC_PWR_CTRL_FORCE_DISCHARGE, 0);
-
-#ifdef CONFIG_LGE_USB_TYPE_C
-				if (dev->state == TCPC_STATE_TRY_WAIT_SRC && dev->rp_val == RP_DEFAULT_CURRENT)
-				{
-					tcpc_write8(port, TCPC_REG_ROLE_CTRL,
-						    tcpc_reg_role_ctrl_set(false, dev->rp_val, CC_RP, CC_RP));
-				}
-#endif
 				tcpm_set_state(dev, TCPC_STATE_ATTACHED_SRC);
 			}
 			else
@@ -1299,13 +1264,6 @@ static void timeout_cc_debounce(unsigned int port)
 				tcpm_set_state(dev, TCPC_STATE_ATTACHED_SNK);
 			}
 		}
-#ifdef CONFIG_LGE_USB_TYPE_C
-		else
-		{
-			tcpm_enable_voltage_monitoring(dev->port);
-			tcpm_set_voltage_alarm_hi(dev->port, VSAFE0V_MAX);
-		}
-#endif
 	}
 	else if (dev->state == TCPC_STATE_TRY_WAIT_SNK)
 	{
@@ -1315,13 +1273,6 @@ static void timeout_cc_debounce(unsigned int port)
 		{
 			tcpm_set_state(dev, TCPC_STATE_ATTACHED_SNK);
 		}
-#ifdef CONFIG_LGE_USB_TYPE_C
-		else
-		{
-			tcpm_enable_voltage_monitoring(dev->port);
-			tcpm_set_voltage_alarm_hi(dev->port, VSAFE0V_MAX);
-		}
-#endif
 	}
 	else if (dev->state == TCPC_STATE_AUDIO_ACC)
 	{
@@ -1442,13 +1393,6 @@ static void timeout_pd_debounce(unsigned int port)
 			{
 				tcpm_set_state(dev, TCPC_STATE_ATTACHED_SNK);
 			}
-#ifdef CONFIG_LGE_USB_TYPE_C
-			else
-			{
-				tcpm_enable_voltage_monitoring(dev->port);
-				tcpm_set_voltage_alarm_hi(dev->port, VSAFE0V_MAX);
-			}
-#endif
 		}
 	}
 	else if (dev->state == TCPC_STATE_TRY_SRC)
@@ -1520,9 +1464,6 @@ static void timeout_vbus4v_debounce(unsigned int port)
 {
 	tcpc_device_t *dev = &tcpc_dev[port];
 	uint16_t v_threshold;
-#ifdef CONFIG_LGE_USB_TYPE_C
-	uint16_t volt;
-#endif
 
 	INFO("%s\n", __func__);
 
@@ -1530,16 +1471,8 @@ static void timeout_vbus4v_debounce(unsigned int port)
 		(dev->state == TCPC_STATE_DEBUG_ACC_SNK))
 	{
 		// If VBUS is <= 4V, consider it a disconnect.
-#ifdef CONFIG_LGE_USB_TYPE_C
-		volt = tcpm_get_vbus_voltage(port);
-		if (volt <= VDISCON_MAX)
-		{
-			PRINT("%s: volt(%umV) <= VIDSCON_MAX(%umV)\n", __func__,
-			      volt * 25, VDISCON_MAX * 25);
-#else
 		if (tcpm_get_vbus_voltage(port) <= VDISCON_MAX)
 		{
-#endif
 			// Unattached.SNK.
 			tcpm_set_state(dev, TCPC_STATE_UNATTACHED_SNK);
 		}
@@ -1647,13 +1580,8 @@ void tcpm_set_autodischarge_disconnect(unsigned int port, bool enable)
 	{
 		tcpc_modify8(port, TCPC_REG_POWER_CTRL, TCPC_PWR_CTRL_AUTO_DISCHARGE_DISCONNECT, 0);
 
-#ifdef CONFIG_LGE_USB_TYPE_C
-		// Enable sink disconnect threshold.
-		tcpm_set_sink_disconnect_threshold(port, VDISCON_MAX);
-#else
 		// Disable sink disconnect threshold.
 		tcpm_set_sink_disconnect_threshold(port, 0);
-#endif
 
 		// Disable low voltage alarm.
 		tcpm_set_voltage_alarm_lo(port, 0);
@@ -1667,9 +1595,6 @@ void tcpm_set_autodischarge_disconnect(unsigned int port, bool enable)
 /* threshold has 25mV LSB, set to zero to disable and use VBUS_PRESENT to start auto-discharge disconnect */
 void tcpm_set_sink_disconnect_threshold(unsigned int port, uint16_t threshold_25mv)
 {
-#ifdef CONFIG_LGE_USB_TYPE_C
-	DEBUG("%s: %dmV\n", __func__, threshold_25mv * 25);
-#endif
 	tcpc_write16(port, TCPC_REG_VBUS_SINK_DISCONNECT_THRESH, threshold_25mv);
 	return;
 }
@@ -1741,18 +1666,12 @@ void tcpm_read_message(unsigned int port, uint8_t *buf, uint8_t len)
 		}
 	}
 
-#ifdef CONFIG_LGE_USB_TYPE_C
-#if DEBUG_LEVEL >= 3
-	print_hex_dump(KERN_INFO, PRINT_PREFIX "rx_buf: ", DUMP_PREFIX_NONE, 16, 1, buf, byte_cnt, 0);
-#endif
-#else
 	DEBUG("rx_buf: 0x");
 	for (i = 0; i < byte_cnt; i++)
 	{
 		DEBUG("%02x ", buf[i]);
 	}
 	DEBUG("\n");
-#endif
 
 	return;
 }
@@ -2023,11 +1942,7 @@ void tcpm_connection_state_machine(unsigned int port)
 			tcpm_snk_vbus_disable(port);
 
 			tcpc_write16(port, TCPC_REG_VBUS_STOP_DISCHARGE_THRESH, VSTOP_DISCHRG);
-#ifdef CONFIG_LGE_USB_TYPE_C
-			tcpc_modify8(port, TUSB422_REG_INT_MASK, 0, TUSB422_INT_CC_FAULT);
-#endif
 
-#if (defined(CONFIG_LGE_USB_FACTORY) || defined(CONFIG_LGE_USB_DEBUGGER))
 			if (dev->debug_accessory_mode)
 			{
 				dev->debug_accessory_mode = false;
@@ -2038,7 +1953,6 @@ void tcpm_connection_state_machine(unsigned int port)
 				dual_role_instance_changed(tusb422_dual_role_phy);
 #endif
 			}
-#endif
 
 			if (dev->silicon_revision <= 1)
 			{
@@ -2067,11 +1981,6 @@ void tcpm_connection_state_machine(unsigned int port)
 			}
 			else
 			{
-#ifdef CONFIG_LGE_USB_TYPE_C
-				/* Workaround for OQC OTG fail */
-				tusb422_sw_reset(port);
-				tusb422_init(port);
-#endif
 				if (dev->silicon_revision <= 2)
 				{
 					/*** TUSB422 PG1.1/1.2 workaround for disconnect does not disable PD (CDDS #60) ***/
@@ -2099,9 +2008,6 @@ void tcpm_connection_state_machine(unsigned int port)
 				// Set TCPC control to default.
 				tcpc_write8(port, TCPC_REG_TCPC_CTRL, 0);
 			}
-#ifdef CONFIG_LGE_USB_TYPE_C
-			tusb422_set_vconn_enable(0);
-#endif
 
 			// Configure role control.
 			if (dev->role == ROLE_DRP)
@@ -2149,12 +2055,6 @@ void tcpm_connection_state_machine(unsigned int port)
 
 		case TCPC_STATE_TRY_WAIT_SRC:
 			// Pull up both CC pins to Rp.
-#ifdef CONFIG_LGE_USB_TYPE_C
-			if (dev->rp_val == RP_DEFAULT_CURRENT)
-				tcpc_write8(port, TCPC_REG_ROLE_CTRL,
-					    tcpc_reg_role_ctrl_set(false, RP_MEDIUM_CURRENT, CC_RP, CC_RP));
-			else
-#endif
 			tcpc_write8(port, TCPC_REG_ROLE_CTRL,
 						tcpc_reg_role_ctrl_set(false, dev->rp_val, CC_RP, CC_RP));
 
@@ -2173,27 +2073,11 @@ void tcpm_connection_state_machine(unsigned int port)
 		case TCPC_STATE_DEBUG_ACC_SNK:
 			tcpm_handle_attached_state(port);
 
-#ifdef CONFIG_LGE_USB_TYPE_C
-			if (!(dev->cc_status & CC_STATUS_CONNECT_RESULT))
-			{
-				dev->plug_polarity = (cc1 > cc2) ? PLUG_UNFLIPPED : PLUG_FLIPPED;
-
-				dev->src_current_adv = (tcpc_cc_snk_state_t)CC_SNK_STATE_OPEN;
-
-				PRINT("Rd with VBUS. SRC current is not set.\n");
-			}
-			else
-#endif
 			if (cc1 > cc2)
 			{
 				// CC1 used for USB-PD.
 				dev->plug_polarity = PLUG_UNFLIPPED;
 
-#ifdef CONFIG_LGE_USB_TYPE_C
-				if (cc1 == CC_SNK_STATE_OPEN)
-					dev->src_current_adv = (tcpc_cc_snk_state_t)CC_SNK_STATE_DEFAULT;
-				else
-#endif
 				dev->src_current_adv = (tcpc_cc_snk_state_t)cc1;
 
 				DEBUG("SRC current: %s\n",
@@ -2206,11 +2090,6 @@ void tcpm_connection_state_machine(unsigned int port)
 				// CC2 used for USB-PD.
 				dev->plug_polarity = PLUG_FLIPPED;
 
-#ifdef CONFIG_LGE_USB_TYPE_C
-				if (cc2 == CC_SNK_STATE_OPEN)
-					dev->src_current_adv = (tcpc_cc_snk_state_t)CC_SNK_STATE_DEFAULT;
-				else
-#endif
 				dev->src_current_adv = (tcpc_cc_snk_state_t)cc2;
 
 				DEBUG("SRC current: %s\n",
@@ -2293,10 +2172,6 @@ void tcpm_connection_state_machine(unsigned int port)
 					(cc2 == CC_SRC_STATE_RA))
 				{
 					CRIT("VCONN enabled\n");
-
-#ifdef CONFIG_LGE_USB_TYPE_C
-					tusb422_set_vconn_enable(1);
-#endif
 
 					// Remove Rp from VCONN pin.
 					tcpm_vconn_pin_rp_control(port, false);
@@ -2457,11 +2332,7 @@ static void alert_cc_status_handler(tcpc_device_t *dev)
 	tcpc_read8(dev->port, TCPC_REG_CC_STATUS, &dev->cc_status);
 #endif
 
-#ifdef CONFIG_LGE_USB_TYPE_C
-	PRINT("%s CC status = 0x%02x\n", __func__, dev->cc_status);
-#else
 	CRIT("%s CC status = 0x%02x\n", __func__, dev->cc_status);
-#endif
 
 	if (dev->state == TCPC_STATE_TRY_SNK)
 	{
@@ -2484,9 +2355,6 @@ static void alert_cc_status_handler(tcpc_device_t *dev)
 				case TCPC_STATE_ATTACHED_SRC:
 				case TCPC_STATE_UNORIENTED_DEBUG_ACC_SRC:
 				case TCPC_STATE_ORIENTED_DEBUG_ACC_SRC:
-#ifdef CONFIG_LGE_USB_TYPE_C
-				case TCPC_STATE_ERROR_RECOVERY:
-#endif
 					if ((dev->flags & TC_FLAGS_TRY_SRC) &&
 						(dev->role == ROLE_DRP) &&
 						(dev->state == TCPC_STATE_ATTACHED_SRC))
@@ -2586,7 +2454,6 @@ static void alert_cc_status_handler(tcpc_device_t *dev)
 						if (((cc1 == CC_SRC_STATE_RD) || (cc2 == CC_SRC_STATE_RD)) ||
 							((cc1 == CC_SRC_STATE_RA) && (cc2 == CC_SRC_STATE_RA)))
 						{
-#if defined(CONFIG_LGE_USB_FACTORY) || defined(CONFIG_LGE_USB_DEBUGGER)
 							if ((cc1 == CC_SRC_STATE_RD) && (cc2 == CC_SRC_STATE_RD)) {
 								tcpm_set_state(dev, TCPC_STATE_ATTACH_WAIT_SNK);
 
@@ -2601,7 +2468,6 @@ static void alert_cc_status_handler(tcpc_device_t *dev)
 #endif
 								break;
 							}
-#endif
 							// Enable voltage monitoring.
 							tcpm_enable_voltage_monitoring(dev->port);
 
@@ -2615,14 +2481,7 @@ static void alert_cc_status_handler(tcpc_device_t *dev)
 							}
 							else
 							{
-#ifdef CONFIG_LGE_USB_TYPE_C
-								tcpm_set_state(dev, TCPC_STATE_ATTACH_WAIT_SNK);
-
-								// Debounce CC.
-								timer_start(&dev->timer, T_CC_DEBOUNCE_MS, timeout_cc_debounce);
-#else
 								tcpm_set_state(dev, TCPC_STATE_UNATTACHED_SRC);
-#endif
 							}
 						}
 					}
@@ -2633,13 +2492,8 @@ static void alert_cc_status_handler(tcpc_device_t *dev)
 					break;
 
 				case TCPC_STATE_ATTACH_WAIT_SRC:
-#ifdef CONFIG_LGE_USB_TYPE_C
-					if (!(((cc1 == CC_SRC_STATE_RD) && (cc2 != CC_SRC_STATE_RD)) ||
-						((cc1 != CC_SRC_STATE_RD) && (cc2 == CC_SRC_STATE_RD))))
-#else
 					if (((cc1 == CC_STATE_OPEN) && (cc2 == CC_SRC_STATE_RA)) ||
 						((cc1 == CC_SRC_STATE_RA) && (cc2 == CC_STATE_OPEN)))
-#endif
 					{
 						if (dev->role == ROLE_DRP)
 						{
@@ -2685,10 +2539,6 @@ static void alert_cc_status_handler(tcpc_device_t *dev)
 						// Debounce.
 						timer_start(&dev->timer, T_CC_DEBOUNCE_MS, timeout_cc_debounce);
 					}
-#ifdef CONFIG_LGE_USB_TYPE_C
-					else
-						tcpm_set_state(dev, TCPC_STATE_UNATTACHED_SRC);
-#endif
 					break;
 
 				case TCPC_STATE_UNORIENTED_DEBUG_ACC_SRC:
@@ -2700,13 +2550,6 @@ static void alert_cc_status_handler(tcpc_device_t *dev)
 					break;
 
 				case TCPC_STATE_ATTACHED_SNK:
-#ifdef CONFIG_LGE_USB_TYPE_C
-					if (cc1 != CC_SNK_STATE_OPEN && cc2 != CC_SNK_STATE_OPEN)
-					{
-						tcpm_set_state(dev, TCPC_STATE_UNATTACHED_SNK);
-						break;
-					}
-#endif
 				case TCPC_STATE_DEBUG_ACC_SNK:
 #ifdef CONFIG_LGE_USB_MOISTURE_DETECT
 					if (dev->state == TCPC_STATE_DEBUG_ACC_SNK)
@@ -2732,7 +2575,6 @@ static void alert_cc_status_handler(tcpc_device_t *dev)
 					tcpm_notify_current_change(dev->port, dev->src_current_adv);
 					break;
 
-#if defined(CONFIG_LGE_USB_FACTORY) || defined(CONFIG_LGE_USB_DEBUGGER)
 				case TCPC_STATE_ATTACHED_SRC:
 					if (!(((cc1 == CC_SRC_STATE_RD) && (cc2 != CC_SRC_STATE_RD)) ||
 						((cc1 != CC_SRC_STATE_RD) && (cc2 == CC_SRC_STATE_RD))))
@@ -2740,44 +2582,12 @@ static void alert_cc_status_handler(tcpc_device_t *dev)
 						tcpm_set_state(dev, TCPC_STATE_UNATTACHED_SRC);
 					}
 					break;
-#endif
 
 				default:
 					break;
 			}
 		}
 	}
-#ifdef CONFIG_LGE_USB_TYPE_C
-	else
-	{
-		cc1 = TCPC_CC1_STATE(dev->cc_status);
-		cc2 = TCPC_CC2_STATE(dev->cc_status);
-
-		// If open state on CC1 and CC2.
-		if ((cc1 == CC_STATE_OPEN) &&
-		    (cc2 == CC_STATE_OPEN))
-		{
-			switch (dev->state)
-			{
-				case TCPC_STATE_UNATTACHED_SRC:
-				case TCPC_STATE_UNATTACHED_SNK:
-				case TCPC_STATE_ATTACHED_SNK:
-					break;
-
-				default:
-					if (dev->role == ROLE_DRP)
-					{
-						tcpm_set_state(dev, TCPC_STATE_UNATTACHED_SNK);
-					}
-					else
-					{
-						tcpm_set_state(dev, TCPC_STATE_UNATTACHED_SRC);
-					}
-					break;
-			}
-		}
-	}
-#endif
 
 	return;
 }
@@ -2797,11 +2607,7 @@ static void alert_power_status_handler(tcpc_device_t *dev)
 	{
 		if (pwr_status & TCPC_PWR_STATUS_VBUS_PRESENT)
 		{
-#ifdef CONFIG_LGE_USB_TYPE_C
-			PRINT("VBUS present\n");
-#else
 			DEBUG("VBUS present\n");
-#endif
 
 			if (dev->src_detected)
 			{
@@ -2843,9 +2649,6 @@ static void alert_power_status_handler(tcpc_device_t *dev)
 		}
 		else /* VBUS below threshold */
 		{
-#ifdef CONFIG_LGE_USB_TYPE_C
-			PRINT("VBUS not present\n");
-#else
 			INFO("VBUS not present\n");
 			if ((dev->state == TCPC_STATE_ATTACHED_SNK) ||
 				(dev->state == TCPC_STATE_DEBUG_ACC_SNK))
@@ -2853,7 +2656,6 @@ static void alert_power_status_handler(tcpc_device_t *dev)
 				// Unattached.SNK.
 				tcpm_set_state(dev, TCPC_STATE_UNATTACHED_SNK);
 			}
-#endif
 		}
 	}
 
@@ -2910,9 +2712,6 @@ static void tcpm_alert_handler(unsigned int port)
 	uint8_t irq_status;
 #endif
 #endif
-#ifdef CONFIG_LGE_USB_TYPE_C
-	usb_pd_port_t *pd_dev;
-#endif
 
 	// Read alerts.
 	tcpc_read16(port, TCPC_REG_ALERT, &alert);
@@ -2968,10 +2767,6 @@ static void tcpm_alert_handler(unsigned int port)
 		// This alert is active when VBUS SNK DISCONNECT THRESHOLD is set.
 		INFO("Alert: VBUS disconnect\n");
 #ifndef USE_VOLTAGE_ALARM_FOR_SINK_DISCONNECT
-#ifdef CONFIG_LGE_USB_TYPE_C
-		pd_dev = usb_pd_pe_get_device(port);
-		if (!pd_dev->power_role_swap_in_progress)
-#endif
 		if ((dev->state == TCPC_STATE_ATTACHED_SNK) ||
 			(dev->state == TCPC_STATE_DEBUG_ACC_SNK))
 		{
@@ -3041,19 +2836,11 @@ static void tcpm_alert_handler(unsigned int port)
 
 				tcpm_set_state(dev, TCPC_STATE_TRY_WAIT_SNK);
 			}
-#ifdef CONFIG_LGE_USB_TYPE_C
-			else
-				tcpm_set_state(dev, TCPC_STATE_UNATTACHED_SNK);
-#endif
 		}
 		else if ((dev->state == TCPC_STATE_ATTACHED_SNK) ||
 				 (dev->state == TCPC_STATE_DEBUG_ACC_SNK))
 		{
-#ifdef CONFIG_LGE_USB_TYPE_C
-			if (v_threshold == VDISCON_MAX || v_threshold == VSAFE0V_MAX)
-#else
 			if (v_threshold == VDISCON_MAX)
-#endif
 			{
 				// Debounce for (2 x tPDDebounce). (per USB-IF recommendation)
 				timer_start(&dev->timer, (T_PD_DEBOUNCE_MS * 2), timeout_vbus4v_debounce);
@@ -3089,48 +2876,6 @@ static void tcpm_alert_handler(unsigned int port)
 				tcpm_notify_conn_state(port, dev->state);
 			}
 		}
-#ifdef CONFIG_LGE_USB_TYPE_C
-		else if (dev->src_detected)
-		{
-			if (dev->state == TCPC_STATE_ATTACH_WAIT_SNK)
-			{
-				unsigned int cc1, cc2;
-
-				cc1 = TCPC_CC1_STATE(dev->cc_status);
-				cc2 = TCPC_CC2_STATE(dev->cc_status);
-
-				if ((cc1 != CC_SNK_STATE_OPEN) &&
-				    (cc2 != CC_SNK_STATE_OPEN))
-				{
-					// Debug Accessory if SNK.Rp on both CC1 and CC2.
-#ifdef CONFIG_LGE_USB_MOISTURE_DETECT
-					if ((!dev->moisture_detect_disable) &&
-					    ((dev->cc_status != dev->last_cc_status) || (cc1 != cc2)))
-					{
-						tcpm_set_state(dev, TCPC_STATE_UNATTACHED_SNK);
-					}
-					else
-#endif
-					tcpm_set_state(dev, TCPC_STATE_DEBUG_ACC_SNK);
-				}
-				else if ((dev->flags & TC_FLAGS_TRY_SRC) &&
-					 (dev->role == ROLE_DRP))
-				{
-					tcpm_set_state(dev, TCPC_STATE_TRY_SRC);
-				}
-				else
-				{
-					tcpm_set_state(dev, TCPC_STATE_ATTACHED_SNK);
-				}
-
-			}
-			else if ((dev->state == TCPC_STATE_TRY_SNK_LOOK4SRC) ||
-				 (dev->state == TCPC_STATE_TRY_WAIT_SNK))
-			{
-				tcpm_set_state(dev, TCPC_STATE_ATTACHED_SNK);
-			}
-		}
-#endif
 
 		// Notify upper layers.
 		tcpm_notify_voltage_alarm(port, true);

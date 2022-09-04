@@ -100,17 +100,9 @@ bool tusb422_is_present(unsigned int port)
 
 	// Read VID/PID/DID.
 	tcpc_read16(port, TCPC_REG_VENDOR_ID, &vid);
-#ifdef CONFIG_LGE_USB_TYPE_C
-	PRINT("VID: 0x%04x\n", vid);
-#else
 	INFO("VID: 0x%04x\n", vid);
-#endif
 	tcpc_read16(port, TCPC_REG_PRODUCT_ID, &pid);
-#ifdef CONFIG_LGE_USB_TYPE_C
-	PRINT("PID: 0x%04x\n", pid);
-#else
 	INFO("PID: 0x%04x\n", pid);
-#endif
 
 	return ((vid != TI_VID) || (pid != TI_PID)) ? false : true;
 }
@@ -155,25 +147,14 @@ void tusb422_init(unsigned int port)
 	tcpc_write8(port, TUSB422_REG_INT_STATUS, TUSB422_INT_MASK_ALL);
 
 	// Unmask LFO timer interrupt.
-#if defined(CONFIG_LGE_USB_TYPE_C) && !defined(CONFIG_LGE_USB_COMPLIANCE_TEST)
-	tcpc_write8(port, TUSB422_REG_INT_MASK, TUSB422_INT_CC_FAULT | TUSB422_INT_LFO_TIMER);
-#else
 	tcpc_write8(port, TUSB422_REG_INT_MASK, TUSB422_INT_LFO_TIMER);
-#endif
 
 	// Unmask vendor alert.
-#ifdef CONFIG_LGE_USB_TYPE_C
-	tcpc_modify16(port, TCPC_REG_ALERT_MASK, TCPC_ALERT_POWER_STATUS, TUSB422_ALERT_IRQ_STATUS | TCPC_ALERT_CC_STATUS);
-#else
 	tcpc_modify16(port, TCPC_REG_ALERT_MASK, 0, TUSB422_ALERT_IRQ_STATUS);
-#endif
 
 	// Set 1ms sampling rate for better force discharge accuracy.
 	tusb422_set_cc_sample_rate(port, CC_SAMPLE_RATE_1MS);
 
-#ifdef CONFIG_LGE_USB_TYPE_C
-	tcpc_modify8(port, TUSB422_REG_CC_GEN_CTRL, TUSB422_DRP_DUTY_CYCLE_MASK, DRP_DUTY_CYCLE_60PCT);
-#endif
 	return;
 }
 
@@ -249,10 +230,6 @@ void tusb422_pd_reset(unsigned int port)
 {
 	uint8_t data;
 
-#ifdef CONFIG_LGE_USB_TYPE_C
-	DEBUG("%s\n", __func__);
-#endif
-
 	// Reset Tx/Rx PD state machines (write 0, then 1).
 	tcpc_read8(port, TUSB422_REG_CC_GEN_CTRL, &data);
 	data &= ~TUSB422_PD_TX_RX_RESET;
@@ -266,15 +243,6 @@ void tusb422_pd_reset(unsigned int port)
 void tusb422_sw_reset(unsigned int port)
 {
 	uint8_t data;
-
-#ifdef CONFIG_LGE_USB_TYPE_C
-	DEBUG("%s\n", __func__);
-#endif
-
-#ifdef CONFIG_LGE_USB_TYPE_C
-	// Set pgage 0
-	tcpc_write8(0, 0xFF, 0);
-#endif
 
 	// Perform global reset (write 0, then 1).
 	tcpc_read8(port, TUSB422_REG_CC_GEN_CTRL, &data);

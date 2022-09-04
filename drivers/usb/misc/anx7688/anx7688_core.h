@@ -30,13 +30,8 @@
 #include <soc/qcom/lge/power/lge_power_class.h>
 #include <soc/qcom/smem.h>
 #endif
-#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_CABLE_DETECT
-#include <soc/qcom/lge/power/lge_cable_detect.h>
-#elif defined (CONFIG_LGE_PM_CABLE_DETECTION)
-#include <soc/qcom/lge/lge_cable_detection.h>
-#endif
 
-#ifdef CONFIG_LGE_USB_TYPE_C
+#ifdef  CONFIG_LGE_USB_TYPE_C
 #define PD_MAX_PDO_NUM 7
 #endif
 
@@ -134,9 +129,6 @@ struct anx7688_chip {
 
 #ifdef CONFIG_LGE_USB_ANX7688_OVP
 	union power_supply_propval rp;
-#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_SIMPLE
-	int dp_alt_mode;
-#endif
 #endif
 #ifdef CONFIG_LGE_USB_TYPE_C
 	u32 src_pdo[PD_MAX_PDO_NUM];

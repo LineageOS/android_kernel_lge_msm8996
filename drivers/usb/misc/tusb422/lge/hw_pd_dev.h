@@ -29,13 +29,7 @@
 	(lge_get_board_revno() >= HW_REV_1_3 ? 1750000 : 1796000)	/* uV */
 #endif
 
-#ifdef CONFIG_LGE_USB_FACTORY
-#define IS_FACTORY_MODE \
-	(lge_get_factory_boot() || \
-	 lge_get_laf_mode() || \
-	 lge_get_laf_mid())
-#endif
-
+#define IS_FACTORY_MODE (lge_get_factory_boot())
 #define IS_CHARGERLOGO (lge_get_boot_mode() == LGE_BOOT_MODE_CHARGERLOGO)
 
 struct hw_pd_dev {
@@ -64,16 +58,7 @@ struct hw_pd_dev {
 	int volt_max;
 	enum power_supply_type typec_mode;
 	int rp;
-
-#if defined(CONFIG_LGE_USB_FACTORY) || defined(CONFIG_LGE_USB_DEBUGGER)
 	bool is_debug_accessory;
-#endif
-#ifdef CONFIG_LGE_USB_DEBUGGER
-	struct work_struct usb_debugger_work;
-	struct lge_power *lge_power_cd;
-	struct gpio_desc *sbu_sel_gpio;
-	struct gpio_desc *sbu_en_gpio;
-#endif
 
 #ifdef CONFIG_LGE_USB_MOISTURE_DETECT
 	bool moisture_detect_use_sbu;
@@ -93,9 +78,7 @@ enum pd_dpm_pe_evt {
 	PD_DPM_PE_EVT_TYPEC_STATE,
 	PD_DPM_PE_EVT_DR_SWAP,
 	PD_DPM_PE_EVT_PR_SWAP,
-#if defined(CONFIG_LGE_USB_FACTORY) || defined(CONFIG_LGE_USB_DEBUGGER)
 	PD_DPM_PE_EVT_DEBUG_ACCESSORY,
-#endif
 #ifdef CONFIG_LGE_USB_MOISTURE_DETECT
 	PD_DPM_PE_EVENT_GET_SBU_ADC,
 	PD_DPM_PE_EVENT_SET_MOISTURE_DETECT_USE_SBU,

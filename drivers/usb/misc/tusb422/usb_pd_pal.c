@@ -137,9 +137,7 @@ void usb_pd_pal_notify_connect_state(unsigned int port, tcpc_state_t state, bool
 			break;
 
 		case TCPC_STATE_ATTACHED_SNK:
-#ifdef CONFIG_LGE_USB_FACTORY
 		case TCPC_STATE_DEBUG_ACC_SNK:
-#endif
 			PRINT("%s: TYPEC_ATTACHED_SNK, polarity = 0x%x\n", __func__, polarity);
 			tc_state.new_state = PD_DPM_TYPEC_ATTACHED_SNK;
 			pd_dpm_handle_pe_event(PD_DPM_PE_EVT_TYPEC_STATE, (void*)&tc_state);
@@ -185,13 +183,11 @@ void usb_pd_pal_power_role_swap(unsigned int port, uint8_t new_role)
 	return;
 }
 
-#if defined(CONFIG_LGE_USB_FACTORY) || defined(CONFIG_LGE_USB_DEBUGGER)
 void usb_pd_pal_debug_accessory_mode(unsigned int port, bool is_on)
 {
 	pd_dpm_handle_pe_event(PD_DPM_PE_EVT_DEBUG_ACCESSORY, (void *)&is_on);
 	return;
 }
-#endif
 
 #ifdef CONFIG_LGE_USB_MOISTURE_DETECT
 int usb_pd_pal_get_sbu_adc(unsigned int port)

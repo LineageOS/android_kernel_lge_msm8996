@@ -46,7 +46,7 @@
 extern usb_pd_port_t pd[NUM_TCPC_DEVICES];
 
 //#if DEBUG_LEVEL >= 3
-#if DEBUG_LEVEL >= 3 || defined(CONFIG_LGE_USB_TYPE_C)
+#if DEBUG_LEVEL >= 3
 
 static const char * const ctrlmsg2string[]=
 {
@@ -118,9 +118,6 @@ static void usb_pd_prl_transmit_alert_handler(unsigned int port, tx_status_t tx_
 	else if (tx_status == TX_STATUS_FAILED)
 	{
 		// No valid GoodCRC received.
-#ifdef CONFIG_LGE_USB_TYPE_C
-		pd[port].msg_id[pd[port].tx_sop_type]--;
-#endif
 		usb_pd_pe_notify(port, PRL_ALERT_MSG_TX_FAILED);
 	}
 

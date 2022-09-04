@@ -9,12 +9,9 @@
 #include <linux/rwsem.h>
 #include <linux/usb/class-dual-role.h>
 
-#include <soc/qcom/lge/board_lge.h>
-
 #include "anx7418_i2c.h"
 #include "anx7418_debug.h"
 #include "anx7418_firmware.h"
-#include <soc/qcom/lge/board_lge.h>
 
 #define IS_INTF_IRQ_SUPPORT(anx) \
 	(anx->otp && (anx->rom_ver >= 0x11 && anx->rom_ver < 0xB1 && anx->rom_ver != 0x16))
