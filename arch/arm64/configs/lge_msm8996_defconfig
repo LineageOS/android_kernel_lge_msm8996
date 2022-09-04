@@ -146,3 +146,4 @@ CONFIG_SMB135X_CHARGER=n
 # 4.4-specific adjustments and optimizations
 CONFIG_KERNEL_LZ4=y
 CONFIG_CRYPTO_LZ4=y
+CONFIG_ACPI=n # Kernel fails to build if this is enabled
