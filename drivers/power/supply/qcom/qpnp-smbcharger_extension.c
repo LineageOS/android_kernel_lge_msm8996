@@ -171,22 +171,6 @@ static int somc_chg_get_current_ma(struct smbchg_chip *chip,
 			current_limit_ma = CURRENT_1500_MA;
 			pr_smb(PR_LGE, "Selected: C-6, 1.5A\n");
 		}
-	} else if (chip->somc_params.chg_det.sub_type ==
-				POWER_SUPPLY_SUB_TYPE_PROPRIETARY) {
-		/* Flow chart: C-10 OUT OF RANGE */
-		/* Flow chart: C-11 PROPRIETARY 1.5A*/
-		current_limit_ma = CURRENT_1500_MA;
-		pr_smb(PR_LGE, "Selected: C-10, C-11, 1.5A, Proprietary\n");
-	} else if (chip->somc_params.chg_det.sub_type ==
-				POWER_SUPPLY_SUB_TYPE_PROPRIETARY_1000MA) {
-		/* Flow chart: C-11 PROPRIETARY 1A*/
-		current_limit_ma = DEFAULT_PROP1000_MA;
-		pr_smb(PR_LGE, "Selected: C-11, 1A, Proprietary\n");
-	} else if (chip->somc_params.chg_det.sub_type ==
-				POWER_SUPPLY_SUB_TYPE_PROPRIETARY_500MA) {
-		/* Flow chart: C-11 PROPRIETARY 0.5A */
-		current_limit_ma = DEFAULT_PROP500_MA;
-		pr_smb(PR_LGE, "Selected: C-11, 0.5A, Proprietary\n");
 	} else if (is_usb_present(chip) &&
 				chip->somc_params.chg_det.settled_not_hvdcp) {
 		if (chip->typec_current_ma > CURRENT_1500_MA) {

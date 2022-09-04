@@ -9160,12 +9160,12 @@ static int smbchg_probe(struct platform_device *pdev)
 	struct power_supply *typec_psy = NULL;
 	struct qpnp_vadc_chip *vadc_dev = NULL, *vchg_vadc_dev = NULL;
 	struct qpnp_vadc_chip *vusb_vadc_dev = NULL;
-	const char *typec_psy_name;
 	struct power_supply_config usb_psy_cfg = {};
 	struct power_supply_config batt_psy_cfg = {};
 	struct power_supply_config dc_psy_cfg = {};
 /* don't try to get typec at probe, anx needs vbus first */
 #ifndef CONFIG_LGE_USB_TYPE_C
+	const char *typec_psy_name;
 #ifdef CONFIG_QPNP_SMBCHARGER_EXTENSION
 #define TYPEC_PROBE_RETRY_MAX	5
 	static int typec_retry_cnt;
