@@ -1466,7 +1466,6 @@ static inline bool is_short_burst_task(struct task_struct *p)
 	       p->ravg.avg_sleep_time > sysctl_sched_short_sleep;
 }
 
-extern void check_for_migration(struct rq *rq, struct task_struct *p);
 extern void pre_big_task_count_change(const struct cpumask *cpus);
 extern void post_big_task_count_change(const struct cpumask *cpus);
 extern void set_hmp_defaults(void);
@@ -1703,8 +1702,6 @@ struct related_thread_group *task_related_thread_group(struct task_struct *p)
 	return NULL;
 }
 
-static inline u32 task_load(struct task_struct *p) { return 0; }
-
 static inline int update_preferred_cluster(struct related_thread_group *grp,
 			 struct task_struct *p, u32 old_load)
 {
@@ -1726,7 +1723,6 @@ static inline int same_freq_domain(int src_cpu, int dst_cpu)
 	return 1;
 }
 
-static inline void check_for_migration(struct rq *rq, struct task_struct *p) { }
 static inline void pre_big_task_count_change(void) { }
 static inline void post_big_task_count_change(void) { }
 static inline void set_hmp_defaults(void) { }
