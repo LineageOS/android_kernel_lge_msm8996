@@ -147,3 +147,7 @@ CONFIG_SMB135X_CHARGER=n
 CONFIG_KERNEL_LZ4=y
 CONFIG_CRYPTO_LZ4=y
 CONFIG_ACPI=n # Kernel fails to build if this is enabled
+
+# Disable legacy camera (We're using MSMB_CAMERA in 4.4)
+CONFIG_MSM_CAMERA=n
+CONFIG_MSM_CAMERA_DEBUG=n
