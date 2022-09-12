@@ -10,6 +10,11 @@
  * GNU General Public License for more details.
  *
  */
+
+#ifdef CONFIG_MACH_LGE
+#define SUPPRESS_PAGE_FAULTS
+#endif
+
 #include <linux/types.h>
 #include <linux/delay.h>
 #include <linux/device.h>
@@ -913,6 +918,11 @@ static int kgsl_iommu_fault_handler(struct iommu_domain *domain,
 		} else
 			api_str = "UNKNOWN";
 
+#ifdef SUPPRESS_PAGE_FAULTS
+		KGSL_MEM_CRIT(ctx->kgsldev,
+			"GPU PAGE FAULT: addr = %lX pid= %d | context=%s ctx_type=%s | type = %s %s fault\n", addr, 
+			ptname, ctx->name, api_str, write ? "write" : "read", fault_type);
+#else
 		KGSL_MEM_CRIT(ctx->kgsldev,
 			"GPU PAGE FAULT: addr = %lX pid= %d\n", addr, ptname);
 		KGSL_MEM_CRIT(ctx->kgsldev,
@@ -941,8 +951,8 @@ static int kgsl_iommu_fault_handler(struct iommu_domain *domain,
 			else
 				KGSL_LOG_DUMP(ctx->kgsldev, "*EMPTY*\n");
 		}
+#endif
 	}
-
 
 	/*
 	 * We do not want the h/w to resume fetching data from an iommu
