@@ -860,13 +860,12 @@ static int fpc1020_remove(struct spi_device *spi)
 	return 0;
 }
 
-static int fpc1020_suspend(struct spi_device *spi, pm_message_t mesg)
+static int fpc1020_suspend(struct device *dev, pm_message_t mesg)
 {
-	struct fpc1020_data *fpc1020 = dev_get_drvdata(&spi->dev);
-	struct device *dev = &spi->dev;
+	struct fpc1020_data *fpc1020 = dev_get_drvdata(dev);
 //	fpc1020->clocks_suspended = fpc1020->clocks_enabled;
 	if (of_property_read_bool(dev->of_node, "fpc,enable-wakeup")) {
-		dev_info(&spi->dev, "%s do nothing\n",__func__);
+		dev_info(dev, "%s do nothing\n",__func__);
 	} else {
 		select_pin_ctl(fpc1020, "fpc1020_reset_reset");
 		(void)vreg_setup(fpc1020, "vdd_io", false);
@@ -879,17 +878,16 @@ static int fpc1020_suspend(struct spi_device *spi, pm_message_t mesg)
 	return 0;
 }
 
-static int fpc1020_resume(struct spi_device *spi)
+static int fpc1020_resume(struct device *dev)
 {
-	struct fpc1020_data *fpc1020 = dev_get_drvdata(&spi->dev);
+	struct fpc1020_data *fpc1020 = dev_get_drvdata(dev);
 
 #ifdef HW240_TEMP_WA
 	int rc = 0;
 	int irqf;
-	struct device *dev = &spi->dev;
 #endif
 	if (of_property_read_bool(dev->of_node, "fpc,enable-wakeup")) {
-		dev_info(&spi->dev, "%s do nothing\n",__func__);
+		dev_info(dev, "%s do nothing\n",__func__);
 	} else {
 		(void)vreg_setup(fpc1020, "vdd_io", true);
 		hw_reset(fpc1020);
@@ -923,11 +921,11 @@ static struct spi_driver fpc1020_driver = {
 		.name	= "fpc1020",
 		.owner	= THIS_MODULE,
 		.of_match_table = fpc1020_of_match,
+		.suspend	= fpc1020_suspend,
+		.resume		= fpc1020_resume,
 	},
 	.probe		= fpc1020_probe,
 	.remove		= fpc1020_remove,
-//	.suspend	= fpc1020_suspend,
-//	.resume		= fpc1020_resume,
 };
 
 static int __init fpc1020_init(void)
