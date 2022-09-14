@@ -614,6 +614,7 @@ struct _mem_entry {
 	char name[32];
 };
 
+#ifndef SUPPRESS_PAGE_FAULTS
 static void _get_global_entries(uint64_t faultaddr,
 		struct _mem_entry *prev,
 		struct _mem_entry *next)
@@ -661,12 +662,14 @@ static void _get_global_entries(uint64_t faultaddr,
 		strlcpy(next->name, n->name, sizeof(next->name));
 	}
 }
+#endif
 
 void __kgsl_get_memory_usage(struct _mem_entry *entry)
 {
 	kgsl_get_memory_usage(entry->name, sizeof(entry->name), entry->flags);
 }
 
+#ifndef SUPPRESS_PAGE_FAULTS
 static void _get_entries(struct kgsl_process_private *private,
 		uint64_t faultaddr, struct _mem_entry *prev,
 		struct _mem_entry *next)
@@ -767,6 +770,7 @@ static void _check_if_freed(struct kgsl_iommu_context *ctx,
 			gpuaddr, gpuaddr + size, name, pid);
 	}
 }
+#endif
 
 static bool
 kgsl_iommu_uche_overfetch(struct kgsl_process_private *private,
@@ -822,7 +826,9 @@ static int kgsl_iommu_fault_handler(struct iommu_domain *domain,
 	u32 contextidr;
 	pid_t tid = 0;
 	pid_t ptname;
+#ifndef SUPPRESS_PAGE_FAULTS
 	struct _mem_entry prev, next;
+#endif
 	int write;
 	struct kgsl_device *device;
 	struct adreno_device *adreno_dev;
