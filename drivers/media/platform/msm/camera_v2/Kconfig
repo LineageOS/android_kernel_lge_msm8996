@@ -122,6 +122,14 @@ config MSM_ISPIF_V2
           of any CID of CSID can be routed to of pixel
           or raw data interface in VFE.
 
+config LGE_ISP_CMD_WORKAROUND_FOR_44
+        bool "Correct the VIDIOC_MSM_ISP_AHB_CLK_CFG command for LGE_8996"
+        depends on MSMB_CAMERA
+        ---help---
+          Enable this option to work around cases where the camera blobs for
+          the LGE family of devices issues a command for 
+          VIDIOC_MSM_ISP_AHB_CLK_CFG that no longer works in linux 4.4.
+
 config IMX234
         bool "Sensor IMX234 (BAYER 16M)"
         depends on MSMB_CAMERA

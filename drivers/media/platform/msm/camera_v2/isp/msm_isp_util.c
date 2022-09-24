@@ -843,6 +843,17 @@ static long msm_isp_ioctl_unlocked(struct v4l2_subdev *sd,
 	 * which blocks until the hardware start/stop streaming
 	 */
 	ISP_DBG("%s: cmd: %d\n", __func__, _IOC_TYPE(cmd));
+
+#ifdef CONFIG_LGE_ISP_CMD_WORKAROUND_FOR_44
+	/* Correct the VIDIOC_MSM_ISP_AHB_CLK_CFG command for LGE_8996 
+	 * We're not yet sure if this stems from an issue in the camera
+	 * blobs, or the caf updates to the kernel, so this was made 
+	 * into a kernel CONFIG.
+	 */
+	if(cmd == -1072933156) 
+		cmd = -1072933159;
+#endif
+
 	switch (cmd) {
 	case VIDIOC_MSM_VFE_REG_CFG: {
 		mutex_lock(&vfe_dev->realtime_mutex);
