@@ -3784,7 +3784,7 @@ dhdpcie_bus_suspend(struct dhd_bus *bus, bool state)
 #endif /* CONFIG_ARCH_QCOM */
 #endif /* SUPPORT_LINKDOWN_RECOVERY */
 		/* Suspend */
-		DHD_ERROR(("%s: Entering suspend state\n", __FUNCTION__));
+		DHD_INFO(("%s: Entering suspend state\n", __FUNCTION__));
 		bus->wait_for_d3_ack = 0;
 		bus->suspended = TRUE;
 
@@ -3847,7 +3847,7 @@ dhdpcie_bus_suspend(struct dhd_bus *bus, bool state)
 		}
 
 		if (bus->wait_for_d3_ack) {
-			DHD_ERROR(("%s: Got D3 Ack, additional interrupt check (intr increased = %d) \n", __FUNCTION__, bus->intrcount - prev_intrcnt));
+			/* DHD_ERROR(("%s: Got D3 Ack, additional interrupt check (intr increased = %d) \n", __FUNCTION__, bus->intrcount - prev_intrcnt)); */
 			/* Got D3 Ack. Suspend the bus */
 			if (active || (prev_intrcnt+1) < bus->intrcount) {
 				DHD_ERROR(("%s():Suspend failed because of wakelock restoring(active=%d) or additional interrupt(intr increased = %d)"
@@ -4702,7 +4702,7 @@ dhdpcie_send_mb_data(dhd_bus_t *bus, uint32 h2d_mb_data)
 {
 	uint32 cur_h2d_mb_data = 0;
 
-	DHD_INFO_HW4(("%s: H2D_MB_DATA: 0x%08X\n", __FUNCTION__, h2d_mb_data));
+	/* DHD_INFO_HW4(("%s: H2D_MB_DATA: 0x%08X\n", __FUNCTION__, h2d_mb_data)); */
 
 	if (bus->is_linkdown) {
 		DHD_ERROR(("%s: PCIe link was down\n", __FUNCTION__));
@@ -4738,15 +4738,15 @@ dhdpcie_send_mb_data(dhd_bus_t *bus, uint32 h2d_mb_data)
 	dhd_bus_gen_devmb_intr(bus);
 
 	if (h2d_mb_data == H2D_HOST_D3_INFORM) {
-		DHD_INFO_HW4(("%s: send H2D_HOST_D3_INFORM to dongle\n", __FUNCTION__));
+		/* DHD_INFO_HW4(("%s: send H2D_HOST_D3_INFORM to dongle\n", __FUNCTION__)); */
 		bus->d3_inform_cnt++;
 	}
 	if (h2d_mb_data == H2D_HOST_D0_INFORM_IN_USE) {
-		DHD_INFO_HW4(("%s: send H2D_HOST_D0_INFORM_IN_USE to dongle\n", __FUNCTION__));
+		/* DHD_INFO_HW4(("%s: send H2D_HOST_D0_INFORM_IN_USE to dongle\n", __FUNCTION__)); */
 		bus->d0_inform_in_use_cnt++;
 	}
 	if (h2d_mb_data == H2D_HOST_D0_INFORM) {
-		DHD_INFO_HW4(("%s: send H2D_HOST_D0_INFORM to dongle\n", __FUNCTION__));
+		/* DHD_INFO_HW4(("%s: send H2D_HOST_D0_INFORM to dongle\n", __FUNCTION__)); */
 		bus->d0_inform_cnt++;
 	}
 }
@@ -4765,7 +4765,7 @@ dhdpcie_handle_mb_data(dhd_bus_t *bus)
 
 	dhd_bus_cmn_writeshared(bus, &zero, sizeof(uint32), D2H_MB_DATA, 0);
 
-	DHD_INFO_HW4(("D2H_MB_DATA: 0x%08x\n", d2h_mb_data));
+	/* DHD_INFO_HW4(("D2H_MB_DATA: 0x%08x\n", d2h_mb_data)); */
 	if (d2h_mb_data & D2H_DEV_FWHALT)  {
 		DHD_ERROR(("FW trap has happened\n"));
 		dhdpcie_checkdied(bus, NULL, 0);
@@ -4780,17 +4780,17 @@ dhdpcie_handle_mb_data(dhd_bus_t *bus)
 	}
 	if (d2h_mb_data & D2H_DEV_DS_ENTER_REQ)  {
 		/* what should we do */
-		DHD_INFO(("D2H_MB_DATA: DEEP SLEEP REQ\n"));
+		/* DHD_INFO(("D2H_MB_DATA: DEEP SLEEP REQ\n")); */
 		dhdpcie_send_mb_data(bus, H2D_HOST_DS_ACK);
-		DHD_INFO(("D2H_MB_DATA: sent DEEP SLEEP ACK\n"));
+		/* DHD_INFO(("D2H_MB_DATA: sent DEEP SLEEP ACK\n")); */
 	}
 	if (d2h_mb_data & D2H_DEV_DS_EXIT_NOTE)  {
 		/* what should we do */
-		DHD_INFO(("D2H_MB_DATA: DEEP SLEEP EXIT\n"));
+		/* DHD_INFO(("D2H_MB_DATA: DEEP SLEEP EXIT\n")); */
 	}
 	if (d2h_mb_data & D2H_DEV_D3_ACK)  {
 		/* what should we do */
-		DHD_INFO_HW4(("D2H_MB_DATA: D3 ACK\n"));
+		/* DHD_INFO_HW4(("D2H_MB_DATA: D3 ACK\n")); */
 		if (!bus->wait_for_d3_ack) {
 			bus->wait_for_d3_ack = 1;
 			dhd_os_d3ack_wake(bus->dhd);
