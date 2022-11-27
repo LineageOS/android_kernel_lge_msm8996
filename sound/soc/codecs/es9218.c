@@ -32,14 +32,14 @@
 
 #include <soc/qcom/lge/board_lge.h>
 
-#define ES9218_DEBUG
+#define ES9218_DEBUG 0
 
 static struct es9218_priv *g_es9218_priv = NULL;
 static int 	es9218_write_reg(struct i2c_client *client, int reg, u8 value);
 static int 	es9218_read_reg(struct i2c_client *client, int reg);
 
-static int es9218_sabre_hifi2bypass(void);
-static int es9218_sabre_bypass2hifi(void);
+static int	es9218_sabre_hifi2bypass(void);
+static int	es9218_sabre_bypass2hifi(void);
 
 static int	es9218_sabre_lpb2hifione(void);
 static int	es9218_sabre_lpb2hifitwo(void);
@@ -50,6 +50,7 @@ static int 	es9218_sabre_amp_start(struct i2c_client *client, int headset);
 static int 	es9218_sabre_amp_stop(struct i2c_client *client, int headset);
 static int 	es9218_sabre_chargepump_start(void);
 static int 	es9218_sabre_chargepump_stop(void);
+static int	es9218_sabre_cfg_custom_filter(struct sabre_custom_filter *sabre_filter);
 
 struct es9218_reg {
 	unsigned char num;
@@ -423,15 +424,6 @@ static ssize_t es9218_registers_store(struct device *dev,
 
 static DEVICE_ATTR(registers, S_IWUSR | S_IRUGO,
 		es9218_registers_show, es9218_registers_store);
-
-static struct attribute *es9218_attrs[] = {
-	&dev_attr_registers.attr,
-	NULL
-};
-
-static const struct attribute_group es9218_attr_group = {
-	.attrs = es9218_attrs,
-};
 /*
 static void es9218_print_regdump(void)
 {
@@ -687,6 +679,80 @@ static int es9218_sabre_amp_stop(struct i2c_client *client, int headset)
 			}
 	return ret;
 }
+
+
+#ifdef ES9218_DEBUG
+static ssize_t set_forced_headset_type(struct device *dev,
+                   struct device_attribute *attr,
+                   const char *buf, size_t count)
+{
+    int input_val; //0, 1, 2
+    sscanf(buf, "%d", &input_val);
+    
+    es9218_sabre_hifitwo2lpb();
+    g_volume = 0;
+    g_headset_type = input_val + 1;
+
+    es9218_sabre_bypass2hifi();
+
+    return count;
+}
+static ssize_t get_forced_headset_type(struct device *dev,
+                   struct device_attribute *attr,
+                   char *buf)
+{
+    return sprintf(buf, "%i\n", g_headset_type);
+}
+static DEVICE_ATTR(headset_type, S_IWUSR|S_IRUGO, get_forced_headset_type, set_forced_headset_type);
+
+static ssize_t set_forced_avc_volume(struct device *dev,
+                   struct device_attribute *attr,
+                   const char *buf, size_t count)
+{
+    int input_vol;
+    sscanf(buf, "%d", &input_vol);
+    
+    if ( es9218_power_state < ESS_PS_HIFI ) {
+        pr_err("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
+        return 0;
+    }
+
+    if (input_vol >= sizeof(avc_vol_tbl)/sizeof(avc_vol_tbl[0])) {
+        pr_err("%s() : Invalid vol = %d return \n", __func__, input_vol);
+        return 0;
+    }
+
+    g_avc_volume = input_vol;
+
+    es9218_set_avc_volume(g_es9218_priv->i2c_client, g_avc_volume);
+
+    return count;
+}
+
+static ssize_t get_forced_avc_volume(struct device *dev,
+                   struct device_attribute *attr,
+                   char *buf)
+{
+    return sprintf(buf, "%i\n", g_avc_volume);
+}
+static DEVICE_ATTR(avc_volume, S_IWUSR|S_IRUGO, get_forced_avc_volume, set_forced_avc_volume);
+
+static struct attribute *es9218_attrs[] = {
+#ifdef CONFIG_SND_SOC_LGE_ESS_DIGITAL_FILTER
+	&dev_attr_fade_mute_count.attr,
+	&dev_attr_fade_mute_term.attr,
+#endif
+    &dev_attr_registers.attr,
+    &dev_attr_headset_type.attr,
+    &dev_attr_avc_volume.attr,
+    NULL
+};
+
+static const struct attribute_group es9218_attr_group = {
+    .attrs = es9218_attrs,
+};
+
+#endif
 
 /*
 Program stage1 and stage2 filter coefficients
