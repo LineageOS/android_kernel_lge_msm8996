@@ -6,6 +6,8 @@
  *  
  */
 
+#define CONFIG_SND_SOC_LGE_ESS_DIGITAL_FILTER
+
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 #include <linux/init.h>
@@ -50,7 +52,32 @@ static int 	es9218_sabre_amp_start(struct i2c_client *client, int headset);
 static int 	es9218_sabre_amp_stop(struct i2c_client *client, int headset);
 static int 	es9218_sabre_chargepump_start(void);
 static int 	es9218_sabre_chargepump_stop(void);
-static int	es9218_sabre_cfg_custom_filter(struct sabre_custom_filter *sabre_filter);
+static int  es9218_sabre_cfg_custom_filter(struct sabre_custom_filter *sabre_filter);
+
+
+#ifdef CONFIG_SND_SOC_LGE_ESS_DIGITAL_FILTER
+static int get_fade_count_define(void);
+static int get_fade_term_define(void);
+
+#define VOLUME_DOWN 0
+#define VOLUME_UP 1
+#define FADE_INOUT_COUNT 7
+#define FADE_INOUT_TERM 40
+#define SHORT_FILTER 9  // first menu item
+#define SHARP_FILTER 4   // second menu item
+#define SLOW_FILTER 5  // third menu item
+static struct workqueue_struct *mute_workqueue;
+struct delayed_work *mute_work;
+static int fade_direction = VOLUME_DOWN;
+static int fade_count_debug_param = 99;
+static int fade_term_debug_param = 99;
+static int g_fade_count;
+static int g_right_fade_vol_per_step = 0;
+static int g_left_fade_vol_per_step = 0;
+static int g_left_fade_vol = 0;
+static int g_right_fade_vol = 0;
+bool lge_ess_fade_inout_init = false;
+#endif  /* CONFIG_SND_SOC_LGE_ESS_DIGITAL_FILTER */
 
 struct es9218_reg {
 	unsigned char num;
@@ -350,6 +377,65 @@ struct es9218_regmap {
 	{ "74", 					ESS9218_74, 			0 },
 	{ "RAMRD", 					ESS9218_RAM_RD, 		0 }
 };
+
+#ifdef CONFIG_SND_SOC_LGE_ESS_DIGITAL_FILTER
+static ssize_t get_fade_term_param(struct device *dev,
+	                    struct device_attribute *attr, char *buf)
+{
+
+	unsigned val = 1;
+	sprintf(buf, "%s : current fade term %d   ",__func__, get_fade_term_define());
+	pr_info("%s() : fade_term_define = %d, val %d", __func__, get_fade_term_define(), val);
+
+        return val;
+}
+
+
+static ssize_t set_fade_term_param(struct device *dev,
+			 struct device_attribute *attr,
+			 const char *buf, size_t count)
+{
+
+	int value;
+	unsigned val = count;
+	sscanf(buf, "%d", &value);
+	fade_term_debug_param = value;
+
+	pr_info("%s() : new mute term = %d", __func__, get_fade_term_define());
+	return val;
+
+}
+
+static ssize_t get_fade_mute_param(struct device *dev,
+	                    struct device_attribute *attr, char *buf)
+{
+
+	unsigned val = 1;
+	sprintf(buf, "%s : current fade count %d   ",__func__, get_fade_count_define());
+	pr_info("%s() : fade_count_define = %d, val %d", __func__, get_fade_count_define(), val);
+
+        return val;
+}
+
+
+static ssize_t set_fade_mute_param(struct device *dev,
+			 struct device_attribute *attr,
+			 const char *buf, size_t count)
+{
+
+	int value;
+	unsigned val = count;
+	sscanf(buf, "%d", &value);
+	fade_count_debug_param = value;
+
+	pr_info("%s() : new mute count = %d", __func__, get_fade_count_define());
+	return val;
+
+}
+
+static DEVICE_ATTR(fade_mute_count, S_IWUSR | S_IRUGO, get_fade_mute_param, set_fade_mute_param);
+static DEVICE_ATTR(fade_mute_term, S_IWUSR | S_IRUGO, get_fade_term_param, set_fade_term_param);
+#endif /* CONFIG_SND_SOC_LGE_ESS_DIGITAL_FILTER */
 
 
 void es9218_check_dop(void) {
@@ -737,11 +823,46 @@ static ssize_t get_forced_avc_volume(struct device *dev,
 }
 static DEVICE_ATTR(avc_volume, S_IWUSR|S_IRUGO, get_forced_avc_volume, set_forced_avc_volume);
 
+#ifdef CONFIG_SND_SOC_LGE_ESS_DIGITAL_FILTER
+static ssize_t set_forced_ess_filter(struct device *dev,
+                   struct device_attribute *attr,
+                   const char *buf, size_t count)
+{
+    int input_filter;
+    sscanf(buf, "%d", &input_filter);
+
+    if ( es9218_power_state < ESS_PS_HIFI ) {
+        pr_err("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
+        return 0;
+    }
+
+    if (input_filter > 11) {
+        pr_err("%s() : Invalid filter = %d return \n", __func__, input_filter);
+        return 0;
+    }
+
+    g_sabre_cf_num = input_filter;
+    
+    es9218_sabre_cfg_custom_filter(&es9218_sabre_custom_ft[g_sabre_cf_num]);
+    
+    return count;
+}
+
+static ssize_t get_forced_ess_filter(struct device *dev,
+                   struct device_attribute *attr,
+                   char *buf)
+{
+    return sprintf(buf, "%i\n", g_sabre_cf_num);
+}
+static DEVICE_ATTR(ess_filter, S_IWUSR|S_IRUGO, get_forced_ess_filter, set_forced_ess_filter);
+#endif /* CONFIG_SND_SOC_LGE_ESS_DIGITAL_FILTER */
+
 static struct attribute *es9218_attrs[] = {
 #ifdef CONFIG_SND_SOC_LGE_ESS_DIGITAL_FILTER
 	&dev_attr_fade_mute_count.attr,
 	&dev_attr_fade_mute_term.attr,
-#endif
+    &dev_attr_ess_filter.attr,
+#endif /* CONFIG_SND_SOC_LGE_ESS_DIGITAL_FILTER */
     &dev_attr_registers.attr,
     &dev_attr_headset_type.attr,
     &dev_attr_avc_volume.attr,
@@ -1619,6 +1740,159 @@ static int es9218_auto_mute_put(struct snd_kcontrol *kcontrol,
 	return ret;
 }
 
+#ifdef CONFIG_SND_SOC_LGE_ESS_DIGITAL_FILTER
+static int lge_ess_digital_filter_setting_get(struct snd_kcontrol *kcontrol,
+        struct snd_ctl_elem_value *ucontrol)
+{
+    ucontrol->value.integer.value[0] = g_sabre_cf_num;
+    pr_info("%s(): ucontrol = %d\n", __func__, g_sabre_cf_num);
+    return 0;
+}
+
+static int lge_ess_digital_filter_setting_put(struct snd_kcontrol *kcontrol,
+        struct snd_ctl_elem_value *ucontrol)
+{
+    int ret = 0;
+
+    g_sabre_cf_num = (int)ucontrol->value.integer.value[0];
+    pr_info("%s():filter num= %d\n", __func__, g_sabre_cf_num);
+    return ret;
+}
+
+
+
+
+static int get_fade_count_define(void)
+{
+    if(fade_count_debug_param == 99) {
+	return FADE_INOUT_COUNT;
+    } else {
+	return fade_count_debug_param;
+    }
+
+}
+static int get_fade_term_define(void)
+{
+    if(fade_term_debug_param == 99) {
+	return FADE_INOUT_TERM;
+    } else {
+	return fade_term_debug_param;
+    }
+
+}
+
+static void mute_work_function(struct work_struct *work)
+{
+
+	int result = 0;
+
+        result = cancel_delayed_work(mute_work);
+	pr_info("%s(): called volume direction %d, g_fade_count %d, cancle_delayed_work result %d , g_left_fade_vol %d, g_right_fade_vol %d ",
+		       	__func__, fade_direction, g_fade_count, result, g_left_fade_vol, g_right_fade_vol);
+
+	if(fade_direction == VOLUME_DOWN) {
+		if( g_fade_count != 0 ) {
+			g_fade_count--;
+//			pr_info("%s(): case 1 called volume direction %d, g_fade_count %d\n", __func__, fade_direction, g_fade_count);
+	                g_left_fade_vol = g_left_fade_vol + g_left_fade_vol_per_step;
+		        g_right_fade_vol = g_right_fade_vol + g_right_fade_vol_per_step;
+
+			if(g_left_fade_vol > 0xff)
+			    g_left_fade_vol = 0xff;
+		        if(g_right_fade_vol > 0xff)
+			    g_right_fade_vol = 0xff;
+
+			es9218_write_reg(g_es9218_priv->i2c_client, ESS9218_VOL1, g_left_fade_vol);
+                        es9218_write_reg(g_es9218_priv->i2c_client, ESS9218_VOL2, g_right_fade_vol);
+		} else {
+//			pr_info("%s(): case 2 called volume g_fade_count %d\n", __func__, g_fade_count);
+			if(g_sabre_cf_num == SHORT_FILTER)
+			    g_volume = 0;
+			else if(g_sabre_cf_num == SHARP_FILTER)
+			    g_volume = 4;
+			else
+			    g_volume = 2;
+
+                        es9218_master_trim(g_es9218_priv->i2c_client, g_volume);
+			fade_direction = VOLUME_UP;
+		}
+
+                queue_delayed_work(mute_workqueue , mute_work, msecs_to_jiffies(get_fade_term_define()) );
+	} else {
+		if( g_fade_count < (get_fade_count_define() ) ) {
+//			pr_info("%s(): case 3 called volume g_fade_count %d g_left_fade_vol %d\n", __func__, g_fade_count, g_left_fade_vol);
+			g_fade_count++;
+			g_left_fade_vol = g_left_fade_vol - g_left_fade_vol_per_step;
+			g_right_fade_vol = g_right_fade_vol - g_right_fade_vol_per_step;
+
+       			if(g_left_fade_vol < g_left_volume)
+			    g_left_fade_vol = g_left_volume;
+		        if(g_right_fade_vol < g_right_volume)
+			    g_right_fade_vol = g_right_volume;
+
+			es9218_write_reg(g_es9218_priv->i2c_client, ESS9218_VOL1, g_left_fade_vol);
+                        es9218_write_reg(g_es9218_priv->i2c_client, ESS9218_VOL2, g_right_fade_vol);
+                        queue_delayed_work(mute_workqueue , mute_work, msecs_to_jiffies(get_fade_term_define()) ); // 100 msec
+		} else {
+            es9218_write_reg(g_es9218_priv->i2c_client, ESS9218_VOL1, g_left_volume);
+            es9218_write_reg(g_es9218_priv->i2c_client, ESS9218_VOL2, g_right_volume);
+
+			pr_info("%s(): case 4 called volume direction %d, g_fade_count %d\n", __func__, fade_direction, g_fade_count);
+		}
+	}
+
+
+	return;
+}
+
+static int lge_ess_fade_inout_put(struct snd_kcontrol *kcontrol, struct snd_ctl_elem_value *ucontrol)
+{
+
+    if (es9218_power_state < ESS_PS_HIFI) {
+        pr_err("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
+        return 0;
+    }
+    if(lge_ess_fade_inout_init != true) {
+        lge_ess_fade_inout_init = true;
+        pr_info("%s(): fade in out work queue initialize. \n", __func__);
+
+        mute_workqueue = create_workqueue("mute_workqueue");
+        mute_work = devm_kzalloc(&g_es9218_priv->i2c_client->dev, sizeof(struct delayed_work), GFP_KERNEL);
+        if(!mute_work) {
+            lge_ess_fade_inout_init = false;
+            pr_err("%s() : devm_kzalloc failed!!\n", __func__);
+            return 0;
+        }
+
+        INIT_DELAYED_WORK(mute_work, mute_work_function);
+    }
+
+    if(work_pending( &mute_work->work )) {
+        pr_info("%s(): previous fade in/out is not yet finished. \n", __func__);
+//        return 0;
+        g_fade_count = get_fade_count_define();
+        fade_direction = VOLUME_DOWN;
+    } else {
+        g_fade_count = get_fade_count_define();
+        g_left_fade_vol = g_left_volume;
+        g_right_fade_vol = g_right_volume;
+        g_left_fade_vol_per_step = (0xff - g_left_volume) / g_fade_count;
+        g_right_fade_vol_per_step = (0xff - g_right_volume) / g_fade_count;
+        fade_direction = VOLUME_DOWN;
+        pr_info("%s(): start fade in/out g_left_volume %d, g_right_volume %d \n", __func__, g_left_volume, g_right_volume);
+    }
+    queue_delayed_work(mute_workqueue , mute_work, msecs_to_jiffies(get_fade_term_define()) ); // ?? msec
+
+	return 0;
+}
+
+static int lge_ess_fade_inout_get(struct snd_kcontrol *kcontrol,
+		struct snd_ctl_elem_value *ucontrol)
+{
+	return 0;
+}
+#endif /* CONFIG_SND_SOC_LGE_ESS_DIGITAL_FILTER */
+
 static int es9218_avc_volume_get(struct snd_kcontrol *kcontrol,
 		struct snd_ctl_elem_value *ucontrol)
 {
@@ -1737,6 +2011,17 @@ static int es9218_filter_enum_put(struct snd_kcontrol *kcontrol,
 		struct snd_ctl_elem_value *ucontrol)
 {
 	int ret=0;
+#ifdef CONFIG_SND_SOC_LGE_ESS_DIGITAL_FILTER
+    int new_filter = 0;
+
+    new_filter = (int)ucontrol->value.integer.value[0];
+    pr_info("%s(): g_sabre_cf_num %d, new filter num = %d \n", __func__, g_sabre_cf_num, new_filter);
+
+    if (es9218_power_state < ESS_PS_HIFI) {
+        pr_info("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
+        return 0;
+    }
+#endif
 
 	g_sabre_cf_num = (int)ucontrol->value.integer.value[0];
 	pr_info("%s():filter num= %d\n", __func__, g_sabre_cf_num);
@@ -1758,7 +2043,7 @@ static int es9218_dop_put(struct snd_kcontrol *kcontrol,
 	g_dop_flag = (int)ucontrol->value.integer.value[0];
 	pr_info("%s() dop_enable:%d, state:%d\n", __func__, g_dop_flag, es9218_power_state);
     if( !(g_dop_flag == 0 || g_dop_flag == 64 || g_dop_flag == 128 ) )
-        pr_err("%s() dop_enable error:%d. invalid arg.\n", __func__, g_dop_flag);
+		pr_err("%s() dop_enable error:%d. invalid arg.\n", __func__, g_dop_flag);
 	return 0;
 }
 
@@ -1953,6 +2238,14 @@ static struct snd_kcontrol_new es9218_digital_ext_snd_controls[] = {
     //SOC_SINGLE_EXT("HIFI THD Value", SND_SOC_NOPM, 0, 0xFFFFFF, 0, //current 0~3 filter num
     //                es9018_set_filter_enum,
     //                es9218_filter_enum_put),
+#ifdef CONFIG_SND_SOC_LGE_ESS_DIGITAL_FILTER
+    SOC_SINGLE_EXT("LGE ESS FADE INOUT", SND_SOC_NOPM, 0, 12, 0,
+                    lge_ess_fade_inout_get,
+                    lge_ess_fade_inout_put),
+    SOC_SINGLE_EXT("LGE ESS DIGITAL FILTER SETTING", SND_SOC_NOPM, 0, 12, 0,
+                    lge_ess_digital_filter_setting_get,
+                    lge_ess_digital_filter_setting_put),
+#endif
     SOC_ENUM_EXT("Es9018 State", es9218_power_state_enum,
                     es9218_power_state_get,
                     es9218_power_state_put),
