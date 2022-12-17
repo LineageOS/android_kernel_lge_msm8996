@@ -80,6 +80,15 @@ enum voters_type {
 	VOTERS_BATTCHG
 };
 
+char *tempstat_names[] = {
+	"COLD",
+	"COOL",
+	"NORMAL",
+	"WARM",
+	"HOT",
+	"UNKNOWN"
+};
+
 static int somc_debug_mask = PR_INFO;
 module_param_named(
 	somc_debug_mask, somc_debug_mask, int, S_IRUSR | S_IWUSR
@@ -538,12 +547,13 @@ static void somc_chg_temp_work(struct work_struct *work)
 	params->temp.status = status;
 
 	if (status == params->temp.prev_status) {
-		pr_smb_ext(PR_THERM, "temp status does not change\n");
+		pr_smb_ext(PR_THERM, "batt temp status did not change, still reporting as %s\n", 
+			*(tempstat_names + status));
 		return;
 	}
 
-	pr_smb_ext(PR_INFO, "temp status:%d->%d\n",
-		params->temp.prev_status, status);
+	pr_smb_ext(PR_INFO, "batt temp status changed from %s to %s\n",
+		*(tempstat_names + params->temp.prev_status), *(tempstat_names + status));
 
 	switch (status) {
 	case TEMP_STATUS_HOT:

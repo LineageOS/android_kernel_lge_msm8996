@@ -32,6 +32,8 @@ enum {
 	ATTR_SOC_FULL,
 	ATTR_LEARNED_SOH,
 	ATTR_PMIC_SUBTYPE,
+	ATTR_COOL_TEMP,
+	ATTR_WARM_TEMP,
 	ATTR_COLD_TEMP,
 	ATTR_HOT_TEMP,
 	ATTR_FINAL_CC_UAH,
@@ -338,6 +340,8 @@ static struct device_attribute somc_fg_attrs[] = {
 	__ATTR(learned_soh,	S_IRUGO|S_IWUSR, somc_fg_param_show,
 							somc_fg_param_store),
 	__ATTR(pmic_subtype,		S_IRUGO, somc_fg_param_show, NULL),
+	__ATTR(cool_temp,		S_IRUGO, somc_fg_param_show, NULL),
+	__ATTR(warm_temp,		S_IRUGO, somc_fg_param_show, NULL),
 	__ATTR(cold_temp,		S_IRUGO, somc_fg_param_show, NULL),
 	__ATTR(hot_temp,		S_IRUGO, somc_fg_param_show, NULL),
 	__ATTR(final_cc_uah,		S_IRUGO, somc_fg_param_show, NULL),
@@ -497,6 +501,14 @@ static ssize_t somc_fg_param_show(struct device *dev,
 			size = scnprintf(buf, PAGE_SIZE, "not supported\n");
 			break;
 		}
+		break;
+	case ATTR_COOL_TEMP:
+		size = scnprintf(buf, PAGE_SIZE, "%d\n",
+				get_prop_jeita_temp(chip, FG_MEM_SOFT_COLD));
+		break;
+	case ATTR_WARM_TEMP:
+		size = scnprintf(buf, PAGE_SIZE, "%d\n",
+				get_prop_jeita_temp(chip, FG_MEM_SOFT_HOT));
 		break;
 	case ATTR_COLD_TEMP:
 		size = scnprintf(buf, PAGE_SIZE, "%d\n",

@@ -34,9 +34,6 @@
 	qcom,resume-soc-raw = <253>;
 	qcom,fg-iterm-ma = <200>;
 	qcom,fg-chg-iterm-ma = <100>;
-#if defined(CONFIG_MACH_MSM8996_H1_GLOBAL_ESA) || defined(CONFIG_MACH_MSM8996_H1_KR) || defined(CONFIG_MACH_MSM8996_H1_KDDI_JP)
-	qcom,lge_batt_profile;
-#endif
 	qcom,hot-bat-decidegc = <450>;
 	qcom,warm-bat-decidegc = <400>;
 	qcom,cool-bat-decidegc = <100>;
@@ -45,12 +42,8 @@
 	somc,cool-warm-jeita-hysteresis = <20 20>;
 	qcom,vbat-estimate-diff-mv = <250>;
 	qcom,fg-cc-cv-threshold-mv = <4340>; //float-voltage set as 4350 in common-various
-#ifdef CONFIG_MACH_MSM8996_H1_GLOBAL_COM
-	qcom,lge_global_rev;
-#endif
 	qcom,esr-pulse-tuning-en;
 	qcom,fg-use-vbat-low-empty-soc;
-	qcom,fg-reset-on-lockup;
 	qcom,fg-cc-soc-limit-pct = <120>;
 	qcom,fg-control-slope-limiter;
 	qcom,fg-slope-limit-high-temp-chg = <6>;
@@ -62,8 +55,6 @@
 	qcom,fg-dischg-med-voltage-gain = <5 4 4>;
 	qcom,fg-dischg-high-voltage-gain = <4 4 3>;
 	qcom,cl-max-limit-deciperc= <50>;
-	qcom,fg-acfa-usable-fcc = <90 80 70 60>;
-	qcom,fg-acfa-v-cutoff-aged = <3400 3500 3550 3600>;
 };
 
 &pmi8994_haptics {

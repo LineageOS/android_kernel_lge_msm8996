@@ -33,7 +33,6 @@
 	qcom,resume-soc-raw = <247>;
 	qcom,fg-iterm-ma = <200>;
 	qcom,fg-chg-iterm-ma = <100>;
-	qcom,lge_batt_profile;
 	qcom,hot-bat-decidegc = <500>;
 	qcom,warm-bat-decidegc = <450>;
 	qcom,cool-bat-decidegc = <100>;
@@ -44,7 +43,6 @@
 	qcom,fg-cc-cv-threshold-mv = <4340>; //float-voltage set as 4350 in common-various
 	qcom,esr-pulse-tuning-en;
 	qcom,fg-use-vbat-low-empty-soc;
-	qcom,fg-reset-on-lockup;
 	qcom,fg-cc-soc-limit-pct = <120>;
 	qcom,fg-control-slope-limiter;
 	qcom,fg-slope-limit-high-temp-chg = <6>;
@@ -56,9 +54,7 @@
 	qcom,fg-dischg-med-voltage-gain = <5 4 4>;
 	qcom,fg-dischg-high-voltage-gain = <4 4 3>;
 	qcom,fg-rconn-mohm = <30>;
-	qcom,cl-max-limit-deciperc= <50>;
-	qcom,fg-acfa-usable-fcc = <90 80 70 60>;
-	qcom,fg-acfa-v-cutoff-aged = <3400 3500 3550 3600>;
+	qcom,cl-max-limit-deciperc = <50>;
 };
 
 &pmi8994_haptics {
