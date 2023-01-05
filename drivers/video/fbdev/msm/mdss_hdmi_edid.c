@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2020, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2017,2019-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -186,6 +186,9 @@ struct hdmi_edid_ctrl {
 	bool y420_cmdb_supports_all;
 	struct hdmi_edid_y420_cmdb y420_cmdb;
 
+	enum edid_screen_orientation orientation;
+	enum aspect_ratio aspect_ratio;
+
 	struct hdmi_edid_sink_data sink_data;
 	struct hdmi_edid_init_data init_data;
 	struct hdmi_edid_sink_caps sink_caps;
@@ -278,6 +281,11 @@ int hdmi_edid_reset_parser(void *input)
 	edid_ctrl->y420_cmdb_supports_all = false;
 	kfree(edid_ctrl->y420_cmdb.vic_list);
 	memset(&edid_ctrl->y420_cmdb, 0, sizeof(edid_ctrl->y420_cmdb));
+
+	edid_ctrl->physical_width = 0;
+	edid_ctrl->physical_height = 0;
+	edid_ctrl->orientation = 0;
+	edid_ctrl->aspect_ratio = HDMI_RES_AR_INVALID;
 	return 0;
 }
 
@@ -994,6 +1002,7 @@ static const u8 *hdmi_edid_find_hfvsdb(const u8 *in_buf)
 	return vsd;
 }
 
+#ifndef LGE_TEMP_PATCH_FOR_4K_OUT_FORMAT_TO_RGB
 static void hdmi_edid_add_sink_y420_format(struct hdmi_edid_ctrl *edid_ctrl,
 					   u32 video_format)
 {
@@ -1241,6 +1250,7 @@ static void hdmi_edid_parse_colorimetry(
 	edid_ctrl->colorimetry.standards = in_buf[2];
 	edid_ctrl->colorimetry.metadata_profiles = in_buf[3];
 }
+#endif
 
 static void hdmi_edid_extract_extended_data_blocks(
 	struct hdmi_edid_ctrl *edid_ctrl, const u8 *in_buf)
@@ -1331,6 +1341,7 @@ static void hdmi_edid_extract_extended_data_blocks(
 					__func__, etag[2]);
 			hdmi_edid_parse_colorimetry(edid_ctrl, etag);
 			break;
+#endif
 		default:
 			DEV_DBG("%s: Tag Code %d not supported\n",
 				__func__, etag[1]);
@@ -2138,8 +2149,18 @@ static void hdmi_edid_add_sink_video_format(struct hdmi_edid_ctrl *edid_ctrl,
 				&timing, MDP_RGBA_8888);
 	struct hdmi_edid_sink_data *sink_data = &edid_ctrl->sink_data;
 	struct disp_mode_info *disp_mode_list = sink_data->disp_mode_list;
-	u32 i = 0;
-	bool y420_supported = false;
+#endif
+	video_format = limit_supported_video_format(video_format);
+#else
+	struct msm_hdmi_mode_timing_info timing = {0};
+	u32 ret = hdmi_get_supported_mode(&timing,
+				&edid_ctrl->init_data.ds_data,
+				video_format);
+	u32 supported = hdmi_edid_is_mode_supported(edid_ctrl,
+				&timing, MDP_RGBA_8888);
+	struct hdmi_edid_sink_data *sink_data = &edid_ctrl->sink_data;
+	struct disp_mode_info *disp_mode_list = sink_data->disp_mode_list;
+#endif
 
 	if (video_format >= HDMI_VFRMT_MAX) {
 		DEV_ERR("%s: video format: %s is not supported\n", __func__,
@@ -2831,6 +2852,11 @@ int hdmi_edid_parser(void *input)
 			edid_ctrl->sink_mode = SINK_MODE_HDMI;
 		else
 			edid_ctrl->sink_mode = SINK_MODE_DVI;
+
+#ifdef CONFIG_SLIMPORT_CTYPE
+		if (lge_get_factory_boot())
+			edid_ctrl->sink_mode = SINK_MODE_HDMI;
+#endif
 
 		if (ieee_reg_id == EDID_IEEE_REG_ID) {
 			hdmi_edid_extract_sink_caps(edid_ctrl, edid_buf);

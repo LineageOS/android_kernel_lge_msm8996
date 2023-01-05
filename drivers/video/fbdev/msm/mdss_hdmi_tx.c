@@ -1,4 +1,4 @@
-/* Copyright (c) 2010-2020, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2010-2017,2019-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -2598,6 +2598,10 @@ static void hdmi_tx_hpd_int_work(struct work_struct *work)
 	DEV_DBG("%s: %s\n", __func__,
 		hpd_state ? "CONNECT" : "DISCONNECT");
 
+#ifdef CONFIG_LGE_DP_ANX7688
+	sp_rx_cur_info();
+#endif
+
 	if (hpd_state) {
 		hdmi_tx_hpd_polarity_setup(hdmi_ctrl,
 				HPD_DISCONNECT_POLARITY);
@@ -2619,6 +2623,14 @@ static void hdmi_tx_hpd_int_work(struct work_struct *work)
 			hdmi_tx_hpd_polarity_setup(hdmi_ctrl,
 					HPD_CONNECT_POLARITY);
 		}
+	}
+
+	hdmi_tx_update_hdcp_info(hdmi_ctrl);
+
+	if (hdmi_tx_is_hdcp_enabled(hdmi_ctrl)) {
+		if (hdmi_ctrl->hdcp_ops->load_keys)
+			hdmi_ctrl->hdcp_ops->load_keys(
+				hdmi_ctrl->hdcp_data);
 	}
 } /* hdmi_tx_hpd_int_work */
 
@@ -3611,6 +3623,9 @@ static int hdmi_tx_power_off(struct hdmi_tx_ctrl *hdmi_ctrl)
 	hdmi_ctrl->panel_power_on = false;
 	hdmi_ctrl->vic = 0;
 
+	hdmi_ctrl->use_bt2020 = false;
+	hdmi_ctrl->curr_hdr_state = HDR_DISABLE;
+
 	if (hdmi_ctrl->hpd_off_pending || hdmi_ctrl->panel_suspend)
 		hdmi_tx_hpd_off(hdmi_ctrl);
 
@@ -3750,6 +3765,8 @@ static void hdmi_tx_hpd_off(struct hdmi_tx_ctrl *hdmi_ctrl)
 	hdmi_ctrl->hpd_initialized = false;
 	hdmi_ctrl->hpd_off_pending = false;
 	hdmi_ctrl->dc_support = false;
+
+	hdmi_edid_reset_parser(hdmi_tx_get_fd(HDMI_TX_FEAT_EDID));
 
 	DEV_DBG("%s: HPD is now OFF\n", __func__);
 } /* hdmi_tx_hpd_off */
@@ -4398,6 +4415,7 @@ sysfs_err:
 static int hdmi_tx_evt_handle_check_param(struct hdmi_tx_ctrl *hdmi_ctrl)
 {
 	struct mdss_panel_info *pinfo = &hdmi_ctrl->panel_data.panel_info;
+	void *data = NULL;
 	int new_vic = -1;
 	int rc = 0;
 
