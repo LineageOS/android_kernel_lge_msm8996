@@ -1561,6 +1561,13 @@ int hdcp_1x_reauthenticate(void *input)
 		return -EINVAL;
 	}
 
+#ifdef CONFIG_LGE_DP_ANX7688
+	if(hdcp->hdcp_off){
+		DEV_ERR("%s: HDCP OFF\n", __func__);
+		return -EINVAL;
+	}
+#endif
+
 	io = hdcp->init_data.core_io;
 	reg_set = &hdcp->reg_set;
 	isr = &hdcp->int_set;
