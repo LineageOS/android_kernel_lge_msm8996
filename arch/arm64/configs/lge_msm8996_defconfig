@@ -145,10 +145,15 @@ CONFIG_USELIB=n
 CONFIG_SMB135X_CHARGER=n
 
 # 4.4-specific adjustments and optimizations
+CONFIG_ZRAM=y
+CONFIG_ZSMALLOC=y
 CONFIG_KERNEL_LZ4=y
 CONFIG_CRYPTO_LZ4=y
 CONFIG_ACPI=n # Kernel fails to build if this is enabled
 CONFIG_JUMP_LABEL=y
+CONFIG_CPU_IDLE=y
+CONFIG_THERMAL=y
+CONFIG_CPU_BOOST=n # Kernel fails to build if this is enabled
 
 # Disable legacy camera (We're using MSMB_CAMERA in 4.4)
 CONFIG_MSM_CAMERA=n
@@ -156,3 +161,6 @@ CONFIG_MSM_CAMERA_DEBUG=n
 
 # Work around some camera issues specific to LGE on 4.4
 CONFIG_LGE_ISP_CMD_WORKAROUND_FOR_44=y
+
+# OTG Wakelock is enabled on sony's tone platform, and our USB stack is based on theirs
+CONFIG_USB_OTG_WAKELOCK=y
