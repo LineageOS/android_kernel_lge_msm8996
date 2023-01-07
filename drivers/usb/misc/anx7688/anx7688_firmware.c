@@ -26,10 +26,9 @@
 
 int anx7688_fw_delay_ms = 4;
 
+/* This function is basically useless now, kept for compatibility */
 static bool is_factory_cable(void)
 {
-	//unsigned int cable_info;
-	//cable_info = NO_INIT_CABLE;
 	return false;
 }
 

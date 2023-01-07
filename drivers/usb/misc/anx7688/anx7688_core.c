@@ -82,7 +82,7 @@ static enum dual_role_property drp_properties[] = {
 	DUAL_ROLE_PROP_PR,
 	DUAL_ROLE_PROP_DR,
 	DUAL_ROLE_PROP_VCONN_SUPPLY,
-#ifdef  CONFIG_LGE_USB_TYPE_C
+#ifdef CONFIG_LGE_USB_TYPE_C
 	DUAL_ROLE_PROP_CC1,
 	DUAL_ROLE_PROP_CC2,
 	DUAL_ROLE_PROP_PDO1,
@@ -120,7 +120,7 @@ static int dual_role_get_prop(struct dual_role_phy_instance *dual_role,
 	case DUAL_ROLE_PROP_VCONN_SUPPLY:
 		*val = chip->is_vconn_on;
 		break;
-#ifdef  CONFIG_LGE_USB_TYPE_C
+#ifdef CONFIG_LGE_USB_TYPE_C
 	case DUAL_ROLE_PROP_CC1:
 	case DUAL_ROLE_PROP_CC2:
 		switch (prop == DUAL_ROLE_PROP_CC1 ? chip->cc1 : chip->cc2) {
@@ -705,13 +705,13 @@ static int usbpd_set_property(struct power_supply *psy,
 			if (chip->mode == DUAL_ROLE_PROP_MODE_NONE) {
 				anx7688_set_data_role(chip,
 						DUAL_ROLE_PROP_DR_DEVICE);
-#if defined(CONFIG_LGE_USB_TYPE_C)
+#ifdef CONFIG_LGE_USB_TYPE_C
 				if (chip->pdata->fwver < MI1_FWVER_RC1)
 					anx7688_pwr_on(chip);
 #endif
 			} else if (chip->state == STATE_DEBUG_ACCESSORY) {
 				if (!atomic_read(&chip->power_on)) {
-#if defined(CONFIG_LGE_USB_TYPE_C)
+#ifdef CONFIG_LGE_USB_TYPE_C
 				
 				anx7688_pwr_on(chip);
 				anx7688_set_data_role(chip,
@@ -720,7 +720,7 @@ static int usbpd_set_property(struct power_supply *psy,
 				/* Do nothing */
 				;
 #endif
-#if defined(CONFIG_LGE_USB_TYPE_C)
+#ifdef CONFIG_LGE_USB_TYPE_C
 				} else if (chip->data_role ==
 						DUAL_ROLE_PROP_DR_NONE) {
 					anx7688_set_data_role(chip,
@@ -745,14 +745,14 @@ static int usbpd_set_property(struct power_supply *psy,
 						power_supply_set_property(chip->usb_psy, 
 							POWER_SUPPLY_PROP_PRESENT, 0);
 #endif
-#ifdef  CONFIG_LGE_USB_TYPE_C
+#ifdef CONFIG_LGE_USB_TYPE_C
 					anx7688_pwr_down(chip);
 #endif
 				}
 			}
 		} else if (chip->state == STATE_DEBUG_ACCESSORY &&
 					!val->intval) {
-#if defined( CONFIG_LGE_USB_TYPE_C)
+#ifdef CONFIG_LGE_USB_TYPE_C
 			anx7688_set_data_role(chip, DUAL_ROLE_PROP_DR_NONE);
 			anx7688_pwr_down(chip);
 #else
@@ -950,7 +950,7 @@ static void anx7688_ctype_work(struct work_struct *w)
 
 void anx7688_sbu_ctrl(struct anx7688_chip *chip, bool dir)
 {
-#ifdef  CONFIG_LGE_USB_TYPE_C
+#ifdef CONFIG_LGE_USB_TYPE_C
 #ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_SIMPLE
 	chip->dp_alt_mode = !dir;
 #else
@@ -993,20 +993,23 @@ static void anx7688_detach(struct anx7688_chip *chip)
 	struct device *cdev = &client->dev;
 
 	union power_supply_propval pval = {0,};
-#ifdef  CONFIG_LGE_USB_TYPE_C
+#ifdef CONFIG_LGE_USB_TYPE_C
 	uint8_t offered_pdo_idx;
 #endif
 
 	switch (chip->state) {
 	case STATE_ATTACHED_SRC:
 		anx7688_vconn_ctrl(chip, false);
+#ifndef ANX7688_DISABLE_USB_PSY
 		if (chip->usb_psy) {
 			pval.intval = (int) false;
 			power_supply_set_property(chip->usb_psy,
 				POWER_SUPPLY_PROP_USB_OTG, &pval);;
 		}
+#endif
 		break;
 	case STATE_ATTACHED_SNK:
+#ifndef ANX7688_DISABLE_USB_PSY
 		pval.intval = 0;
 		if (chip->usb_psy)
 			power_supply_set_property(chip->usb_psy,
@@ -1015,6 +1018,7 @@ static void anx7688_detach(struct anx7688_chip *chip)
 		chip->curr_max = 0;
 		usbpd_set_property_on_batt(chip,
 					POWER_SUPPLY_PROP_CURRENT_CAPABILITY);
+#endif
 		break;
 	case STATE_AUDIO_ACCESSORY:
 		break;
@@ -1054,7 +1058,7 @@ static void anx7688_detach(struct anx7688_chip *chip)
 #endif
 	chip->cc1 = CC_OPEN;
 	chip->cc2 = CC_OPEN;
-#ifdef  CONFIG_LGE_USB_TYPE_C
+#ifdef CONFIG_LGE_USB_TYPE_C
 	for (offered_pdo_idx = 0; offered_pdo_idx < PD_MAX_PDO_NUM; offered_pdo_idx++)
 		chip->offered_pdo[offered_pdo_idx] = 0;
 	chip->offered_rdo = 0;
@@ -1063,19 +1067,12 @@ static void anx7688_detach(struct anx7688_chip *chip)
 	anx_update_state(chip, STATE_UNATTACHED_DRP);
 	anx7688_set_mode_role(chip, DUAL_ROLE_PROP_MODE_NONE);
 	dual_role_instance_changed(chip->dual_role);
-	usbpd_set_property_on_batt(chip, POWER_SUPPLY_PROP_TYPEC_MODE);
 	return;
 }
 
 static void anx7688_snk_detect(struct anx7688_chip *chip)
 {
-#ifndef ANX7688_DISABLE_USB_PSY
-	union power_supply_propval pval = {true, };
-#endif
-
 	chip->mode = DUAL_ROLE_PROP_MODE_DFP;
-	chip->usbpd_psy_d.type = POWER_SUPPLY_TYPE_DFP;
-	dual_role_instance_changed(chip->dual_role);
 	OhioMaskWriteReg(USBC_ADDR, USBC_ANALOG_CTRL_6, USBC_R_RP, 0);
 	/*
 	 * mi1 firmware bug:
@@ -1087,17 +1084,7 @@ static void anx7688_snk_detect(struct anx7688_chip *chip)
 		anx7688_set_power_role(chip, DUAL_ROLE_PROP_PR_SRC);
 		anx7688_set_data_role(chip, DUAL_ROLE_PROP_DR_HOST);
 	}
-
-#ifndef ANX7688_DISABLE_USB_PSY
-		power_supply_set_property(chip->usb_psy,
-			POWER_SUPPLY_PROP_USB_OTG, &pval);
-#endif
-
 	anx_update_state(chip, STATE_ATTACHED_SRC);
-	dual_role_instance_changed(chip->dual_role);
-
-	chip->curr_max = 0;
-	usbpd_set_property_on_batt(chip, POWER_SUPPLY_PROP_TYPEC_MODE);
 }
 
 #ifdef CONFIG_LGE_USB_ANX7688_ADC
@@ -1307,7 +1294,7 @@ static void anx7688_audio_accessory_detect(struct anx7688_chip *chip)
 static void anx7688_debug_accessory_detect(struct anx7688_chip *chip)
 {
 	anx7688_sbu_ctrl(chip, true);
-#ifdef  CONFIG_LGE_USB_TYPE_C
+#ifdef CONFIG_LGE_USB_TYPE_C
 	chip->mode = DUAL_ROLE_PROP_MODE_UFP;
 	anx7688_set_data_role(chip, DUAL_ROLE_PROP_DR_DEVICE);
 	anx7688_set_power_role(chip, DUAL_ROLE_PROP_PR_SNK);
@@ -1461,7 +1448,7 @@ static void usbc_pd_got_power(struct anx7688_chip *chip)
 {
 	struct device *cdev = &chip->client->dev;
 	int volt, power;
-#ifdef  CONFIG_LGE_USB_TYPE_C
+#ifdef CONFIG_LGE_USB_TYPE_C
 	int i = 0;
 #endif
 
@@ -1479,7 +1466,7 @@ static void usbc_pd_got_power(struct anx7688_chip *chip)
 		schedule_delayed_work(&chip->cwork, msecs_to_jiffies(0));
 	}
 #endif
-#ifdef  CONFIG_LGE_USB_TYPE_C
+#ifdef CONFIG_LGE_USB_TYPE_C
 	for(i = 0 ; i < PD_MAX_PDO_NUM ; i++) {
 		if(chip->offered_pdo[i] == 0 || GET_PDO_TYPE(chip->offered_pdo[i]) != 0)
 			continue;

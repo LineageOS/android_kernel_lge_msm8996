@@ -31,7 +31,7 @@
 #include <soc/qcom/smem.h>
 #endif
 
-#ifdef  CONFIG_LGE_USB_TYPE_C
+#ifdef CONFIG_LGE_USB_TYPE_C
 #define PD_MAX_PDO_NUM 7
 #endif
 
