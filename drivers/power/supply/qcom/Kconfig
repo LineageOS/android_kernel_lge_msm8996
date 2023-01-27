@@ -15,6 +15,13 @@ config QPNP_SMBCHARGER_EXTENSION
 	help
 	  Say Y here to enable SoMC extensional SMB charger functions.
 
+config LGE_CUSTOM_CHARGE_RATES
+	tristate "Custom charge rates for LGE 8996 devices"
+	depends on QPNP_SMBCHARGER_EXTENSION
+	help
+	  Say Y here to enable the custom charge rates for LGE G5, G6 and V20,
+	  replacing qcom's and SoMC's defaults which are much slower overall.
+
 config QPNP_FG
 	tristate "QPNP fuel gauge driver"
 	depends on MFD_SPMI_PMIC
