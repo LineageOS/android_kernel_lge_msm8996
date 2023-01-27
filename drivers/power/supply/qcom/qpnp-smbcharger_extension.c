@@ -506,27 +506,133 @@ static int somc_chg_temp_get_status(u8 temp)
 	return status;
 }
 
+#ifdef CONFIG_LGE_CUSTOM_CHARGE_RATES
+/*
+ * This function serves as a charge current override for LGE-8996 devices,
+ * working in tandem with somc_chg_temp_set_fastchg_ma()'s customization
+ * to allow for a tweakable charge curve that tries to mimic the stock 
+ * behavior of the phones. The formulas are pretty basic and expect the max_curr
+ * values to be 3000mA for G6/V20 and 2500mA for G5. More improvements can be
+ * made down the line as long as it stays compatible with -mgeneral-regs-only.
+ */
+static int somc_lge_chg_current_override(struct smbchg_chip *chip) 
+{
+	int chg_ma = chip->somc_params.chg_det.typec_current_max, step = chg_ma/100, capacity = 0;
+	int rc = 0;
+	
+	rc = get_property_from_fg(chip, POWER_SUPPLY_PROP_CAPACITY, &capacity);
+
+	/* Return default fastchg current if batt cap can't be read */
+	if (rc) {
+		pr_smb_ext(PR_STATUS, "Couldn't get capacity rc = %d\n", rc);
+		return chip->fastchg_current_ma;
+	}
+
+	#ifdef CONFIG_MACH_MSM8996_ELSA
+	/*
+	 * V20: max_curr - (max_curr/100) * batt_level
+	 * max_curr is assumed to be 3000mA, and batt_level
+	 * only factors in after 40% to allow max-rate charging 
+	 * up to 40% batt capacity, so it goes from 0 to 60 in
+	 * actual value, even though the fuel gauge will still
+	 * report from 0 to 100. Values are cast to int automatically.
+	 */
+	if(capacity <= 40)
+		capacity = 0;
+	else
+		capacity = capacity - 40;
+
+	chg_ma -= step*capacity;
+	#elif  CONFIG_MACH_MSM8996_H1
+	/*
+	 * G5: max_curr - (max_curr/100)* batt_level
+	 * max_curr is assumed to be 2500mA, and batt_level
+	 * goes from 0 to 80 in value. The lack of the 1.25 
+	 * multiplier seen on V20's curve means it has a 
+	 * smaller ramp down compared to V20, but starts 
+	 * ramping down much sooner.
+	 */
+	if(capacity <= 20)
+		capacity = 0;
+	else
+		capacity -= 20;
+
+	chg_ma -= step*capacity;
+	#elif  CONFIG_MACH_MSM8996_LUCYE
+	/*
+	 * G6: max_curr - (max_curr/100) * batt_level * 2
+	 * max_curr is assumed to be 3000mA, and batt_level
+	 * goes from 0 to 45 in actual value. This is the 
+	 * fastest one to ramp down, but this is to balance
+	 * the much longer boost charge the G6 has, being able
+	 * to stay at max-rate all the way to 50% in stock (how
+	 * would they advertise those short charge times otherwise?).
+	 */
+	if(capacity <= 58)
+		capacity = 0;
+	else
+		capacity -= 58;
+
+	chg_ma -= step*capacity*2;
+	#endif
+
+	pr_smb_ext(PR_STATUS, "[LGE-PRE-CURR] calculated val = %d\n", chg_ma);
+	return chg_ma;
+}
+#endif
+
 static void somc_chg_temp_set_fastchg_ma(
-			struct smbchg_chip *chip, int current_ma)
+			struct smbchg_chip *chip, int mitigation_current_ma)
 {
 	int rc = 0;
+	struct chg_somc_params *params = &chip->somc_params;
+#ifdef CONFIG_LGE_CUSTOM_CHARGE_RATES
+	int chg_ma = somc_lge_chg_current_override(chip);
 
-	if (current_ma){
-		if(chip->fastchg_current_ma < current_ma) {
-			pr_smb_ext(PR_THERM,
-				"abnormal temp detected but current is below mitigation value, ignoring...\n");
-			rc = vote(chip->fcc_votable, TEMP_FCC_VOTER, false, 0);
-		}
-		else {
-			pr_smb_ext(PR_THERM,
-				"abnormal temp detected, fastchg-ma changed to %dma\n", current_ma);
-			rc = vote(chip->fcc_votable, TEMP_FCC_VOTER, true, current_ma);
-		}
-	} else {
+	if(params->temp.status != TEMP_STATUS_NORMAL && chg_ma < mitigation_current_ma) {
 		pr_smb_ext(PR_THERM,
-			"fastchg-ma restored due to normal temp\n");
+			"[LGE-CURR] %s temp detected but current is below mitigation value, ignoring...\n", 
+			*(tempstat_names + params->temp.status));
+
+		rc = vote(chip->fcc_votable, TEMP_FCC_VOTER, true, chg_ma);
+	}
+	else if(params->temp.status != TEMP_STATUS_NORMAL) {
+		pr_smb_ext(PR_THERM,
+			"[LGE-CURR] %s temp detected, fastchg-ma changed to %dma\n", 
+			*(tempstat_names + params->temp.status), mitigation_current_ma);
+		
+		rc = vote(chip->fcc_votable, TEMP_FCC_VOTER, true, mitigation_current_ma);
+	}
+	else {
+		pr_smb_ext(PR_THERM,
+			"[LGE-CURR] %s temp, fastchg-ma calculated as: %d\n", 
+			*(tempstat_names + params->temp.status), chg_ma);
+
+		rc = vote(chip->fcc_votable, TEMP_FCC_VOTER, true, chg_ma);
+	}
+#else
+	if(params->temp.status != TEMP_STATUS_NORMAL && chip->fastchg_current_ma < mitigation_current_ma) {
+		pr_smb_ext(PR_THERM,
+			"%s temp detected but current is below mitigation value, ignoring...\n", 
+			*(tempstat_names + params->temp.status));
+
 		rc = vote(chip->fcc_votable, TEMP_FCC_VOTER, false, 0);
 	}
+	else if(params->temp.status != TEMP_STATUS_NORMAL) {
+		pr_smb_ext(PR_THERM,
+			"%s temp detected, fastchg-ma changed to %dma\n", 
+			*(tempstat_names + params->temp.status), mitigation_current_ma);
+
+		rc = vote(chip->fcc_votable, TEMP_FCC_VOTER, true, mitigation_current_ma);
+	}
+	 else {
+		pr_smb_ext(PR_THERM,
+			"fastchg-ma restored due to %s temp\n", 
+			*(tempstat_names + params->temp.status));
+
+		rc = vote(chip->fcc_votable, TEMP_FCC_VOTER, false, 0);
+	}
+#endif
 		
 	if (rc < 0)
 		pr_err("Couldn't vote for fastchg current rc=%d\n", rc);
@@ -549,7 +655,6 @@ static void somc_chg_temp_work(struct work_struct *work)
 	if (status == params->temp.prev_status) {
 		pr_smb_ext(PR_THERM, "batt temp status did not change, still reporting as %s\n", 
 			*(tempstat_names + status));
-		return;
 	}
 
 	pr_smb_ext(PR_INFO, "batt temp status changed from %s to %s\n",
