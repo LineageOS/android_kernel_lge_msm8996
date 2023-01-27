@@ -532,40 +532,37 @@ static int somc_lge_chg_current_override(struct smbchg_chip *chip)
 	/*
 	 * V20: max_curr - (max_curr/100) * batt_level
 	 * max_curr is assumed to be 3000mA, and batt_level
-	 * only factors in after 40% to allow max-rate charging 
-	 * up to 40% batt capacity, so it goes from 0 to 60 in
+	 * only factors in after 30% to allow max-rate charging 
+	 * up to 30% batt capacity, so it goes from 0 to 60 in
 	 * actual value, even though the fuel gauge will still
 	 * report from 0 to 100. Values are cast to int automatically.
 	 */
-	if(capacity <= 40)
+	if(capacity <= 30)
 		capacity = 0;
 	else
-		capacity = capacity - 40;
+		capacity = capacity - 30;
 
 	chg_ma -= step*capacity;
 	#elif  CONFIG_MACH_MSM8996_H1
 	/*
 	 * G5: max_curr - (max_curr/100)* batt_level
 	 * max_curr is assumed to be 2500mA, and batt_level
-	 * goes from 0 to 80 in value. The lack of the 1.25 
-	 * multiplier seen on V20's curve means it has a 
-	 * smaller ramp down compared to V20, but starts 
-	 * ramping down much sooner.
+	 * goes from 0 to 78 in value.
 	 */
-	if(capacity <= 20)
+	if(capacity <= 22)
 		capacity = 0;
 	else
-		capacity -= 20;
+		capacity -= 22;
 
 	chg_ma -= step*capacity;
 	#elif  CONFIG_MACH_MSM8996_LUCYE
 	/*
 	 * G6: max_curr - (max_curr/100) * batt_level * 2
 	 * max_curr is assumed to be 3000mA, and batt_level
-	 * goes from 0 to 45 in actual value. This is the 
+	 * goes from 0 to 42 in actual value. This is the 
 	 * fastest one to ramp down, but this is to balance
 	 * the much longer boost charge the G6 has, being able
-	 * to stay at max-rate all the way to 50% in stock (how
+	 * to stay at max-rate all the way to around 50% in stock (how
 	 * would they advertise those short charge times otherwise?).
 	 */
 	if(capacity <= 58)
@@ -576,7 +573,6 @@ static int somc_lge_chg_current_override(struct smbchg_chip *chip)
 	chg_ma -= step*capacity*2;
 	#endif
 
-	pr_smb_ext(PR_STATUS, "[LGE-PRE-CURR] calculated val = %d\n", chg_ma);
 	return chg_ma;
 }
 #endif
