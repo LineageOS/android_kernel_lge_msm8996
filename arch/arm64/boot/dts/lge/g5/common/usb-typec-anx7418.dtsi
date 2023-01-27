@@ -29,7 +29,7 @@
 	somc,thermal-mitigation-usb-7v = <1800 1800 1800 1800 1300 1300 1300 1300 1100 900 700 500 300 0 0>;
 	somc,thermal-mitigation-usb-8v = <1600 1600 1600 1600 1200 1200 1200 1200 1000 800 600 500 300 0 0>;
 	somc,thermal-mitigation-usb-9v = <1500 1500 1500 1500 1100 1100 1100 1100 900 700 500 500 300 0 0>;
-	somc,typec-current-max = <2000>;
+	somc,typec-current-max = <2500>;
 };
 
 &i2c_6 {
