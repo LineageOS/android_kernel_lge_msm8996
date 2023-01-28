@@ -532,27 +532,27 @@ static int somc_lge_chg_current_override(struct smbchg_chip *chip)
 	/*
 	 * V20: max_curr - (max_curr/100) * batt_level
 	 * max_curr is assumed to be 3000mA, and batt_level
-	 * only factors in after 30% to allow max-rate charging 
-	 * up to 30% batt capacity, so it goes from 0 to 60 in
+	 * only factors in after 40% to allow max-rate charging 
+	 * up to 40% batt capacity, so it goes from 0 to 60 in
 	 * actual value, even though the fuel gauge will still
 	 * report from 0 to 100. Values are cast to int automatically.
 	 */
-	if(capacity <= 30)
+	if(capacity <= 40)
 		capacity = 0;
 	else
-		capacity = capacity - 30;
+		capacity = capacity - 40;
 
 	chg_ma -= step*capacity;
 	#elif  CONFIG_MACH_MSM8996_H1
 	/*
 	 * G5: max_curr - (max_curr/100)* batt_level
 	 * max_curr is assumed to be 2500mA, and batt_level
-	 * goes from 0 to 78 in value.
+	 * goes from 0 to 72 in value.
 	 */
-	if(capacity <= 22)
+	if(capacity <= 28)
 		capacity = 0;
 	else
-		capacity -= 22;
+		capacity -= 28;
 
 	chg_ma -= step*capacity;
 	#elif  CONFIG_MACH_MSM8996_LUCYE
@@ -645,7 +645,23 @@ static void somc_chg_temp_work(struct work_struct *work)
 					struct smbchg_chip, somc_params);
 	int status, current_ma;
 
+	#ifdef CONFIG_LGE_CUSTOM_CHARGE_RATES
+	/* 
+	 * Batt temp compensation for LGE devices' boosted rates. qpnp-fg's
+	 * decidegc values do not seem to work here and instead the values get
+	 * forced down to 39C for STATUS_WARM.
+	 * */
+	#ifdef CONFIG_MACH_MSM8996_ELSA /* 39C + 6 = 45C WARM threshold */
+	status = somc_chg_temp_get_status(params->temp.temp_val-6);
+	#elif CONFIG_MACH_MSM8996_H1 /* 39C + 2 = 41C WARM threshold */
+	status = somc_chg_temp_get_status(params->temp.temp_val-2);
+	#elif CONFIG_MACH_MSM8996_LUCYE /* 39C + 4 = 43C WARM threshold */
+	status = somc_chg_temp_get_status(params->temp.temp_val-4);
+	#endif
+
+	#else
 	status = somc_chg_temp_get_status(params->temp.temp_val);
+	#endif
 	params->temp.status = status;
 
 	if (status == params->temp.prev_status) {
