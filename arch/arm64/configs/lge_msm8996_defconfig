@@ -167,3 +167,6 @@ CONFIG_LGE_ISP_CMD_WORKAROUND_FOR_44=y
 
 # OTG Wakelock is enabled on sony's tone platform, and our USB stack is based on theirs
 CONFIG_USB_OTG_WAKELOCK=y
+
+# UID Stats
+CONFIG_UID_SYS_STATS=y
