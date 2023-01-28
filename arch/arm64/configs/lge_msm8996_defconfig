@@ -162,6 +162,7 @@ CONFIG_CPU_BOOST=n # Kernel fails to build if this is enabled
 # Disable legacy camera (We're using MSMB_CAMERA in 4.4)
 CONFIG_MSM_CAMERA=n
 CONFIG_MSM_CAMERA_DEBUG=n
+CONFIG_MSMB_CAMERA_DEBUG=n
 
 # Work around some camera issues specific to LGE on 4.4
 CONFIG_LGE_ISP_CMD_WORKAROUND_FOR_44=y
