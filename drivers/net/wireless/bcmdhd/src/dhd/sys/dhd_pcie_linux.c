@@ -393,7 +393,9 @@ static int dhdpcie_suspend_dev(struct pci_dev *dev)
 #endif /* SUPPORT_LINKDOWN_RECOVERY */
 
 #endif /* OEM_ANDROID && LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0) */
+#ifndef CONFIG_MACH_LGE
 	DHD_TRACE_HW4(("%s: Enter\n", __FUNCTION__));
+#endif
 	disable_irq(dev->irq);
 	dhd_dpc_tasklet_kill(bus->dhd);
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0))
@@ -438,7 +440,9 @@ static int dhdpcie_resume_dev(struct pci_dev *dev)
 #endif /* CONFIG_ARCH_QCOM */
 #endif /* SUPPORT_LINKDOWN_RECOVERY */
 #endif /* OEM_ANDROID && LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0) */
+#ifndef CONFIG_MACH_LGE
 	DHD_TRACE_HW4(("%s: Enter\n", __FUNCTION__));
+#endif
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0))
 	bus->pci_d3hot_done = 0;
 #endif /* OEM_ANDROID && LINUX_VERSION_CODE >= KERNEL_VERSION(3, 0, 0) */
@@ -1717,7 +1721,9 @@ bool dhd_runtime_bus_wake(dhd_bus_t *bus, bool wait, void *func_addr)
 
 			DHD_GENERAL_UNLOCK(bus->dhd, flags);
 
+#ifndef CONFIG_MACH_LGE
 			DHD_ERROR(("Runtime Resume is called in %pf\n", func_addr));
+#endif
 			smp_wmb();
 			wake_up_interruptible(&bus->rpm_queue);
 		/* No need to wake up the RPM state thread */
