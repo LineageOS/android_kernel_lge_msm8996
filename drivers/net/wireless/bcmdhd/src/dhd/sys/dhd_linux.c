@@ -4909,7 +4909,9 @@ static void dhd_watchdog(ulong data)
 	}
 
 	if (dhd->pub.busstate == DHD_BUS_SUSPEND) {
+#ifndef CONFIG_MACH_LGE
 		DHD_ERROR(("%s wd while suspend in progress \n", __FUNCTION__));
+#endif
 		return;
 	}
 
@@ -4999,14 +5001,18 @@ void dhd_runtime_pm_disable_no_wait(dhd_pub_t *dhdp)
 {
 	dhd_os_runtimepm_timer(dhdp, 0);
 	dhdpcie_runtime_bus_wake(dhdp, FALSE, __builtin_return_address(0));
+#ifndef CONFIG_MACH_LGE
 	DHD_ERROR(("DHD Runtime PM Disabled No Wait \n"));
+#endif
 }
 
 void dhd_runtime_pm_disable(dhd_pub_t *dhdp)
 {
 	dhd_os_runtimepm_timer(dhdp, 0);
 	dhdpcie_runtime_bus_wake(dhdp, TRUE, __builtin_return_address(0));
+#ifndef CONFIG_MACH_LGE
 	DHD_ERROR(("DHD Runtime PM Disabled \n"));
+#endif
 }
 
 void dhd_runtime_pm_enable(dhd_pub_t *dhdp)
@@ -5017,7 +5023,9 @@ void dhd_runtime_pm_enable(dhd_pub_t *dhdp)
 		DHD_ERROR(("runtime_pm_enable is not allowed because dhd_runtimepm_ms is zero!\n"));
 	} else {
 		dhd_os_runtimepm_timer(dhdp, dhd_runtimepm_ms);
+#ifndef CONFIG_MACH_LGE
 		DHD_ERROR(("DHD Runtime PM Enabled \n"));
+#endif
 	}
 }
 #endif /* DHD_PCIE_RUNTIMEPM */
@@ -13335,9 +13343,11 @@ dhd_os_check_wakelock_all(dhd_pub_t *pub)
 
 	/* Indicate to the Host to avoid going to suspend if internal locks are up */
 	if (dhd && lock_active) {
+#ifndef CONFIG_MACH_LGE
 		DHD_ERROR(("%s wakelock c-%d wl-%d wd-%d rx-%d "
 			"ctl-%d intr-%d scan-%d evt-%d txfl-%d\n",
 			__FUNCTION__, c, l1, l2, l3, l4, l5, l6, l7, l8));
+#endif
 		return 1;
 	}
 #elif defined(BCMSDIO) && (LINUX_VERSION_CODE > KERNEL_VERSION(2, 6, 36))
