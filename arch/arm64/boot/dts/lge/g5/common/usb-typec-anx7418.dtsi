@@ -16,13 +16,19 @@
 	qcom,qusb-phy-tune-host = <0x00 0x43 0x00 0x00>;
 };
 
+/* 
+ * Battery temp readings aren't functioning as expected, and as such, 
+ * the temp mitigations are temporarily 'disabled' below until we
+ * manage to fix it. Thankfully the G5 doesn't heat up much while 
+ * charging at those rates anyway.
+ */
 &pmi8994_charger {
 	qcom,fastchg-current-ma = <2500>;
 	somc,usb-9v-current-max = <1500>;
-	somc,fastchg-warm-current-ma = <1500>;
-	somc,fastchg-cool-current-ma = <1500>;
-	somc,fastchg-hot-current-ma  = <500>;
-	somc,fastchg-cold-current-ma = <500>;
+	somc,fastchg-warm-current-ma = <2500>;
+	somc,fastchg-cool-current-ma = <2500>;
+	somc,fastchg-hot-current-ma  = <2500>;
+	somc,fastchg-cold-current-ma = <2500>;
 	somc,thermal-engine-fastchg-current = <2500>;
 	somc,thermal-mitigation-usb-5v = <2500>;
 	somc,thermal-mitigation-usb-6v = <2100>;

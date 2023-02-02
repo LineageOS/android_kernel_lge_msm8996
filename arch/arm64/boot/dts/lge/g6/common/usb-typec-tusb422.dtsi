@@ -22,8 +22,8 @@
 &pmi8994_charger {
 	qcom,fastchg-current-ma = <3000>;
 	somc,usb-9v-current-max = <1900>;
-	somc,fastchg-warm-current-ma = <2000>;
-	somc,fastchg-cool-current-ma = <2000>;
+	somc,fastchg-warm-current-ma = <2500>;
+	somc,fastchg-cool-current-ma = <2500>;
 	somc,fastchg-hot-current-ma  = <800>;
 	somc,fastchg-cold-current-ma = <800>;
 	somc,thermal-engine-fastchg-current = <3000>;

@@ -514,10 +514,14 @@ static int somc_chg_temp_get_status(u8 temp)
  * behavior of the phones. The formulas are pretty basic and expect the max_curr
  * values to be 3000mA for G6/V20 and 2500mA for G5. More improvements can be
  * made down the line as long as it stays compatible with -mgeneral-regs-only.
+ *
+ * NOTE: None of the phones are actually reaching 3000mA max yet, the reason
+ * for that is currently unknown, with the max current registered being 2273mA, so
+ * the values below account for that and keep the actual max current running for longer.
  */
 static int somc_lge_chg_current_override(struct smbchg_chip *chip) 
 {
-	int chg_ma = chip->somc_params.chg_det.typec_current_max, step = chg_ma/100, capacity = 0;
+	int chg_ma = chip->somc_params.chg_det.typec_current_max, step = 30, capacity = 0;
 	int rc = 0;
 	
 	rc = get_property_from_fg(chip, POWER_SUPPLY_PROP_CAPACITY, &capacity);
@@ -530,47 +534,50 @@ static int somc_lge_chg_current_override(struct smbchg_chip *chip)
 
 	#ifdef CONFIG_MACH_MSM8996_ELSA
 	/*
-	 * V20: max_curr - (max_curr/100) * batt_level
+	 * V20: max_curr - step (30mA) * batt_level
 	 * max_curr is assumed to be 3000mA, and batt_level
-	 * only factors in after 40% to allow max-rate charging 
-	 * up to 40% batt capacity, so it goes from 0 to 60 in
+	 * only factors in after 45% to allow max-rate charging 
+	 * up to 45% batt capacity, so it goes from 0 to 55 in
 	 * actual value, even though the fuel gauge will still
-	 * report from 0 to 100. Values are cast to int automatically.
+	 * report from 0 to 100.
 	 */
-	if(capacity <= 40)
+	if(capacity <= 45)
 		capacity = 0;
 	else
-		capacity = capacity - 40;
+		capacity = capacity - 45;
 
 	chg_ma -= step*capacity;
 	#elif  CONFIG_MACH_MSM8996_H1
 	/*
-	 * G5: max_curr - (max_curr/100)* batt_level
+	 * G5: max_curr - step (25mA) * batt_level
 	 * max_curr is assumed to be 2500mA, and batt_level
-	 * goes from 0 to 72 in value.
+	 * goes from 0 to 65 in value.
 	 */
-	if(capacity <= 28)
+	step=25;
+	if(capacity <= 35)
 		capacity = 0;
 	else
-		capacity -= 28;
+		capacity -= 35;
 
 	chg_ma -= step*capacity;
 	#elif  CONFIG_MACH_MSM8996_LUCYE
 	/*
-	 * G6: max_curr - (max_curr/100) * batt_level * 2
+	 * G6: max_curr - step (40mA) * batt_level
 	 * max_curr is assumed to be 3000mA, and batt_level
-	 * goes from 0 to 42 in actual value. This is the 
-	 * fastest one to ramp down, but this is to balance
-	 * the much longer boost charge the G6 has, being able
+	 * goes from 0 to 45 in actual value. This one ramps down
+	 * a bit faster than the others, but this is to balance
+	 * the longer boost charge the G6 has, being able
 	 * to stay at max-rate all the way to around 50% in stock (how
 	 * would they advertise those short charge times otherwise?).
 	 */
-	if(capacity <= 58)
+	step = 40;
+
+	if(capacity <= 55)
 		capacity = 0;
 	else
-		capacity -= 58;
+		capacity -= 55;
 
-	chg_ma -= step*capacity*2;
+	chg_ma -= step*capacity;
 	#endif
 
 	return chg_ma;
