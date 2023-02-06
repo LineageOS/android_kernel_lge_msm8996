@@ -1110,6 +1110,13 @@ static int get_prop_batt_status(struct smbchg_chip *chip)
 
 out:
 	pr_smb_rt(PR_MISC, "CHGR_STS = 0x%02x\n", reg);
+#if defined(CONFIG_QPNP_SMBCHARGER_EXTENSION) && defined(CONFIG_LGE_CUSTOM_CHARGE_RATES)
+	/*
+	 * Check temp status and change current every time a
+	 * batt status read is issued by smbcharger.
+	 */
+	schedule_work(&chip->somc_params.temp.work);
+#endif
 	return status;
 }
 
@@ -7178,14 +7185,22 @@ static int smbchg_dc_is_writeable(struct power_supply *psy,
 	return rc;
 }
 
+#ifndef CONFIG_LGE_CUSTOM_CHARGE_RATES
 #define HOT_BAT_HARD_BIT	BIT(0)
 #define HOT_BAT_SOFT_BIT	BIT(1)
 #define COLD_BAT_HARD_BIT	BIT(2)
 #define COLD_BAT_SOFT_BIT	BIT(3)
+#endif
 #define BAT_OV_BIT		BIT(4)
 #define BAT_LOW_BIT		BIT(5)
 #define BAT_MISSING_BIT		BIT(6)
 #define BAT_TERM_MISSING_BIT	BIT(7)
+#ifndef CONFIG_LGE_CUSTOM_CHARGE_RATES
+/*
+ * If LGE_CUSTOM_CHARGE_RATES is defined, we'll use
+ * the custom temp checks inside qpnp-smbcharger-extension.c
+ * instead of what's here.
+ */
 static irqreturn_t batt_hot_handler(int irq, void *_chip)
 {
 	struct smbchg_chip *chip = _chip;
@@ -7265,6 +7280,7 @@ static irqreturn_t batt_cool_handler(int irq, void *_chip)
 #endif
 	return IRQ_HANDLED;
 }
+#endif /* CONFIG_LGE_CUSTOM_CHARGE_RATES */
 
 static irqreturn_t batt_pres_handler(int irq, void *_chip)
 {
@@ -7837,10 +7853,12 @@ static int determine_initial_status(struct smbchg_chip *chip)
 	 */
 
 	batt_pres_handler(0, chip);
+#ifndef CONFIG_LGE_CUSTOM_CHARGE_RATES
 	batt_hot_handler(0, chip);
 	batt_warm_handler(0, chip);
 	batt_cool_handler(0, chip);
 	batt_cold_handler(0, chip);
+#endif
 #ifndef CONFIG_QPNP_SMBCHARGER_EXTENSION
 	if (chip->typec_psy) {
 		get_property_from_typec(chip, POWER_SUPPLY_PROP_TYPE, &type);
@@ -8904,6 +8922,7 @@ static int smbchg_request_irqs(struct smbchg_chip *chip)
 			break;
 		case SMBCHG_BAT_IF_SUBTYPE:
 		case SMBCHG_LITE_BAT_IF_SUBTYPE:
+#ifndef CONFIG_LGE_CUSTOM_CHARGE_RATES
 			rc = smbchg_request_irq(chip, child,
 				&chip->batt_hot_irq,
 				"batt-hot", batt_hot_handler, flags);
@@ -8922,6 +8941,7 @@ static int smbchg_request_irqs(struct smbchg_chip *chip)
 			rc = smbchg_request_irq(chip, child,
 				&chip->batt_cold_irq,
 				"batt-cold", batt_cold_handler, flags);
+#endif
 			if (rc < 0)
 				return rc;
 			rc = smbchg_request_irq(chip, child,
