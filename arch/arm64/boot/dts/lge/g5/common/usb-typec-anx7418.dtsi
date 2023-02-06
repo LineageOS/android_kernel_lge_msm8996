@@ -24,17 +24,21 @@
  */
 &pmi8994_charger {
 	qcom,fastchg-current-ma = <2500>;
-	somc,usb-9v-current-max = <1500>;
-	somc,fastchg-warm-current-ma = <2500>;
-	somc,fastchg-cool-current-ma = <2500>;
-	somc,fastchg-hot-current-ma  = <2500>;
-	somc,fastchg-cold-current-ma = <2500>;
+	somc,usb-9v-current-max = <2500>;
+	somc,fastchg-hot-threshold = <470>;
+	somc,fastchg-warm-threshold = <430>;
+	somc,fastchg-cool-threshold = <100>;
+	somc,fastchg-cold-threshold = <50>;
+	somc,fastchg-warm-current-ma = <1500>;
+	somc,fastchg-cool-current-ma = <1500>;
+	somc,fastchg-hot-current-ma  = <700>;
+	somc,fastchg-cold-current-ma = <700>;
 	somc,thermal-engine-fastchg-current = <2500>;
 	somc,thermal-mitigation-usb-5v = <2500>;
-	somc,thermal-mitigation-usb-6v = <2100>;
-	somc,thermal-mitigation-usb-7v = <1800>;
-	somc,thermal-mitigation-usb-8v = <1600>;
-	somc,thermal-mitigation-usb-9v = <1500>;
+	somc,thermal-mitigation-usb-6v = <2500>;
+	somc,thermal-mitigation-usb-7v = <2500>;
+	somc,thermal-mitigation-usb-8v = <2500>;
+	somc,thermal-mitigation-usb-9v = <2500>;
 	somc,typec-current-max = <2500>;
 };
 

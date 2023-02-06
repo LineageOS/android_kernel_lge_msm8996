@@ -139,6 +139,15 @@ struct somc_charge_error {
 	struct delayed_work	status_reset_work;
 };
 
+#ifdef CONFIG_LGE_CUSTOM_CHARGE_RATES
+struct batt_temp_thresholds {
+	int hot_threshold;
+	int warm_threshold;
+	int cool_threshold;
+	int cold_threshold;
+};
+#endif
+
 struct chg_somc_params {
 	struct somc_thermal_mitigation	thermal;
 	struct somc_low_battery		low_batt;
@@ -156,5 +165,9 @@ struct chg_somc_params {
 	struct somc_hvdcp3		hvdcp3;
 	struct somc_input_current_state	input_current;
 	struct somc_charge_error	charge_error;
+#ifdef CONFIG_LGE_CUSTOM_CHARGE_RATES
+	struct power_supply			*bms_psy;
+	struct batt_temp_thresholds temp_thresh;
+#endif
 };
 #endif /* __QPNP_SMBCHARGER_EXTENSION_PARAM */

@@ -32,8 +32,10 @@ static void somc_unplug_wakelock(struct chg_somc_params *params);
 static void somc_chg_shutdown_lowbatt(struct smbchg_chip *chip);
 static void somc_chg_check_soc(struct smbchg_chip *chip,
 			int current_soc);
+#ifndef CONFIG_LGE_CUSTOM_CHARGE_RATES /* This one's not used with LGE_RATES. */
 static void somc_chg_temp_status_transition(
 			struct chg_somc_params *params, u8 reg);
+#endif
 static bool somc_chg_therm_is_not_charge(
 			struct smbchg_chip *chip, int therm_lvl);
 static bool somc_chg_therm_is_hvdcp_limit(struct smbchg_chip *chip);
