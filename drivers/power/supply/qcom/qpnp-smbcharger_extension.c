@@ -703,11 +703,11 @@ static void somc_chg_temp_work(struct work_struct *work)
 	if (status == params->temp.prev_status) {
 		pr_smb_ext(PR_THERM, "batt temp status did not change, still reporting as %s\n", 
 			*(tempstat_names + status));
-	}
-
+	} else {
 	pr_smb_ext(PR_INFO, "batt temp status changed from %s to %s\n",
 		*(tempstat_names + params->temp.prev_status), *(tempstat_names + status));
-
+	}
+	
 	switch (status) {
 	case TEMP_STATUS_HOT:
 		current_ma = params->temp.hot_current_ma;

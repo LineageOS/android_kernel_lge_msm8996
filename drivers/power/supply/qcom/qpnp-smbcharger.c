@@ -226,10 +226,12 @@ struct smbchg_chip {
 	unsigned int			*thermal_mitigation;
 
 	/* irqs */
+#ifndef CONFIG_LGE_CUSTOM_CHARGE_RATES
 	int				batt_hot_irq;
 	int				batt_warm_irq;
 	int				batt_cool_irq;
 	int				batt_cold_irq;
+#endif
 	int				batt_missing_irq;
 	int				vbat_low_irq;
 	int				chg_hot_irq;
@@ -8725,9 +8727,9 @@ static int smbchg_request_irqs(struct smbchg_chip *chip)
 			rc = smbchg_request_irq(chip, child,
 				&chip->batt_cold_irq,
 				"batt-cold", batt_cold_handler, flags);
-#endif
 			if (rc < 0)
 				return rc;
+#endif
 			rc = smbchg_request_irq(chip, child,
 				&chip->batt_missing_irq,
 				"batt-missing", batt_pres_handler, flags);
@@ -8739,10 +8741,12 @@ static int smbchg_request_irqs(struct smbchg_chip *chip)
 			if (rc < 0)
 				return rc;
 
+#ifndef CONFIG_LGE_CUSTOM_CHARGE_RATES
 			enable_irq_wake(chip->batt_hot_irq);
 			enable_irq_wake(chip->batt_warm_irq);
 			enable_irq_wake(chip->batt_cool_irq);
 			enable_irq_wake(chip->batt_cold_irq);
+#endif
 			enable_irq_wake(chip->batt_missing_irq);
 			enable_irq_wake(chip->vbat_low_irq);
 			break;
@@ -9639,11 +9643,13 @@ static void smbchg_shutdown(struct platform_device *pdev)
 
 	pr_smb(PR_MISC, "Disable all interrupts\n");
 	disable_irq(chip->aicl_done_irq);
+#ifndef CONFIG_LGE_CUSTOM_CHARGE_RATES
 	disable_irq(chip->batt_cold_irq);
 	disable_irq(chip->batt_cool_irq);
 	disable_irq(chip->batt_hot_irq);
-	disable_irq(chip->batt_missing_irq);
 	disable_irq(chip->batt_warm_irq);
+#endif
+	disable_irq(chip->batt_missing_irq);
 	disable_irq(chip->chg_error_irq);
 	disable_irq(chip->chg_hot_irq);
 	disable_irq(chip->chg_term_irq);
