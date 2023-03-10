@@ -3097,6 +3097,9 @@ static void usb_pd_pe_handle_snk_src_ready_state(usb_pd_port_t *dev)
 #ifdef CONFIG_TUSB422_PAL
 	usb_pd_pal_notify_pd_state(dev->port, *dev->current_state);
 #endif
+#ifdef ENABLE_VDM_SUPPORT
+	usb_pd_port_config_t *config = usb_pd_pm_get_config(dev->port);
+#endif
 
 	if (tcpm_is_vconn_enabled(dev->port))
 	{

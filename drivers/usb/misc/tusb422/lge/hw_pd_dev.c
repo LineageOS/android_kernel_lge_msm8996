@@ -85,16 +85,16 @@ int set_pr(struct hw_pd_dev *dev, int pr)
 
 	switch (pr) {
 	case DUAL_ROLE_PROP_PR_SRC:
-		prop.intval = 1;
-		power_supply_set_property(dev->chg_psy,
-			POWER_SUPPLY_PROP_USB_OTG, &prop);
-		break;
+		//prop.intval = 1;
+		/*power_supply_set_property(dev->chg_psy,
+			POWER_SUPPLY_PROP_USB_OTG, &prop); */
+		//break;
 
 	case DUAL_ROLE_PROP_PR_SNK:
 	case DUAL_ROLE_PROP_PR_NONE:
-		prop.intval = 0;
+		/* prop.intval = 0;
 		power_supply_set_property(dev->chg_psy,
-			POWER_SUPPLY_PROP_USB_OTG, &prop);
+			POWER_SUPPLY_PROP_USB_OTG, &prop); */
 		break;
 
 	default:
@@ -224,7 +224,7 @@ int pd_dpm_handle_pe_event(enum pd_dpm_pe_evt event, void *state)
 
 			tmpval = dev->curr_max;
 			dev->curr_max = (dev->curr_max > 500) ? 500 : dev->curr_max;
-			set_property_on_battery(dev, POWER_SUPPLY_PROP_CURRENT_CAPABILITY);
+			/* set_property_on_battery(dev, POWER_SUPPLY_PROP_CURRENT_CAPABILITY); */
 			dev->curr_max = tmpval;
 		} else {
 			uint16_t ma = vbus_state->ma;
@@ -237,7 +237,7 @@ int pd_dpm_handle_pe_event(enum pd_dpm_pe_evt event, void *state)
 					dev->curr_max = 0;
 					dev->volt_max = 0;
 
-					set_property_on_battery(dev, POWER_SUPPLY_PROP_CURRENT_CAPABILITY);
+					/* set_property_on_battery(dev, POWER_SUPPLY_PROP_CURRENT_CAPABILITY); */
 				}
 				break;
 			}
@@ -277,7 +277,7 @@ int pd_dpm_handle_pe_event(enum pd_dpm_pe_evt event, void *state)
 			dev->volt_max = vbus_state->mv;
 			dev->curr_max = ma;
 
-			set_property_on_battery(dev, POWER_SUPPLY_PROP_CURRENT_CAPABILITY);
+			/* set_property_on_battery(dev, POWER_SUPPLY_PROP_CURRENT_CAPABILITY); */
 		}
 
 print_vbus_state:
@@ -297,8 +297,8 @@ print_vbus_state:
 
 		DEBUG("connected(%d)\n", pd_state->connected);
 
-		if (pd_state->connected == PD_CONNECT_PE_READY_SNK)
-			set_property_on_battery(dev, POWER_SUPPLY_PROP_CURRENT_CAPABILITY);
+		/* if (pd_state->connected == PD_CONNECT_PE_READY_SNK)
+			set_property_on_battery(dev, POWER_SUPPLY_PROP_CURRENT_CAPABILITY); */
 
 		break;
 	}
@@ -382,9 +382,9 @@ print_vbus_state:
 			if (dev->rp) {
 				dev->rp = 0;
 				prop.intval = 0;
-				set_property_to_battery(dev,
+				/* set_property_to_battery(dev,
 							POWER_SUPPLY_PROP_CTYPE_RP,
-							&prop);
+							&prop); */
 			}
 
 #ifdef CONFIG_LGE_PM_WATERPROOF_PROTECTION

@@ -19,6 +19,7 @@
 #include "tcpm.h"
 #include "tusb422_common.h"
 #include "usb_pd_policy_engine.h"
+#include "lge/hw_pd_dev.h"
 
 #define TCP_VBUS_CTRL_PD_DETECT (1 << 7)
 
