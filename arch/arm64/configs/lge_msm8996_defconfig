@@ -196,3 +196,6 @@ CONFIG_PSTORE=y
 CONFIG_PSTORE_CONSOLE=y
 CONFIG_PSTORE_PMSG=y
 CONFIG_PSTORE_RAM=y
+
+# Disable duplicate "qcrypto" driver registration, fixing qualcomm's crypto engine init
+CONFIG_CRYPTO_DEV_QCE=n
