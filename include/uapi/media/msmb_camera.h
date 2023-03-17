@@ -56,9 +56,9 @@
 #define MSM_MAX_CAMERA_SENSORS  6
 
 #ifdef CONFIG_MACH_LGE
-#define MSM_CAMERA_SUBDEV_PROXY        20
-#define MSM_CAMERA_SUBDEV_TCS          21
-#define MSM_CAMERA_SUBDEV_IRIS         22
+#define MSM_CAMERA_SUBDEV_PROXY        21
+#define MSM_CAMERA_SUBDEV_TCS          22
+#define MSM_CAMERA_SUBDEV_IRIS         23
 #endif
 
 /* The below macro is defined to put an upper limit on maximum
