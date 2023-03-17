@@ -562,20 +562,8 @@ err:
 static int dp_alt_enter_parse(struct i2c_client *client, const pd_msg_t msg)
 {
 	struct anx7418 *anx = dev_get_drvdata(&client->dev);
-#ifdef CONFIG_LGE_USB_TYPE_C
-	union power_supply_propval prop;
-	int rc;
-#endif
 
 	gpio_set_value(anx->sbu_sel_gpio, 0);
-#ifdef CONFIG_LGE_USB_TYPE_C
-	prop.intval = 1;
-	rc = anx->batt_psy->set_property(anx->batt_psy,
-			POWER_SUPPLY_PROP_DP_ALT_MODE, &prop);
-	if (rc < 0)
-		dev_err(&anx->client->dev,
-			"set_property(DP_ALT_MODE) error %d\n", rc);
-#endif
 
 	return 0;
 }

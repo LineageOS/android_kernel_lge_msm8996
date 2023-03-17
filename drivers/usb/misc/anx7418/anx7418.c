@@ -490,13 +490,6 @@ int anx7418_pwr_on(struct anx7418 *anx, int is_on)
 	dev_info_ratelimited(cdev, "%s(%d)\n", __func__, is_on);
 
 	if (!is_on && anx->is_dbg_acc) {
-#ifdef CONFIG_LGE_USB_TYPE_C
-		prop.intval = 1;
-		rc = anx->batt_psy->set_property(anx->batt_psy,
-				POWER_SUPPLY_PROP_DP_ALT_MODE, &prop);
-		if (rc < 0)
-			dev_err(cdev, "set_property(DP_ALT_MODE) error %d\n", rc);
-#endif
 		gpio_set_value(anx->sbu_sel_gpio, 0);
 
 		anx->is_dbg_acc = false;
@@ -600,14 +593,6 @@ set_as_dfp:
 		__anx7418_pwr_down(anx);
 		anx->is_tried_snk = false;
 
-#if defined(CONFIG_LGE_USB_TYPE_C) && defined(CONFIG_LGE_PM_CHARGING_CONTROLLER)
-		prop.intval = 0;
-		rc = anx->chg.psy.set_property(&anx->chg.psy,
-				POWER_SUPPLY_PROP_CTYPE_CHARGER, &prop);
-		if (rc < 0)
-			dev_err(cdev, "set_property(CTYPE_CHARGER) error %d\n", rc);
-#endif
-
 		anx7418_set_pr(anx, DUAL_ROLE_PROP_PR_NONE);
 		anx7418_set_dr(anx, DUAL_ROLE_PROP_DR_NONE);
 		if (anx->mode != DUAL_ROLE_PROP_MODE_NONE) {
@@ -632,9 +617,6 @@ static void i2c_irq_work(struct work_struct *w)
 	int status;
 #ifdef CONFIG_DUAL_ROLE_USB_INTF
 	int dual_role_changed = false;
-#endif
-#ifdef CONFIG_LGE_USB_TYPE_C
-	union power_supply_propval prop;
 #endif
 	int rc;
 
@@ -692,32 +674,6 @@ static void i2c_irq_work(struct work_struct *w)
 				dev_info(cdev, "%s: set as UFP\n", __func__);
 				anx_dbg_event("UFP", 0);
 
-#if defined(CONFIG_LGE_USB_TYPE_C) && defined(CONFIG_LGE_PM_CHARGING_CONTROLLER)
-				switch (rc) {
-				case 0x04:
-				case 0x40:
-					prop.intval = 56; // Rp 56K
-					break;
-				case 0x08:
-				case 0x80:
-					prop.intval = 22; // Rp 22K
-					break;
-				case 0x0C:
-				case 0xC0:
-					prop.intval = 10; // Rp 10K
-					break;
-				default:
-					prop.intval = 0;
-					break;
-				}
-				dev_info(cdev, "%s: Rp %dK\n", __func__, prop.intval);
-
-				rc = anx->chg.psy.set_property(&anx->chg.psy,
-						POWER_SUPPLY_PROP_CTYPE_CHARGER, &prop);
-				if (rc < 0)
-					dev_err(cdev, "set_property(CTYPE_CHARGER) error %d\n", rc);
-#endif
-
 				anx7418_set_mode(anx, DUAL_ROLE_PROP_MODE_UFP);
 				anx7418_set_pr(anx, DUAL_ROLE_PROP_PR_SNK);
 				anx7418_set_dr(anx, DUAL_ROLE_PROP_DR_DEVICE);
@@ -728,13 +684,6 @@ static void i2c_irq_work(struct work_struct *w)
 				/* Debug Accessory Mode */
 				dev_info(cdev, "%s: Debug Accessory Mode\n", __func__);
 				anx_dbg_event("Debug Accessory", 0);
-#ifdef CONFIG_LGE_USB_TYPE_C
-				prop.intval = 0;
-				rc = anx->batt_psy->set_property(anx->batt_psy,
-						POWER_SUPPLY_PROP_DP_ALT_MODE, &prop);
-				if (rc < 0)
-					dev_err(cdev, "set_property(DP_ALT_MODE) error %d\n", rc);
-#endif
 				gpio_set_value(anx->sbu_sel_gpio, 1);
 
 				anx->is_dbg_acc = true;
@@ -836,13 +785,6 @@ static void i2c_irq_work(struct work_struct *w)
 
 				dev_info(cdev, "%s: Debug Accessory Mode\n", __func__);
 				anx_dbg_event("Debug Accessory", 0);
-#ifdef CONFIG_LGE_USB_TYPE_C
-				prop.intval = 0;
-				rc = anx->batt_psy->set_property(anx->batt_psy,
-						POWER_SUPPLY_PROP_DP_ALT_MODE, &prop);
-				if (rc < 0)
-					dev_err(cdev, "set_property(DP_ALT_MODE) error %d\n", rc);
-#endif
 				gpio_set_value(anx->sbu_sel_gpio, 1);
 
 				anx->is_dbg_acc = true;
