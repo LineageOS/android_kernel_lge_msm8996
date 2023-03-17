@@ -1383,7 +1383,7 @@ int qcom_batt_init(void)
 		goto cleanup;
 
 	INIT_DELAYED_WORK(&chip->status_change_work, status_change_work);
-	INIT_DELAYED_WORK(&chip->pl_taper_work, pl_taper_work);
+	INIT_WORK(&chip->pl_taper_work, pl_taper_work);
 	INIT_WORK(&chip->pl_disable_forever_work, pl_disable_forever_work);
 	INIT_DELAYED_WORK(&chip->pl_awake_work, pl_awake_work);
 	INIT_DELAYED_WORK(&chip->fcc_step_update_work, fcc_step_update_work);
