@@ -217,14 +217,14 @@ static const u8 fw_rate_idx_to_plcp[IWL_RATE_COUNT] = {
 };
 
 int iwl_mvm_legacy_rate_to_mac80211_idx(u32 rate_n_flags,
-					enum ieee80211_band band)
+					enum nl80211_band band)
 {
 	int rate = rate_n_flags & RATE_LEGACY_RATE_MSK;
 	int idx;
 	int band_offset = 0;
 
 	/* Legacy rate format, search for match in table */
-	if (band == IEEE80211_BAND_5GHZ)
+	if (band == NL80211_BAND_5GHZ)
 		band_offset = IWL_FIRST_OFDM_RATE;
 	for (idx = band_offset; idx < IWL_RATE_COUNT_LEGACY; idx++)
 		if (fw_rate_idx_to_plcp[idx] == rate)
@@ -922,6 +922,9 @@ bool iwl_mvm_rx_diversity_allowed(struct iwl_mvm *mvm)
 	bool result = true;
 
 	lockdep_assert_held(&mvm->mutex);
+
+	if (iwlmvm_mod_params.power_scheme != IWL_POWER_SCHEME_CAM)
+		return false;
 
 	if (num_of_ant(iwl_mvm_get_valid_rx_ant(mvm)) == 1)
 		return false;

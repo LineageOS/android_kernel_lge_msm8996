@@ -1056,7 +1056,7 @@ static void b43legacy_write_probe_resp_plcp(struct b43legacy_wldev *dev,
 	b43legacy_generate_plcp_hdr(&plcp, size + FCS_LEN, rate->hw_value);
 	dur = ieee80211_generic_frame_duration(dev->wl->hw,
 					       dev->wl->vif,
-					       IEEE80211_BAND_2GHZ,
+					       NL80211_BAND_2GHZ,
 					       size,
 					       rate);
 	/* Write PLCP in two parts and timing for packet transfer */
@@ -1122,7 +1122,7 @@ static const u8 *b43legacy_generate_probe_resp(struct b43legacy_wldev *dev,
 					 IEEE80211_STYPE_PROBE_RESP);
 	dur = ieee80211_generic_frame_duration(dev->wl->hw,
 					       dev->wl->vif,
-					       IEEE80211_BAND_2GHZ,
+					       NL80211_BAND_2GHZ,
 					       *dest_size,
 					       rate);
 	hdr->duration_id = dur;
@@ -1304,8 +1304,9 @@ static void handle_irq_ucode_debug(struct b43legacy_wldev *dev)
 }
 
 /* Interrupt handler bottom-half */
-static void b43legacy_interrupt_tasklet(struct b43legacy_wldev *dev)
+static void b43legacy_interrupt_tasklet(unsigned long data)
 {
+	struct b43legacy_wldev *dev = (struct b43legacy_wldev *)data;
 	u32 reason;
 	u32 dma_reason[ARRAY_SIZE(dev->dma_reason)];
 	u32 merged_dma_reason = 0;
@@ -2719,7 +2720,7 @@ static int b43legacy_op_dev_config(struct ieee80211_hw *hw,
 
 	/* Switch the PHY mode (if necessary). */
 	switch (conf->chandef.chan->band) {
-	case IEEE80211_BAND_2GHZ:
+	case NL80211_BAND_2GHZ:
 		if (phy->type == B43legacy_PHYTYPE_B)
 			new_phymode = B43legacy_PHYMODE_B;
 		else
@@ -2792,7 +2793,7 @@ out_unlock_mutex:
 static void b43legacy_update_basic_rates(struct b43legacy_wldev *dev, u32 brates)
 {
 	struct ieee80211_supported_band *sband =
-		dev->wl->hw->wiphy->bands[IEEE80211_BAND_2GHZ];
+		dev->wl->hw->wiphy->bands[NL80211_BAND_2GHZ];
 	struct ieee80211_rate *rate;
 	int i;
 	u16 basic, direct, offset, basic_offset, rateptr;
@@ -3630,13 +3631,13 @@ static int b43legacy_setup_modes(struct b43legacy_wldev *dev,
 
 	phy->possible_phymodes = 0;
 	if (have_bphy) {
-		hw->wiphy->bands[IEEE80211_BAND_2GHZ] =
+		hw->wiphy->bands[NL80211_BAND_2GHZ] =
 			&b43legacy_band_2GHz_BPHY;
 		phy->possible_phymodes |= B43legacy_PHYMODE_B;
 	}
 
 	if (have_gphy) {
-		hw->wiphy->bands[IEEE80211_BAND_2GHZ] =
+		hw->wiphy->bands[NL80211_BAND_2GHZ] =
 			&b43legacy_band_2GHz_GPHY;
 		phy->possible_phymodes |= B43legacy_PHYMODE_G;
 	}
@@ -3775,7 +3776,7 @@ static int b43legacy_one_core_attach(struct ssb_device *dev,
 	b43legacy_set_status(wldev, B43legacy_STAT_UNINIT);
 	wldev->bad_frames_preempt = modparam_bad_frames_preempt;
 	tasklet_init(&wldev->isr_tasklet,
-		     (void (*)(unsigned long))b43legacy_interrupt_tasklet,
+		     b43legacy_interrupt_tasklet,
 		     (unsigned long)wldev);
 	if (modparam_pio)
 		wldev->__using_pio = true;
@@ -3834,6 +3835,7 @@ static int b43legacy_wireless_init(struct ssb_device *dev)
 	/* fill hw info */
 	ieee80211_hw_set(hw, RX_INCLUDES_FCS);
 	ieee80211_hw_set(hw, SIGNAL_DBM);
+	ieee80211_hw_set(hw, MFP_CAPABLE); /* Allow WPA3 in software */
 
 	hw->wiphy->interface_modes =
 		BIT(NL80211_IFTYPE_AP) |

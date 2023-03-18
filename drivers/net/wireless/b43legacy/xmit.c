@@ -565,12 +565,13 @@ void b43legacy_rx(struct b43legacy_wldev *dev,
 	switch (chanstat & B43legacy_RX_CHAN_PHYTYPE) {
 	case B43legacy_PHYTYPE_B:
 	case B43legacy_PHYTYPE_G:
-		status.band = IEEE80211_BAND_2GHZ;
+		status.band = NL80211_BAND_2GHZ;
 		status.freq = chanid + 2400;
 		break;
 	default:
 		b43legacywarn(dev->wl, "Unexpected value for chanstat (0x%X)\n",
 		       chanstat);
+		goto drop;
 	}
 
 	memcpy(IEEE80211_SKB_RXCB(skb), &status, sizeof(status));

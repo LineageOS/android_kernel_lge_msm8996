@@ -30,6 +30,7 @@
 #include <linux/syscore_ops.h>
 #include <linux/reboot.h>
 #include <linux/irqchip/msm-mpm-irq.h>
+#include <linux/wakeup_reason.h>
 #include "../core.h"
 #include "../pinconf.h"
 #include "pinctrl-msm.h"
@@ -504,6 +505,10 @@ static void msm_gpio_dbg_show(struct seq_file *s, struct gpio_chip *chip)
 	unsigned i;
 
 	for (i = 0; i < chip->ngpio; i++, gpio++) {
+		/* Bypass GPIO pins owned by TZ */
+		switch (gpio)
+			case 81 ... 84: continue;
+
 		msm_gpio_dbg_show_one(s, NULL, chip, i, gpio);
 		seq_puts(s, "\n");
 	}
@@ -588,6 +593,39 @@ static void msm_gpio_irq_mask(struct irq_data *d)
 	spin_unlock_irqrestore(&pctrl->lock, flags);
 	if (pctrl->irq_chip_extn->irq_mask)
 		pctrl->irq_chip_extn->irq_mask(d);
+}
+
+static void msm_gpio_irq_enable(struct irq_data *d)
+{
+	struct gpio_chip *gc = irq_data_get_irq_chip_data(d);
+	struct msm_pinctrl *pctrl = to_msm_pinctrl(gc);
+	const struct msm_pingroup *g;
+	unsigned long flags;
+	u32 val;
+
+	g = &pctrl->soc->groups[d->hwirq];
+
+	spin_lock_irqsave(&pctrl->lock, flags);
+	/* clear the interrupt status bit before unmask to avoid
+	 * any erroneous interrupts that would have got latched
+	 * when the interrupt is not in use.
+	 */
+	val = readl_relaxed(pctrl->regs + g->intr_status_reg);
+	if (g->intr_ack_high)
+		val |= BIT(g->intr_status_bit);
+	else
+		val &= ~BIT(g->intr_status_bit);
+	writel_relaxed(val, pctrl->regs + g->intr_status_reg);
+
+	val = readl_relaxed(pctrl->regs + g->intr_cfg_reg);
+	val |= BIT(g->intr_enable_bit);
+	writel_relaxed(val, pctrl->regs + g->intr_cfg_reg);
+
+	set_bit(d->hwirq, pctrl->enabled_irqs);
+
+	spin_unlock_irqrestore(&pctrl->lock, flags);
+	if (pctrl->irq_chip_extn->irq_enable)
+		pctrl->irq_chip_extn->irq_enable(d);
 }
 
 static void msm_gpio_irq_unmask(struct irq_data *d)
@@ -759,6 +797,8 @@ static int msm_gpio_irq_set_wake(struct irq_data *d, unsigned int on)
 
 static struct irq_chip msm_gpio_irq_chip = {
 	.name           = "msmgpio",
+	.flags          = IRQCHIP_MASK_ON_SUSPEND,
+	.irq_enable     = msm_gpio_irq_enable,
 	.irq_mask       = msm_gpio_irq_mask,
 	.irq_unmask     = msm_gpio_irq_unmask,
 	.irq_ack        = msm_gpio_irq_ack,
@@ -766,7 +806,7 @@ static struct irq_chip msm_gpio_irq_chip = {
 	.irq_set_wake   = msm_gpio_irq_set_wake,
 };
 
-static void msm_gpio_irq_handler(struct irq_desc *desc)
+static bool msm_gpio_irq_handler(struct irq_desc *desc)
 {
 	struct gpio_chip *gc = irq_desc_get_handler_data(desc);
 	const struct msm_pingroup *g;
@@ -776,6 +816,7 @@ static void msm_gpio_irq_handler(struct irq_desc *desc)
 	int handled = 0;
 	u32 val;
 	int i;
+	bool ret;
 
 	chained_irq_enter(chip, desc);
 
@@ -793,11 +834,13 @@ static void msm_gpio_irq_handler(struct irq_desc *desc)
 		}
 	}
 
+	ret = (handled != 0);
 	/* No interrupts were flagged */
 	if (handled == 0)
-		handle_bad_irq(desc);
+		ret = handle_bad_irq(desc);
 
 	chained_irq_exit(chip, desc);
+	return ret;
 }
 
 /*
@@ -942,7 +985,7 @@ static void msm_pinctrl_resume(void)
 				name = "stray irq";
 			else if (desc->action && desc->action->name)
 				name = desc->action->name;
-
+			log_base_wakeup_reason(irq);
 			pr_warn("%s: %d triggered %s\n", __func__, irq, name);
 		}
 	}

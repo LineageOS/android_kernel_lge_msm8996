@@ -52,12 +52,7 @@ static void aes_cipher_encrypt(struct crypto_tfm *tfm, u8 dst[], u8 const src[])
 {
 	struct crypto_aes_ctx *ctx = crypto_tfm_ctx(tfm);
 
-	if (!may_use_simd()) {
-		__aes_arm64_encrypt(ctx->key_enc, dst, src, num_rounds(ctx));
-		return;
-	}
-
-	kernel_neon_begin();
+	kernel_neon_begin_partial(4);
 	__aes_ce_encrypt(ctx->key_enc, dst, src, num_rounds(ctx));
 	kernel_neon_end();
 }
@@ -66,12 +61,7 @@ static void aes_cipher_decrypt(struct crypto_tfm *tfm, u8 dst[], u8 const src[])
 {
 	struct crypto_aes_ctx *ctx = crypto_tfm_ctx(tfm);
 
-	if (!may_use_simd()) {
-		__aes_arm64_decrypt(ctx->key_dec, dst, src, num_rounds(ctx));
-		return;
-	}
-
-	kernel_neon_begin();
+	kernel_neon_begin_partial(4);
 	__aes_ce_decrypt(ctx->key_dec, dst, src, num_rounds(ctx));
 	kernel_neon_end();
 }
@@ -104,7 +94,12 @@ int ce_aes_expandkey(struct crypto_aes_ctx *ctx, const u8 *in_key,
 		u32 *rki = ctx->key_enc + (i * kwords);
 		u32 *rko = rki + kwords;
 
+#ifndef CONFIG_CPU_BIG_ENDIAN
 		rko[0] = ror32(__aes_ce_sub(rki[kwords - 1]), 8) ^ rcon[i] ^ rki[0];
+#else
+		rko[0] = rol32(__aes_ce_sub(rki[kwords - 1]), 8) ^ (rcon[i] << 24) ^
+			 rki[0];
+#endif
 		rko[1] = rko[0] ^ rki[1];
 		rko[2] = rko[1] ^ rki[2];
 		rko[3] = rko[2] ^ rki[3];

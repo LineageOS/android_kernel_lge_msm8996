@@ -615,18 +615,22 @@ static void pch_udc_reconnect(struct pch_udc_dev *dev)
 static inline void pch_udc_vbus_session(struct pch_udc_dev *dev,
 					  int is_active)
 {
+	unsigned long		iflags;
+
+	spin_lock_irqsave(&dev->lock, iflags);
 	if (is_active) {
 		pch_udc_reconnect(dev);
 		dev->vbus_session = 1;
 	} else {
 		if (dev->driver && dev->driver->disconnect) {
-			spin_lock(&dev->lock);
+			spin_unlock_irqrestore(&dev->lock, iflags);
 			dev->driver->disconnect(&dev->gadget);
-			spin_unlock(&dev->lock);
+			spin_lock_irqsave(&dev->lock, iflags);
 		}
 		pch_udc_set_disconnect(dev);
 		dev->vbus_session = 0;
 	}
+	spin_unlock_irqrestore(&dev->lock, iflags);
 }
 
 /**
@@ -1183,20 +1187,25 @@ static int pch_udc_pcd_selfpowered(struct usb_gadget *gadget, int value)
 static int pch_udc_pcd_pullup(struct usb_gadget *gadget, int is_on)
 {
 	struct pch_udc_dev	*dev;
+	unsigned long		iflags;
 
 	if (!gadget)
 		return -EINVAL;
+
 	dev = container_of(gadget, struct pch_udc_dev, gadget);
+
+	spin_lock_irqsave(&dev->lock, iflags);
 	if (is_on) {
 		pch_udc_reconnect(dev);
 	} else {
 		if (dev->driver && dev->driver->disconnect) {
-			spin_lock(&dev->lock);
+			spin_unlock_irqrestore(&dev->lock, iflags);
 			dev->driver->disconnect(&dev->gadget);
-			spin_unlock(&dev->lock);
+			spin_lock_irqsave(&dev->lock, iflags);
 		}
 		pch_udc_set_disconnect(dev);
 	}
+	spin_unlock_irqrestore(&dev->lock, iflags);
 
 	return 0;
 }
@@ -1488,11 +1497,11 @@ static void complete_req(struct pch_udc_ep *ep, struct pch_udc_request *req,
 		req->dma_mapped = 0;
 	}
 	ep->halted = 1;
-	spin_lock(&dev->lock);
+	spin_unlock(&dev->lock);
 	if (!ep->in)
 		pch_udc_ep_clear_rrdy(ep);
 	usb_gadget_giveback_request(&ep->ep, &req->req);
-	spin_unlock(&dev->lock);
+	spin_lock(&dev->lock);
 	ep->halted = halted;
 }
 
@@ -1731,14 +1740,12 @@ static int pch_udc_pcd_ep_enable(struct usb_ep *usbep,
 static int pch_udc_pcd_ep_disable(struct usb_ep *usbep)
 {
 	struct pch_udc_ep	*ep;
-	struct pch_udc_dev	*dev;
 	unsigned long	iflags;
 
 	if (!usbep)
 		return -EINVAL;
 
 	ep = container_of(usbep, struct pch_udc_ep, ep);
-	dev = ep->dev;
 	if ((usbep->name == ep0_string) || !ep->ep.desc)
 		return -EINVAL;
 
@@ -1769,12 +1776,10 @@ static struct usb_request *pch_udc_alloc_request(struct usb_ep *usbep,
 	struct pch_udc_request		*req;
 	struct pch_udc_ep		*ep;
 	struct pch_udc_data_dma_desc	*dma_desc;
-	struct pch_udc_dev		*dev;
 
 	if (!usbep)
 		return NULL;
 	ep = container_of(usbep, struct pch_udc_ep, ep);
-	dev = ep->dev;
 	req = kzalloc(sizeof *req, gfp);
 	if (!req)
 		return NULL;
@@ -1792,7 +1797,7 @@ static struct usb_request *pch_udc_alloc_request(struct usb_ep *usbep,
 	}
 	/* prevent from using desc. - set HOST BUSY */
 	dma_desc->status |= PCH_UDC_BS_HST_BSY;
-	dma_desc->dataptr = cpu_to_le32(DMA_ADDR_INVALID);
+	dma_desc->dataptr = lower_32_bits(DMA_ADDR_INVALID);
 	req->td_data = dma_desc;
 	req->td_data_last = dma_desc;
 	req->chain_len = 1;
@@ -1947,12 +1952,10 @@ static int pch_udc_pcd_dequeue(struct usb_ep *usbep,
 {
 	struct pch_udc_ep	*ep;
 	struct pch_udc_request	*req;
-	struct pch_udc_dev	*dev;
 	unsigned long		flags;
 	int ret = -EINVAL;
 
 	ep = container_of(usbep, struct pch_udc_ep, ep);
-	dev = ep->dev;
 	if (!usbep || !usbreq || (!ep->ep.desc && ep->num))
 		return ret;
 	req = container_of(usbreq, struct pch_udc_request, req);
@@ -1984,14 +1987,12 @@ static int pch_udc_pcd_dequeue(struct usb_ep *usbep,
 static int pch_udc_pcd_set_halt(struct usb_ep *usbep, int halt)
 {
 	struct pch_udc_ep	*ep;
-	struct pch_udc_dev	*dev;
 	unsigned long iflags;
 	int ret;
 
 	if (!usbep)
 		return -EINVAL;
 	ep = container_of(usbep, struct pch_udc_ep, ep);
-	dev = ep->dev;
 	if (!ep->ep.desc && !ep->num)
 		return -EINVAL;
 	if (!ep->dev->driver || (ep->dev->gadget.speed == USB_SPEED_UNKNOWN))
@@ -2029,14 +2030,12 @@ static int pch_udc_pcd_set_halt(struct usb_ep *usbep, int halt)
 static int pch_udc_pcd_set_wedge(struct usb_ep *usbep)
 {
 	struct pch_udc_ep	*ep;
-	struct pch_udc_dev	*dev;
 	unsigned long iflags;
 	int ret;
 
 	if (!usbep)
 		return -EINVAL;
 	ep = container_of(usbep, struct pch_udc_ep, ep);
-	dev = ep->dev;
 	if (!ep->ep.desc && !ep->num)
 		return -EINVAL;
 	if (!ep->dev->driver || (ep->dev->gadget.speed == USB_SPEED_UNKNOWN))
@@ -2342,6 +2341,21 @@ static void pch_udc_svc_data_out(struct pch_udc_dev *dev, int ep_num)
 		pch_udc_set_dma(dev, DMA_DIR_RX);
 }
 
+static int pch_udc_gadget_setup(struct pch_udc_dev *dev)
+	__must_hold(&dev->lock)
+{
+	int rc;
+
+	/* In some cases we can get an interrupt before driver gets setup */
+	if (!dev->driver)
+		return -ESHUTDOWN;
+
+	spin_unlock(&dev->lock);
+	rc = dev->driver->setup(&dev->gadget, &dev->setup_data);
+	spin_lock(&dev->lock);
+	return rc;
+}
+
 /**
  * pch_udc_svc_control_in() - Handle Control IN endpoint interrupts
  * @dev:	Reference to the device structure
@@ -2413,15 +2427,12 @@ static void pch_udc_svc_control_out(struct pch_udc_dev *dev)
 			dev->gadget.ep0 = &dev->ep[UDC_EP0IN_IDX].ep;
 		else /* OUT */
 			dev->gadget.ep0 = &ep->ep;
-		spin_lock(&dev->lock);
 		/* If Mass storage Reset */
 		if ((dev->setup_data.bRequestType == 0x21) &&
 		    (dev->setup_data.bRequest == 0xFF))
 			dev->prot_stall = 0;
 		/* call gadget with setup data received */
-		setup_supported = dev->driver->setup(&dev->gadget,
-						     &dev->setup_data);
-		spin_unlock(&dev->lock);
+		setup_supported = pch_udc_gadget_setup(dev);
 
 		if (dev->setup_data.bRequestType & USB_DIR_IN) {
 			ep->td_data->status = (ep->td_data->status &
@@ -2593,9 +2604,9 @@ static void pch_udc_svc_ur_interrupt(struct pch_udc_dev *dev)
 		empty_req_queue(ep);
 	}
 	if (dev->driver) {
-		spin_lock(&dev->lock);
-		usb_gadget_udc_reset(&dev->gadget, dev->driver);
 		spin_unlock(&dev->lock);
+		usb_gadget_udc_reset(&dev->gadget, dev->driver);
+		spin_lock(&dev->lock);
 	}
 }
 
@@ -2646,7 +2657,7 @@ static void pch_udc_svc_enum_interrupt(struct pch_udc_dev *dev)
 static void pch_udc_svc_intf_interrupt(struct pch_udc_dev *dev)
 {
 	u32 reg, dev_stat = 0;
-	int i, ret;
+	int i;
 
 	dev_stat = pch_udc_read_device_status(dev);
 	dev->cfg_data.cur_intf = (dev_stat & UDC_DEVSTS_INTF_MASK) >>
@@ -2674,9 +2685,7 @@ static void pch_udc_svc_intf_interrupt(struct pch_udc_dev *dev)
 		dev->ep[i].halted = 0;
 	}
 	dev->stall = 0;
-	spin_lock(&dev->lock);
-	ret = dev->driver->setup(&dev->gadget, &dev->setup_data);
-	spin_unlock(&dev->lock);
+	pch_udc_gadget_setup(dev);
 }
 
 /**
@@ -2686,7 +2695,7 @@ static void pch_udc_svc_intf_interrupt(struct pch_udc_dev *dev)
  */
 static void pch_udc_svc_cfg_interrupt(struct pch_udc_dev *dev)
 {
-	int i, ret;
+	int i;
 	u32 reg, dev_stat = 0;
 
 	dev_stat = pch_udc_read_device_status(dev);
@@ -2711,9 +2720,7 @@ static void pch_udc_svc_cfg_interrupt(struct pch_udc_dev *dev)
 	dev->stall = 0;
 
 	/* call gadget zero with setup data received */
-	spin_lock(&dev->lock);
-	ret = dev->driver->setup(&dev->gadget, &dev->setup_data);
-	spin_unlock(&dev->lock);
+	pch_udc_gadget_setup(dev);
 }
 
 /**
@@ -2996,7 +3003,7 @@ static int init_dma_pools(struct pch_udc_dev *dev)
 	dev->dma_addr = dma_map_single(&dev->pdev->dev, dev->ep0out_buf,
 				       UDC_EP0OUT_BUFF_SIZE * 4,
 				       DMA_FROM_DEVICE);
-	return 0;
+	return dma_mapping_error(&dev->pdev->dev, dev->dma_addr);
 }
 
 static int pch_udc_start(struct usb_gadget *g,

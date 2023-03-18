@@ -1968,8 +1968,9 @@ static void notify_wx_assoc_event(struct ipw_priv *priv)
 	wireless_send_event(priv->net_dev, SIOCGIWAP, &wrqu, NULL);
 }
 
-static void ipw_irq_tasklet(struct ipw_priv *priv)
+static void ipw_irq_tasklet(unsigned long data)
 {
+	struct ipw_priv *priv = (struct ipw_priv *)data;
 	u32 inta, inta_mask, handled = 0;
 	unsigned long flags;
 	int rc = 0;
@@ -10705,7 +10706,7 @@ static int ipw_setup_deferred_work(struct ipw_priv *priv)
 	INIT_WORK(&priv->qos_activate, ipw_bg_qos_activate);
 #endif				/* CONFIG_IPW2200_QOS */
 
-	tasklet_init(&priv->irq_tasklet, (void (*)(unsigned long))
+	tasklet_init(&priv->irq_tasklet,
 		     ipw_irq_tasklet, (unsigned long)priv);
 
 	return ret;
@@ -11359,7 +11360,7 @@ static int ipw_wdev_init(struct net_device *dev)
 	if (geo->bg_channels) {
 		struct ieee80211_supported_band *bg_band = &priv->ieee->bg_band;
 
-		bg_band->band = IEEE80211_BAND_2GHZ;
+		bg_band->band = NL80211_BAND_2GHZ;
 		bg_band->n_channels = geo->bg_channels;
 		bg_band->channels = kcalloc(geo->bg_channels,
 					    sizeof(struct ieee80211_channel),
@@ -11370,7 +11371,7 @@ static int ipw_wdev_init(struct net_device *dev)
 		}
 		/* translate geo->bg to bg_band.channels */
 		for (i = 0; i < geo->bg_channels; i++) {
-			bg_band->channels[i].band = IEEE80211_BAND_2GHZ;
+			bg_band->channels[i].band = NL80211_BAND_2GHZ;
 			bg_band->channels[i].center_freq = geo->bg[i].freq;
 			bg_band->channels[i].hw_value = geo->bg[i].channel;
 			bg_band->channels[i].max_power = geo->bg[i].max_power;
@@ -11391,14 +11392,14 @@ static int ipw_wdev_init(struct net_device *dev)
 		bg_band->bitrates = ipw2200_bg_rates;
 		bg_band->n_bitrates = ipw2200_num_bg_rates;
 
-		wdev->wiphy->bands[IEEE80211_BAND_2GHZ] = bg_band;
+		wdev->wiphy->bands[NL80211_BAND_2GHZ] = bg_band;
 	}
 
 	/* fill-out priv->ieee->a_band */
 	if (geo->a_channels) {
 		struct ieee80211_supported_band *a_band = &priv->ieee->a_band;
 
-		a_band->band = IEEE80211_BAND_5GHZ;
+		a_band->band = NL80211_BAND_5GHZ;
 		a_band->n_channels = geo->a_channels;
 		a_band->channels = kcalloc(geo->a_channels,
 					   sizeof(struct ieee80211_channel),
@@ -11409,7 +11410,7 @@ static int ipw_wdev_init(struct net_device *dev)
 		}
 		/* translate geo->a to a_band.channels */
 		for (i = 0; i < geo->a_channels; i++) {
-			a_band->channels[i].band = IEEE80211_BAND_5GHZ;
+			a_band->channels[i].band = NL80211_BAND_5GHZ;
 			a_band->channels[i].center_freq = geo->a[i].freq;
 			a_band->channels[i].hw_value = geo->a[i].channel;
 			a_band->channels[i].max_power = geo->a[i].max_power;
@@ -11430,7 +11431,7 @@ static int ipw_wdev_init(struct net_device *dev)
 		a_band->bitrates = ipw2200_a_rates;
 		a_band->n_bitrates = ipw2200_num_a_rates;
 
-		wdev->wiphy->bands[IEEE80211_BAND_5GHZ] = a_band;
+		wdev->wiphy->bands[NL80211_BAND_5GHZ] = a_band;
 	}
 
 	wdev->wiphy->cipher_suites = ipw_cipher_suites;

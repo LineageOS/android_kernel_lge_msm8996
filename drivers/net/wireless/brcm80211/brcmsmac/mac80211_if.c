@@ -49,7 +49,7 @@
 	FIF_PSPOLL)
 
 #define CHAN2GHZ(channel, freqency, chflags)  { \
-	.band = IEEE80211_BAND_2GHZ, \
+	.band = NL80211_BAND_2GHZ, \
 	.center_freq = (freqency), \
 	.hw_value = (channel), \
 	.flags = chflags, \
@@ -58,7 +58,7 @@
 }
 
 #define CHAN5GHZ(channel, chflags)  { \
-	.band = IEEE80211_BAND_5GHZ, \
+	.band = NL80211_BAND_5GHZ, \
 	.center_freq = 5000 + 5*(channel), \
 	.hw_value = (channel), \
 	.flags = chflags, \
@@ -217,7 +217,7 @@ static struct ieee80211_rate legacy_ratetable[] = {
 };
 
 static const struct ieee80211_supported_band brcms_band_2GHz_nphy_template = {
-	.band = IEEE80211_BAND_2GHZ,
+	.band = NL80211_BAND_2GHZ,
 	.channels = brcms_2ghz_chantable,
 	.n_channels = ARRAY_SIZE(brcms_2ghz_chantable),
 	.bitrates = legacy_ratetable,
@@ -238,7 +238,7 @@ static const struct ieee80211_supported_band brcms_band_2GHz_nphy_template = {
 };
 
 static const struct ieee80211_supported_band brcms_band_5GHz_nphy_template = {
-	.band = IEEE80211_BAND_5GHZ,
+	.band = NL80211_BAND_5GHZ,
 	.channels = brcms_5ghz_nphy_chantable,
 	.n_channels = ARRAY_SIZE(brcms_5ghz_nphy_chantable),
 	.bitrates = legacy_ratetable + BRCMS_LEGACY_5G_RATE_OFFSET,
@@ -1052,8 +1052,8 @@ static int ieee_hw_rate_init(struct ieee80211_hw *hw)
 	int has_5g = 0;
 	u16 phy_type;
 
-	hw->wiphy->bands[IEEE80211_BAND_2GHZ] = NULL;
-	hw->wiphy->bands[IEEE80211_BAND_5GHZ] = NULL;
+	hw->wiphy->bands[NL80211_BAND_2GHZ] = NULL;
+	hw->wiphy->bands[NL80211_BAND_5GHZ] = NULL;
 
 	phy_type = brcms_c_get_phy_type(wl->wlc, 0);
 	if (phy_type == PHY_TYPE_N || phy_type == PHY_TYPE_LCN) {
@@ -1064,7 +1064,7 @@ static int ieee_hw_rate_init(struct ieee80211_hw *hw)
 			band->ht_cap.mcs.rx_mask[1] = 0;
 			band->ht_cap.mcs.rx_highest = cpu_to_le16(72);
 		}
-		hw->wiphy->bands[IEEE80211_BAND_2GHZ] = band;
+		hw->wiphy->bands[NL80211_BAND_2GHZ] = band;
 	} else {
 		return -EPERM;
 	}
@@ -1075,7 +1075,7 @@ static int ieee_hw_rate_init(struct ieee80211_hw *hw)
 		if (phy_type == PHY_TYPE_N || phy_type == PHY_TYPE_LCN) {
 			band = &wlc->bandstate[BAND_5G_INDEX]->band;
 			*band = brcms_band_5GHz_nphy_template;
-			hw->wiphy->bands[IEEE80211_BAND_5GHZ] = band;
+			hw->wiphy->bands[NL80211_BAND_5GHZ] = band;
 		} else {
 			return -EPERM;
 		}
@@ -1221,6 +1221,7 @@ static int brcms_bcma_probe(struct bcma_device *pdev)
 {
 	struct brcms_info *wl;
 	struct ieee80211_hw *hw;
+	int ret;
 
 	dev_info(&pdev->dev, "mfg %x core %x rev %d class %d irq %d\n",
 		 pdev->id.manuf, pdev->id.id, pdev->id.rev, pdev->id.class,
@@ -1245,11 +1246,16 @@ static int brcms_bcma_probe(struct bcma_device *pdev)
 	wl = brcms_attach(pdev);
 	if (!wl) {
 		pr_err("%s: brcms_attach failed!\n", __func__);
-		return -ENODEV;
+		ret = -ENODEV;
+		goto err_free_ieee80211;
 	}
 	brcms_led_register(wl);
 
 	return 0;
+
+err_free_ieee80211:
+	ieee80211_free_hw(hw);
+	return ret;
 }
 
 static int brcms_suspend(struct bcma_device *pdev)

@@ -427,6 +427,9 @@ struct spi_master {
 #define SPI_MASTER_MUST_RX      BIT(3)		/* requires rx */
 #define SPI_MASTER_MUST_TX      BIT(4)		/* requires tx */
 
+	/* flag indicating this is a non-devres managed controller */
+	bool			devm_allocated;
+
 	/* flag indicating this is an SPI slave controller */
 	bool			slave;
 
@@ -594,6 +597,9 @@ static inline struct spi_master *spi_alloc_slave(struct device *host,
 
 	return __spi_alloc_controller(host, size, true);
 }
+
+extern struct spi_master *devm_spi_alloc_master(struct device *dev,
+						unsigned int size);
 
 extern int spi_register_master(struct spi_master *master);
 extern int devm_spi_register_master(struct device *dev,

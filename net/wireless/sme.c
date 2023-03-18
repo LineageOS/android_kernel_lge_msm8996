@@ -106,7 +106,7 @@ static int cfg80211_conn_scan(struct wireless_dev *wdev)
 		return -ENOMEM;
 
 	if (wdev->conn->params.channel) {
-		enum ieee80211_band band = wdev->conn->params.channel->band;
+		enum nl80211_band band = wdev->conn->params.channel->band;
 		struct ieee80211_supported_band *sband =
 			wdev->wiphy->bands[band];
 
@@ -118,11 +118,11 @@ static int cfg80211_conn_scan(struct wireless_dev *wdev)
 		request->rates[band] = (1 << sband->n_bitrates) - 1;
 	} else {
 		int i = 0, j;
-		enum ieee80211_band band;
+		enum nl80211_band band;
 		struct ieee80211_supported_band *bands;
 		struct ieee80211_channel *channel;
 
-		for (band = 0; band < IEEE80211_NUM_BANDS; band++) {
+		for (band = 0; band < NUM_NL80211_BANDS; band++) {
 			bands = wdev->wiphy->bands[band];
 			if (!bands)
 				continue;
@@ -546,7 +546,7 @@ static int cfg80211_sme_connect(struct wireless_dev *wdev,
 	if (wdev->current_bss)
 		return -EALREADY;
 
-	if (WARN_ON(wdev->conn))
+	if (wdev->conn)
 		return -EINPROGRESS;
 
 	wdev->conn = kzalloc(sizeof(*wdev->conn), GFP_KERNEL);

@@ -20,7 +20,7 @@ else
 include $(srctree)/arch/arm64/boot/dts/lge/Makefile
 endif
 
-targets := Image Image.gz Image.lz4
+targets := Image Image.bz2 Image.gz Image.lz4 Image.lzma Image.lzo
 
 DTB_NAMES := $(subst $\",,$(CONFIG_BUILD_ARM64_APPENDED_DTB_IMAGE_NAMES))
 ifneq ($(DTB_NAMES),)

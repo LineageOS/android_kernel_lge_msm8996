@@ -345,7 +345,7 @@ struct wl1271 {
 	struct wl12xx_vif *sched_vif;
 
 	/* The current band */
-	enum ieee80211_band band;
+	enum nl80211_band band;
 
 	struct completion *elp_compl;
 	struct delayed_work elp_work;
@@ -519,7 +519,7 @@ void wlcore_update_inconn_sta(struct wl1271 *wl, struct wl12xx_vif *wlvif,
 			      struct wl1271_station *wl_sta, bool in_conn);
 
 static inline void
-wlcore_set_ht_cap(struct wl1271 *wl, enum ieee80211_band band,
+wlcore_set_ht_cap(struct wl1271 *wl, enum nl80211_band band,
 		  struct ieee80211_sta_ht_cap *ht_cap)
 {
 	memcpy(&wl->ht_cap[band], ht_cap, sizeof(*ht_cap));
@@ -555,9 +555,6 @@ wlcore_set_min_fw_ver(struct wl1271 *wl, unsigned int chip,
 
 /* Each RX/TX transaction requires an end-of-transaction transfer */
 #define WLCORE_QUIRK_END_OF_TRANSACTION		BIT(0)
-
-/* the first start_role(sta) sometimes doesn't work on wl12xx */
-#define WLCORE_QUIRK_START_STA_FAILS		BIT(1)
 
 /* wl127x and SPI don't support SDIO block size alignment */
 #define WLCORE_QUIRK_TX_BLOCKSIZE_ALIGN		BIT(2)
