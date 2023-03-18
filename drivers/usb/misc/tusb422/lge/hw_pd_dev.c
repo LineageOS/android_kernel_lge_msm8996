@@ -428,9 +428,11 @@ print_vbus_state:
 
 		dev->is_debug_accessory = is_debug_accessory;
 
-		dev->typec_mode = is_debug_accessory ?
+/*		dev->typec_mode = is_debug_accessory ?
 			POWER_SUPPLY_TYPE_CTYPE_DEBUG_ACCESSORY :
 			POWER_SUPPLY_TYPE_UNKNOWN;
+*/
+		dev->typec_mode = POWER_SUPPLY_TYPE_UNKNOWN;
 
 		break;
 	}
