@@ -60,13 +60,6 @@ unchar g_hdcp_cap = 0;
 /* to access global platform data */
 static struct anx7816_platform_data *g_pdata;
 
-/* LGE_CHANGE,
- * to apply High voltage to HDMI_SWITCH_EN
- * which can select MHL or SlimPort on LGPS11
- * this feature should be enable only when board has hdmi switch chip.
- * 2012-10-31, jihyun.seong@lge.com
- */
-/* #define USE_HDMI_SWITCH */
 #define TRUE 1
 #define FALSE 0
 
@@ -1085,74 +1078,72 @@ static void anx7816_free_gpio(struct anx7816_data *anx7816)
 	}
 
 }
+
 static int anx7816_init_gpio(struct anx7816_data *anx7816)
 {
 	int ret = 0;
 
 	pr_info("anx7816 init gpio\n");
 
-	ret = gpio_request(anx7816->pdata->gpio_p_dwn, "anx_p_dwn_ctl");
-	if (ret) {
-		pr_err("%s : failed to request gpio %d\n", __func__,
-				anx7816->pdata->gpio_p_dwn);
-		goto out;
+	if (gpio_is_valid(anx7816->pdata->gpio_p_dwn)) {
+		ret = gpio_request_one(anx7816->pdata->gpio_p_dwn,
+				GPIOF_OUT_INIT_HIGH, "anx_p_dwn_ctl");
+		if (ret) {
+			pr_err("%s : failed to request gpio %d\n", __func__,
+					anx7816->pdata->gpio_p_dwn);
+			goto out;
+		}
 	}
-	gpio_direction_output(anx7816->pdata->gpio_p_dwn, 1);
 
-	ret = gpio_request(anx7816->pdata->gpio_reset, "anx7816_reset_n");
-	if (ret) {
-		pr_err("%s : failed to request gpio %d\n", __func__,
-				anx7816->pdata->gpio_reset);
-		goto err0;
+	if (gpio_is_valid(anx7816->pdata->gpio_reset)) {
+		ret = gpio_request_one(anx7816->pdata->gpio_reset,
+				GPIOF_OUT_INIT_LOW, "anx7816_reset_n");
+		if (ret) {
+			pr_err("%s : failed to request gpio %d\n", __func__,
+					anx7816->pdata->gpio_reset);
+			goto err0;
+		}
 	}
-	gpio_direction_output(anx7816->pdata->gpio_reset, 0);
-	ret = gpio_request(anx7816->pdata->gpio_int, "anx7816_int_n");
-	if (ret) {
-		pr_err("%s : failed to request gpio %d\n", __func__,
-				anx7816->pdata->gpio_int);
-		goto err1;
-	}
-	gpio_direction_input(anx7816->pdata->gpio_int);
 
-	ret = gpio_request(anx7816->pdata->gpio_cbl_det, "anx7816_cbl_det");
-	if (ret) {
-		pr_err("%s : failed to request gpio %d\n", __func__,
-				anx7816->pdata->gpio_cbl_det);
-		goto err2;
+	if (gpio_is_valid(anx7816->pdata->gpio_int)) {
+		ret = gpio_request_one(anx7816->pdata->gpio_int,
+				GPIOF_DIR_IN, "anx7816_int_n");
+		if (ret) {
+			pr_err("%s : failed to request gpio %d\n", __func__,
+					anx7816->pdata->gpio_int);
+			goto err1;
+		}
 	}
-	gpio_direction_input(anx7816->pdata->gpio_cbl_det);
+
+	if (gpio_is_valid(anx7816->pdata->gpio_cbl_det)) {
+		ret = gpio_request_one(anx7816->pdata->gpio_cbl_det,
+				GPIOF_DIR_IN, "anx7816_cbl_det");
+		if (ret) {
+			pr_err("%s : failed to request gpio %d\n", __func__,
+					anx7816->pdata->gpio_cbl_det);
+			goto err2;
+		}
+	}
+
 	if (anx7816->pdata->external_ldo_control) {
-		ret = gpio_request(anx7816->pdata->gpio_v10_ctrl,
-							"anx7816_v10_ctrl");
+		if (gpio_is_valid(anx7816->pdata->gpio_v10_ctrl)) {
+			ret = gpio_request_one(anx7816->pdata->gpio_v10_ctrl,
+					GPIOF_OUT_INIT_LOW, "anx7816_v10_ctrl");
 			if (ret) {
 				pr_err("%s : failed to request gpio %d\n",
-						__func__,
-						anx7816->pdata->gpio_v10_ctrl);
-			goto err3;
-		}
-		gpio_direction_output(anx7816->pdata->gpio_v10_ctrl, 0);
+						__func__, anx7816->pdata->gpio_v10_ctrl);
+				goto err3;
 
+			}
 		gpio_set_value(anx7816->pdata->gpio_v10_ctrl, 0);
 		/* need to be check below */
-
+		}
 	}
 
 	gpio_set_value(anx7816->pdata->gpio_reset, 0);
 	gpio_set_value(anx7816->pdata->gpio_p_dwn, 1);
 
-#ifdef USE_HDMI_SWITCH
-	ret = gpio_request(hdmi_switch_gpio, "anx7816_hdmi_switch_gpio");
-	if (ret) {
-		pr_err("%s : failed to request gpio %d\n", __func__,
-				hdmi_switch_gpio);
-		goto err5;
-	}
-	gpio_direction_output(hdmi_switch_gpio, 0);
-	msleep(1);
-	gpio_set_value(hdmi_switch_gpio, 1);
-#endif
-
-	goto out;
+	return ret;
 
 err0:
 	gpio_free(anx7816->pdata->gpio_reset);
@@ -1316,17 +1307,17 @@ static int anx7816_parse_dt(
 	struct platform_device *sp_pdev = NULL;
 	struct device_node *sp_tx_node = NULL;
 #endif
-	pdata->gpio_p_dwn = of_get_named_gpio_flags(
-		np, "analogix,p-dwn-gpio", 0, NULL);
+	pdata->gpio_p_dwn = of_get_named_gpio(
+		np, "analogix,p-dwn-gpio", 0);
 
-	pdata->gpio_reset = of_get_named_gpio_flags(
-		np, "analogix,reset-gpio", 0, NULL);
+	pdata->gpio_reset = of_get_named_gpio(
+		np, "analogix,reset-gpio", 0);
 
-	pdata->gpio_int = of_get_named_gpio_flags(
-		np, "analogix,irq-gpio", 0, NULL);
+	pdata->gpio_int = of_get_named_gpio(
+		np, "analogix,irq-gpio", 0);
 
-	pdata->gpio_cbl_det = of_get_named_gpio_flags(
-		np, "analogix,cbl-det-gpio", 0, NULL);
+	pdata->gpio_cbl_det = of_get_named_gpio(
+		np, "analogix,cbl-det-gpio", 0);
 
 	printk(KERN_INFO
 			"%s gpio p_dwn : %d, reset : %d, irq : %d, gpio_cbl_det %d\n",
@@ -1345,14 +1336,13 @@ static int anx7816_parse_dt(
 	if (rc == -EINVAL)
 		pdata->external_ldo_control = 1;
 	if (pdata->external_ldo_control) {
-		pdata->gpio_v10_ctrl = of_get_named_gpio_flags(
-			np, "analogix,v10-ctrl-gpio", 0, NULL);
+		pdata->gpio_v10_ctrl = of_get_named_gpio(
+			np, "analogix,v10-ctrl-gpio", 0);
 
 
 	printk(KERN_INFO "%s gpio_v10_ctrl %d\n",
 		LOG_TAG, pdata->gpio_v10_ctrl);
 	}
-
 
 #ifdef CONFIG_SLIMPORT_DYNAMIC_HPD
 	/* parse phandle for hdmi tx */
@@ -1370,6 +1360,7 @@ static int anx7816_parse_dt(
 	}
 	pdata->hdmi_pdev = sp_pdev;
 #endif
+
 	if(anx7816_regulator_configure(dev, pdata) < 0) {
 		pr_err("%s %s: parsing dt for anx7816 is failed.\n",
 				LOG_TAG, __func__);
@@ -1438,6 +1429,7 @@ static int anx7816_i2c_probe(struct i2c_client *client,
 	val_SP_TX_LT_CTRL_REG18 = 0x77;
 	val_SP_TX_LT_CTRL_REG19 = 0x7e;
 #endif
+
 	if (!i2c_check_functionality(client->adapter,
 		I2C_FUNC_SMBUS_I2C_BLOCK)) {
 		pr_err("%s: i2c bus does not support the anx7816\n", __func__);
