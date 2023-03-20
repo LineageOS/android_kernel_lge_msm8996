@@ -1,6 +1,3 @@
-source "drivers/video/slimport/anx7808/Kconfig"
-source "drivers/video/slimport/anx7812/Kconfig"
-source "drivers/video/slimport/anx7816/Kconfig"
 source "drivers/video/slimport/Ctype_anx7816/Kconfig"
 
 config SLIMPORT_COMMON
