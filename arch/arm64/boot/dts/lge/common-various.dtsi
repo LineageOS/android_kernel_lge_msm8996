@@ -85,6 +85,11 @@
 
 	/delete-node/ gen-vkeys;
 
+	gpio_keys {
+		/delete-node/ cam_snapshot;
+		/delete-node/ cam_focus;
+	};
+
 	qcom,hdmi_tx@9a0000 {
 		/delete-property/ qcom,hdmi-tx-hpd;
 	};
