@@ -148,9 +148,17 @@ static int somc_chg_get_current_ma(struct smbchg_chip *chip,
 	int current_limit_ma = 0;
 
 	if (type == POWER_SUPPLY_TYPE_USB) {
-		/* Flow chart: C-1 SDP */
-		current_limit_ma = DEFAULT_SDP_MA;
-		pr_smb(PR_LGE, "Selected: C-1, SDP\n");
+		if (chip->typec_psy && chip->typec_current_ma) {
+			/* Type-C/PD detected by anx/tusb driver
+			 * (other mode reports 0 current).
+			 */
+			current_limit_ma = chip->typec_current_ma;
+			pr_smb(PR_LGE, "Selected: USB-PD\n");
+		} else {
+			/* Flow chart: C-1 SDP */
+			current_limit_ma = DEFAULT_SDP_MA;
+			pr_smb(PR_LGE, "Selected: C-1, SDP\n");
+		}
 	} else if (type == POWER_SUPPLY_TYPE_USB_CDP) {
 		/* Flow chart: C-1 CDP */
 		current_limit_ma = DEFAULT_CDP_MA;

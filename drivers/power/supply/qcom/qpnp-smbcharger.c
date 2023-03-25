@@ -215,7 +215,6 @@ struct smbchg_chip {
 	bool				typec_dfp;
 	unsigned int			usb_current_max;
 	unsigned int			usb_health;
-	int				typec_received_mode;
 
 	/* jeita and temperature */
 	bool				batt_hot;
@@ -746,7 +745,38 @@ static enum pwr_path_type smbchg_get_pwr_path(struct smbchg_chip *chip)
 static void get_property_from_typec(struct smbchg_chip *chip,
 				enum power_supply_property property,
 				union power_supply_propval *prop);
+static void update_typec_otg_status(struct smbchg_chip *chip,
+				int mode, bool force);
 #endif
+
+#ifdef CONFIG_LGE_USB_TYPE_C
+static bool is_usb_pd_present(struct smbchg_chip *chip)
+{
+	union power_supply_propval prop = {0,};
+
+	if (chip->typec_psy) {
+		get_property_from_typec(chip, POWER_SUPPLY_PROP_TYPEC_MODE, &prop);
+		if (prop.intval == POWER_SUPPLY_TYPE_TYPEC ||
+			prop.intval == POWER_SUPPLY_TYPE_USB_PD) {
+			return true;
+		}
+		return false;
+	}
+	return false;
+}
+
+static enum power_supply_type get_usb_pd_type(struct smbchg_chip *chip)
+{
+	union power_supply_propval prop = {0,};
+
+	if (chip->typec_psy)
+		get_property_from_typec(chip, POWER_SUPPLY_PROP_TYPEC_MODE, &prop);
+
+	pr_debug("Type-C mode = %d\n", prop.intval);
+	return prop.intval;
+}
+#endif
+
 static bool is_otg_present_schg(struct smbchg_chip *chip)
 {
 	int rc;
@@ -770,8 +800,11 @@ static bool is_otg_present_schg(struct smbchg_chip *chip)
 	msleep(20);
 
 #ifdef CONFIG_LGE_USB_TYPE_C
-	get_property_from_typec(chip, POWER_SUPPLY_PROP_USB_OTG, &prop);
-	return prop.intval ? true : false;
+	if (chip->typec_psy) {
+		get_property_from_typec(chip, POWER_SUPPLY_PROP_USB_OTG, &prop);
+		pr_smb(PR_MISC, "Type-C OTG = %d\n", prop.intval);
+		return prop.intval ? true : false;
+	}
 #endif
 
 	/*
@@ -1869,6 +1902,20 @@ static int smbchg_set_usb_current_max(struct smbchg_chip *chip,
 
 	switch (chip->usb_supply_type) {
 	case POWER_SUPPLY_TYPE_USB:
+#ifdef CONFIG_LGE_USB_TYPE_C
+		/*
+		 * Don't change c_ma for USB-PD.
+		 * PM8996 doesn't understand PD protocol,
+		 * so POWER_SUPPLY_TYPE_USB is selected.
+		 */
+		if (is_usb_pd_present(chip)) {
+			pr_smb(PR_MISC, "USB-PD, skipping current change\n");
+			rc = smbchg_set_high_usb_chg_current(chip, current_ma);
+			if (rc < 0)
+				pr_err("Couldn't set %dmA rc = %d\n", current_ma, rc);
+			goto out;
+		}
+#endif
 #ifdef CONFIG_QPNP_SMBCHARGER_EXTENSION
 		if (current_ma > CURRENT_400_MA)
 			current_ma = CURRENT_400_MA;
@@ -2498,6 +2545,18 @@ static bool smbchg_is_parallel_usb_ok(struct smbchg_chip *chip,
 		return false;
 	}
 
+#ifdef CONFIG_LGE_USB_TYPE_C
+	/*
+	 * If type-c current is reasonable,
+	 * skip check usb type and enable parallel charge.
+	 */
+	if (chip->typec_psy && chip->typec_current_ma >= 1800) {
+		pr_smb(PR_LGE, "typec_current_ma is %d, continuing\n",
+				chip->typec_current_ma);
+		goto skip_usb_supply_type;
+	}
+#endif
+
 	rc = smbchg_read(chip, &reg, chip->misc_base + IDEV_STS, 1);
 	if (rc < 0) {
 		dev_err(chip->dev, "Couldn't read status 5 rc = %d\n", rc);
@@ -2514,6 +2573,17 @@ static bool smbchg_is_parallel_usb_ok(struct smbchg_chip *chip,
 		pr_smb(PR_STATUS, "SDP adapter, skipping\n");
 		return false;
 	}
+
+#ifdef CONFIG_LGE_PM
+	if (chip->usb_supply_type == POWER_SUPPLY_TYPE_USB_DCP &&
+			chip->very_weak_charger) {
+		pr_smb(PR_LGE, "DCP adapter is weak, skipping\n");
+		return false;
+	}
+#endif
+#ifdef CONFIG_LGE_USB_TYPE_C
+skip_usb_supply_type:
+#endif
 
 	/*
 	 * If USBIN is suspended or not the active power source, do not enable
@@ -2573,6 +2643,14 @@ static bool smbchg_is_parallel_usb_ok(struct smbchg_chip *chip,
 	 */
 	if (parallel_cl_ma <= SUSPEND_CURRENT_MA)
 		parallel_cl_ma = 0;
+
+#ifdef CONFIG_LGE_PM
+	/*
+	 * If parallel disabled by ESR pulse, use saved parallel current before
+	 */
+	if (!fcc_voter || strcmp(fcc_voter, ESR_PULSE_FCC_VOTER) == 0)
+		parallel_cl_ma = chip->parallel.current_max_ma;
+#endif
 
 	/*
 	 * Set the parallel charge path's input current limit (ICL)
@@ -4007,6 +4085,74 @@ static void check_battery_type(struct smbchg_chip *chip)
 	}
 }
 
+#ifdef CONFIG_LGE_USB_TYPE_C
+/*
+ * "max_icl_ma" corresponds to the original settings
+ * LG used to prevent damage to board traces due to
+ * overheating (HW_ICL_VOTER in original source).
+ * Defined in DT by "typec-current-max".
+ * 1800 (G5), 2000 (V20) and 3000 (G6). It's set here
+ * since PD charging circumvents the normal configuration.
+ */
+static void smbchg_usb_pd_en(struct smbchg_chip *chip)
+{
+	union power_supply_propval prop = {0, };
+	enum power_supply_type usb_supply_type;
+	char *usb_type_name = "null";
+	int c_mv, c_ma, target_icl_ma;
+	int max_icl_ma = chip->somc_params.chg_det.typec_current_max;
+	int rc;
+
+	get_property_from_typec(chip, POWER_SUPPLY_PROP_VOLTAGE_MAX, &prop);
+	c_mv = prop.intval;
+
+	get_property_from_typec(chip, POWER_SUPPLY_PROP_CURRENT_MAX, &prop);
+	c_ma = prop.intval;
+
+	target_icl_ma = get_effective_result_locked(chip->usb_icl_votable);
+
+	if (c_ma == 0 || c_ma == target_icl_ma || target_icl_ma == max_icl_ma) {
+		pr_smb(PR_MISC, "skip current setting for C Type\n");
+	} else {
+		pr_smb(PR_LGE, "USB-PD, c_mV[%d], c_mA[%d], "
+				"target_icl_mA[%d], max_icl_ma[%d]\n",
+				c_mv, c_ma, target_icl_ma, max_icl_ma);
+
+		/*
+		 * This was an attempt at enabling host mode with charging.
+		 * Might be more required in the type-c drivers, can't say
+		 * at this point.
+		 */
+		if (get_usb_pd_type(chip) == POWER_SUPPLY_TYPE_TYPEC) {
+			get_property_from_typec(chip, POWER_SUPPLY_PROP_USB_OTG, &prop);
+			if (prop.intval == 1)
+				update_typec_otg_status(chip, POWER_SUPPLY_TYPE_UFP, true);
+		}
+
+		if (c_ma >= max_icl_ma)
+			c_ma = max_icl_ma;
+
+		read_usb_type(chip, &usb_type_name, &usb_supply_type);
+		if (usb_supply_type == POWER_SUPPLY_TYPE_USB) {
+			pr_smb(PR_LGE, "USB-PD, writing pm8996 regs\n");
+			rc = smbchg_masked_write(chip,
+					chip->usb_chgpth_base + CMD_IL,
+					ICL_OVERRIDE_BIT,
+					ICL_OVERRIDE_BIT);
+			if (rc < 0)
+				pr_err("USB-PD, couldn't set override: %d\n", rc);
+
+			rc = smbchg_set_usb_current_max(chip, c_ma);
+			if (rc)
+				pr_err("USB-PD, set_usb_current_max failed: %d\n", rc);
+		}
+		rc = vote(chip->usb_icl_votable, PSY_ICL_VOTER, true, c_ma);
+		if (rc < 0)
+			pr_smb(PR_LGE, "USB-PD, new USB ICL vote failed: %d\n", rc);
+	}
+}
+#endif
+
 static void smbchg_external_power_changed(struct power_supply *psy)
 {
 	struct smbchg_chip *chip = power_supply_get_drvdata(psy);
@@ -4014,6 +4160,14 @@ static void smbchg_external_power_changed(struct power_supply *psy)
 #ifdef CONFIG_QPNP_SMBCHARGER_EXTENSION
 	union power_supply_propval prop = {0,};
 	enum power_supply_type type = POWER_SUPPLY_TYPE_UNKNOWN;
+#endif
+
+#ifdef CONFIG_LGE_USB_TYPE_C
+	if (is_usb_pd_present(chip)) {
+		pr_smb(PR_MISC, "Enabling USB-PD\n");
+		smbchg_usb_pd_en(chip);
+		goto skip_for_pd;
+	}
 #endif
 
 	smbchg_aicl_deglitch_wa_check(chip);
@@ -4051,6 +4205,9 @@ static void smbchg_external_power_changed(struct power_supply *psy)
 	}
 #endif
 
+#ifdef CONFIG_LGE_USB_TYPE_C
+skip_for_pd:
+#endif
 	/* adjust vfloat */
 	smbchg_vfloat_adjust_check(chip);
 
@@ -6256,6 +6413,12 @@ static void update_typec_capability_status(struct smbchg_chip *chip,
 	chip->typec_current_ma = val->intval;
 	smbchg_change_usb_supply_type(chip, chip->usb_supply_type);
 #else
+#ifdef CONFIG_LGE_USB_TYPE_C
+	if (is_usb_pd_present(chip)) {
+		chip->typec_current_ma = val->intval;
+		return;
+	}
+#endif
 	mutex_lock(&chip->usb_status_lock);
 	if (chip->typec_current_ma != 0 &&
 			chip->typec_current_ma <= val->intval) {
@@ -6408,7 +6571,12 @@ static int smbchg_usb_set_property(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CURRENT_MAX:
 	case POWER_SUPPLY_PROP_SDP_CURRENT_MAX:
-		smbchg_set_sdp_current(chip, val->intval);
+#ifdef CONFIG_LGE_USB_TYPE_C
+		if (is_usb_pd_present(chip))
+			pr_smb(PR_MISC, "USB-PD, skipping SDP current from dwc3\n");
+		else
+#endif
+			smbchg_set_sdp_current(chip, val->intval);
 	default:
 		return -EINVAL;
 	}
@@ -6613,9 +6781,6 @@ static int smbchg_battery_set_property(struct power_supply *psy,
 			update_typec_capability_status(chip, val);
 		break;
 	case POWER_SUPPLY_PROP_TYPEC_MODE:
-#ifdef CONFIG_QPNP_SMBCHARGER_EXTENSION
-		chip->typec_received_mode = val->intval;
-#endif
 		if (chip->typec_psy)
 			update_typec_otg_status(chip, val->intval, false);
 		break;
@@ -7678,7 +7843,6 @@ static int determine_initial_status(struct smbchg_chip *chip)
 #ifdef CONFIG_QPNP_SMBCHARGER_EXTENSION
 	if (chip->typec_psy) {
 		get_property_from_typec(chip, POWER_SUPPLY_PROP_TYPE, &type);
-		chip->typec_received_mode = type.intval;
 		update_typec_otg_status(chip, type.intval, true);
 	} else {
 		usbid_change_handler(0, chip);
