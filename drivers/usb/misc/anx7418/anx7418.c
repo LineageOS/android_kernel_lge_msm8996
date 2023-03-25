@@ -79,8 +79,6 @@ int set_property_on_battery(struct anx7418 *anx,
 			POWER_SUPPLY_PROP_CURRENT_CAPABILITY, &ret);
 		if (rc)
 			pr_err("failed to set current max rc=%d\n", rc);
-		else
-			pr_info("current set on batt_psy = %d\n", anx->curr_max);
 		break;
 	case POWER_SUPPLY_PROP_TYPEC_MODE:
 		/*
@@ -148,13 +146,8 @@ static int chg_get_property(struct power_supply *psy,
 
 	case POWER_SUPPLY_PROP_TYPEC_MODE:
 		dev_dbg(cdev, "%s: get typec mode\n", __func__);
-		rc = anx7418_read_reg(anx->client, CC_STATUS);
-
-		val->intval = (rc == 0x11) ?
-			POWER_SUPPLY_TYPEC_SINK_DEBUG_ACCESSORY :
-			POWER_SUPPLY_TYPE_UNKNOWN;
+		val->intval = anx->pd_psy_d.type;
 		break;
-
 	default:
 		return -EINVAL;
 	}
@@ -1188,11 +1181,11 @@ static void chg_work(struct work_struct *w)
 			/* Default USB Current */
 			dev_dbg(cdev, "%s: Default USB Power\n", __func__);
 			anx->volt_max = 5000;
-			anx->curr_max = 500;
+			anx->curr_max = 0;
 			anx->ctype_charger = ANX7418_UNKNOWN_CHARGER;
 		}
-		set_property_on_battery(anx, POWER_SUPPLY_PROP_CURRENT_CAPABILITY);
 	}
+	set_property_on_battery(anx, POWER_SUPPLY_PROP_CURRENT_CAPABILITY);
 
 	/* Update ctype(ctype-pd) charger */
 	switch (anx->ctype_charger) {
