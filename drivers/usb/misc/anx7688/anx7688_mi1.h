@@ -177,7 +177,7 @@
 #define ANX_ROLE_SRC                   BIT(3)
 #define ANX_ROLE_DRP                   BIT(4)
 
-#define USBC_UNKNWON_CHARGER           BIT(0)
+#define USBC_UNKNOWN_CHARGER           BIT(0)
 #define USBC_CHARGER                   BIT(1)
 #define USBC_PD_CHARGER                BIT(2)
 #define USBC_VOLT_RP3P0                5000
