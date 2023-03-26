@@ -15,12 +15,15 @@ config QPNP_SMBCHARGER_EXTENSION
 	help
 	  Say Y here to enable SoMC extensional SMB charger functions.
 
-config LGE_CUSTOM_CHARGE_RATES
-	tristate "Custom charge rates for LGE 8996 devices"
+config LGE_FIX_BATT_TEMP_READING
+	tristate "Custom battery temp reading for LGE 8996 devices"
 	depends on QPNP_SMBCHARGER_EXTENSION
 	help
-	  Say Y here to enable the custom charge rates for LGE G5, G6 and V20,
-	  replacing qcom's and SoMC's defaults which are much slower overall.
+	  Say Y here to enable the custom battery temp reading code for the 
+	  LG G5, G6 and V20, replacing qcom's and SoMC's defaults which cause
+	  issues by erroneously reporting the battery status as WARM or HOT
+	  despite the temp values being within the NORMAL range for those 
+	  devices.
 
 config QPNP_FG
 	tristate "QPNP fuel gauge driver"
