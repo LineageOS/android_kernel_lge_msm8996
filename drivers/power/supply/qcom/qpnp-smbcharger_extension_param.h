@@ -139,7 +139,7 @@ struct somc_charge_error {
 	struct delayed_work	status_reset_work;
 };
 
-#ifdef CONFIG_LGE_CUSTOM_CHARGE_RATES
+#ifdef CONFIG_LGE_FIX_BATT_TEMP_READING
 struct batt_temp_thresholds {
 	int hot_threshold;
 	int warm_threshold;
@@ -165,7 +165,7 @@ struct chg_somc_params {
 	struct somc_hvdcp3		hvdcp3;
 	struct somc_input_current_state	input_current;
 	struct somc_charge_error	charge_error;
-#ifdef CONFIG_LGE_CUSTOM_CHARGE_RATES
+#ifdef CONFIG_LGE_FIX_BATT_TEMP_READING
 	struct power_supply			*bms_psy;
 	struct batt_temp_thresholds temp_thresh;
 #endif

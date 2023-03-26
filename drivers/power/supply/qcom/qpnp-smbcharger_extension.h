@@ -32,7 +32,7 @@ static void somc_unplug_wakelock(struct chg_somc_params *params);
 static void somc_chg_shutdown_lowbatt(struct smbchg_chip *chip);
 static void somc_chg_check_soc(struct smbchg_chip *chip,
 			int current_soc);
-#ifndef CONFIG_LGE_CUSTOM_CHARGE_RATES /* This one's not used with LGE_RATES. */
+#ifndef CONFIG_LGE_FIX_BATT_TEMP_READING /* This one's not used with LGE temp readings. */
 static void somc_chg_temp_status_transition(
 			struct chg_somc_params *params, u8 reg);
 #endif

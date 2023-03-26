@@ -226,7 +226,7 @@ struct smbchg_chip {
 	unsigned int			*thermal_mitigation;
 
 	/* irqs */
-#ifndef CONFIG_LGE_CUSTOM_CHARGE_RATES
+#ifndef CONFIG_LGE_FIX_BATT_TEMP_READING
 	int				batt_hot_irq;
 	int				batt_warm_irq;
 	int				batt_cool_irq;
@@ -1077,11 +1077,8 @@ static int get_prop_batt_status(struct smbchg_chip *chip)
 
 out:
 	pr_smb_rt(PR_MISC, "CHGR_STS = 0x%02x\n", reg);
-#if defined(CONFIG_QPNP_SMBCHARGER_EXTENSION) && defined(CONFIG_LGE_CUSTOM_CHARGE_RATES)
-	/*
-	 * Check temp status and change current every time a
-	 * batt status read is issued by smbcharger.
-	 */
+#if defined(CONFIG_QPNP_SMBCHARGER_EXTENSION) && defined(CONFIG_LGE_FIX_BATT_TEMP_READING)
+	/* Check temp status every time a batt status read is issued by smbcharger. */
 	schedule_work(&chip->somc_params.temp.work);
 #endif
 	return status;
@@ -6975,7 +6972,7 @@ static int smbchg_dc_is_writeable(struct power_supply *psy,
 	return rc;
 }
 
-#ifndef CONFIG_LGE_CUSTOM_CHARGE_RATES
+#ifndef CONFIG_LGE_FIX_BATT_TEMP_READING
 #define HOT_BAT_HARD_BIT	BIT(0)
 #define HOT_BAT_SOFT_BIT	BIT(1)
 #define COLD_BAT_HARD_BIT	BIT(2)
@@ -6985,9 +6982,9 @@ static int smbchg_dc_is_writeable(struct power_supply *psy,
 #define BAT_LOW_BIT		BIT(5)
 #define BAT_MISSING_BIT		BIT(6)
 #define BAT_TERM_MISSING_BIT	BIT(7)
-#ifndef CONFIG_LGE_CUSTOM_CHARGE_RATES
+#ifndef CONFIG_LGE_FIX_BATT_TEMP_READING
 /*
- * If LGE_CUSTOM_CHARGE_RATES is defined, we'll use
+ * If LGE_FIX_BATT_TEMP_READING is defined, we'll use
  * the custom temp checks inside qpnp-smbcharger-extension.c
  * instead of what's here.
  */
@@ -7070,7 +7067,7 @@ static irqreturn_t batt_cool_handler(int irq, void *_chip)
 #endif
 	return IRQ_HANDLED;
 }
-#endif /* CONFIG_LGE_CUSTOM_CHARGE_RATES */
+#endif /* CONFIG_LGE_FIX_BATT_TEMP_READING */
 
 static irqreturn_t batt_pres_handler(int irq, void *_chip)
 {
@@ -7643,7 +7640,7 @@ static int determine_initial_status(struct smbchg_chip *chip)
 	 */
 
 	batt_pres_handler(0, chip);
-#ifndef CONFIG_LGE_CUSTOM_CHARGE_RATES
+#ifndef CONFIG_LGE_FIX_BATT_TEMP_READING
 	batt_hot_handler(0, chip);
 	batt_warm_handler(0, chip);
 	batt_cool_handler(0, chip);
@@ -8708,7 +8705,7 @@ static int smbchg_request_irqs(struct smbchg_chip *chip)
 			break;
 		case SMBCHG_BAT_IF_SUBTYPE:
 		case SMBCHG_LITE_BAT_IF_SUBTYPE:
-#ifndef CONFIG_LGE_CUSTOM_CHARGE_RATES
+#ifndef CONFIG_LGE_FIX_BATT_TEMP_READING
 			rc = smbchg_request_irq(chip, child,
 				&chip->batt_hot_irq,
 				"batt-hot", batt_hot_handler, flags);
@@ -8741,7 +8738,7 @@ static int smbchg_request_irqs(struct smbchg_chip *chip)
 			if (rc < 0)
 				return rc;
 
-#ifndef CONFIG_LGE_CUSTOM_CHARGE_RATES
+#ifndef CONFIG_LGE_FIX_BATT_TEMP_READING
 			enable_irq_wake(chip->batt_hot_irq);
 			enable_irq_wake(chip->batt_warm_irq);
 			enable_irq_wake(chip->batt_cool_irq);
@@ -9643,7 +9640,7 @@ static void smbchg_shutdown(struct platform_device *pdev)
 
 	pr_smb(PR_MISC, "Disable all interrupts\n");
 	disable_irq(chip->aicl_done_irq);
-#ifndef CONFIG_LGE_CUSTOM_CHARGE_RATES
+#ifndef CONFIG_LGE_FIX_BATT_TEMP_READING
 	disable_irq(chip->batt_cold_irq);
 	disable_irq(chip->batt_cool_irq);
 	disable_irq(chip->batt_hot_irq);
