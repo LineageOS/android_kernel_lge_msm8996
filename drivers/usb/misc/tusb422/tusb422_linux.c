@@ -50,7 +50,6 @@
 	#include <linux/usb/class-dual-role.h>
 #endif
 
-
 #ifdef CONFIG_LGE_USB_TYPE_C
 #include <linux/reboot.h>
 #endif
@@ -927,7 +926,6 @@ static enum hrtimer_restart tusb422_timer_tasklet(struct hrtimer *hrtimer)
 			  msecs_to_jiffies(WAKE_LOCK_TIMEOUT_MS));
 #endif
 
-
 	tusb422_pwr->timer_expired = true;
 	tusb422_schedule_work(&tusb422_pwr->work);
 
@@ -1077,7 +1075,6 @@ static int tusb422_i2c_probe(struct i2c_client *client,
 #ifdef CONFIG_LGE_USB_TYPE_C
 	tusb422_sw_reset(0);
 #endif
-
 	if (!tusb422_is_present(0)) {
 		dev_err(dev, "%s: no TUSB422 device found\n", __func__);
 		ret = -ENODEV;
@@ -1122,7 +1119,6 @@ static int tusb422_i2c_probe(struct i2c_client *client,
 				 WQ_MEM_RECLAIM | WQ_HIGHPRI | WQ_CPU_INTENSIVE,
 				 1);
 #endif
-
 	hrtimer_init(&tusb422_pd->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	INIT_WORK(&tusb422_pd->work, tusb422_work);
 

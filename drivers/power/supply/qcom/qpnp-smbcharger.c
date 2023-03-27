@@ -10,6 +10,7 @@
  * GNU General Public License for more details.
  */
 #define pr_fmt(fmt) "SMBCHG: %s: " fmt, __func__
+#define DEBUG
 
 #include <linux/regmap.h>
 #include <linux/spinlock.h>

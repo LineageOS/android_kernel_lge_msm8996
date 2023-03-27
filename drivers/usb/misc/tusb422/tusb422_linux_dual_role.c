@@ -38,6 +38,15 @@ static enum dual_role_property tusb422_dual_role_props[] = {
 	DUAL_ROLE_PROP_PR,
 	DUAL_ROLE_PROP_DR,
 	DUAL_ROLE_PROP_VCONN_SUPPLY,
+#ifdef CONFIG_LGE_USB_TYPE_C
+	DUAL_ROLE_PROP_CC1,
+	DUAL_ROLE_PROP_CC2,
+	DUAL_ROLE_PROP_PDO1,
+	DUAL_ROLE_PROP_PDO2,
+	DUAL_ROLE_PROP_PDO3,
+	DUAL_ROLE_PROP_PDO4,
+	DUAL_ROLE_PROP_RDO,
+#endif
 };
 
 
@@ -51,15 +60,22 @@ static int tusb422_dual_role_get_prop(struct dual_role_phy_instance *dual_role,
 	static uint8_t prop_vconn = DUAL_ROLE_PROP_VCONN_SUPPLY_NO;
 	usb_pd_port_t *pd_dev = usb_pd_pe_get_device(0);
 	tcpc_device_t *tcpc_dev = tcpm_get_device(0);
+#ifdef CONFIG_LGE_USB_TYPE_C
+	unsigned int cc;
+#endif
 
 	switch (prop) {
 	case DUAL_ROLE_PROP_SUPPORTED_MODES:
+#ifdef CONFIG_LGE_USB_TYPE_C
+		*val = DUAL_ROLE_SUPPORTED_MODES_DFP_AND_UFP;
+#else
 		if ((tcpc_dev->role == ROLE_DRP) || (tcpc_dev->flags & TC_FLAGS_TEMP_ROLE))
 			*val = DUAL_ROLE_SUPPORTED_MODES_DFP_AND_UFP;
 		else if (tcpc_dev->role == ROLE_SRC)
 			*val = DUAL_ROLE_SUPPORTED_MODES_DFP;
 		else
 			*val = DUAL_ROLE_SUPPORTED_MODES_UFP;
+#endif
 		break;
 
 	case DUAL_ROLE_PROP_MODE:
@@ -123,6 +139,81 @@ static int tusb422_dual_role_get_prop(struct dual_role_phy_instance *dual_role,
 			*val = DUAL_ROLE_PROP_VCONN_SUPPLY_NO;
 		prop_vconn = *val;
 		break;
+
+#ifdef CONFIG_LGE_USB_TYPE_C
+	case DUAL_ROLE_PROP_CC1:
+	case DUAL_ROLE_PROP_CC2:
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECT
+		if (IS_STATE_CC_FAULT(tcpc_dev->state)) {
+			*val = DUAL_ROLE_PROP_CC_OPEN;
+			break;
+		}
+		else
+#endif
+		if (tcpc_dev->debug_accessory_mode) {
+			*val = DUAL_ROLE_PROP_CC_RD;
+			break;
+		}
+
+		if (prop == DUAL_ROLE_PROP_CC1)
+			cc = TCPC_CC1_STATE(tcpc_dev->cc_status);
+		else
+			cc = TCPC_CC2_STATE(tcpc_dev->cc_status);
+
+		if (tcpc_dev->cc_status & CC_STATUS_CONNECT_RESULT) {
+			switch (cc) {
+			case CC_SNK_STATE_DEFAULT:
+				*val = DUAL_ROLE_PROP_CC_RP_DEFAULT;
+				break;
+			case CC_SNK_STATE_POWER15:
+				*val = DUAL_ROLE_PROP_CC_RP_POWER1P5;
+				break;
+			case CC_SNK_STATE_POWER30:
+				*val = DUAL_ROLE_PROP_CC_RP_POWER3P0;
+				break;
+			default:
+				*val = DUAL_ROLE_PROP_CC_OPEN;
+				break;
+			}
+		} else {
+			switch (cc) {
+			case CC_SRC_STATE_RD:
+				*val = DUAL_ROLE_PROP_CC_RD;
+				break;
+			case CC_SRC_STATE_RA:
+				*val = DUAL_ROLE_PROP_CC_RA;
+				break;
+			case CC_SRC_STATE_OPEN:
+			default:
+				*val = DUAL_ROLE_PROP_CC_OPEN;
+				break;
+			}
+		}
+		break;
+	case DUAL_ROLE_PROP_PDO1:
+	case DUAL_ROLE_PROP_PDO2:
+	case DUAL_ROLE_PROP_PDO3:
+	case DUAL_ROLE_PROP_PDO4:
+		if (tcpc_dev->state != TCPC_STATE_UNATTACHED_SRC &&
+		    tcpc_dev->state != TCPC_STATE_UNATTACHED_SNK) {
+			if (pd_dev->power_role == PD_PWR_ROLE_SRC)
+				*val = pd_dev->src_pdo[prop - DUAL_ROLE_PROP_PDO1];
+			else
+				*val = pd_dev->offered_pdo[prop - DUAL_ROLE_PROP_PDO1];
+		} else
+			*val = 0;
+		break;
+	case DUAL_ROLE_PROP_RDO:
+		if (tcpc_dev->state != TCPC_STATE_UNATTACHED_SRC &&
+		    tcpc_dev->state != TCPC_STATE_UNATTACHED_SNK) {
+			if (pd_dev->power_role == PD_PWR_ROLE_SRC)
+				*val = pd_dev->offered_rdo;
+			else
+				*val = pd_dev->rdo;
+		} else
+			*val = 0;
+		break;
+#endif
 
 	default:
 		return -EINVAL;

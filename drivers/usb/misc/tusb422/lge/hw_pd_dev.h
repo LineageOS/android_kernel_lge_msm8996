@@ -17,6 +17,11 @@
 
 #include <soc/qcom/lge/board_lge.h>
 
+#if defined(CONFIG_LGE_USB_MOISTURE_DETECT)
+#include <soc/qcom/lge/power/lge_power_class.h>
+#include <soc/qcom/lge/power/lge_cable_detect.h>
+#endif
+
 #ifdef CONFIG_LGE_USB_MOISTURE_DETECT
 #include <soc/qcom/lge/power/lge_power_class.h>
 #include <soc/qcom/lge/power/lge_cable_detect.h>

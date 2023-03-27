@@ -187,8 +187,9 @@ typedef struct
 
 	bool                moisture_detect_disable;
 	bool                moisture_detect_use_sbu;
-#endif
+
 	struct power_supply *typec_psy;
+#endif
 #endif
 } tcpc_device_t;
 

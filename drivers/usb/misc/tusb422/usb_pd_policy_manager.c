@@ -48,6 +48,10 @@
 	#include <linux/string.h>
 #endif
 
+#if defined(CONFIG_LGE_USB_TYPE_C) && defined(CONFIG_DUAL_ROLE_USB_INTF)
+#include "tusb422_linux_dual_role.h"
+#endif
+
 #define PDO_DUAL_ROLE_POWER_BIT           ((uint32_t)0x01 << 29)
 #define SRC_PDO_USB_SUSPEND_BIT           ((uint32_t)0x01 << 28)
 #define SNK_PDO_HIGHER_CAPABILITY_BIT     ((uint32_t)0x01 << 28)
@@ -203,6 +207,9 @@ void usb_pd_pm_evaluate_src_caps(unsigned int port)
 		// Using get_data_object() instead of casting to 32-bit pointer
 		// in case pdo_data pointer is not 4-byte aligned.
 		pdo = get_data_object(&pdo_data[src_pdo_idx << 2]);
+#ifdef CONFIG_LGE_USB_TYPE_C
+		dev->offered_pdo[src_pdo_idx] = pdo;
+#endif
 
 		INFO("PDO[%u] = 0x%08x\n", src_pdo_idx, pdo);
 
@@ -236,6 +243,16 @@ void usb_pd_pm_evaluate_src_caps(unsigned int port)
 			new_offer->max_power = calc_power(new_offer->max_voltage, new_offer->max_current);
 		}
 
+#ifdef CONFIG_LGE_USB_TYPE_C
+		CRIT("PDO-%u %s, %u - %u mV, %u mA, %u mW\n",
+		     src_pdo_idx + 1,
+		     (new_offer->supply_type == SUPPLY_TYPE_FIXED) ? "Fixed" :
+		     (new_offer->supply_type == SUPPLY_TYPE_VARIABLE) ? "Vari" : "Batt",
+		     PDO_VOLT_TO_MV(new_offer->min_voltage),
+		     PDO_VOLT_TO_MV(new_offer->max_voltage),
+		     PDO_CURR_TO_MA(new_offer->max_current),
+		     PDO_PWR_TO_MW(new_offer->max_power));
+#else
 		CRIT("PDO-%u %s, ", src_pdo_idx + 1,
 			 (new_offer->supply_type == SUPPLY_TYPE_FIXED) ? "Fixed" :
 			 (new_offer->supply_type == SUPPLY_TYPE_VARIABLE) ? "Vari" : "Batt");
@@ -243,6 +260,7 @@ void usb_pd_pm_evaluate_src_caps(unsigned int port)
 		CRIT("%u mV, ", PDO_VOLT_TO_MV(new_offer->max_voltage));
 		CRIT("%u mA, ", PDO_CURR_TO_MA(new_offer->max_current));
 		CRIT("%u mW\n", PDO_PWR_TO_MW(new_offer->max_power));
+#endif
 
 		for (snk_pdo_idx = 0; snk_pdo_idx < config->num_snk_pdos; snk_pdo_idx++)
 		{
@@ -266,8 +284,12 @@ void usb_pd_pm_evaluate_src_caps(unsigned int port)
 			acceptable_pdo = false;
 
 			// Determine whether PDO is acceptable.
+#ifdef CONFIG_LGE_USB_TYPE_C
+			if (new_offer->max_voltage <= config->snk_caps[snk_pdo_idx].MaxV)
+#else
 			if ((new_offer->max_voltage <= config->snk_caps[snk_pdo_idx].MaxV) &&
 				(new_offer->min_voltage >= config->snk_caps[snk_pdo_idx].MinV))
+#endif
 			{
 				if (config->snk_caps[snk_pdo_idx].SupplyType == SUPPLY_TYPE_BATTERY)
 				{
@@ -281,7 +303,11 @@ void usb_pd_pm_evaluate_src_caps(unsigned int port)
 				}
 				else /* Fixed or Variable Sink Cap */
 				{
+#ifdef CONFIG_LGE_USB_TYPE_C
+					if (new_offer->max_current >= config->snk_caps[snk_pdo_idx].MinOperatingCurrent)
+#else
 					if (new_offer->max_current >= config->snk_caps[snk_pdo_idx].OperationalCurrent)
+#endif
 					{
 						acceptable_pdo = true;
 
@@ -321,6 +347,10 @@ void usb_pd_pm_evaluate_src_caps(unsigned int port)
 		dev->selected_pdo = get_data_object(&pdo_data[0]);
 		dev->selected_snk_pdo_idx = 0;
 	}
+
+#if defined(CONFIG_LGE_USB_TYPE_C) && defined(CONFIG_DUAL_ROLE_USB_INTF)
+	dual_role_instance_changed(tusb422_dual_role_phy);
+#endif
 
 	CRIT("PDO-%u 0x%08x selected\n", dev->object_position, dev->selected_pdo);
 	DEBUG("selected_snk_pdo_idx: %u\n", dev->selected_snk_pdo_idx);
@@ -447,6 +477,10 @@ void build_snk_caps(unsigned int port)
 	{
 		dev->snk_pdo[0] |= PDO_DUAL_ROLE_DATA_BIT;
 	}
+
+#if defined(CONFIG_LGE_USB_TYPE_C) && (PD_SPEC_REV == PD_REV30)
+	dev->snk_pdo[0] |= ((uint32_t)config->fast_role_swap_support & 0x03) << 23;
+#endif
 
 	for (n = 0; n < config->num_snk_pdos; n++)
 	{

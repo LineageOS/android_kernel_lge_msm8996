@@ -47,6 +47,10 @@
 	#include <stdint.h>
 #endif
 
+#ifdef CONFIG_LGE_USB_TYPE_C
+#include <linux/ratelimit.h>
+#endif
+
 /** Debug print functions **/
 #ifndef DEBUG_LEVEL
 	#define DEBUG_LEVEL 1
@@ -60,30 +64,62 @@
 
 #if DEBUG_LEVEL >= 1
 // Variadic macro requires "--gcc" compiler switch.
+#ifdef CONFIG_LGE_USB_TYPE_C
+    #define PRINT(str, args...)  printk_ratelimited(PRINT_PREFIX str, ##args)
+#else
     #define PRINT(str, args...)  printk(PRINT_PREFIX str, ##args)
+#endif
+#else
+#ifdef CONFIG_LGE_USB_TYPE_C
+	#define PRINT(str, args...)  pr_debug_ratelimited(PRINT_PREFIX str, ##args)
 #else
 	#define PRINT(str, args...)  {}
+#endif
 #endif
 
 #if DEBUG_LEVEL >= 2
 // Variadic macro requires "--gcc" compiler switch.
+#ifdef CONFIG_LGE_USB_TYPE_C
+	#define CRIT(str, args...)  printk_ratelimited(PRINT_PREFIX str, ##args)
+#else
 	#define CRIT(str, args...)  printk(PRINT_PREFIX str, ##args)
+#endif
+#else
+#ifdef CONFIG_LGE_USB_TYPE_C
+	#define CRIT(str, args...)  pr_debug_ratelimited(PRINT_PREFIX str, ##args)
 #else
 	#define CRIT(str, args...)  {}
+#endif
 #endif
 
 #if DEBUG_LEVEL >= 3
 // Variadic macro requires "--gcc" compiler switch.
+#ifdef CONFIG_LGE_USB_TYPE_C
+	#define DEBUG(str, args...)  printk_ratelimited(PRINT_PREFIX str, ##args)
+#else
 	#define DEBUG(str, args...)  printk(PRINT_PREFIX str, ##args)
+#endif
+#else
+#ifdef CONFIG_LGE_USB_TYPE_C
+	#define DEBUG(str, args...)  pr_debug_ratelimited(PRINT_PREFIX str, ##args)
 #else
 	#define DEBUG(str, args...)  {}
+#endif
 #endif
 
 #if DEBUG_LEVEL >= 4
 // Variadic macro requires "--gcc" compiler switch.
+#ifdef CONFIG_LGE_USB_TYPE_C
+	#define INFO(str, args...)  printk_ratelimited(PRINT_PREFIX str, ##args)
+#else
 	#define INFO(str, args...)  printk(PRINT_PREFIX str, ##args)
+#endif
+#else
+#ifdef CONFIG_LGE_USB_TYPE_C
+	#define INFO(str, args...)  pr_debug_ratelimited(PRINT_PREFIX str, ##args)
 #else
 	#define INFO(str, args...)  {}
+#endif
 #endif
 
 #define MIN(a,b) (((a) < (b)) ? (a) : (b))
