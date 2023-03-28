@@ -68,7 +68,7 @@ int set_property_on_battery(struct hw_pd_dev *dev,
 			pr_err("failed to set typec mode rc=%d\n", rc);
 		else
 			/* Since vbus is enabled some time after notifying this prop, rather than locally */
-			msleep(30);
+			msleep(5);
 		break;
 	case POWER_SUPPLY_PROP_USB_OTG:
 		/*
@@ -86,7 +86,7 @@ int set_property_on_battery(struct hw_pd_dev *dev,
 			pr_err("failed to set typec mode (otg) rc=%d\n", rc);
 		else
 			/* Since vbus is enabled some time after notifying this prop, rather than locally */
-			msleep(30);
+			msleep(5);
 		break;
 	default:
 		pr_err("invalid request\n");
@@ -151,9 +151,13 @@ static int chg_get_property(struct power_supply *psy,
 		break;
 
 	case POWER_SUPPLY_PROP_TYPE:
-		DEBUG("%s: type(%s)\n", __func__,
-			chg_to_string(dev->chg_psy_d.type));
-		val->intval = dev->chg_psy_d.type;
+		DEBUG("%s: type(%s)\n", __func__, chg_to_string(dev->mode));
+		if (dev->mode == DUAL_ROLE_PROP_MODE_UFP)
+			val->intval = POWER_SUPPLY_TYPE_UFP;
+		else if (dev->mode == DUAL_ROLE_PROP_MODE_DFP)
+			val->intval = POWER_SUPPLY_TYPE_DFP;
+		else
+			val->intval = POWER_SUPPLY_TYPE_UNKNOWN;
 		break;
 
 	case POWER_SUPPLY_PROP_CURRENT_CAPABILITY:
@@ -163,9 +167,9 @@ static int chg_get_property(struct power_supply *psy,
 		break;
 
 	case POWER_SUPPLY_PROP_TYPEC_MODE:
-		DEBUG("%s: typec_mode(%d)\n", __func__,
-		      dev->typec_mode);
-		val->intval = dev->typec_mode;
+		DEBUG("%s: typec_mode(%d)\n", __func__, dev->chg_psy_d.type);
+		val->intval = dev->chg_psy_d.type;
+//		val->intval = dev->typec_mode;
 		break;
 #if defined(CONFIG_LGE_USB_MOISTURE_DETECT) && defined(CONFIG_LGE_PM_WATERPROOF_PROTECTION)
 	case POWER_SUPPLY_PROP_INPUT_SUSPEND:
@@ -233,6 +237,27 @@ static int chg_set_property(struct power_supply *psy,
 			}
 		}
 
+		break;
+
+	case POWER_SUPPLY_PROP_TYPE:
+		if (val->intval == dev->chg_psy_d.type) {
+			DEBUG("%s: type already set (%s)\n", __func__,
+						chg_to_string(dev->chg_psy_d.type));
+			break;
+		}
+		switch (val->intval) {
+		case POWER_SUPPLY_TYPE_TYPEC:
+		case POWER_SUPPLY_TYPE_USB_PD:
+		case POWER_SUPPLY_TYPE_USB_HVDCP:
+		case POWER_SUPPLY_TYPE_USB_HVDCP_3:
+			dev->chg_psy_d.type = val->intval;
+			break;
+		default:
+			dev->chg_psy_d.type = POWER_SUPPLY_TYPE_UNKNOWN;
+			break;
+		}
+		DEBUG("%s: type(%s)\n", __func__,
+					chg_to_string(dev->chg_psy_d.type));
 		break;
 
 	default:
