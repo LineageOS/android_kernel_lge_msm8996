@@ -178,7 +178,7 @@ int pd_dpm_handle_pe_event(enum pd_dpm_pe_evt event, void *state)
 	switch (event) {
 	case PD_DPM_PE_EVT_SOURCE_VBUS:
 		set_pr(dev, DUAL_ROLE_PROP_PR_SRC);
-		dev->chg_psy_d.type = POWER_SUPPLY_TYPE_DFP;
+		dev->mode = DUAL_ROLE_PROP_MODE_DFP;
 		break;
 
 	case PD_DPM_PE_EVT_DIS_VBUS_CTRL:
@@ -199,6 +199,8 @@ int pd_dpm_handle_pe_event(enum pd_dpm_pe_evt event, void *state)
 			//			POWER_SUPPLY_PROP_CTYPE_RP, TODO: Either add that prop, or work around it.
 			//			&prop);
 		}
+		set_property_on_battery(dev, POWER_SUPPLY_PROP_CURRENT_CAPABILITY);
+
 		break;
 
 	case PD_DPM_PE_EVT_SINK_VBUS:
@@ -236,8 +238,6 @@ int pd_dpm_handle_pe_event(enum pd_dpm_pe_evt event, void *state)
 				if (dev->curr_max) {
 					dev->curr_max = 0;
 					dev->volt_max = 0;
-
-					set_property_on_battery(dev, POWER_SUPPLY_PROP_CURRENT_CAPABILITY);
 				}
 				break;
 			}
