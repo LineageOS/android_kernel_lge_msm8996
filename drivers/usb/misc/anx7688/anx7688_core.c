@@ -679,10 +679,6 @@ static int usbpd_get_property(struct power_supply *psy,
 		val->intval = chip->curr_max;
 		break;
 #endif
-#ifdef CONFIG_LGE_PM_LGE_POWER_CLASS_SIMPLE
-	case POWER_SUPPLY_PROP_DP_ALT_MODE:
-		val->intval = chip->dp_alt_mode;
-#endif
 	case POWER_SUPPLY_PROP_TYPE:
 		val->intval = chip->usbpd_psy_d.type;
 		break;
@@ -746,10 +742,11 @@ static int usbpd_set_property(struct power_supply *psy,
 							POWER_SUPPLY_PROP_PRESENT, 0);
 #endif
 #ifdef CONFIG_LGE_USB_TYPE_C
-					anx7688_pwr_down(chip);
+					if (chip->pdata->fwver < MI1_FWVER_RC1)
+						anx7688_pwr_down(chip);
 #endif
 				}
-			}
+                        }
 		} else if (chip->state == STATE_DEBUG_ACCESSORY &&
 					!val->intval) {
 #ifdef CONFIG_LGE_USB_TYPE_C
@@ -864,6 +861,10 @@ static void anx7688_ctype_work(struct work_struct *w)
 
 	/* update charger type*/
 	switch (chip->charger_type) {
+#if defined(CONFIG_LGE_USB_FLOATED_CHARGER_DETECT) && \
+	defined(CONFIG_LGE_USB_TYPE_C)
+	union power_supply_propval prop;
+#endif
 	case USBC_CHARGER:
 		usbprop.intval = POWER_SUPPLY_TYPE_TYPEC;
 		chip->usbpd_psy_d.type = usbprop.intval;
@@ -1299,6 +1300,7 @@ static void anx7688_debug_accessory_detect(struct anx7688_chip *chip)
 	anx7688_set_data_role(chip, DUAL_ROLE_PROP_DR_DEVICE);
 	anx7688_set_power_role(chip, DUAL_ROLE_PROP_PR_SNK);
 #endif
+
 	/* TODO: implement if this function need */
 	anx_update_state(chip, STATE_DEBUG_ACCESSORY);
 }
