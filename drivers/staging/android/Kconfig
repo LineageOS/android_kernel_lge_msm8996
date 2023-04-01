@@ -34,7 +34,7 @@ config ANDROID_BINDER_IPC_32BIT
 
 config ANDROID_BINDER_DEVICES
 	string "Android Binder devices"
-	depends on ANDROID_BINDER_IPC
+	depends on ANDROID_BINDER_IPC || LGE_BINDER_IRRC_WORKAROUND
 	default "binder,hwbinder,vndbinder"
 	---help---
 	  Default value for the binder.devices parameter.
@@ -156,6 +156,13 @@ config ANDROID_VSOC
 	  This option adds support for the Virtual SoC driver needed to boot
 	  a 'cuttlefish' Android image inside QEmu. The driver interacts with
 	  a QEmu ivshmem device. If built as a module, it will be called vsoc.
+
+config LGE_BINDER_IRRC_WORKAROUND
+	bool "Workaround for LGE UEI IRRC's stuck blaster issue"
+	default n
+	help
+	  Enable this option in order to build older binder files that work
+	  around LGE IRRC problems on newer kernels and android versions.
 
 source "drivers/staging/android/ion/Kconfig"
 
