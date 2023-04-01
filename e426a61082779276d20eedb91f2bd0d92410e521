@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "29520827_a9149cc3",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 29891
+      },
+      "writtenOn": "2023-04-01T18:53:03Z",
+      "side": 1,
+      "message": "It works fine here, but i\u0027d prefer to see it tested on more devices running official LOS (especially the LG G5) to be sure it\u0027s not an isolated case before merging.",
+      "revId": "e426a61082779276d20eedb91f2bd0d92410e521",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
