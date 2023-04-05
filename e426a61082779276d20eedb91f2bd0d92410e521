@@ -16,6 +16,23 @@
       "message": "It works fine here, but i\u0027d prefer to see it tested on more devices running official LOS (especially the LG G5) to be sure it\u0027s not an isolated case before merging.",
       "revId": "e426a61082779276d20eedb91f2bd0d92410e521",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "173757c8_c69105f4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 16185
+      },
+      "writtenOn": "2023-04-05T20:22:28Z",
+      "side": 1,
+      "message": "For _just_ 3.18 I\u0027m fine with this - no notable regressions - for 4.4 we\u0027ll be bisecting it down and working out what breaks it.",
+      "revId": "e426a61082779276d20eedb91f2bd0d92410e521",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
