@@ -145,16 +145,9 @@ CONFIG_CNSS=n
 CONFIG_USELIB=n
 CONFIG_SMB135X_CHARGER=n
 
-# 4.4-specific adjustments and optimizations
-CONFIG_ZRAM=y
-CONFIG_ZSMALLOC=y
-CONFIG_KERNEL_LZ4=y
-CONFIG_CRYPTO_LZ4=y
-CONFIG_ACPI=n # Kernel fails to build if this is enabled
-CONFIG_JUMP_LABEL=y
-CONFIG_CPU_IDLE=y
-CONFIG_THERMAL=y
-CONFIG_CPU_BOOST=n # Kernel fails to build if this is enabled
+# Disable configs that can cause the kernel build to fail
+CONFIG_ACPI=n
+CONFIG_CPU_BOOST=n
 
 # Disable legacy camera (We're using MSMB_CAMERA in 4.4)
 CONFIG_MSM_CAMERA=n
@@ -185,3 +178,172 @@ CONFIG_PSTORE_RAM=y
 
 # Disable duplicate "qcrypto" driver registration, fixing qualcomm's crypto engine init
 CONFIG_CRYPTO_DEV_QCE=n
+
+
+########################### LGE_8996 kernel 4.4 tweaks
+
+###### Disable general kernel drivers not used by LGE_msm8996
+CONFIG_EFI=n
+CONFIG_JBD=n
+CONFIG_LOGO=n
+CONFIG_ESOC=n
+CONFIG_UID16=n
+CONFIG_ATL1C=n
+CONFIG_IMX134=n
+CONFIG_IMX132=n
+CONFIG_OV9724=n
+CONFIG_OV5648=n
+CONFIG_GC0339=n
+CONFIG_OV8825=n
+CONFIG_OV8865=n
+CONFIG_s5k4e1=n
+CONFIG_BT_BNEP=n
+CONFIG_BT_HIDP=n
+CONFIG_OV12830=n
+CONFIG_BONDING=n
+CONFIG_MODULES=n
+CONFIG_WIL6210=n
+CONFIG_VGA_ARB=n
+CONFIG_MSM_MHI=n
+CONFIG_MSM_11AD=n
+CONFIG_MMC_TEST=n
+CONFIG_RD_BZIP2=n
+CONFIG_MSM_RDBG=n
+CONFIG_ATH_CARDS=n
+CONFIG_TRACER_PKT=n
+CONFIG_SPI_SPIDEV=n
+CONFIG_TI_DRV2667=n
+CONFIG_SEEMP_CORE=n
+CONFIG_PCI_QUIRKS=n
+CONFIG_SCHEDSTATS=n
+CONFIG_EEPROM_AT24=n
+CONFIG_CHR_DEV_SCH=n
+CONFIG_MEDIA_TUNER=n
+CONFIG_CNSS_CRYPTO=n
+CONFIG_USB_ISP1760=n
+CONFIG_SECURE_TOUCH=n
+CONFIG_IOSCHED_TEST=n
+CONFIG_INPUT_MOUSEDEV=n
+CONFIG_LIMITS_LITE_HW=n
+CONFIG_SMB135X_CHARGER=n
+CONFIG_LCD_CLASS_DEVICE=n
+CONFIG_INPUT_HBTP_INPUT=n
+
+# Disable general profiling, logging and debugging
+CONFIG_PROFILING=n
+CONFIG_CORESIGHT=n
+CONFIG_DEBUG_INFO=n
+CONFIG_INPUT_EVBUG=n
+CONFIG_IOMMU_DEBUG=n
+CONFIG_CMA_DEBUGFS=n
+CONFIG_IPC_LOGGING=n
+CONFIG_SCSI_LOGGING=n
+CONFIG_MSM_SMEM_LOGGING=n
+CONFIG_MMC_PERF_PROFILING=n
+CONFIG_RMNET_DATA_DEBUG_PKT=n
+CONFIG_FB_MSM_MDSS_XLOG_DEBUG=n
+
+# Disable ALIGN_RODATA to reduce RAM usage with no noticeable performance decrease
+CONFIG_DEBUG_ALIGN_RODATA=n
+
+# Android does not use ECRYPT_FS at all, neither for FBE or FDE
+CONFIG_ECRYPT_FS=n
+
+# IDLE_GOV_MENU is not needed since we already have qualcomm's cpu idle implementation
+CONFIG_CPU_IDLE_GOV_MENU=n
+
+# Android does not use RT_GROUP_SCHED.
+CONFIG_RT_GROUP_SCHED=n
+
+# Disable support for obsolete libc system calls
+CONFIG_SYSFS_SYSCALL=n
+
+# This is not used by our devices
+CONFIG_BACKLIGHT_GENERIC=n
+
+# These errata are meant for ARM's Cortex-A5x cpus, let's not apply them on kryo
+CONFIG_ARM64_ERRATUM_826319=n
+CONFIG_ARM64_ERRATUM_827319=n
+CONFIG_ARM64_ERRATUM_824069=n
+CONFIG_ARM64_ERRATUM_819472=n
+CONFIG_ARM64_ERRATUM_832075=n
+CONFIG_ARM64_ERRATUM_845719=n
+CONFIG_ARM64_ERRATUM_843419=n
+CONFIG_ARM64_ERRATUM_1024718=n
+
+# These, on the other hand, are meant for Cavium's ThunderX chips
+CONFIG_CAVIUM_ERRATUM_22375=n
+CONFIG_CAVIUM_ERRATUM_23154=n
+CONFIG_CAVIUM_ERRATUM_27456=n
+
+# Do not set a minimum amout of loop devices to be created
+CONFIG_BLK_DEV_LOOP_MIN_COUNT=0
+
+# We have no use for this fixture device
+CONFIG_USB_EHSET_TEST_FIXTURE=n
+
+# No need for AES through NEON when we already have ArmV8's
+# Crypto Extensions.
+CONFIG_CRYPTO_AES_ARM64_NEON_BLK=n
+
+# This should be disabled on production devices.
+CONFIG_REGMAP_ALLOW_WRITE_DEBUGFS=n
+
+# None of these touchscreen drivers are used by LGE_msm8996
+CONFIG_TOUCHSCREEN_GEN_VKEYS=n
+CONFIG_TOUCHSCREEN_ATMEL_MXT=n
+CONFIG_TOUCHSCREEN_ATMEL_MAXTOUCH_TS=n
+CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_v21=n
+CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_v26=n
+
+# Disable verity to match Lineage's charter about verity on system images
+CONFIG_DM_VERITY=n
+
+
+# Enable perf events
+CONFIG_PERF_EVENTS=y
+
+# Enable AUDIT configs to harden security
+CONFIG_AUDIT=y
+CONFIG_AUDITSYSCALL=y
+CONFIG_AUDIT_WATCH=y
+CONFIG_AUDIT_TREE=y
+
+# Jump label can improve performance in certain cases
+CONFIG_JUMP_LABEL=y
+
+# Adjust the log buffer to be closer to wahoo
+CONFIG_LOG_BUF_SHIFT=20
+
+# Skip sys_sync on suspend, the cost isn't worth it
+CONFIG_SUSPEND_SKIP_SYNC=y
+
+# Enable a system-wide ring of trusted keys
+CONFIG_SYSTEM_TRUSTED_KEYRING=y
+
+# Use qcom's CPUIDLE implementation
+CONFIG_CPU_IDLE=y
+
+# Enable drivers that are useful for LGE_msm8996
+CONFIG_THERMAL=y
+CONFIG_THERMAL_EMULATION=n
+CONFIG_THERMAL_QPNP=y
+CONFIG_QCOM_THERMAL_LIMITS_DCVS=y
+CONFIG_MSM_APP_API=y
+CONFIG_ENABLE_FP_SIMD_SETTINGS=y
+CONFIG_MSM_APP_SETTINGS=y
+CONFIG_SENSORS_QPNP_ADC_CURRENT=y
+CONFIG_VIDEOBUF2_VMALLOC=y
+CONFIG_MSM_V4L2_VIDEO_OVERLAY_DEVICE=y
+CONFIG_USB_HIDDEV=y
+CONFIG_USB_MON=y
+CONFIG_NOP_USB_XCEIV=y
+CONFIG_QCOM_EARLY_RANDOM=y
+CONFIG_SERIAL_MSM=y
+CONFIG_COMPAT_BRK=y
+CONFIG_REGULATOR_STUB=y
+
+# Enable configs for zram support and faster de/compression
+CONFIG_ZRAM=y
+CONFIG_ZSMALLOC=y
+CONFIG_CRYPTO_LZ4=y
