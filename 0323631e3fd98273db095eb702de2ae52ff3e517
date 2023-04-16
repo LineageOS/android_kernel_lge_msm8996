@@ -16,6 +16,23 @@
       "message": "works",
       "revId": "0323631e3fd98273db095eb702de2ae52ff3e517",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "2fd39c02_20943c74",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 16185
+      },
+      "writtenOn": "2023-04-16T17:40:19Z",
+      "side": 1,
+      "message": "no regressions as per XDA",
+      "revId": "0323631e3fd98273db095eb702de2ae52ff3e517",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
