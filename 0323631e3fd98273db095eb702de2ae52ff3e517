@@ -33,6 +33,23 @@
       "message": "no regressions as per XDA",
       "revId": "0323631e3fd98273db095eb702de2ae52ff3e517",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "6dce5e80_77356a8d",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 29891
+      },
+      "writtenOn": "2023-04-16T23:24:01Z",
+      "side": 1,
+      "message": "No problems whatsoever after a week of testing over here as well, seems safe to use.",
+      "revId": "0323631e3fd98273db095eb702de2ae52ff3e517",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
