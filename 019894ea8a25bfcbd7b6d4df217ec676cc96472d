@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "075867ab_8f186a45",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 29891
+      },
+      "writtenOn": "2023-04-18T03:58:09Z",
+      "side": 1,
+      "message": "This has been tested on an officially unlocked US996 and the display static on boot is fixed. However, let\u0027s make sure we\u0027ll actually go with separate US996 builds before merging that.",
+      "revId": "019894ea8a25bfcbd7b6d4df217ec676cc96472d",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
