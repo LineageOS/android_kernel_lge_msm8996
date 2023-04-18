@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "7d623c2b_5e7e9653",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 29891
+      },
+      "writtenOn": "2023-04-18T03:56:45Z",
+      "side": 1,
+      "message": "Works well and no dangerous configs are set such as disabling KPTI or PAN emulation, but I\u0027ll wait for others\u0027 inputs on this to be sure it truly has no problematic settings.",
+      "revId": "e97dfd1196495be4369e47d20496fe61206076b2",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
