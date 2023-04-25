@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "e941f0d0_507a8234",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 29891
+      },
+      "writtenOn": "2023-04-25T22:33:41Z",
+      "side": 1,
+      "message": "No regressions on this one either, in fact it fixed random SDcard corruptions in 3.18 so there\u0027s no harm adding this to 4.4 as well.",
+      "revId": "9a121205adf6129ab81b7e45f5b742e96c631501",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
