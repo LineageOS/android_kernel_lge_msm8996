@@ -170,6 +170,7 @@ static const struct file_operations ssr_fops = {
 	.write = trigger_ssr_write,
 };
 
+#if defined(CONFIG_DEBUG_FS) && !defined(CONFIG_MACH_LGE)
 struct dentry *msm_vidc_debugfs_init_drv(void)
 {
 	bool ok = false;
@@ -257,6 +258,7 @@ struct dentry *msm_vidc_debugfs_init_core(struct msm_vidc_core *core,
 failed_create_dir:
 	return dir;
 }
+#endif
 
 static int inst_info_open(struct inode *inode, struct file *file)
 {
@@ -434,6 +436,7 @@ static const struct file_operations inst_info_fops = {
 	.release = inst_info_release,
 };
 
+#if defined(CONFIG_DEBUG_FS) && !defined(CONFIG_MACH_LGE)
 struct dentry *msm_vidc_debugfs_init_inst(struct msm_vidc_inst *inst,
 		struct dentry *parent)
 {
@@ -547,4 +550,5 @@ void msm_vidc_debugfs_update(struct msm_vidc_inst *inst,
 		break;
 	}
 }
+#endif
 
