@@ -68,9 +68,8 @@
 #define IOCTL_GET_TMC_CHANNEL _IOR(MAJOR_NUM, 8, char *)
 
 /* BRCM LOCAL[NO CSP] : Required to move sysfs entry registration/deregistration place for SELINUX. */
-#define SYSFS_ENTRY_REGISTRATION_FOR_SELINUX FALSE
+#define SYSFS_ENTRY_REGISTRATION_FOR_SELINUX TRUE
 /* BRCM LOCAL[NO CSP] */
-
 /*These values are set and has to be sent together.*/
 /*Keep them as a set always, never try to further seperate them*/
 /*These are arguments to BRCM vsc HCI command to switch the FM-I2S pins */
@@ -653,13 +652,6 @@ static struct attribute_group v4l2_fm_attr_grp = {
     .attrs = v4l2_fm_attrs,
 };
 
-static int notify_topology(struct video_device *radio_dev)
-{
-    static const char *env[] = { "ACTION=change", NULL };
-
-    return kobject_uevent_env(&radio_dev->dev.kobj, KOBJ_CHANGE, env);
-}
-
 /* Handle open request for "/dev/radioX" device.
  * Start with FM RX mode as default.
  */
@@ -744,9 +736,6 @@ static int fm_v4l2_fops_open(struct file *file)
     }
 #endif
 /* BRCM LOCAL[NO CSP] */
-
-    /* Notify new sysfs entries */
-    notify_topology(fmdev->radio_dev);
 
     /* Set Audio path */
     V4L2_FM_DRV_DBG(V4L2_DBG_OPEN,"(fmdrv): FM Set Audio path option : %d", DEF_V4L2_FM_AUDIO_PATH);
@@ -886,9 +875,7 @@ static int fm_v4l2_vidioc_querycap(struct file *file, void *priv,
                                     sizeof(capability->card));
     sprintf(capability->bus_info, "UART");
     capability->version = FM_DRV_RADIO_VERSION;
-    capability->device_caps = fmdev->device_info.capabilities;
-    capability->capabilities = capability->device_caps | V4L2_CAP_DEVICE_CAPS;
-
+    capability->capabilities = fmdev->device_info.capabilities;
     return 0;
 }
 
@@ -1270,7 +1257,6 @@ static struct video_device fm_viddev_template = {
     .name = FM_DRV_NAME,
     .release = video_device_release,
     .vfl_type = VFL_TYPE_RADIO,
-    .vfl_dir = VFL_DIR_RX,
 };
 
 int fm_v4l2_init_video_device(struct fmdrv_ops *fmdev, int radio_nr)

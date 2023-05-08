@@ -77,7 +77,7 @@ DECLARE_DELAYED_WORK(sleep_workqueue, bluetooth_pm_sleep_work);
 #define bluetooth_pm_tx_idle()         schedule_delayed_work(&sleep_workqueue, 0)
 
 //BT_S : [CONBT-2112] LGC_BT_COMMON_IMP_KERNEL_V4L2_SLEEP_DRIVER
-#define TX_TIMER_INTERVAL   2 //(Uint : sec)
+#define TX_TIMER_INTERVAL   300 //(Uint : ms)
 
 #define RX_TIMER_INTERVAL   5 //(Uint : sec)
 //BT_E : [CONBT-2112] LGC_BT_COMMON_IMP_KERNEL_V4L2_SLEEP_DRIVER
@@ -191,7 +191,7 @@ void bluetooth_pm_wakeup(void)
 
     spin_lock_irqsave(&rw_lock, irq_flags);
 
-    if (test_bit(BT_ASLEEP, &flags) && (bsi->uport != NULL)) {
+    if (test_bit(BT_ASLEEP, &flags)) {
         printk("%s, waking up...\n", __func__);
 
 //BT_S : [CONBT-1475] LGC_BT_COMMON_IMP_KERNEL_UART_HCI_COMMAND_TIMEOUT
@@ -233,8 +233,7 @@ void bluetooth_pm_wakeup(void)
         {
             printk("%s - Start Timer : check hostwake status when timer expired\n", __func__);
 //BT_S : [CONBT-2112] LGC_BT_COMMON_IMP_KERNEL_V4L2_SLEEP_DRIVER
-            mod_timer(&rx_timer, jiffies +
-                    msecs_to_jiffies(RX_TIMER_INTERVAL * 1000));
+            mod_timer(&rx_timer, jiffies + (RX_TIMER_INTERVAL * HZ));
 //BT_E : [CONBT-2112] LGC_BT_COMMON_IMP_KERNEL_V4L2_SLEEP_DRIVER
         }
     }
@@ -317,8 +316,7 @@ static void bluetooth_pm_hostwake_task(unsigned long data)
         bluetooth_pm_rx_busy();
 
 //BT_S : [CONBT-2112] LGC_BT_COMMON_IMP_KERNEL_V4L2_SLEEP_DRIVER
-        mod_timer(&rx_timer, jiffies +
-                msecs_to_jiffies(RX_TIMER_INTERVAL * 1000));
+        mod_timer(&rx_timer, jiffies + (RX_TIMER_INTERVAL * HZ));
 //BT_E : [CONBT-2112] LGC_BT_COMMON_IMP_KERNEL_V4L2_SLEEP_DRIVER
     //}
     //else
@@ -454,7 +452,7 @@ static irqreturn_t bluetooth_pm_hostwake_isr(int irq, void *dev_id)
     }
 
     ret = request_irq(bsi->host_wake_irq, bluetooth_pm_hostwake_isr,
-                IRQF_TRIGGER_LOW,
+                IRQF_DISABLED | IRQF_TRIGGER_LOW,
                 "bluetooth hostwake", NULL);
     if (ret  < 0) {
         printk("%s, Couldn't acquire BT_HOST_WAKE IRQ\n", __func__);
@@ -533,7 +531,7 @@ EXPORT_SYMBOL(bluetooth_pm_sleep_start);
         printk("%s, Couldn't disable hostwake IRQ wakeup mode\n", __func__);
     free_irq(bsi->host_wake_irq, NULL);
 
-    wake_lock_timeout(&bsi->wake_lock, msecs_to_jiffies(500));
+    wake_lock_timeout(&bsi->wake_lock, HZ / 2);
 }
 //BT_S : [CONBT-2112] LGC_BT_COMMON_IMP_KERNEL_V4L2_SLEEP_DRIVER
 EXPORT_SYMBOL(bluetooth_pm_sleep_stop);
@@ -547,8 +545,7 @@ void bluetooth_pm_outgoing_data(void)
     //printk("+++ %s\n", __func__);
 
     //Always restart BT TX Timer
-    mod_timer(&tx_timer, jiffies +
-            msecs_to_jiffies(TX_TIMER_INTERVAL * 1000));
+    mod_timer(&tx_timer, jiffies + msecs_to_jiffies(TX_TIMER_INTERVAL));
 
     //printk("%s, Spin Lock\n", __func__);
 

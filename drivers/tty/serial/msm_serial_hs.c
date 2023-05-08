@@ -62,16 +62,11 @@
 #include <linux/ipc_logging.h>
 #include <asm/irq.h>
 #include <linux/kthread.h>
-#include <uapi/linux/sched.h>
 
 #include <linux/msm-sps.h>
 #include <linux/platform_data/msm_serial_hs.h>
 #include <linux/msm-bus.h>
 #include <soc/qcom/boot_stats.h>
-
-#ifdef CONFIG_BT_MSM_SLEEP
-#include <net/bluetooth/bluesleep.h>
-#endif
 
 #include "msm_serial_hs_hwreg.h"
 #define UART_SPS_CONS_PERIPHERAL 0
@@ -330,16 +325,10 @@ static int msm_hs_ioctl(struct uart_port *uport, unsigned int cmd,
 	switch (cmd) {
 	case MSM_ENABLE_UART_CLOCK: {
 		ret = msm_hs_request_clock_on(&msm_uport->uport);
-#ifdef CONFIG_BT_MSM_SLEEP
-		bluesleep_outgoing_data();
-#endif
 		break;
 	}
 	case MSM_DISABLE_UART_CLOCK: {
 		ret = msm_hs_request_clock_off(&msm_uport->uport);
-#ifdef CONFIG_BT_MSM_SLEEP
-		bluesleep_tx_allow_sleep();
-#endif
 		break;
 	}
 	case MSM_GET_UART_CLOCK_STATUS: {
@@ -1496,11 +1485,6 @@ static void msm_hs_submit_tx_locked(struct uart_port *uport)
 	ret = sps_transfer_one(sps_pipe_handle, src_addr, tx_count,
 				msm_uport, flags);
 
-	/* Notify the bluesleep driver of outgoing data, if available. */
-#ifdef CONFIG_BT_MSM_SLEEP
-	bluesleep_outgoing_data();
-#endif
-
 	MSM_HS_DBG("%s:Enqueue Tx Cmd, ret %d\n", __func__, ret);
 }
 
@@ -2273,13 +2257,16 @@ struct uart_port *msm_hs_get_uart_port(int port_index)
 {
 	struct uart_state *state = msm_hs_driver.state + port_index;
 
+	if (!state || !state->uart_port)
+		goto err;
+
 	/* The uart_driver structure stores the states in an array.
 	 * Thus the corresponding offset from the drv->state returns
 	 * the state for the uart_port that is requested
 	 */
 	if (port_index == state->uart_port->line)
 		return state->uart_port;
-
+err:
 	return NULL;
 }
 EXPORT_SYMBOL(msm_hs_get_uart_port);
@@ -2374,10 +2361,8 @@ void msm_hs_resource_off(struct msm_hs_port *msm_uport)
 		msm_hs_write(uport, UART_DM_DMEN, data);
 		sps_tx_disconnect(msm_uport);
 	}
-#ifndef CONFIG_BT_MSM_SLEEP
 	if (!atomic_read(&msm_uport->client_req_state))
 		msm_hs_enable_flow_control(uport, false);
-#endif
 }
 
 void msm_hs_resource_on(struct msm_hs_port *msm_uport)
@@ -2833,10 +2818,8 @@ static int msm_hs_startup(struct uart_port *uport)
 
 
 	spin_lock_irqsave(&uport->lock, flags);
-#if !defined(CONFIG_BT_MSM_SLEEP) || !defined(CONFIG_LGE_BLUETOOTH_PM)
 	atomic_set(&msm_uport->client_count, 0);
 	atomic_set(&msm_uport->client_req_state, 0);
-#endif
 	LOG_USR_MSG(msm_uport->ipc_msm_hs_pwr_ctxt,
 			"%s: Client_Count 0\n", __func__);
 	atomic_set(&msm_uport->startup_locked, 0);
@@ -2869,7 +2852,6 @@ static int uartdm_init_port(struct uart_port *uport)
 	struct msm_hs_port *msm_uport = UARTDM_TO_MSM(uport);
 	struct msm_hs_tx *tx = &msm_uport->tx;
 	struct msm_hs_rx *rx = &msm_uport->rx;
-	struct sched_param param = { .sched_priority = 1 };
 
 	init_waitqueue_head(&rx->wait);
 	init_waitqueue_head(&tx->wait);
@@ -2884,8 +2866,6 @@ static int uartdm_init_port(struct uart_port *uport)
 		MSM_HS_ERR("%s(): error creating task", __func__);
 		goto exit_lh_init;
 	}
-	sched_setscheduler(rx->task, SCHED_FIFO, &param);
-
 	init_kthread_work(&rx->kwork, msm_serial_hs_rx_work);
 
 	init_kthread_worker(&tx->kworker);
@@ -2895,7 +2875,6 @@ static int uartdm_init_port(struct uart_port *uport)
 		MSM_HS_ERR("%s(): error creating task", __func__);
 		goto exit_lh_init;
 	}
-	sched_setscheduler(tx->task, SCHED_FIFO, &param);
 
 	init_kthread_work(&tx->kwork, msm_serial_hs_tx_work);
 
@@ -3453,7 +3432,6 @@ static void  msm_serial_hs_rt_init(struct uart_port *uport)
 	msm_uport->pm_state = MSM_HS_PM_SUSPENDED;
 	mutex_unlock(&msm_uport->mtx);
 	pm_runtime_enable(uport->dev);
-	tty_port_set_policy(&uport->state->port, SCHED_FIFO, 1);
 }
 
 static int msm_hs_runtime_suspend(struct device *dev)

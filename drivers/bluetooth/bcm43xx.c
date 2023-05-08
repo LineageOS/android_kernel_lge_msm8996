@@ -1,279 +1,250 @@
 /*
- * Bluetooth Broadcomm  and low power control via GPIO
+ * Copyright (C) 2009-2011 Google, Inc.
+ * Copyright (C) 2009-2014 HTC Corporation.
  *
- *  Copyright (C) 2011 Google, Inc.
+ * This software is licensed under the terms of the GNU General Public
+ * License version 2, as published by the Free Software Foundation, and
+ * may be copied, distributed, and modified under those terms.
  *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
  *
  */
 
-#include <linux/gpio.h>
-#include <linux/init.h>
+#include <linux/delay.h>
+#include <linux/device.h>
 #include <linux/module.h>
-#include <linux/of_gpio.h>
-#include <linux/pinctrl/consumer.h>
 #include <linux/platform_device.h>
 #include <linux/rfkill.h>
-#include <linux/slab.h>
-#include <linux/delay.h>
-#ifdef CONFIG_BT_MSM_SLEEP
-#include <net/bluetooth/bluesleep.h>
+#include <linux/gpio.h>
+#include <linux/of_gpio.h>
+#include <linux/miscdevice.h>
+#include <asm/uaccess.h>
+#include <linux/fs.h>
+
+#ifndef __LPM_BLUESLEEP__
+#define __LPM_BLUESLEEP__   1
 #endif
 
-#define D_BCM_BLUETOOTH_CONFIG_MATCH_TABLE   "bcm,bcm43xx"
+extern void bt_export_bd_address(void);
+extern void msm_hs_uart_gpio_config_ext(int on);
+#ifdef __LPM_BLUESLEEP__
+extern void bluesleep_set_bt_pwr_state(int on);
+#endif
 
-struct bcm43xx_data {
-	struct device *dev;
-	struct platform_device *pdev;
-	struct pinctrl *pinctrl;
-	struct pinctrl_state *gpio_state_active;
-	struct pinctrl_state *gpio_state_suspend;
-	unsigned int reg_on_gpio;
-	bool has_pinctl;
-};
+/* BT chip power up and wakeup pins (these define not used)*/
+#define BT_REG_ON    73
+#define BT_WAKE_HOST 117
+#define BT_WAKE_DEV  118
 
-static struct bcm43xx_data *bcm43xx_my_data;
-static struct rfkill *bt_rfkill;
-static bool bt_enabled;
+/* UART pins (these define not used)*/
+#define BT_UART_RTSz  44
+#define BT_UART_CTSz  43
+#define BT_UART_RX    42
+#define BT_UART_TX    41
 
-static int bcm43xx_bt_rfkill_set_power(void *data, bool blocked)
+static struct rfkill *bt_rfk;
+static const char bt_name[] = "bcm43xx";
+
+/* BT GPIO pins variable */
+static int gpio_bt_reg_on;
+
+/* BT_WAKE_HOST pin control */
+struct pinctrl *bt_pinctrl;
+struct pinctrl_state *bt_wake_host_set_state_on;
+struct pinctrl_state *bt_wake_host_set_state_off;
+
+
+static void bcm43xx_config_bt_on(void)
 {
-	int regOnGpio;
+	int rc = 0;
+	printk(KERN_INFO "[BT] == R ON ==\n");
 
-	pr_debug("Bluetooth device set power\n");
+	if (gpio_bt_reg_on < 0) {
+		printk(KERN_INFO "[BT] bt_reg_on:%d !!\n", gpio_bt_reg_on);
+	}
 
-	regOnGpio = gpio_get_value(bcm43xx_my_data->reg_on_gpio);
+	/* Config UART pins */
+	msm_hs_uart_gpio_config_ext(1);
 
-	/* rfkill_ops callback. Turn transmitter on when blocked is false */
+	/* Host wake setup to I(PU) per data sheet */
+	rc = pinctrl_select_state(bt_pinctrl, bt_wake_host_set_state_on);
+	if (rc) printk("[BT] cannot set BT pinctrl gpio state on: %d\n", rc);
+
+	/* Power up BT controller */
+	rc = gpio_direction_output(gpio_bt_reg_on, 0);
+	if (rc) printk(KERN_INFO "[BT] set REG_ON 0 fail: %d\n", rc);
+	mdelay(5);
+	rc = gpio_direction_output(gpio_bt_reg_on, 1);
+	if (rc) printk(KERN_INFO "[BT] set REG_ON 1 fail: %d\n", rc);
+	mdelay(5);
+
+#ifdef __LPM_BLUESLEEP__
+	/* Notify sleep driver BT state */
+	bluesleep_set_bt_pwr_state(1);
+#endif
+}
+
+static void bcm43xx_config_bt_off(void)
+{
+	int rc = 0;
+
+	if (gpio_bt_reg_on < 0) {
+		printk(KERN_INFO "[BT] bt_reg_on:%d !!\n", gpio_bt_reg_on);
+	}
+
+#ifdef __LPM_BLUESLEEP__
+	/* Notify sleep driver BT state */
+	bluesleep_set_bt_pwr_state(0);
+#endif
+
+	/* Power off BT controller */
+	rc = gpio_direction_output(gpio_bt_reg_on, 0);
+	if (rc) printk(KERN_INFO "[BT] set REG_ON 0 fail: %d\n", rc);
+
+	/* Host wake setup to I(PD) per GPIO table */
+	rc = pinctrl_select_state(bt_pinctrl, bt_wake_host_set_state_off);
+	if (rc) printk("[BT] cannot set BT pinctrl gpio state off: %d\n", rc);
+
+	mdelay(2);
+
+	/* Config UART pins */
+	msm_hs_uart_gpio_config_ext(0);
+
+	printk(KERN_INFO "[BT] == R OFF ==\n");
+}
+
+static int bluetooth_set_power(void *data, bool blocked)
+{
 	if (!blocked) {
-		if (regOnGpio) {
-			pr_debug("Bluetooth device is already power on:%d\n",
-				regOnGpio);
-			return 0;
-		}
-		gpio_direction_output(bcm43xx_my_data->reg_on_gpio, 0);
-		msleep(30);
-		gpio_direction_output(bcm43xx_my_data->reg_on_gpio, 1);
-		printk("%s: Bluetooth RESET HIGH!!\n", __func__);
-
-#ifdef CONFIG_BT_MSM_SLEEP
-		bluesleep_start(1);
-#endif
-	} else {
-		if (!regOnGpio) {
-			pr_debug("Bluetooth device is already power off:%d\n",
-				regOnGpio);
-			return 0;
-		}
-		gpio_direction_output(bcm43xx_my_data->reg_on_gpio, 0);
-		printk("%s: Bluetooth RESET LOW!!\n", __func__);
-
-#ifdef CONFIG_BT_MSM_SLEEP
-		bluesleep_stop();
-#endif
-	}
-	bt_enabled = !blocked;
+		bcm43xx_config_bt_on();
+	} else
+		bcm43xx_config_bt_off();
 
 	return 0;
 }
 
-static const struct rfkill_ops bcm43xx_bt_rfkill_ops = {
-	.set_block = bcm43xx_bt_rfkill_set_power,
+static struct rfkill_ops bcm43xx_rfkill_ops = {
+	.set_block = bluetooth_set_power,
 };
 
-static int bcm43xx_bluetooth_dev_init(struct platform_device *pdev,
-				struct bcm43xx_data *my_data)
+static int bcm43xx_rfkill_probe(struct platform_device *pdev)
 {
-	int ret;
-	struct device_node *of_node = pdev->dev.of_node;
+	int rc = 0;
+	bool default_state = true;  /* off */
+	struct pinctrl_state *set_state;
 
-	my_data->pinctrl = devm_pinctrl_get(&pdev->dev);
-	if (IS_ERR(my_data->pinctrl)) {
-		dev_err(&pdev->dev, "%s: pinctrl not defined\n",
-			__func__);
-		ret = PTR_ERR(my_data->pinctrl);
-	} else {
-		my_data->has_pinctl = true;
-	}
+	printk(KERN_INFO "[BT] == rfkill_probe ==\n");
 
-	if (my_data->has_pinctl) {
-		my_data->gpio_state_active =
-			pinctrl_lookup_state(my_data->pinctrl, PINCTRL_STATE_DEFAULT);
-		if (IS_ERR_OR_NULL(my_data->gpio_state_active)) {
-			dev_err(&pdev->dev, "%s(): pinctrl lookup failed for default\n",
-				__func__);
-			ret = PTR_ERR(my_data->gpio_state_active);
-			goto error_pinctrl;
-		}
-
-		my_data->gpio_state_suspend =
-			pinctrl_lookup_state(my_data->pinctrl, PINCTRL_STATE_SLEEP);
-		if (IS_ERR_OR_NULL(my_data->gpio_state_suspend)) {
-			dev_err(&pdev->dev, "%s(): pinctrl lookup failed for sleep\n",
-				__func__);
-			ret = PTR_ERR(my_data->gpio_state_suspend);
-			goto error_pinctrl;
-		}
-
-		ret = pinctrl_select_state(bcm43xx_my_data->pinctrl,
-			bcm43xx_my_data->gpio_state_active);
-		if (ret) {
-			dev_err(&pdev->dev, "%s(): failed to select active state\n",
-				__func__);
-			goto error_pinctrl;
+	// Get bt_reg_pin
+	if (pdev->dev.of_node) {
+		gpio_bt_reg_on = of_get_named_gpio(pdev->dev.of_node,
+							"bcm,bt-regon-gpio", 0);
+		if (gpio_bt_reg_on < 0) {
+			printk(KERN_ERR "[BT] bt-regon-gpio not provided in device tree!!!\n");
+			return -EPROBE_DEFER;
+		} else {
+			rc = gpio_request(gpio_bt_reg_on, "BRCM_BT_EN");
+			if (rc) {
+				printk(KERN_ERR "[BT] can't get gpio: %d for bt-regon-gpio\n", gpio_bt_reg_on);
+			} else {
+				printk(KERN_INFO "[BT] bt-regon-gpio: %d\n", gpio_bt_reg_on);
+			}
 		}
 	}
 
-	my_data->reg_on_gpio = of_get_named_gpio(of_node, "bcm,reg-on-gpio", 0);
-	if (my_data->reg_on_gpio < 0) {
-		dev_err(&pdev->dev, "%s(): couldn't find bt reg on gpio\n",
-			__func__);
-		ret = -ENODEV;
-		goto error_gpio;
-	} else {
-		ret = gpio_request_one(my_data->reg_on_gpio, GPIOF_OUT_INIT_LOW,
-				"reg-on-gpio");
-		if (ret) {
-			pr_err("%s: failed to request gpio(%d)\n", __func__,
-					my_data->reg_on_gpio);
-			goto error_gpio;
+	// Init pin control
+	bt_pinctrl = devm_pinctrl_get(&pdev->dev);
+	if (IS_ERR(bt_pinctrl)) {
+		if (PTR_ERR(bt_pinctrl) == -EPROBE_DEFER) {
+			printk("[BT] bt_pinctrl EPROBE_DEFER\n");
+			return -EPROBE_DEFER;
 		}
 	}
+
+	if (bt_pinctrl) {
+		printk("[BT] Init GPIO pins\n");
+		set_state = pinctrl_lookup_state(bt_pinctrl, "bt_wake_host_gpio_on");
+		if (IS_ERR(set_state)) {
+			printk("[BT] cannot get BT pinctrl state bt_wake_host_gpio_on\n");
+			//return PTR_ERR(set_state);
+		} else
+			bt_wake_host_set_state_on = set_state;
+
+		set_state = pinctrl_lookup_state(bt_pinctrl, "bt_wake_host_gpio_off");
+		if (IS_ERR(set_state)) {
+			printk("[BT] cannot get BT pinctrl state bt_wake_host_gpio_off\n");
+			//return PTR_ERR(set_state);
+		} else
+			bt_wake_host_set_state_off = set_state;
+
+	}
+
+	bluetooth_set_power(NULL, default_state);
+
+	bt_rfk = rfkill_alloc(bt_name, &pdev->dev, RFKILL_TYPE_BLUETOOTH,
+				&bcm43xx_rfkill_ops, NULL);
+	if (!bt_rfk) {
+		rc = -ENOMEM;
+		goto err_rfkill_alloc;
+	}
+
+	rfkill_set_states(bt_rfk, default_state, false);
+
+	/* userspace cannot take exclusive control */
+
+	rc = rfkill_register(bt_rfk);
+	if (rc)
+		goto err_rfkill_reg;
 
 	return 0;
 
-error_gpio:
-	if (my_data->has_pinctl)
-		pinctrl_select_state(my_data->pinctrl, my_data->gpio_state_suspend);
-    if(my_data->reg_on_gpio)
-        gpio_free(my_data->reg_on_gpio);
-error_pinctrl:
-	return ret;
-
+err_rfkill_reg:
+	rfkill_destroy(bt_rfk);
+err_rfkill_alloc:
+    gpio_free(gpio_bt_reg_on);
+	return rc;
 }
 
-static int bcm43xx_bluetooth_probe(struct platform_device *pdev)
+static int bcm43xx_rfkill_remove(struct platform_device *dev)
 {
-	int ret;
 
-	struct device_node *of_node = pdev->dev.of_node;
-	dev_dbg(&pdev->dev, "bcm43xx bluetooth driver being loaded\n");
-
-	if (!of_node) {
-		dev_err(&pdev->dev, "%s(): of_node is null\n", __func__);
-		ret = -EPERM;
-		goto error_of_node;
-	}
-
-	bcm43xx_my_data = kzalloc(sizeof(*bcm43xx_my_data), GFP_KERNEL);
-	if (!bcm43xx_my_data) {
-		dev_err(&pdev->dev, "%s(): no memory\n", __func__);
-		ret = -ENOMEM;
-		goto error_alloc_mydata;
-	}
-	bcm43xx_my_data->pdev = pdev;
-
-	ret = bcm43xx_bluetooth_dev_init(pdev, bcm43xx_my_data);
-	if (ret) {
-		dev_err(&pdev->dev, "%s(): dev init failed\n", __func__);
-		goto error_dev_init;
-	}
-
-	bt_rfkill = rfkill_alloc("bcm43xx Bluetooth", &pdev->dev,
-				RFKILL_TYPE_BLUETOOTH, &bcm43xx_bt_rfkill_ops,
-				NULL);
-
-	if (unlikely(!bt_rfkill)) {
-		ret = -ENOMEM;
-		dev_err(&pdev->dev, "%s(): rfkill_alloc fail\n",  __func__);
-		goto  error_free_gpio;
-	}
-
-	rfkill_set_states(bt_rfkill, true, false);
-	ret = rfkill_register(bt_rfkill);
-
-	if (unlikely(ret)) {
-		rfkill_destroy(bt_rfkill);
-		ret = -ENOMEM;
-		dev_err(&pdev->dev, "%s(): rfkill_register fail\n", __func__);
-		goto  error_free_gpio;
-	}
-
-	return 0;
-
-error_free_gpio:
-	if (bcm43xx_my_data->has_pinctl)
-		pinctrl_select_state(bcm43xx_my_data->pinctrl,
-			bcm43xx_my_data->gpio_state_suspend);
-error_dev_init:
-	kzfree(bcm43xx_my_data);
-error_alloc_mydata:
-error_of_node:
-	return ret;
-}
-
-static int bcm43xx_bluetooth_remove(struct platform_device *pdev)
-{
-	dev_dbg(&pdev->dev, "bcm43xx_bluetooth_remove\n");
-	rfkill_unregister(bt_rfkill);
-	rfkill_destroy(bt_rfkill);
-
-	if (bcm43xx_my_data->has_pinctl)
-		if (!IS_ERR_OR_NULL(bcm43xx_my_data) &&
-				!IS_ERR_OR_NULL(bcm43xx_my_data->pinctrl) &&
-				!IS_ERR_OR_NULL(bcm43xx_my_data->gpio_state_suspend))
-			pinctrl_select_state(
-					bcm43xx_my_data->pinctrl,
-					bcm43xx_my_data->gpio_state_suspend);
-
-	kzfree(bcm43xx_my_data);
+	rfkill_unregister(bt_rfk);
+	rfkill_destroy(bt_rfk);
 
 	return 0;
 }
 
-static struct of_device_id bcm43xx_match_table[] = {
-	{.compatible = D_BCM_BLUETOOTH_CONFIG_MATCH_TABLE },
-	{}
+static const struct of_device_id bcm43xx_rfkill_match_table[] = {
+	{ .compatible = "bcm,bcm43xx", },
+	{},
 };
 
-static struct platform_driver bcm43xx_bluetooth_platform_driver = {
-	.probe = bcm43xx_bluetooth_probe,
-	.remove = bcm43xx_bluetooth_remove,
+static struct platform_driver bcm43xx_rfkill_driver = {
+	.probe = bcm43xx_rfkill_probe,
+	.remove = bcm43xx_rfkill_remove,
 	.driver = {
-		.name = "bcm43xx_bluetooth",
+		.name = "bcm43xx",
 		.owner = THIS_MODULE,
-		.of_match_table = bcm43xx_match_table,
+		.of_match_table = bcm43xx_rfkill_match_table,
 	},
 };
 
-static int __init bcm43xx_bluetooth_init(void)
+static int __init bcm43xx_rfkill_init(void)
 {
-	bt_enabled = false;
-	return platform_driver_register(&bcm43xx_bluetooth_platform_driver);
+	return platform_driver_register(&bcm43xx_rfkill_driver);
 }
 
-static void __exit bcm43xx_bluetooth_exit(void)
+static void __exit bcm43xx_rfkill_exit(void)
 {
-	platform_driver_unregister(&bcm43xx_bluetooth_platform_driver);
+	platform_driver_unregister(&bcm43xx_rfkill_driver);
 }
 
-
-module_init(bcm43xx_bluetooth_init);
-module_exit(bcm43xx_bluetooth_exit);
-
+module_init(bcm43xx_rfkill_init);
+module_exit(bcm43xx_rfkill_exit);
 MODULE_ALIAS("platform:bcm43xx");
-MODULE_DESCRIPTION("bcm43xx_bluetooth");
+MODULE_DESCRIPTION("bcm43xx_rfkill");
 MODULE_AUTHOR("Jaikumar Ganesh <jaikumar@google.com>");
 MODULE_LICENSE("GPL v2");
