@@ -76,7 +76,7 @@
 #define LDISC_STOP_TIME        3000
 //BT_E : [CONBT-2342] LG_BT_COMMON_IMP_KERNEL_INCREASE_LDISC_START_TIMEOUT_VALUE
 #define CMD_RESP_TIME          800
-#define CMD_WR_TIME            1000
+#define CMD_WR_TIME            5000
 #define POR_RETRY_COUNT        5
 
 

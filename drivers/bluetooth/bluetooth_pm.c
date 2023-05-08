@@ -22,7 +22,6 @@
 #include <linux/termios.h>
 #include <linux/bitops.h>
 #include <linux/param.h>
-#include <linux/msm-bus.h>
 
 //[S] Bluetooth Bring-up
 #include <linux/slab.h>
@@ -49,8 +48,6 @@ struct bluetooth_pm_data {
     struct rfkill *rfkill;
     struct wake_lock wake_lock;
     struct uart_port *uport;
-    struct msm_bus_scale_pdata *msm_bus_tbl;
-    u32 msm_bus_perf;
 };
 
 //[S] Bluetooth Bring-up
@@ -80,7 +77,7 @@ DECLARE_DELAYED_WORK(sleep_workqueue, bluetooth_pm_sleep_work);
 #define bluetooth_pm_tx_idle()         schedule_delayed_work(&sleep_workqueue, 0)
 
 //BT_S : [CONBT-2112] LGC_BT_COMMON_IMP_KERNEL_V4L2_SLEEP_DRIVER
-#define TX_TIMER_INTERVAL   2 //(Uint : sec)
+#define TX_TIMER_INTERVAL   300 //(Uint : ms)
 
 #define RX_TIMER_INTERVAL   5 //(Uint : sec)
 //BT_E : [CONBT-2112] LGC_BT_COMMON_IMP_KERNEL_V4L2_SLEEP_DRIVER
@@ -121,10 +118,6 @@ static unsigned long uart_on_jiffies;
 /** Lock for state transitions */
 static spinlock_t rw_lock;
 
-/* Initially the vote up state is unknown */
-static int bus_vote_up = -1;
-static DEFINE_MUTEX(bus_vote_up_lock);
-
 struct proc_dir_entry *bluetooth_dir, *sleep_dir;
 
 /*
@@ -143,32 +136,6 @@ static void hsuart_power(int on)
         msm_hs_set_mctrl(bsi->uport, 0);
         msm_hs_request_clock_off(bsi->uport);
     }
-}
-
-static int bluetooth_pm_vote_bus(bool enable)
-{
-	int ret = 0;
-
-	if (!bsi->msm_bus_perf)
-		return -ENODEV;
-
-	mutex_lock(&bus_vote_up_lock);
-
-	/* Already voted ? */
-	if (bus_vote_up == (int)enable) {
-		mutex_unlock(&bus_vote_up_lock);
-		return 0;
-	}
-
-	ret = msm_bus_scale_client_update_request(
-				bsi->msm_bus_perf, (int)enable);
-	if (ret)
-		pr_err("bus scale request failure: %d\n", ret);
-	else
-		bus_vote_up = (int)enable;
-
-	mutex_unlock(&bus_vote_up_lock);
-	return ret;
 }
 
 /**
@@ -224,7 +191,7 @@ void bluetooth_pm_wakeup(void)
 
     spin_lock_irqsave(&rw_lock, irq_flags);
 
-    if (test_bit(BT_ASLEEP, &flags) && (bsi->uport != NULL)) {
+    if (test_bit(BT_ASLEEP, &flags)) {
         printk("%s, waking up...\n", __func__);
 
 //BT_S : [CONBT-1475] LGC_BT_COMMON_IMP_KERNEL_UART_HCI_COMMAND_TIMEOUT
@@ -266,8 +233,7 @@ void bluetooth_pm_wakeup(void)
         {
             printk("%s - Start Timer : check hostwake status when timer expired\n", __func__);
 //BT_S : [CONBT-2112] LGC_BT_COMMON_IMP_KERNEL_V4L2_SLEEP_DRIVER
-            mod_timer(&rx_timer, jiffies +
-                    msecs_to_jiffies(RX_TIMER_INTERVAL * 1000));
+            mod_timer(&rx_timer, jiffies + (RX_TIMER_INTERVAL * HZ));
 //BT_E : [CONBT-2112] LGC_BT_COMMON_IMP_KERNEL_V4L2_SLEEP_DRIVER
         }
     }
@@ -327,11 +293,9 @@ static void bluetooth_pm_sleep_work(struct work_struct *work)
     if (bluetooth_pm_can_sleep()) {
         printk("%s, bluetooth_pm_can_sleep is true. Call BT Sleep\n", __func__);
         bluetooth_pm_sleep();
-        bluetooth_pm_vote_bus(false);
     } else {
         printk("%s, bluetooth_pm_can_sleep is false. Call BT Wake Up\n", __func__);
         bluetooth_pm_wakeup();
-        bluetooth_pm_vote_bus(true);
     }
 
     //printk("--- %s\n", __func__);
@@ -352,8 +316,7 @@ static void bluetooth_pm_hostwake_task(unsigned long data)
         bluetooth_pm_rx_busy();
 
 //BT_S : [CONBT-2112] LGC_BT_COMMON_IMP_KERNEL_V4L2_SLEEP_DRIVER
-        mod_timer(&rx_timer, jiffies +
-                msecs_to_jiffies(RX_TIMER_INTERVAL * 1000));
+        mod_timer(&rx_timer, jiffies + (RX_TIMER_INTERVAL * HZ));
 //BT_E : [CONBT-2112] LGC_BT_COMMON_IMP_KERNEL_V4L2_SLEEP_DRIVER
     //}
     //else
@@ -489,7 +452,7 @@ static irqreturn_t bluetooth_pm_hostwake_isr(int irq, void *dev_id)
     }
 
     ret = request_irq(bsi->host_wake_irq, bluetooth_pm_hostwake_isr,
-                IRQF_TRIGGER_LOW,
+                IRQF_DISABLED | IRQF_TRIGGER_LOW,
                 "bluetooth hostwake", NULL);
     if (ret  < 0) {
         printk("%s, Couldn't acquire BT_HOST_WAKE IRQ\n", __func__);
@@ -568,7 +531,7 @@ EXPORT_SYMBOL(bluetooth_pm_sleep_start);
         printk("%s, Couldn't disable hostwake IRQ wakeup mode\n", __func__);
     free_irq(bsi->host_wake_irq, NULL);
 
-    wake_lock_timeout(&bsi->wake_lock, msecs_to_jiffies(500));
+    wake_lock_timeout(&bsi->wake_lock, HZ / 2);
 }
 //BT_S : [CONBT-2112] LGC_BT_COMMON_IMP_KERNEL_V4L2_SLEEP_DRIVER
 EXPORT_SYMBOL(bluetooth_pm_sleep_stop);
@@ -582,8 +545,7 @@ void bluetooth_pm_outgoing_data(void)
     //printk("+++ %s\n", __func__);
 
     //Always restart BT TX Timer
-    mod_timer(&tx_timer, jiffies +
-            msecs_to_jiffies(TX_TIMER_INTERVAL * 1000));
+    mod_timer(&tx_timer, jiffies + msecs_to_jiffies(TX_TIMER_INTERVAL));
 
     //printk("%s, Spin Lock\n", __func__);
 
@@ -600,8 +562,6 @@ void bluetooth_pm_outgoing_data(void)
     }
 
     spin_unlock_irqrestore(&rw_lock, irq_flags);
-
-    bluetooth_pm_vote_bus(true);
 
     //printk("%s, Spin Unlock\n", __func__);
 
@@ -865,17 +825,6 @@ static int bluetooth_pm_probe(struct platform_device *pdev)
         printk("%s: bdev is null  \n", __func__);
         return -ENOMEM;
     }
-
-    bsi->msm_bus_tbl = msm_bus_cl_get_pdata(pdev);
-    if (bsi->msm_bus_tbl) {
-        bsi->msm_bus_perf = msm_bus_scale_register_client(
-                            bsi->msm_bus_tbl);
-        if (bsi->msm_bus_perf == 0) {
-            pr_err("Error configuring MSM bus client. Bus voting "
-                "will be unavailable.\n");
-            bsi->msm_bus_tbl = NULL;
-		}
-	}
 
     bdev->gpio_bt_reset = bsi->bt_reset;
     bdev->gpio_bt_host_wake = bsi->host_wake;

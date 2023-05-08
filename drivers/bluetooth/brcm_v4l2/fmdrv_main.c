@@ -133,7 +133,7 @@ struct region_info region_configs[] = {
    /*rds_txt is RDS test message, this could be custom message*/
    static char rds_txt[65];
    /*holds the 3 byte RDS tuple data*/
-   static __u8 rds_tupple[FM_RDS_TUPLE_LENGTH];
+   static __u8 rds_tupple[3];
 
    /*CT is time and date information*/
    struct ct
@@ -537,8 +537,7 @@ int fmc_send_cmd(struct fmdrv_ops *fmdev, unsigned char fmreg_index,
             return ret;
     }
 
-    timeleft = wait_for_completion_timeout(wait_completion,
-            msecs_to_jiffies(FM_DRV_TX_TIMEOUT));
+    timeleft = wait_for_completion_timeout(wait_completion, FM_DRV_TX_TIMEOUT);
     mutex_unlock(&fmdev->wait_completion_lock);
     if (!timeleft)
     {
@@ -1006,7 +1005,6 @@ int fmc_transfer_rds_from_cbuff(struct fmdrv_ops *fmdev, struct file *file,
                     char __user * buf, size_t count)
 {
     unsigned int block_count;
-    __u8 tmpbuf[FM_RDS_BLOCK_SIZE];
     unsigned long flags;
     int ret;
 
@@ -1023,21 +1021,22 @@ int fmc_transfer_rds_from_cbuff(struct fmdrv_ops *fmdev, struct file *file,
         }
     }
     /* Calculate block count from byte count */
-    count /= FM_RDS_BLOCK_SIZE;
+    count /= 3;
     block_count = 0;
     ret = 0;
 
+    spin_lock_irqsave(&fmdev->rds_cbuff_lock, flags);
+
     /* Copy RDS blocks from the internal buffer and to user buffer */
     while (block_count < count) {
-        spin_lock_irqsave(&fmdev->rds_cbuff_lock, flags);
+        if (fmdev->rx.rds.wr_index == fmdev->rx.rds.rd_index)
+            break;
 
         /* Always transfer complete RDS blocks */
-        if (fmdev->rx.rds.wr_index == fmdev->rx.rds.rd_index) {
-            spin_unlock_irqrestore(&fmdev->rds_cbuff_lock, flags);
+        if (copy_to_user
+            (buf, &fmdev->rx.rds.cbuffer[fmdev->rx.rds.rd_index],
+             FM_RDS_BLOCK_SIZE))
             break;
-        }
-        memcpy(tmpbuf, &fmdev->rx.rds.cbuffer[fmdev->rx.rds.rd_index],
-                      FM_RDS_BLOCK_SIZE);
 
         /* Increment and wrap the read pointer */
         fmdev->rx.rds.rd_index += FM_RDS_BLOCK_SIZE;
@@ -1046,18 +1045,15 @@ int fmc_transfer_rds_from_cbuff(struct fmdrv_ops *fmdev, struct file *file,
         if (fmdev->rx.rds.rd_index >= fmdev->rx.rds.buf_size)
             fmdev->rx.rds.rd_index = 0;
 
-        spin_unlock_irqrestore(&fmdev->rds_cbuff_lock, flags);
-
-        if (copy_to_user(buf, tmpbuf, FM_RDS_BLOCK_SIZE))
-            break;
-
         /* Increment counters */
         block_count++;
         buf += FM_RDS_BLOCK_SIZE;
         ret += FM_RDS_BLOCK_SIZE;
     }
+    spin_unlock_irqrestore(&fmdev->rds_cbuff_lock, flags);
 
     V4L2_FM_DRV_DBG(V4L2_DBG_RX, "(rds) %s Done copying %d", __func__, ret);
+
     return ret;
 }
 
@@ -1533,9 +1529,7 @@ INIT_WORK(&fmdev->rx_workqueue,fm_receive_data_ldisc);
                                 V4L2_CAP_AUDIO | V4L2_CAP_READWRITE | V4L2_CAP_RDS_CAPTURE;
     fmdev->device_info.type = V4L2_TUNER_RADIO;
     fmdev->device_info.rxsubchans = V4L2_TUNER_SUB_MONO | V4L2_TUNER_SUB_STEREO;
-    fmdev->device_info.tuner_capability = V4L2_TUNER_CAP_STEREO | V4L2_TUNER_CAP_LOW |
-                                V4L2_TUNER_CAP_RDS | V4L2_TUNER_CAP_HWSEEK_BOUNDED |
-                                V4L2_TUNER_CAP_HWSEEK_WRAP;
+    fmdev->device_info.tuner_capability =V4L2_TUNER_CAP_STEREO | V4L2_TUNER_CAP_LOW | V4L2_TUNER_CAP_RDS;
 
 //BRCM_LOCAL [CSP#1011785] : FM radio Kernel crash
     fmdev->rx.abort_flag = FALSE;

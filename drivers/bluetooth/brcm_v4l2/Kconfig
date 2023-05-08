@@ -37,8 +37,6 @@ config BT_V4L2
 config FM_V4L2
 	tristate "FM protocol driver"
 	depends on SH_V4L2
-	depends on !MACH_MSM8996_LUCYE_TMO_US
-	depends on !MACH_MSM8996_LUCYE_NAO_US
 	default y if MACH_LGE
 	help
 	  FM Radio protocol driver.
