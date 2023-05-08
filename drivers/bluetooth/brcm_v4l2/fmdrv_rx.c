@@ -513,7 +513,7 @@ int fm_rx_set_frequency(struct fmdrv_ops *fmdev, unsigned int freq_to_set)
     mutex_lock(&fmdev->wait_completion_lock);
     init_completion(&fmdev->maintask_completion);
     timeleft = wait_for_completion_timeout(&fmdev->maintask_completion,
-                           msecs_to_jiffies(FM_DRV_TX_TIMEOUT));
+                           FM_DRV_TX_TIMEOUT);
     mutex_unlock(&fmdev->wait_completion_lock);
     if (!timeleft)
     {
@@ -642,7 +642,7 @@ int fm_rx_seek_station(struct fmdrv_ops *fmdev, unsigned char direction_upward,
     /* Wait for tune ended interrupt */
     init_completion(&fmdev->seektask_completion);
     timeleft = wait_for_completion_timeout(&fmdev->seektask_completion,
-                           msecs_to_jiffies(FM_DRV_RX_SEEK_TIMEOUT));
+                           FM_DRV_RX_SEEK_TIMEOUT);
 
 //BRCM_LOCAL [CSP#1011785] : FM radio Kernel crash
     if(fmdev->rx.abort_flag == TRUE)
@@ -657,7 +657,7 @@ int fm_rx_seek_station(struct fmdrv_ops *fmdev, unsigned char direction_upward,
         V4L2_FM_DRV_ERR("(fmdrv) Timeout(%d sec),didn't get seek ended interrupt",\
                jiffies_to_msecs(FM_DRV_RX_SEEK_TIMEOUT) / 1000);
         fmdev->rx.fm_rds_flag &= ~FM_RDS_FLAG_SCH_FRZ_BIT;
-        return -ENODATA;
+        return -ETIMEDOUT;
     }
 
     fm_rx_read_curr_rssi_freq(fmdev, FALSE);
@@ -685,7 +685,7 @@ int fm_rx_seek_station(struct fmdrv_ops *fmdev, unsigned char direction_upward,
         /* Wait for tune ended interrupt */
         init_completion(&fmdev->seektask_completion);
         timeleft = wait_for_completion_timeout(&fmdev->seektask_completion,
-                               msecs_to_jiffies(FM_DRV_RX_SEEK_TIMEOUT));
+                               FM_DRV_RX_SEEK_TIMEOUT);
 
         fmdev->rx.fm_rds_flag &= ~FM_RDS_FLAG_SCH_FRZ_BIT;
         if (!timeleft)

@@ -40,8 +40,6 @@
 #include "include/v4l2_logs.h"
 #include "brcm_bt_drv.h"
 
-#define WRITE_RETRY_CNT 5
-
 /* set this module parameter to enable debug info */
 int bt_dbg_param = 0;
 
@@ -165,7 +163,7 @@ static int brcm_bt_drv_open(struct inode *inode, struct file *filp)
         else {
             jiffi2 = jiffies;
             diff = (long)jiffi2 - (long)jiffi1;
-            if ( ((diff * HZ * 10) / HZ) >= 1000)
+            if ( ((diff *1000)/HZ) >= 1000)
                 is_print_reg_error = 1;
         }
         err = -EAGAIN;
@@ -238,21 +236,6 @@ static void brcm_bt_drv_prepare(struct brcm_bt_dev* bt_dev)
 
 /*****************************************************************************
 **
-** Function - brcm_bt_drv_reset_queue
-**
-** Description - Performs a reset of BT packet queues.
-**
-*****************************************************************************/
-static int brcm_bt_drv_reset_queue(struct sk_buff_head *list)
-{
-    list->qlen = 0;
-    list->next = list;
-    list->prev = list;
-}
-
-
-/*****************************************************************************
-**
 ** Function - brcm_bt_drv_close
 **
 ** Description - Performs cleanup of BT protocol driver.
@@ -278,11 +261,8 @@ static int brcm_bt_drv_close(struct inode *i, struct file *f)
         }
     }
 
-    /* Just reset the list pointers, as freeing is done by closing the base
-     * serial node (e.g., the msm one). The actual base problem is that a shared
-     * sk buffer should be used... */
-    brcm_bt_drv_reset_queue(&bt_dev_p->tx_q);
-    brcm_bt_drv_reset_queue(&bt_dev_p->rx_q);
+    skb_queue_purge(&bt_dev_p->tx_q);
+    skb_queue_purge(&bt_dev_p->rx_q);
     atomic_set(&bt_dev_p->tx_cnt, 0);
     bt_dev_p->st_write = NULL;
 
@@ -295,18 +275,9 @@ static int brcm_bt_drv_close(struct inode *i, struct file *f)
 **
 ** Function - brcm_bt_drv_read
 **
-** Description - Called when user-space program tries to read a packet. It
-**               copies data from the next queued packet into user space and
-**               'len' Bytes are copied from the data of this packet.
-**               If 'len' is smaller than the data size of the current packet,
-**               the packet remains in the queue. In that case, a subsequent
-**               read operation will read data starting from from the last Byte
-**               read of this packet.
-**               If 'len' is larger than the packet, or the remaining Bytes of
-**               the packet, only packet or the remaining Bytes are delivered
-**               respectively.
+** Description - Called when user-space program tries to read a packet.
 **
-** Returns - Number of bytes that were read out from the packet.
+** Returns - Number of bytes in packet.
 *****************************************************************************/
 static ssize_t brcm_bt_drv_read(struct file *f, char __user *buf, size_t
   len, loff_t *off)
@@ -314,9 +285,6 @@ static ssize_t brcm_bt_drv_read(struct file *f, char __user *buf, size_t
     struct sk_buff *skb;
     struct brcm_bt_dev *bt_dev_p = f->private_data;
     size_t skb_size = 0;
-    size_t skb_remaining_len = 0;
-     /* Last read pos if only a fragment was read previously.*/
-    static size_t skb_read_offset;
     unsigned long flags;
 
     spin_lock_irqsave(&bt_dev_p->rx_q_lock, flags);
@@ -331,42 +299,29 @@ static ssize_t brcm_bt_drv_read(struct file *f, char __user *buf, size_t
         goto exit;
     }
     else {
-        /* Read only len bytes, if the the remaining bytes of the packet are
-         * less, only read them. */
-        skb_remaining_len = skb->len - skb_read_offset;
-        skb_size = (len <= skb_remaining_len) ? len : skb_remaining_len;
+        skb_size = skb->len;
 
-        /* copy packet to user-space */
-        if (0 == copy_to_user(buf, skb->data + skb_read_offset, sizeof(char) * skb_size)) {
-            /* Copy success. */
-            if (skb_size < skb_remaining_len) {
-                /* Remaining bytes after read --> increase offset for next read.*/
-                skb_read_offset += skb_size;
-            } else if (skb_size == skb_remaining_len) {
-                /* All bytes of packet read --> dequeue & reset offset. */
-                skb_read_offset = 0;
-                skb = skb_dequeue(&bt_dev_p->rx_q);
-                kfree_skb(skb);
-            } else {
-                /* We read more bytes than the packet had... error! */
-                pr_err("Read exceeded packet size!");
-                goto err;
-            }
-        } else {
-            /* Copy failure. */
-            pr_err("copy to user failed\n");
-            goto err;
-        }
+         /* copy packet to user-space */
+         if(copy_to_user(buf, skb->data, sizeof(char) * skb_size)){
+            /* free the skb */
+            /*kfree_skb(skb);*/
+            printk("copy to user failed\n");
+            spin_unlock_irqrestore(&bt_dev_p->rx_q_lock, flags);
+            return -EFAULT;
+         }
+         else {
+            /* free the skb after copying to user space. Return the size of skb */
+            skb = skb_dequeue(&bt_dev_p->rx_q);
+            kfree_skb(skb);
+            spin_unlock_irqrestore(&bt_dev_p->rx_q_lock, flags);
+            return skb_size;
+         }
     }
 
 exit:
-    spin_unlock_irqrestore(&bt_dev_p->rx_q_lock, flags);
-    BT_DRV_DBG(V4L2_DBG_RX, "skb_size=%d", skb_size);
-    return skb_size;
-err:
-    skb_read_offset = 0;
-    spin_unlock_irqrestore(&bt_dev_p->rx_q_lock, flags);
-    return -EFAULT;
+         spin_unlock_irqrestore(&bt_dev_p->rx_q_lock, flags);
+         BT_DRV_DBG(V4L2_DBG_RX, "skb_size=%zu", skb_size);
+         return skb_size;
 }
 
 
@@ -385,51 +340,31 @@ static ssize_t brcm_bt_write(struct file *f, const char __user *buf,
     struct sk_buff *skb;
     struct brcm_bt_dev *bt_dev;
     unsigned long flags;
-    static uint8_t pkt_type;
-    size_t pkt_len;
 
     bt_dev = f->private_data;
     spin_lock_irqsave(&bt_dev->tx_q_lock, flags);
 
-    if (len == 1) {
-        if(copy_from_user(&pkt_type, buf, len)) {
-            BT_DRV_ERR("Error:Could not copy all data bytes from user space\n");
-            ret=-EFAULT;
-            goto err;
-        }
-
-        spin_unlock_irqrestore(&bt_dev->tx_q_lock, flags);
-        BT_DRV_DBG(V4L2_DBG_TX, "End ret=%d", ret);
-        return len;
-    }
-
-    if (!pkt_type) {
-        BT_DRV_ERR("Error: The packet type is missing. It must be written in a \
-                sparate write operation before the actual data.\n");
-        ret=-EFAULT;
-        goto err;
-    }
-
-    if (buf != NULL) {
-        pkt_len = len + 1;
-        if (!(skb = alloc_skb(pkt_len, GFP_ATOMIC))) {
+    if (buf != NULL)
+    {
+        if(!(skb = alloc_skb(len, GFP_ATOMIC)))
+        {
             BT_DRV_ERR("Error in allocating memory for skb\n");
             ret=-EFAULT;
-            goto err;
+            goto nomem;
         }
 
-        /* Add the packet type to the data which is sent to the controller. */
-        memcpy(skb_put(skb, 1), &pkt_type, 1);
-
-        if (copy_from_user(skb_put(skb, len), buf, len)) {
+        if(copy_from_user(skb_put(skb, len), buf, len))
+        {
             BT_DRV_ERR("Error:Could not copy all data bytes from user space\n");
             ret=-EFAULT;
-            goto err;
+            goto nomem;
         }
-    } else {
+
+    }
+    else {
         BT_DRV_ERR("Error: Buffer from user space is NULL\n");
         ret=-EFAULT;
-        goto err;
+        goto nomem;
     }
 
     /* writing to tx queue should be atomic */
@@ -447,8 +382,7 @@ static ssize_t brcm_bt_write(struct file *f, const char __user *buf,
     BT_DRV_DBG(V4L2_DBG_TX, "End len=%zu", len);
     return len;
 
-err:
-    pkt_type = NULL;
+nomem:
     spin_unlock_irqrestore(&bt_dev->tx_q_lock, flags);
     BT_DRV_DBG(V4L2_DBG_TX, "End ret=%d", ret);
     return ret;
@@ -519,7 +453,6 @@ static void bt_send_data_ldisc(struct work_struct *w)
     struct sk_buff *skb;
     int len = 0;
     unsigned long flags;
-    unsigned int i;
 
     BT_DRV_DBG(V4L2_DBG_TX, "sending data to ldisc");
 
@@ -527,11 +460,9 @@ static void bt_send_data_ldisc(struct work_struct *w)
     //if (atomic_read(&bt_dev_p->tx_cnt))
 //BT_S : [CONBT-3553][CSP#1062558] App Watchdog crash during BT ON/OFF Test
     //while (atomic_read(&bt_dev_p->tx_cnt))
-    //while (atomic_read(&bt_dev_p->tx_cnt) > 0)
+    while (atomic_read(&bt_dev_p->tx_cnt) > 0)
 //BT_E : [CONBT-3553][CSP#1062558] App Watchdog crash during BT ON/OFF Test
 //BT_E : [CONBT-2297][CASE#966325] improve a2dp chopping
-
-    for (i = 0; i < WRITE_RETRY_CNT && atomic_read(&bt_dev_p->tx_cnt); i++)
     {
         spin_lock_irqsave(&bt_dev_p->tx_q_lock, flags);
         skb = skb_dequeue(&bt_dev_p->tx_q);
