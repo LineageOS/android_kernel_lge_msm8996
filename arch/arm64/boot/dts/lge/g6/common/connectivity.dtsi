@@ -10,6 +10,8 @@
  * GNU General Public License for more details.
  */
 
+#ifdef CONFIG_BRCM_V4L2
+/*[H1_BT_BRINGUP_S]*/
 &blsp1_uart2 {
 	interrupt-names = "core_irq", "bam_irq";
 	interrupts = <0 1>;
@@ -19,9 +21,20 @@
 	/delete-property/ qcom,rx-char-to-inject;
 	qcom,msm-obs;
 };
+/*[H1_BT_BRINGUP_E]*/
+#else
+&blsp1_uart2 {
+	compatible = "qcom,msm-hsuart-v14-brcmbt";
+	interrupt-names = "core_irq", "bam_irq";
+	interrupts = <0 1>;
+	interrupt-map = <0 &intc 0 0 108 0
+			1 &intc 0 0 238 0>;
+};
+#endif
 
 #ifdef CONFIG_BRCM_V4L2
 / {
+	/*[H1_BT_BRINGUP_S]*/
 	bt_bluetooth_pm {
 		compatible = "lge,bluetooth_pm";
 		gpio-bt-reset = <&pm8994_gpios 19 0>;
@@ -33,31 +46,24 @@
 
 		pinctrl-names = "bt_default";
 		pinctrl-0 = <&bt_default>;
-
-		qcom,msm-bus,name = "lge_bt_pm";
-		qcom,msm-bus,num-cases = <2>;
-		qcom,msm-bus,num-paths = <1>;
-		qcom,msm-bus,vectors-KBps =
-			<10027  512    0      0 >,    /* No vote */
-			<10027  512 3200000 3200000>; /* Max. bandwidth */
 	};
+	/*[H1_BT_BRINGUP_E]*/
 #else
 / {
 	bluesleep {
-		compatible = "qcom,bluesleep";
+		compatible = "bcm,bluesleep";
+		bcm,bt_host_wake = <&tlmm 24 0x00>; /* BT_HOST_WAKE */
+		bcm,bt_ext_wake = <&tlmm 92 0x00>; /* BT_DEV_WAKE */
+		interrupt-controller;
 		interrupt-parent = <&tlmm>;
-		interrupts = <24 0>;
-		interrupt-names = "host_wake_int";
-		bt_host_wake = <&tlmm 24 0>; /* BT_HOST_WAKE */
-		bt_ext_wake = <&tlmm 92 0>; /* BT_DEV_WAKE */
-		pinctrl-names = "default", "sleep";
-		pinctrl-0 = <&bt_default>;
-		pinctrl-1 = <&bt_sleep>;
 	};
 
 	bcm43xx {
 		compatible = "bcm,bcm43xx";
-		bcm,reg-on-gpio = <&pm8994_gpios 19 0>; /* BT_REG_ON */
+		bcm,bt-regon-gpio = <&pm8994_gpios 19 0x00>; /* BT_REG_ON */
+		pinctrl-names = "bt_wake_host_gpio_on", "bt_wake_host_gpio_off";
+		pinctrl-0 = <&bt_wake_host_gpio_on>;
+		pinctrl-1 = <&bt_wake_host_gpio_off>;
 	};
 #endif
 
@@ -70,7 +76,8 @@
 };
 
 &tlmm {
-	/* not sure why this is here... */
+//[H1_BT_BRINGUP_S]
+	/* gpio pin mux for bluetooth enable pin */
 	i2c_3 {
 		i2c_3_active: i2c_3_active {
 			mux {
@@ -115,34 +122,23 @@
 			};
 		};
 	};
+//[H1_BT_BRINGUP_E]
 #else
-	/* gpio pin mux for bluetooth */
-	pmx_bt_default {
-		bt_default: bt_default {
-			mux {
-				pins = "gpio24", "gpio92";
-				function = "gpio";
-			};
-
+	/* GPIO_24 : BT_HOST_WAKE */
+	bluetooth_wake_host_pin {
+		bt_wake_host_gpio_on: bt_wake_host_gpio_on {
 			config {
-				pins = "gpio24", "gpio92";
+				pins = "gpio24";
 				drive-strength = <2>;
-				bias-disable;
+				bias-pull-up;
 			};
 		};
-	};
 
-	pmx_bt_sleep {
-		bt_sleep: bt_sleep {
-			mux {
-				pins = "gpio24", "gpio92";
-				function = "gpio";
-			};
-
+		bt_wake_host_gpio_off: bt_wake_host_gpio_off {
 			config {
-				pins = "gpio24", "gpio92";
+				pins = "gpio24";
 				drive-strength = <2>;
-				bias-disable;
+				bias-pull-down;
 			};
 		};
 	};
