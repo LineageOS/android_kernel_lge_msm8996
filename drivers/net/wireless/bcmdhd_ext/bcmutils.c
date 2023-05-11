@@ -2203,10 +2203,9 @@ bcm_mkiovar(const char *name, char *data, uint datalen, char *buf, uint buflen)
 	strncpy(buf, name, buflen);
 
 	/* append data onto the end of the name string */
-	if (data && datalen != 0) {
-		memcpy(&buf[len], data, datalen);
-		len += datalen;
-	}
+	memcpy(&buf[len], data, datalen);
+	len += datalen;
+
 	return len;
 }
 

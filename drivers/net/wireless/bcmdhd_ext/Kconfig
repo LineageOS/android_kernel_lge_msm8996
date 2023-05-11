@@ -49,6 +49,14 @@ config BCMDHD_NVRAM_PATH
 	---help---
 	  Path to the calibration file.
 
+config BCMDHD_WEXT
+	bool "Enable WEXT support"
+	depends on BCMDHD && CFG80211 = n
+	select WIRELESS_EXT
+	select WEXT_PRIV
+	---help---
+	  Enables WEXT support
+
 config LGE_BCM433X_PATCH
 	bool "BCM433X Patch by LGE"
 	default y
@@ -158,13 +166,6 @@ config BCMDHD_CLM_PATH
 	default "/vendor/etc/wifi/4359_lg.clm_blob"
 	---help---
 	  Path to the clm blob file.
-
-config BCMDHD_DYNAMIC_MUMIMO_CONTROL
-	bool "control dynamic mumimo"
-	depends on BCM4359
-	default n
-	---help---
-	  enable dynamic mumimo.
 
 config BCMDHD_FOLLOW_AP_DTIM_PERIOD
 	bool "DTIM Listen interval in suspend mode"

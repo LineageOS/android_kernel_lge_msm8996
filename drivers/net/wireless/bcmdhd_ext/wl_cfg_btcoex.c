@@ -96,7 +96,7 @@ dev_wlc_intvar_get_reg(struct net_device *dev, char *name,
 
 	bcm_mkiovar(name, (char *)(&reg), sizeof(reg),
 		(char *)(&var), sizeof(var.buf));
-	error = wldev_ioctl_get(dev, WLC_GET_VAR, (char *)(&var), sizeof(var.buf));
+	error = wldev_ioctl(dev, WLC_GET_VAR, (char *)(&var), sizeof(var.buf), false);
 
 	*retval = dtoh32(var.val);
 	return (error);
@@ -109,7 +109,7 @@ dev_wlc_bufvar_set(struct net_device *dev, char *name, char *buf, int len)
 
 	bcm_mkiovar(name, buf, len, ioctlbuf_local, sizeof(ioctlbuf_local));
 
-	return (wldev_ioctl_set(dev, WLC_SET_VAR, ioctlbuf_local, sizeof(ioctlbuf_local)));
+	return (wldev_ioctl(dev, WLC_SET_VAR, ioctlbuf_local, sizeof(ioctlbuf_local), true));
 }
 /*
 get named driver variable to uint register value and return error indication
@@ -421,7 +421,7 @@ int wl_cfg80211_set_btcoex_allow_bt_inquiry(struct net_device *dev, char *comman
 {
 	static uint32 saved_reg50, modified_reg50;
 	static bool saved_status = FALSE;
-	int ret = -1;
+	int ret;
 	uint32 regaddr = 50;
 
 	if (enabled) {

@@ -27,7 +27,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: dhd.h 682762 2017-02-03 04:33:58Z $
+ * $Id: dhd.h 678617 2017-01-10 08:43:06Z $
  */
 
 /****************
@@ -269,8 +269,7 @@ enum dhd_hang_reason {
 	HANG_REASON_P2P_IFACE_DEL_FAILURE = 0x8007,
 	HANG_REASON_HT_AVAIL_ERROR = 0x8008,
 	HANG_REASON_PCIE_RC_LINK_UP_FAIL = 0x8009,
-	HANG_REASON_INVALID_EVENT_OR_DATA = 0x8806,
-	HANG_REASON_MAX = 0x8807
+	HANG_REASON_MAX = 0x800a
 };
 
 enum dhd_rsdb_scan_features {
@@ -698,9 +697,6 @@ typedef struct dhd_pub {
 	bool lazy_roam_enable;
 #endif
 	uint8 rand_mac_oui[DOT11_OUI_LEN];
-#ifdef SUPPORT_AP_POWERSAVE
-	bool pwrsave_enable;
-#endif
 } dhd_pub_t;
 
 #if defined(PCIE_FULL_DONGLE)
@@ -1192,12 +1188,15 @@ extern int dhd_keep_alive_onoff(dhd_pub_t *dhd);
 
 #ifdef SUPPORT_AP_POWERSAVE
 extern int dhd_set_ap_powersave(dhd_pub_t *dhdp, int ifidx, int enable);
-extern int dhd_ap_powersave_sdb_transition(dhd_pub_t *dhdp, void* event_data);
 #endif
 
 #if defined(DHD_FW_COREDUMP)
 void dhd_schedule_memdump(dhd_pub_t *dhdp, uint8 *buf, uint32 size);
 #endif /* DHD_FW_COREDUMP */
+
+#ifdef SUPPORT_AP_POWERSAVE
+extern int dhd_set_ap_powersave(dhd_pub_t *dhdp, int ifidx, int enable);
+#endif /* SUPPORT_AP_POWERSAVE */
 
 
 #ifdef PKT_FILTER_SUPPORT
@@ -1365,8 +1364,7 @@ extern int dhd_os_busbusy_wait_negation(dhd_pub_t * pub, uint * condition);
 extern int dhd_os_busbusy_wake(dhd_pub_t * pub);
 
 extern bool dhd_is_concurrent_mode(dhd_pub_t *dhd);
-int dhd_iovar(dhd_pub_t *pub, int ifidx, char *name, char *param_buf, uint param_len,
-	char *res_buf, uint res_len, int set);
+extern int dhd_iovar(dhd_pub_t *pub, int ifidx, char *name, char *cmd_buf, uint cmd_len, int set);
 typedef enum cust_gpio_modes {
 	WLAN_RESET_ON,
 	WLAN_RESET_OFF,
