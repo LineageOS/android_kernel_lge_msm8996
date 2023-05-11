@@ -16,6 +16,23 @@
       "message": "Also tested and confirmed working on H872, fixes hotspot.",
       "revId": "9c32eb491edda78d1129ca3367799bba7ecb2b10",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "13683ab6_af27b16f",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 29891
+      },
+      "writtenOn": "2023-05-11T20:45:20Z",
+      "side": 1,
+      "message": "Although it fixes hotspot on G6 without affecting V20 and G5, it\u0027s still a big change, and only 2.4GHz works for the time being. Waiting to see if we\u0027re really going forward with this change, or if it would be better to rework it.",
+      "revId": "9c32eb491edda78d1129ca3367799bba7ecb2b10",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
