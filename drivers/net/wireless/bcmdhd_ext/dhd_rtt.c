@@ -203,7 +203,7 @@ dhd_rtt_start(dhd_pub_t *dhd)
 	NULL_CHECK(rtt_status, "rtt_status is NULL", err);
 	/* turn off mpc in case of non-associted */
 	if (!dhd_is_associated(dhd, 0, NULL)) {
-		err = dhd_iovar(dhd, 0, "mpc", (char *)&mpc, sizeof(mpc), NULL, 0, TRUE);
+		err = dhd_iovar(dhd, 0, "mpc", (char *)&mpc, sizeof(mpc), 1);
 		if (err < 0) {
 			DHD_ERROR(("%s : failed to set proxd_tune\n", __FUNCTION__));
 			goto exit;
@@ -229,7 +229,7 @@ dhd_rtt_start(dhd_pub_t *dhd)
 	/* make sure that proxd is stop */
 	/* dhd_iovar(dhd, 0, "proxd_stop", (char *)NULL, 0, 1); */
 
-	err = dhd_iovar(dhd, 0, "proxd", (char *)&proxd_iovar, sizeof(proxd_iovar), NULL, 0, TRUE);
+	err = dhd_iovar(dhd, 0, "proxd", (char *)&proxd_iovar, sizeof(proxd_iovar), 1);
 	if (err < 0 && err != BCME_BUSY) {
 		DHD_ERROR(("%s : failed to set proxd %d\n", __FUNCTION__, err));
 		goto exit;
@@ -311,8 +311,7 @@ dhd_rtt_start(dhd_pub_t *dhd)
 
 	/* Set Method to TOF */
 	proxd_tune.method = PROXD_TOF_METHOD;
-	err = dhd_iovar(dhd, 0, "proxd_tune", (char *)&proxd_tune, sizeof(proxd_tune),
-			NULL, 0, TRUE);
+	err = dhd_iovar(dhd, 0, "proxd_tune", (char *)&proxd_tune, sizeof(proxd_tune), 1);
 	if (err < 0) {
 		DHD_ERROR(("%s : failed to set proxd_tune %d\n", __FUNCTION__, err));
 		goto exit;
@@ -320,13 +319,12 @@ dhd_rtt_start(dhd_pub_t *dhd)
 
 	/* Set Method to TOF */
 	proxd_params.method = PROXD_TOF_METHOD;
-	err = dhd_iovar(dhd, 0, "proxd_params", (char *)&proxd_params, sizeof(proxd_params),
-			NULL, 0, TRUE);
+	err = dhd_iovar(dhd, 0, "proxd_params", (char *)&proxd_params, sizeof(proxd_params), 1);
 	if (err < 0) {
 		DHD_ERROR(("%s : failed to set proxd_params %d\n", __FUNCTION__, err));
 		goto exit;
 	}
-	err = dhd_iovar(dhd, 0, "proxd_find", (char *)NULL, 0, NULL, 0, TRUE);
+	err = dhd_iovar(dhd, 0, "proxd_find", (char *)NULL, 0, 1);
 	if (err < 0) {
 		DHD_ERROR(("%s : failed to set proxd_find %d\n", __FUNCTION__, err));
 		goto exit;
@@ -337,7 +335,7 @@ exit:
 		if (set_mpc) {
 			/* enable mpc again in case of error */
 			mpc = 1;
-			err = dhd_iovar(dhd, 0, "mpc", (char *)&mpc, sizeof(mpc), NULL, 0, TRUE);
+			err = dhd_iovar(dhd, 0, "mpc", (char *)&mpc, sizeof(mpc), 1);
 		}
 	}
 	return err;
@@ -496,36 +494,17 @@ dhd_rtt_event_handler(dhd_pub_t *dhd, wl_event_msg_t *event, void *event_data)
 	struct rtt_noti_callback *iter;
 	rtt_result_t *rtt_result, *entry, *next;
 	gfp_t kflags;
-
-	DHD_RTT(("Enter %s \n", __FUNCTION__));
 	NULL_CHECK(dhd, "dhd is NULL", err);
-
 	rtt_status = GET_RTTSTATE(dhd);
 	NULL_CHECK(rtt_status, "rtt_status is NULL", err);
-
-	if (ntoh32_ua((void *)&event->datalen) < sizeof(wl_proxd_event_data_t)) {
-		DHD_RTT(("%s: wrong datalen:%d\n", __FUNCTION__,
-			ntoh32_ua((void *)&event->datalen)));
-		return -EINVAL;
-	}
-
 	event_type = ntoh32_ua((void *)&event->event_type);
-
-	if (event_type != WLC_E_PROXD) {
-		DHD_ERROR((" failed event \n"));
-		return -EINVAL;
-	}
-
-	if (!event_data) {
-		DHD_ERROR(("%s: event_data:NULL\n", __FUNCTION__));
-		return -EINVAL;
-	}
-
 	reason = ntoh32_ua((void *)&event->reason);
 
+	if (event_type != WLC_E_PROXD) {
+		goto exit;
+	}
 	kflags = in_softirq()? GFP_ATOMIC : GFP_KERNEL;
 	evp = (wl_proxd_event_data_t*)event_data;
-
 	DHD_RTT(("%s enter : mode: %s, reason :%d \n", __FUNCTION__,
 		(ntoh16(evp->mode) == WL_PROXD_MODE_INITIATOR)?
 		"initiator":"target", reason));
@@ -704,7 +683,7 @@ dhd_rtt_init(dhd_pub_t *dhd)
 	bzero(dhd->rtt_state, sizeof(rtt_status_info_t));
 	rtt_status = GET_RTTSTATE(dhd);
 	rtt_status->dhd = dhd;
-	err = dhd_iovar(dhd, 0, "proxd_params", NULL, 0, NULL, 0, TRUE);
+	err = dhd_iovar(dhd, 0, "proxd_params", NULL, 0, 1);
 	if (err != BCME_UNSUPPORTED) {
 		rtt_status->capability |= RTT_CAP_ONE_WAY;
 		rtt_status->capability |= RTT_CAP_VS_WAY;

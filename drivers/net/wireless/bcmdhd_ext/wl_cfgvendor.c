@@ -776,32 +776,10 @@ wl_cfgvendor_hotlist_cfg(struct wiphy *wiphy,
 	nla_for_each_attr(iter, data, len, tmp2) {
 		type = nla_type(iter);
 		switch (type) {
-		case GSCAN_ATTRIBUTE_HOTLIST_BSSID_COUNT:
-			if (nla_len(iter) != sizeof(uint32)) {
-				WL_DBG(("type:%d length:%d not matching.\n",
-					type, nla_len(inner)));
-				err = -EINVAL;
-				goto exit;
-			}
-			hotlist_params->nbssid = (uint16)nla_get_u32(iter);
-			if ((hotlist_params->nbssid == 0) ||
-			    (hotlist_params->nbssid > PFN_SWC_MAX_NUM_APS)) {
-				WL_ERR(("nbssid:%d exceed limit.\n",
-					hotlist_params->nbssid));
-				err = -EINVAL;
-				goto exit;
-			}
-			break;
+
 		case GSCAN_ATTRIBUTE_HOTLIST_BSSIDS:
-			if (hotlist_params->nbssid == 0) {
-				WL_ERR(("nbssid not retrieved.\n"));
-				err = -EINVAL;
-				goto exit;
-			}
 			pbssid = hotlist_params->bssid;
 			nla_for_each_nested(outer, iter, tmp) {
-				if (j >= hotlist_params->nbssid)
-					break;
 				nla_for_each_nested(inner, outer, tmp1) {
 					type = nla_type(inner);
 					switch (type) {
@@ -843,14 +821,12 @@ wl_cfgvendor_hotlist_cfg(struct wiphy *wiphy,
 
 					}
 				}
-				j++;
+				if (++j >= PFN_SWC_MAX_NUM_APS) {
+					WL_ERR(("cap hotlist max:%d\n", j));
+					break;
+				}
 			}
-			if (j != hotlist_params->nbssid) {
-				WL_ERR(("bssid_cnt:%d != nbssid:%d.\n", j,
-					hotlist_params->nbssid));
-				err = -EINVAL;
-				goto exit;
-			}
+			hotlist_params->nbssid = j;
 			break;
 		case GSCAN_ATTRIBUTE_HOTLIST_FLUSH:
 			if (nla_len(iter) != sizeof(uint8)) {
@@ -903,7 +879,7 @@ static int wl_cfgvendor_epno_cfg(struct wiphy *wiphy,
 	int err = 0;
 	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
 	dhd_pno_ssid_t *ssid_elem;
-	int tmp = 0, tmp1 = 0, tmp2 = 0, type = 0, num = 0;
+	int tmp, tmp1, tmp2, type, num = 0;
 	const struct nlattr *outer, *inner, *iter;
 	uint32 cnt_ssid = 0;
 	wl_pfn_ssid_params_t params;
@@ -2071,6 +2047,7 @@ static int wl_cfgvendor_lstats_get_info(struct wiphy *wiphy,
 
 	bzero(&scbval, sizeof(scb_val_t));
 	bzero(cfg->ioctl_buf, WLC_IOCTL_MAXLEN);
+	bzero(iovar_buf, WLC_IOCTL_MAXLEN);
 
 	output = cfg->ioctl_buf;
 	radio = (wifi_radio_stat *)output;
@@ -2115,6 +2092,7 @@ static int wl_cfgvendor_lstats_get_info(struct wiphy *wiphy,
 	iface->ac[WIFI_AC_BK].tx_mpdu = wl_wme_cnt->tx[AC_BK].packets;
 	iface->ac[WIFI_AC_BK].rx_mpdu = wl_wme_cnt->rx[AC_BK].packets;
 	iface->ac[WIFI_AC_BK].mpdu_lost = wl_wme_cnt->tx_failed[WIFI_AC_BK].packets;
+	bzero(iovar_buf, WLC_IOCTL_MAXLEN);
 
 	err = wldev_iovar_getbuf(bcmcfg_to_prmry_ndev(cfg), "counters", NULL, 0,
 		iovar_buf, WLC_IOCTL_MAXLEN, NULL);
@@ -2136,6 +2114,7 @@ static int wl_cfgvendor_lstats_get_info(struct wiphy *wiphy,
 	iface->num_peers = NUM_PEER;
 	iface->peer_info->num_rate = NUM_RATE;
 
+	bzero(iovar_buf, WLC_IOCTL_MAXLEN);
 	output = (char *)iface + sizeof(wifi_iface_stat) + NUM_PEER*sizeof(wifi_peer_info);
 
 	err = wldev_iovar_getbuf(bcmcfg_to_prmry_ndev(cfg), "ratestat", NULL, 0,
@@ -2164,7 +2143,7 @@ static int wl_cfgvendor_configure_nd_offload(struct wiphy *wiphy,
 	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
 	const struct nlattr *iter;
 	int ret = BCME_OK, rem, type;
-	u8 enable = 0;
+	u8 enable;
 
 	nla_for_each_attr(iter, data, len, rem) {
 		type = nla_type(iter);

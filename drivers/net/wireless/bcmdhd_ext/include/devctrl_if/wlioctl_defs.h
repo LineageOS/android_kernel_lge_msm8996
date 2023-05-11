@@ -27,7 +27,7 @@
  *
  * <<Broadcom-WL-IPTag/Open:>>
  *
- * $Id: wlioctl_defs.h 683090 2017-02-06 05:37:34Z $
+ * $Id: wlioctl_defs.h 671189 2016-11-21 00:20:57Z $
  */
 
 
@@ -210,7 +210,7 @@
 #define WL_BSSTYPE_MESH  3
 /* Bitmask for scan_type */
 #define WL_SCANFLAGS_PASSIVE	0x01	/* force passive scan */
-#define WL_SCANFLAGS_LOW_PRIO	0x02	/* Low priority scan */
+#define WL_SCANFLAGS_RESERVED	0x02	/* Reserved */
 #define WL_SCANFLAGS_PROHIBITED	0x04	/* allow scanning prohibited channels */
 #define WL_SCANFLAGS_OFFCHAN	0x08	/* allow scanning/reporting off-channel APs */
 #define WL_SCANFLAGS_HOTSPOT	0x10	/* automatic ANQP to hotspot APs */
@@ -1633,7 +1633,6 @@
 #define VNDR_IE_IWAPID_FLAG	0x40 /* vendor IE in IW advertisement protocol ID field */
 #define VNDR_IE_AUTHREQ_FLAG	0x80
 #define VNDR_IE_CUSTOM_FLAG	0x100 /* allow custom IE id */
-#define VNDR_IE_DISASSOC_FLAG	0x200
 
 #if defined(WLP2P)
 /* P2P Action Frames flags (spec ordered) */

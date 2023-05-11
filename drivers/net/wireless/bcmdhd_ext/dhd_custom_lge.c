@@ -531,18 +531,19 @@ int dhd_adjust_tcp_winsize(int index, int pk_type, int op_mode, struct sk_buff *
 
 int set_parallelscan(dhd_pub_t *dhd)
 {
-	uint32 scan_parallel;
+	uint32 iovar_set;
+	char iov_buf[WLC_IOCTL_SMLEN];
 	int ret = 0;
 
 	if (dhd->op_mode & DHD_FLAG_HOSTAP_MODE) {
-		scan_parallel = 0;
+		iovar_set = 0;
 	} else {
-		scan_parallel = 1;
+		iovar_set = 1;
 	}
-	DHD_ERROR(("set_parallelscan op_mode = 0x%04x, scan_parallel = %d\n",
-		dhd->op_mode, scan_parallel));
-	ret = dhd_iovar(dhd, 0, "scan_parallel", (char *)&scan_parallel, sizeof(scan_parallel),
-		NULL, 0, TRUE);
+	DHD_ERROR(("set_parallelscan op_mode = 0x%04x, set = %d\n", dhd->op_mode, iovar_set));
+
+	bcm_mkiovar("scan_parallel", (char *)&iovar_set, 4, iov_buf, sizeof(iov_buf));
+	ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iov_buf, sizeof(iov_buf), TRUE, 0);
 
 	return ret;
 }
@@ -551,6 +552,7 @@ int set_parallelscan(dhd_pub_t *dhd)
 int set_softap_params(dhd_pub_t *dhd)
 {
 	uint32 iovar_set;
+	char iov_buf[WLC_IOCTL_SMLEN];
 	int ret = 0;
 	if (dhd->op_mode & DHD_FLAG_HOSTAP_MODE) {
 #ifdef BCMSDIO
@@ -558,9 +560,7 @@ int set_softap_params(dhd_pub_t *dhd)
 #endif
 
 #ifdef DHDTCPACK_SUPPRESS
-#ifndef SET_TCPACK_SUPPRESS
 		dhd_tcpack_suppress_set(dhd, TCPACK_SUP_OFF);
-#endif
 #endif
 
 #if defined(DHD_TCP_WINSIZE_ADJUST)
@@ -572,10 +572,13 @@ int set_softap_params(dhd_pub_t *dhd)
 #endif
 
 		iovar_set = 10;
-		dhd_iovar(dhd, 0, "ampdu_retry_limit", (char *)&iovar_set, sizeof(iovar_set), NULL, 0, TRUE);
+		bcm_mkiovar("ampdu_retry_limit", (char *)&iovar_set, 4, iov_buf, sizeof(iov_buf));
+		dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iov_buf, sizeof(iov_buf), TRUE, 0);
 
 		iovar_set = 5;
-		dhd_iovar(dhd, 0, "ampdu_rr_retry_limit", (char *)&iovar_set, sizeof(iovar_set), NULL, 0, TRUE);
+		bcm_mkiovar("ampdu_rr_retry_limit", (char *)&iovar_set, 4, iov_buf,
+		 sizeof(iov_buf));
+		dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iov_buf, sizeof(iov_buf), TRUE, 0);
 
 		iovar_set = 13;
 		if ((ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_SRL, (char *)&iovar_set,
@@ -594,26 +597,36 @@ int set_softap_params(dhd_pub_t *dhd)
 			sizeof(iovar_set), TRUE, 0)) < 0) {
 			DHD_ERROR(("%s Set frameburst failed  %d\n", __FUNCTION__, ret));
 		}
-	} else {
-#ifdef CUSTOM_DSCP_TO_PRIO_MAPPING
-		dhd_dscpmap_enable = 0;
-#endif
-#ifdef DHDTCPACK_SUPPRESS
-#ifndef SET_TCPACK_SUPPRESS
-       dhd_tcpack_suppress_set(dhd, TCPACK_SUP_HOLD);
-#endif
-#endif
-		iovar_set = 7;
-		if ((ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_SRL, (char *)&iovar_set,
-			sizeof(iovar_set), TRUE, 0)) < 0) {
-			DHD_ERROR(("%s Set SRL failed  %d\n", __FUNCTION__, ret));
-		}
 
-		iovar_set = 6;
-		if ((ret = dhd_wl_ioctl_cmd(dhd, WLC_SET_LRL, (char *)&iovar_set,
-			sizeof(iovar_set), TRUE, 0)) < 0) {
-			DHD_ERROR(("%s Set LRL failed  %d\n", __FUNCTION__, ret));
+#ifdef BCM4334_CHIP
+		iovar_set = 0;
+		bcm_mkiovar("ampdu_rts", (char *)&iovar_set, 4, iov_buf, sizeof(iov_buf));
+		dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iov_buf, sizeof(iov_buf), TRUE, 0);
+
+		iovar_set = 1;
+		dhd_wl_ioctl_cmd(dhd, WLC_SET_FAKEFRAG, (char *)&iov_buf, sizeof(iov_buf), TRUE, 0);
+#endif
+
+#if defined(BCM4335_CHIP) || defined(BCM4339_CHIP)
+		bcm_mkiovar("bus:txglom_auto_control", 0, 0, iov_buf, sizeof(iov_buf));
+		if ((ret = dhd_wl_ioctl_cmd(dhd, WLC_GET_VAR, iov_buf, sizeof(iov_buf),
+			FALSE, 0)) < 0) {
+				iovar_set = 0;
+				bcm_mkiovar("bus:txglom", (char *)&iovar_set, 4, iov_buf,
+				 sizeof(iov_buf));
+				dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iov_buf, sizeof(iov_buf),
+				 TRUE, 0);
 		}
+		else {
+			if (iov_buf[0] == 0) {
+				iovar_set = 1;
+				bcm_mkiovar("bus:txglom_auto_control", (char *)&iovar_set, 4,
+				 iov_buf, sizeof(iov_buf));
+				dhd_wl_ioctl_cmd(dhd, WLC_SET_VAR, iov_buf, sizeof(iov_buf),
+				 TRUE, 0);
+			}
+		}
+#endif /* defined(BCM4335_CHIP) || defined(BCM4339_CHIP) */
 	}
 	return ret;
 }

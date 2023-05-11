@@ -4214,10 +4214,6 @@ typedef struct vht_features_ie_hdr vht_features_ie_hdr_t;
 #define WPS_OUI_TYPE		4
 
 /* ************* WFA definitions. ************* */
-#if defined(WL_LEGACY_P2P)
-#define MAC_OUI			"\x00\x17\xF2"	/* MACOSX OUI */
-#define MAC_OUI_TYPE_P2P	5
-#endif 
 
 #ifdef P2P_IE_OVRD
 #define WFA_OUI			MAC_OUI
@@ -4764,9 +4760,6 @@ typedef BWL_PRE_PACKED_STRUCT struct {
 	uint8	data[1];
 } BWL_POST_PACKED_STRUCT ftm_vs_tlv_t;
 
-#define FTM_TPK_LEN_SECURE_2_0		32
-#define FTM_TPK_RI_PHY_LEN_SECURE_2_0  14
-#define FTM_TPK_RR_PHY_LEN_SECURE_2_0  14
 BWL_PRE_PACKED_STRUCT struct dot11_ftm_vs_ie {
 	uint8 id;						/* DOT11_MNG_VS_ID */
 	uint8 len;						/* length following */
@@ -4788,8 +4781,7 @@ enum {
 	FTM_VS_TLV_SEC_PARAMS = 3,		/* security parameters (in either) */
 	FTM_VS_TLV_SEQ_PARAMS = 4,		/* toast parameters (FTM_REQ, BRCM proprietary) */
 	FTM_VS_TLV_MF_BUF = 5,			/* multi frame buffer - may span ftm vs ie's */
-	FTM_VS_TLV_TIMING_PARAMS = 6,		/* timing adjustments */
-	FTM_VS_TLV_MF_STATS_BUF = 7,		/* multi frame statistics buffer */
+	/* add additional types above */
 };
 
 /* the following definitions are *DEPRECATED* and moved to implemenetion files. They
@@ -4798,7 +4790,6 @@ enum {
 #define FTM_TPK_LEN            16
 #define FTM_RI_RR_BUF_LEN      32
 #define FTM_TPK_RI_RR_LEN      13
-#define FTM_TPK_RI_RR_LEN_SECURE_2_0	28
 #define FTM_TPK_DIGEST_LEN     32
 #define FTM_TPK_BUFFER_LEN     128
 #define FTM_TPK_RI_PHY_LEN     7

@@ -473,12 +473,12 @@ struct net_info {
 };
 
 /* association inform */
-#define MAX_REQ_LINE 1024u
+#define MAX_REQ_LINE 1024
 struct wl_connect_info {
 	u8 req_ie[MAX_REQ_LINE];
-	u32 req_ie_len;
+	s32 req_ie_len;
 	u8 resp_ie[MAX_REQ_LINE];
-	u32 resp_ie_len;
+	s32 resp_ie_len;
 };
 
 /* firmware /nvram downloading controller */
@@ -643,9 +643,6 @@ struct bcm_cfg80211 {
 	struct mutex scan_complete;	/* serialize scan_complete call */
 	struct wl_scan_results *bss_list;
 	struct wl_scan_results *scan_results;
-#if defined(PRIVATE_SCANSUPPRESS)
-	u32 scansuppress_mode;
-#endif
 
 	/* scan request object for internal purpose */
 	struct wl_scan_req *scan_req_int;
@@ -1444,18 +1441,6 @@ extern void wl_terminate_event_handler(void);
 extern s32 wl_cfg80211_get_bss_info(struct net_device *dev, char* cmd, int total_len);
 extern s32 wl_cfg80211_get_connect_failed_status(struct net_device *dev, char* cmd, int total_len);
 #endif /* DHD_ENABLE_BIGDATA_LOGGING */
-#if defined(PRIVATE_SCANSUPPRESS)
-extern void wl_cfg80211_set_scan_suppress(struct net_device *dev, char *command);
-extern int wl_cfg80211_get_scan_suppress(struct net_device *dev, char *command);
-#endif /* PRIVATE_SCANSUPPRESS */
-// 171113, kyungckt.chung, Modify performance in Miracast/5G_MCC/BW_20M environment [S]
-#ifdef CUSTOMER_HW10
-extern int wl_cfg80211_need_restrict_vsdb(struct net_device *dev);
-// 171113, kyungckt.chung, Modify performance in Miracast/5G_MCC/BW_20M environment [E]
-// 171205, kyungckt.chung, Modify performance in Miracast/2.4G/Concurrent environment [S]
-extern int wl_cfg80211_need_increase_retry_limitation(struct net_device *dev);
-// 171205, kyungckt.chung, Modify performance in Miracast/2.4G/Concurrent environment [E]
-#endif /* CUSTOMER_HW10 */
 
 #define SCAN_BUF_CNT	2
 #define SCAN_BUF_NEXT	1
