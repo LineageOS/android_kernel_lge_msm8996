@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "cd4d5437_8063e431",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 29891
+      },
+      "writtenOn": "2023-05-11T20:41:05Z",
+      "side": 1,
+      "message": "Tested and confirmed working on H872 (needs next change for Hotspot to work)",
+      "revId": "84c3799d1a96c6da43b92833ada4c1704c84aaa1",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
