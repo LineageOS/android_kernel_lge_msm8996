@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "f636a7a2_6bb89d10",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 29891
+      },
+      "writtenOn": "2023-05-11T20:41:43Z",
+      "side": 1,
+      "message": "Also tested and confirmed working on H872, fixes hotspot.",
+      "revId": "9c32eb491edda78d1129ca3367799bba7ecb2b10",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
