@@ -160,10 +160,9 @@
 		/delete-property/ qcom,bcl-soc-hotplug-list;
 		qcom,bcl-freq-control-list = <&CPU0 &CPU1 &CPU2 &CPU3>;
 		qcom,ibat-monitor {
-			qcom,vph-high-threshold-uv = <3500000>;
-			qcom,vph-low-threshold-uv = <3350000>;
-			qcom,soc-low-threshold = <20>;
-			qcom,mitigation-freq-khz = <1036800>;
+			qcom,vph-high-threshold-uv = <3300000>;
+			qcom,vph-low-threshold-uv  = <3100000>;
+			qcom,mitigation-freq-khz   = <1036800>;
 		};
 	};
 };
