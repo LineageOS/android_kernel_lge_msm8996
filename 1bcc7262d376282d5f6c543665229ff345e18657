@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "04fd2de0_69c5cb13",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 29891
+      },
+      "writtenOn": "2023-06-17T00:05:01Z",
+      "side": 1,
+      "message": "Writing this whole issue off as solved. BCL has become a wild goose chase at this point.",
+      "revId": "1bcc7262d376282d5f6c543665229ff345e18657",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
