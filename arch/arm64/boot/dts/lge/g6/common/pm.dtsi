@@ -500,7 +500,6 @@
 		qcom,ibat-monitor {
 			qcom,vph-high-threshold-uv = <3200000>;
 			qcom,vph-low-threshold-uv = <3100000>;
-			qcom,soc-low-threshold = <15>;
 			qcom,mitigation-freq-khz = <1209600>;
 		};
 	};
