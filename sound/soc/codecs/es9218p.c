@@ -12,8 +12,6 @@
  *
  */
 
-#define CONFIG_SND_SOC_LGE_ESS_DIGITAL_FILTER
-
 #include    <linux/module.h>
 #include    <linux/moduleparam.h>
 #include    <linux/init.h>
@@ -42,7 +40,16 @@
 
 #include    "es9218p.h"
 
-#define     ES9218P_SYSFS 0               // use this feature only for user debug, not release
+/*
+ * We'll probably use this all the time, but leave it as a define in case we need
+ * to debug the DAC and/or sysfs causes any trouble.
+ */
+#define ES9218P_SYSFS
+
+#ifdef ES9218P_SYSFS
+static struct kobject *es9218_kernelobj;
+#endif
+
 #define     SHOW_LOGS                   // show debug logs only for debug mode, not release
 
 #define     USE_INTERNAL_LDO             // use a internal LDO Of ES9218P instead of a externl LDO connected to DVDD pin
@@ -74,7 +81,6 @@ static int es9218p_set_sample_rate(unsigned int sample_rate);
 static int es9218p_set_bit_width(unsigned int bit_width);
 static int es9218_sabre_cfg_custom_filter(struct sabre_custom_filter *sabre_filter);
 
-#ifdef CONFIG_SND_SOC_LGE_ESS_DIGITAL_FILTER
 static int get_fade_count_define(void);
 static int get_fade_term_define(void);
 
@@ -82,9 +88,12 @@ static int get_fade_term_define(void);
 #define VOLUME_UP 1
 #define FADE_INOUT_COUNT 7
 #define FADE_INOUT_TERM 40
+
+/* Digital Filters */
 #define SHORT_FILTER 9  // first menu item
 #define SHARP_FILTER 4   // second menu item
 #define SLOW_FILTER 5  // third menu item
+
 static struct workqueue_struct *mute_workqueue;
 struct delayed_work *mute_work;
 static int fade_direction = VOLUME_DOWN;
@@ -96,7 +105,6 @@ static int g_left_fade_vol_per_step = 0;
 static int g_left_fade_vol = 0;
 static int g_right_fade_vol = 0;
 bool lge_ess_fade_inout_init = false;
-#endif  /* CONFIG_SND_SOC_LGE_ESS_DIGITAL_FILTER */
 
 struct es9218_reg {
     unsigned char   num;
@@ -186,7 +194,6 @@ struct es9218_reg   es9218_DOP_init_register[] = {
 //will be upadated    { ES9218P_REG_16,        0x00 },    // Volume Control - 0x0? : Variable Value from AP
     { ES9218P_REG_29,        0x00 },    // General Confguration - 0x00 : auto-gear disable
 };
-
 
 static const u32 master_trim_tbl[] = {
     /*  0   db */   0x7FFFFFFF,
@@ -318,9 +325,9 @@ static unsigned int es9218_rate = 48000;
 
 static int g_headset_type = 0;
 static int g_avc_volume = 0;
-static int g_volume = 0;
-static int g_left_volume = 0;
-static int g_right_volume = 0;
+static int g_volume = 0; // Master volume apparently.
+static int g_left_volume = 0; // Divided by 2 to convert to actual dB difference (left_vol as -1 equals -0.5dB)
+static int g_right_volume = 0; // Same as above, but for right channel
 static int g_sabre_cf_num = 8; // default = 8
 static int g_dop_flag = 0;
 static int g_auto_mute_flag = 0;
@@ -439,7 +446,7 @@ struct es9218_regmap {
     { "75_RAM_COEFFEICIENT_READBACK_1",            ES9218P_REG_75, 0 },
 };
 
-#ifdef CONFIG_SND_SOC_LGE_ESS_DIGITAL_FILTER
+#ifdef ES9218P_DEBUG
 static ssize_t get_fade_term_param(struct device *dev,
 	                    struct device_attribute *attr, char *buf)
 {
@@ -496,7 +503,6 @@ static ssize_t set_fade_mute_param(struct device *dev,
 
 static DEVICE_ATTR(fade_mute_count, S_IWUSR | S_IRUGO, get_fade_mute_param, set_fade_mute_param);
 static DEVICE_ATTR(fade_mute_term, S_IWUSR | S_IRUGO, get_fade_term_param, set_fade_term_param);
-#endif /* CONFIG_SND_SOC_LGE_ESS_DIGITAL_FILTER */
 
 static ssize_t es9218_registers_show(struct device *dev,
                   struct device_attribute *attr, char *buf)
@@ -561,7 +567,7 @@ static ssize_t es9218_registers_store(struct device *dev,
 
 static DEVICE_ATTR(registers, S_IWUSR | S_IRUGO,
         es9218_registers_show, es9218_registers_store);
-
+#endif  // End of #ifdef  ES9218P_DEBUG
 #endif  //  End of  #ifdef  ES9218P_SYSFS
 
 
@@ -864,6 +870,50 @@ static int es9218p_sabre_amp_stop(struct i2c_client *client, int headset)
 }
 
 #ifdef ES9218P_SYSFS
+/* Left balance volume */
+static ssize_t set_forced_left_volume(struct device *dev,
+                   struct device_attribute *attr,
+                   const char *buf, size_t count) {
+    int input_val; // value representing dB decrease for left channel
+    sscanf(buf, "%d", &input_val);
+
+	/* NOTE: This value is halved internally, so there's no need to use float */
+	g_left_volume = input_val;
+
+    es9218_write_reg(g_es9218_priv->i2c_client, ES9218P_REG_15, g_left_volume);
+
+    return count;
+}
+static ssize_t get_forced_left_volume(struct device *dev,
+                   struct device_attribute *attr,
+                   char *buf) {
+    return sprintf(buf, "%i\n", g_left_volume);
+}
+static DEVICE_ATTR(left_volume, S_IWUSR|S_IRUGO, get_forced_left_volume, set_forced_left_volume);
+
+/* Right balance volume */
+static ssize_t set_forced_right_volume(struct device *dev,
+                   struct device_attribute *attr,
+                   const char *buf, size_t count) {
+    int input_val; // value representing dB decrease for left channel
+    sscanf(buf, "%d", &input_val);
+
+	/* NOTE: This value is halved internally, so there's no need to use float */
+	g_right_volume = input_val;
+
+    es9218_write_reg(g_es9218_priv->i2c_client, ES9218P_REG_16, g_right_volume);
+
+    return count;
+}
+static ssize_t get_forced_right_volume(struct device *dev,
+                   struct device_attribute *attr,
+                   char *buf) {
+    return sprintf(buf, "%i\n", g_right_volume);
+}
+static DEVICE_ATTR(right_volume, S_IWUSR|S_IRUGO, get_forced_right_volume, set_forced_right_volume);
+
+#ifdef ES9218P_DEBUG
+/* Headset type */
 static ssize_t set_forced_headset_type(struct device *dev,
                    struct device_attribute *attr,
                    const char *buf, size_t count)
@@ -888,7 +938,9 @@ static ssize_t get_forced_headset_type(struct device *dev,
     return sprintf(buf, "%i\n", g_headset_type);
 }
 static DEVICE_ATTR(headset_type, S_IWUSR|S_IRUGO, get_forced_headset_type, set_forced_headset_type);
+#endif
 
+/* AVC Volume */
 static ssize_t set_forced_avc_volume(struct device *dev,
                    struct device_attribute *attr,
                    const char *buf, size_t count)
@@ -921,7 +973,7 @@ static ssize_t get_forced_avc_volume(struct device *dev,
 }
 static DEVICE_ATTR(avc_volume, S_IWUSR|S_IRUGO, get_forced_avc_volume, set_forced_avc_volume);
 
-#ifdef CONFIG_SND_SOC_LGE_ESS_DIGITAL_FILTER
+/* ESS Filter */
 static ssize_t set_forced_ess_filter(struct device *dev,
                    struct device_attribute *attr,
                    const char *buf, size_t count)
@@ -939,7 +991,19 @@ static ssize_t set_forced_ess_filter(struct device *dev,
         return 0;
     }
 
-    g_sabre_cf_num = input_filter;
+    /* 
+	 * We can currently set the following custom filters:
+	 * [0] - Cosine phase fast roll-off
+	 * [1] - Cosine phase slow roll-off
+	 * [2] - Sine phase fast roll-off
+	 * [3] - Sine phase fast roll-off 2
+     *
+	 * After that the code appears to revert to using internal
+	 * filters on the chip, going up to [11]. Can't attest if they
+	 * actually work or not.
+	*/
+	g_sabre_cf_num = input_filter;
+
 
     es9218_sabre_cfg_custom_filter(&es9218_sabre_custom_ft[g_sabre_cf_num]);
 
@@ -953,17 +1017,18 @@ static ssize_t get_forced_ess_filter(struct device *dev,
     return sprintf(buf, "%i\n", g_sabre_cf_num);
 }
 static DEVICE_ATTR(ess_filter, S_IWUSR|S_IRUGO, get_forced_ess_filter, set_forced_ess_filter);
-#endif /* CONFIG_SND_SOC_LGE_ESS_DIGITAL_FILTER */
 
 static struct attribute *es9218_attrs[] = {
-#ifdef CONFIG_SND_SOC_LGE_ESS_DIGITAL_FILTER
-	&dev_attr_fade_mute_count.attr,
-	&dev_attr_fade_mute_term.attr,
-	&dev_attr_ess_filter.attr,
-#endif /* CONFIG_SND_SOC_LGE_ESS_DIGITAL_FILTER */
-    &dev_attr_registers.attr,
-    &dev_attr_headset_type.attr,
+#ifdef ES9218P_DEBUG
+	&dev_attr_fade_mute_count.attr, /* Unused outside of debugging */
+	&dev_attr_fade_mute_term.attr,  /* Unused as well */
+	&dev_attr_registers.attr,       /* Not really useful to us even on debug mode */
+    &dev_attr_headset_type.attr,    /* This one is already implemented rom-side */
+#endif
+    &dev_attr_ess_filter.attr,
     &dev_attr_avc_volume.attr,
+    &dev_attr_left_volume.attr,
+	&dev_attr_right_volume.attr,
     NULL
 };
 
@@ -2251,7 +2316,6 @@ static int es9218_auto_mute_put(struct snd_kcontrol *kcontrol,
     return ret;
 }
 
-#ifdef CONFIG_SND_SOC_LGE_ESS_DIGITAL_FILTER
 static int lge_ess_digital_filter_setting_get(struct snd_kcontrol *kcontrol,
         struct snd_ctl_elem_value *ucontrol)
 {
@@ -2313,8 +2377,8 @@ static void mute_work_function(struct work_struct *work)
 		        if(g_right_fade_vol > 0xff)
 			    g_right_fade_vol = 0xff;
 
-			es9218_write_reg(g_es9218_priv->i2c_client, ESS9218_VOL1, g_left_fade_vol);
-                        es9218_write_reg(g_es9218_priv->i2c_client, ESS9218_VOL2, g_right_fade_vol);
+			es9218_write_reg(g_es9218_priv->i2c_client, ES9218P_REG_15, g_left_fade_vol);
+                        es9218_write_reg(g_es9218_priv->i2c_client, ES9218P_REG_16, g_right_fade_vol);
 		} else {
 //			pr_info("%s(): case 2 called volume g_fade_count %d\n", __func__, g_fade_count);
 			if(g_sabre_cf_num == SHORT_FILTER)
@@ -2341,12 +2405,12 @@ static void mute_work_function(struct work_struct *work)
 		        if(g_right_fade_vol < g_right_volume)
 			    g_right_fade_vol = g_right_volume;
 
-			es9218_write_reg(g_es9218_priv->i2c_client, ESS9218_VOL1, g_left_fade_vol);
-                        es9218_write_reg(g_es9218_priv->i2c_client, ESS9218_VOL2, g_right_fade_vol);
+			es9218_write_reg(g_es9218_priv->i2c_client, ES9218P_REG_15, g_left_fade_vol);
+                        es9218_write_reg(g_es9218_priv->i2c_client, ES9218P_REG_16, g_right_fade_vol);
                         queue_delayed_work(mute_workqueue , mute_work, msecs_to_jiffies(get_fade_term_define()) ); // 100 msec
 		} else {
-            es9218_write_reg(g_es9218_priv->i2c_client, ESS9218_VOL1, g_left_volume);
-            es9218_write_reg(g_es9218_priv->i2c_client, ESS9218_VOL2, g_right_volume);
+            es9218_write_reg(g_es9218_priv->i2c_client, ES9218P_REG_15, g_left_volume);
+            es9218_write_reg(g_es9218_priv->i2c_client, ES9218P_REG_16, g_right_volume);
 
 			pr_info("%s(): case 4 called volume direction %d, g_fade_count %d\n", __func__, fade_direction, g_fade_count);
 		}
@@ -2402,7 +2466,6 @@ static int lge_ess_fade_inout_get(struct snd_kcontrol *kcontrol,
 {
 	return 0;
 }
-#endif /* CONFIG_SND_SOC_LGE_ESS_DIGITAL_FILTER */
 
 static int es9218_avc_volume_get(struct snd_kcontrol *kcontrol,
         struct snd_ctl_elem_value *ucontrol)
@@ -2523,7 +2586,6 @@ static int es9218_filter_enum_put(struct snd_kcontrol *kcontrol,
         struct snd_ctl_elem_value *ucontrol)
 {
     int ret = 0;
-#ifdef CONFIG_SND_SOC_LGE_ESS_DIGITAL_FILTER
     int new_filter = 0;
 
     new_filter = (int)ucontrol->value.integer.value[0];
@@ -2533,7 +2595,6 @@ static int es9218_filter_enum_put(struct snd_kcontrol *kcontrol,
         pr_info("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
         return 0;
     }
-#endif
 
     g_sabre_cf_num = (int)ucontrol->value.integer.value[0];
     pr_debug("%s():filter num= %d\n", __func__, g_sabre_cf_num);
@@ -2758,14 +2819,12 @@ static struct snd_kcontrol_new es9218_digital_ext_snd_controls[] = {
     //SOC_SINGLE_EXT("HIFI THD Value", SND_SOC_NOPM, 0, 0xFFFFFF, 0, //current 0~3 filter num
     //                es9018_set_filter_enum,
     //                es9218_filter_enum_put),
-#ifdef CONFIG_SND_SOC_LGE_ESS_DIGITAL_FILTER
     SOC_SINGLE_EXT("LGE ESS FADE INOUT", SND_SOC_NOPM, 0, 12, 0,
                     lge_ess_fade_inout_get,
                     lge_ess_fade_inout_put),
     SOC_SINGLE_EXT("LGE ESS DIGITAL FILTER SETTING", SND_SOC_NOPM, 0, 12, 0,
                     lge_ess_digital_filter_setting_get,
                     lge_ess_digital_filter_setting_put),
-#endif
     SOC_ENUM_EXT("Es9018 State", es9218_power_state_enum,
                     es9218_power_state_get,
                     es9218_power_state_put),
@@ -3311,7 +3370,19 @@ static int es9218_probe(struct i2c_client *client,const struct i2c_device_id *id
                       es9218_dai, ARRAY_SIZE(es9218_dai));
 
 #ifdef ES9218P_SYSFS
-    ret = sysfs_create_group(&client->dev.kobj, &es9218_attr_group);
+    es9218_kernelobj = kobject_create_and_add("es9218_dac", kernel_kobj);
+	if (!es9218_kernelobj) {
+		printk("Failed to create ESS DAC kernel object, it might not work!\n");
+		return -ENOMEM;
+	}
+
+	ret = sysfs_create_group(es9218_kernelobj, &es9218_attr_group);
+	if (ret) {
+		printk("Couldn't create ESS DAC sysfs group, attributes won't apply!\n");
+		kobject_put(es9218_kernelobj);
+	}
+
+	printk("ESS DAC sysfs nodes are ready!\n");
 #endif
 
     pr_notice("%s: snd_soc_register_codec ret = %d\n",__func__, ret);
