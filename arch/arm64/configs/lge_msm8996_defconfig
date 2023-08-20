@@ -146,6 +146,8 @@ CONFIG_SMB135X_CHARGER=n
 # Disable configs that can cause the kernel build to fail
 CONFIG_ACPI=n
 CONFIG_CPU_BOOST=n
+CONFIG_CGROUP_SCHEDTUNE=y
+CONFIG_SCHED_TUNE=y
 
 # Disable legacy camera (We're using MSMB_CAMERA in 4.4)
 CONFIG_MSM_CAMERA=n
