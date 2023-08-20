@@ -38,7 +38,9 @@
  */
 #define ES9218_SYSFS
 
+#ifdef ES9218_SYSFS
 static struct kobject *es9218_kernelobj;
+#endif
 
 static struct es9218_priv *g_es9218_priv = NULL;
 static int 	es9218_write_reg(struct i2c_client *client, int reg, u8 value);
