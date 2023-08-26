@@ -569,7 +569,7 @@ static int es9218_master_trim(struct i2c_client *client, int vol) {
 
 	if (vol >= sizeof(master_trim_tbl)/sizeof(master_trim_tbl[0])) {
 		pr_err("%s() : Invalid vol = %d return \n", __func__, vol);
-		return 0;
+		return -EINVAL;
 	}
 
 	value = master_trim_tbl[vol];
@@ -577,7 +577,7 @@ static int es9218_master_trim(struct i2c_client *client, int vol) {
 
 	if	(es9218_power_state == ESS_PS_IDLE) {
 		pr_err("%s() : Invalid vol = %d return \n", __func__, vol);
-		return 0;
+		return -EINVAL;
  	} 
 
 	#if	(0)
@@ -607,7 +607,7 @@ static int es9218_set_avc_volume(struct i2c_client *client, int vol) {
 
 	if (vol >= sizeof(avc_vol_tbl)/sizeof(avc_vol_tbl[0])) {
 		pr_err("%s() : Invalid vol = %d return \n", __func__, vol);
-		return 0;
+		return -EINVAL;
 	}
 
 	value = avc_vol_tbl[vol];
@@ -615,7 +615,7 @@ static int es9218_set_avc_volume(struct i2c_client *client, int vol) {
 
 	if	(es9218_power_state == ESS_PS_IDLE) {
 		pr_err("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
-		return 0;
+		return -EINVAL;
  	}
 
 	ret |= es9218_write_reg(g_es9218_priv->i2c_client, ESS9218_03, value);
@@ -829,12 +829,12 @@ static ssize_t set_forced_avc_volume(struct device *dev,
 
     if ( es9218_power_state < ESS_PS_HIFI ) {
         pr_err("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
-        return 0;
+        return -EINVAL;
     }
 
     if (input_vol >= sizeof(avc_vol_tbl)/sizeof(avc_vol_tbl[0])) {
         pr_err("%s() : Invalid vol = %d return \n", __func__, input_vol);
-        return 0;
+        return -EINVAL;
     }
 
     g_avc_volume = input_vol;
@@ -859,12 +859,12 @@ static ssize_t set_forced_ess_filter(struct device *dev,
 
     if ( es9218_power_state < ESS_PS_HIFI ) {
         pr_err("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
-        return 0;
+        return -EINVAL;
     }
 
     if (input_filter > 11) {
         pr_err("%s() : Invalid filter = %d return \n", __func__, input_filter);
-        return 0;
+        return -EINVAL;
     }
 
 	/* 
@@ -913,7 +913,7 @@ static ssize_t set_forced_ess_custom_filter(struct device *dev,
 
 	if ( es9218_power_state < ESS_PS_HIFI ) {
 		pr_err("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
-		return 0;
+		return -EINVAL;
 	}
 
 	/* Tokenize received data and save into the filter data array (everything is an integer) */
@@ -1371,7 +1371,7 @@ static int es9218_sabre_bypass2hifi(void) {
 
 	if ( es9218_power_state != ESS_PS_BYPASS ) {
 		pr_err("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
-		return 0;
+		return -EINVAL;
 	}
 	pr_info("%s() : state = %s\n", __func__, power_state[es9218_power_state]);
 	es9218_reset_gpio_H();
@@ -1526,7 +1526,7 @@ static int es9218_sabre_bypass2hifi(void) {
 static int es9218_sabre_hifi2bypass(void) {
 	if ( es9218_power_state < ESS_PS_HIFI )	{
 		pr_err("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
-		return 0;
+		return -EINVAL;
 	}
 
 	pr_info("%s() : state = %s\n", __func__, power_state[es9218_power_state]);
@@ -1559,7 +1559,7 @@ static int es9218_sabre_hifi2bypass(void) {
 static int es9218_sabre_audio_idle(void) {
 	if ( es9218_power_state != ESS_PS_HIFI ) {
 		pr_err("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
-		return 0;
+		return -EINVAL;
 	}
 
 	pr_info("%s() : state = %s\n", __func__, power_state[es9218_power_state]);
@@ -1575,7 +1575,7 @@ static int es9218_sabre_audio_idle(void) {
 static int es9218_sabre_audio_active(void) {
 	if ( es9218_power_state != ESS_PS_IDLE ) {
 		pr_err("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
-		return 0;
+		return -EINVAL;
 	}
 
 	pr_info("%s() : state = %s\n", __func__, power_state[es9218_power_state]);
@@ -1636,7 +1636,7 @@ static int __es9218_sabre_headphone_on(void) {
 static int __es9218_sabre_headphone_off(void) {
 	if ( es9218_power_state == ESS_PS_CLOSE) {
 		pr_err("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
-		return 0;
+		return -EINVAL;
 	}
 
 	if ( es9218_power_state != ESS_PS_BYPASS ||
@@ -1810,7 +1810,7 @@ static int es9218_headset_type_put(struct snd_kcontrol *kcontrol,
 			es9218_power_state = ESS_PS_BYPASS;
 		}
 		pr_err("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
-		return 0;
+		return -EINVAL;
 	}
 
 	es9218_set_thd(g_es9218_priv->i2c_client, g_headset_type);
@@ -1837,8 +1837,8 @@ static int es9218_auto_mute_put(struct snd_kcontrol *kcontrol,
 	pr_info("%s(): g_auto_mute_flag = %d \n", __func__, g_auto_mute_flag);
 
 	if (es9218_power_state < ESS_PS_HIFI) {
-		pr_err("%s() : return = %s\n", __func__, power_state[es9218_power_state]);
-		return 0;
+		pr_err("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
+		return -EINVAL;
 	}
 
    if(g_auto_mute_flag || g_skip_auto_mute)
@@ -1963,7 +1963,7 @@ static int lge_ess_fade_inout_put(struct snd_kcontrol *kcontrol, struct snd_ctl_
 
     if (es9218_power_state < ESS_PS_HIFI) {
         pr_err("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
-        return 0;
+        return -EINVAL;
     }
     if(lge_ess_fade_inout_init != true) {
         lge_ess_fade_inout_init = true;
@@ -1974,7 +1974,7 @@ static int lge_ess_fade_inout_put(struct snd_kcontrol *kcontrol, struct snd_ctl_
         if(!mute_work) {
             lge_ess_fade_inout_init = false;
             pr_err("%s() : devm_kzalloc failed!!\n", __func__);
-            return 0;
+            return -ENOMEM;
         }
 
         INIT_DELAYED_WORK(mute_work, mute_work_function);
@@ -2022,7 +2022,7 @@ static int es9218_avc_volume_put(struct snd_kcontrol *kcontrol,
 
 	if (es9218_power_state != ESS_PS_HIFI) {
 		pr_err("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
-		return 0;
+		return -EINVAL;
 	}
 
 	es9218_set_avc_volume(g_es9218_priv->i2c_client, g_avc_volume);
@@ -2047,7 +2047,7 @@ static int es9218_master_volume_put(struct snd_kcontrol *kcontrol,
 
 	if (es9218_power_state < ESS_PS_HIFI) {
 		pr_err("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
-		return 0;
+		return -EINVAL;
 	}
 
 	es9218_master_trim(g_es9218_priv->i2c_client, g_volume);
@@ -2071,7 +2071,7 @@ static int es9218_left_volume_put(struct snd_kcontrol *kcontrol,
 
 	if (es9218_power_state < ESS_PS_HIFI) {
 		pr_err("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
-		return 0;
+		return -EINVAL;
 	}
 
 	es9218_write_reg(g_es9218_priv->i2c_client, ESS9218_VOL1, g_left_volume);
@@ -2095,7 +2095,7 @@ static int es9218_right_volume_put(struct snd_kcontrol *kcontrol,
 
 	if (es9218_power_state < ESS_PS_HIFI) {
 		pr_err("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
-		return 0;
+		return -EINVAL;
 	}
 
 	es9218_write_reg(g_es9218_priv->i2c_client, ESS9218_VOL2, g_right_volume);
@@ -2119,7 +2119,7 @@ static int es9218_filter_enum_put(struct snd_kcontrol *kcontrol,
 
     if (es9218_power_state < ESS_PS_HIFI) {
         pr_info("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
-        return 0;
+        return -EINVAL;
     }
 
 	g_sabre_cf_num = (int)ucontrol->value.integer.value[0];
@@ -2250,7 +2250,7 @@ static int es9218_clk_divider_get(struct snd_kcontrol *kcontrol,
 
 	if (es9218_power_state < ESS_PS_HIFI) {
 		pr_err("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
-		return 0;
+		return -EINVAL;
 	}
 
 	err_check = es9218_read_reg(g_es9218_priv->i2c_client,
@@ -2275,7 +2275,7 @@ static int es9218_clk_divider_put(struct snd_kcontrol *kcontrol,
 
 	if (es9218_power_state < ESS_PS_HIFI) {
 		pr_err("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
-		return 0;
+		return -EINVAL;
 	}
 
 	pr_info("%s: ucontrol->value.integer.value[0]  = %ld\n", __func__, ucontrol->value.integer.value[0]);
