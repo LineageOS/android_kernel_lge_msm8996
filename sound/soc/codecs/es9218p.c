@@ -663,7 +663,7 @@ static int es9218_master_trim(struct i2c_client *client, int vol)
 
     if (vol >= sizeof(master_trim_tbl)/sizeof(master_trim_tbl[0])) {
         pr_err("%s() : Invalid vol = %d return \n", __func__, vol);
-        return 0;
+        return -EINVAL;
     }
 
     value = master_trim_tbl[vol];
@@ -673,7 +673,7 @@ static int es9218_master_trim(struct i2c_client *client, int vol)
 
     if  (es9218_power_state == ESS_PS_IDLE) {
         pr_err("%s() : Invalid vol = %d return \n", __func__, vol);
-        return 0;
+        return -EINVAL;
     }
 
     ret |= es9218_write_reg(g_es9218_priv->i2c_client , ES9218P_REG_17,
@@ -697,7 +697,7 @@ static int es9218_set_avc_volume(struct i2c_client *client, int vol)
 
     if (vol >= sizeof(avc_vol_tbl)/sizeof(avc_vol_tbl[0])) {
         pr_err("%s() : Invalid vol = %d return \n", __func__, vol);
-        return 0;
+        return -EINVAL;
     }
 
     value = avc_vol_tbl[vol];
@@ -950,12 +950,12 @@ static ssize_t set_forced_avc_volume(struct device *dev,
 
     if ( es9218_power_state < ESS_PS_HIFI ) {
         pr_err("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
-        return 0;
+        return -EINVAL;
     }
     
     if (input_vol >= sizeof(avc_vol_tbl)/sizeof(avc_vol_tbl[0])) {
         pr_err("%s() : Invalid vol = %d return \n", __func__, input_vol);
-        return 0;
+        return -EINVAL;
     }
 
     g_avc_volume = input_vol;
@@ -983,12 +983,12 @@ static ssize_t set_forced_ess_filter(struct device *dev,
 
     if ( es9218_power_state < ESS_PS_HIFI ) {
         pr_err("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
-        return 0;
+        return -EINVAL;
     }
 
     if (input_filter > 11) {
         pr_err("%s() : Invalid filter = %d return \n", __func__, input_filter);
-        return 0;
+        return -EINVAL;
     }
 
     /* 
@@ -996,7 +996,7 @@ static ssize_t set_forced_ess_filter(struct device *dev,
 	 * [0] - Cosine phase fast roll-off
 	 * [1] - Cosine phase slow roll-off
 	 * [2] - Sine phase fast roll-off
-	 * [3] - Sine phase fast roll-off 2
+	 * [3] - Panel-Customizable filter
      *
 	 * After that the code appears to revert to using internal
 	 * filters on the chip, going up to [11]. Can't attest if they
@@ -1018,6 +1018,120 @@ static ssize_t get_forced_ess_filter(struct device *dev,
 }
 static DEVICE_ATTR(ess_filter, S_IWUSR|S_IRUGO, get_forced_ess_filter, set_forced_ess_filter);
 
+/* Custom ESS Filter (filter [3] has to be selected) */
+#define MAX_FILTER_DATA_SIZE     16 /* shape, symmetry, followed by 14 stage 2 coefficients */
+/* 
+ * Let's try not to waste much space with string size here: 
+ * size = 2 (char space used by shape and symmetry) +
+ * 10 * 14 (all usable stage 2 coefficients, each can use a max of 8 chars) +
+ * MAX_FILTER_DATA_SIZE (amount of commas needed) +
+ * 1 ('\0' char)
+ */
+#define MAX_FILTER_STRING_SIZE   2 + (8 * 14) + MAX_FILTER_DATA_SIZE + 1
+static ssize_t set_forced_ess_custom_filter(struct device *dev,
+                   struct device_attribute *attr,
+                   const char *buf, size_t count) {
+	char *datatoken, *delimiter = ",";
+	char *received_data = kzalloc(MAX_FILTER_STRING_SIZE * sizeof(char), GFP_KERNEL);
+	int filter_data[MAX_FILTER_DATA_SIZE], i = 0;
+
+
+	sscanf(buf, "%s", received_data);
+
+	if ( es9218_power_state < ESS_PS_HIFI ) {
+		pr_err("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
+		return -EINVAL;
+	}
+
+	/* Tokenize received data and save into the filter data array (everything is an integer) */
+	while ((datatoken = strsep(&received_data, delimiter)) != NULL && i < MAX_FILTER_DATA_SIZE) {
+		if (kstrtoint(datatoken, 10, &filter_data[i]) != 0) {
+			pr_err("Failed to convert filter data!");
+			return -EINVAL;
+		}
+		i++;
+	}
+
+	/* Load the received data into the custom filter */
+	if(filter_data[0] >= 0 && filter_data[0] !=  5 && filter_data[0] <= 7) /* Load filter shape config */
+		es9218_sabre_custom_ft[g_sabre_cf_num].shape    = filter_data[0];
+	if(filter_data[1] == 0 || filter_data[1] == 1) /* Copy filter symmetry config */
+		es9218_sabre_custom_ft[g_sabre_cf_num].symmetry = filter_data[1];
+	for(i = 0; i < 14; i++) {
+			/* 
+			 * Load stage 2 coefficients, totaling 14 data points. The last two datapoints are 
+			 * always zero according to ES9218/P's Official Datasheet.
+			 */
+		if(filter_data[i+2] <= 9999999 && filter_data[i+2] >= -9999999)
+			es9218_sabre_custom_ft[g_sabre_cf_num].stage2_coeff[i] = filter_data[i+2];
+	}
+		/* 
+		 * Stage 1 coefficients aren't needed... stage 2 seems to override them or at least
+		 * significantly impact the results from stage 1, and i really doubt it's
+		 * even possible to translate 128 data points into a UI that's both accurate and
+		 * user-friendly. That's why stage 1 isn't read from, nor written to.
+		 *
+		 * This also reduces ESS's sysfs memory usage by quite a bit, and makes sysfs calls
+		 * that read or write to the custom filter a bit faster as well.
+		 */
+
+	/* Apply the custom filter */
+	es9218_sabre_cfg_custom_filter(&es9218_sabre_custom_ft[g_sabre_cf_num]);
+
+	/* We already used up the received data, so free all previously allocated space. */
+	kfree(received_data);
+
+	return count;
+}
+static ssize_t get_forced_ess_custom_filter(struct device *dev,
+                   struct device_attribute *attr,
+                   char *buf) {
+	char send_data[MAX_FILTER_STRING_SIZE];
+	char tempbuf[10]; /* There will never be an element on the filter data that takes more than 9 chars */
+	int i,j, written = 0;
+
+	memset(send_data, 0, sizeof(send_data));
+
+		/* 
+		 * NOTE: Here we don't need to have the "correct" filter selected on the panel,
+		 * we're just reading data from the custom filter which is always 'es9218_sabre_custom_ft[3]'
+		 */
+
+	for (i = 0; i < MAX_FILTER_DATA_SIZE; i++){
+		/* Copy filter shape config */
+		memset(tempbuf, 0, sizeof(tempbuf));
+		if(i == 0)
+			sprintf(tempbuf, "%d", (int) es9218_sabre_custom_ft[3].shape);
+		/* Copy filter symmetry config */
+		else if (i == 1)
+			sprintf(tempbuf, "%d", (int) es9218_sabre_custom_ft[3].symmetry);
+		/* Copy stage 2 coefficients */
+		else if (i >= 2 && i < 16)
+			sprintf(tempbuf, "%d", es9218_sabre_custom_ft[3].stage2_coeff[i-2]);
+		/* Copy stage 1 coefficients (NOT USED) */
+		//else if (i >= 16 && i < 144)
+		//	sprintf(tempbuf, "%d", es9218_sabre_custom_ft[3].stage1_coeff[i-16]);
+
+		for(j = 0; j < 10; j++)
+		{
+			if(tempbuf[j] == '\0') 
+				break;
+
+			send_data[written] = tempbuf[j];
+			written++;
+		}
+
+		/* Add a comma after each element, except for the last element on the filter's data struct */
+		if (i < MAX_FILTER_DATA_SIZE - 1) {
+			send_data[written] = ',';
+			written++;
+		}
+	}
+
+	return sprintf(buf, "%s\n", send_data);
+}
+static DEVICE_ATTR(ess_custom_filter, S_IWUSR|S_IRUGO, get_forced_ess_custom_filter, set_forced_ess_custom_filter);
+
 static struct attribute *es9218_attrs[] = {
 #ifdef ES9218P_DEBUG
 	&dev_attr_fade_mute_count.attr, /* Unused outside of debugging */
@@ -1026,6 +1140,7 @@ static struct attribute *es9218_attrs[] = {
     &dev_attr_headset_type.attr,    /* This one is already implemented rom-side */
 #endif
     &dev_attr_ess_filter.attr,
+    &dev_attr_ess_custom_filter.attr,
     &dev_attr_avc_volume.attr,
     &dev_attr_left_volume.attr,
 	&dev_attr_right_volume.attr,
@@ -1712,7 +1827,7 @@ static int es9218p_sabre_bypass2hifi(void)
 
     if ( es9218_power_state != ESS_PS_BYPASS ) {
         pr_err("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
-        return 0;
+        return -EINVAL;
     }
 
 #ifdef SHOW_LOGS
@@ -1837,7 +1952,7 @@ static int es9218p_sabre_hifi2lpb(void)
 {
     if ( es9218_power_state < ESS_PS_HIFI ) {
         pr_err("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
-        return 0;
+        return -EINVAL;
     }
 #ifdef SHOW_LOGS
     pr_info("%s() : state = %s\n", __func__, power_state[es9218_power_state]);
@@ -1857,7 +1972,7 @@ static int es9218_sabre_audio_idle(void)
 {
     if ( es9218_power_state != ESS_PS_HIFI ) {
         pr_err("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
-        return 0;
+        return -EINVAL;
     }
 #ifdef SHOW_LOGS
     pr_info("%s() : state = %s\n", __func__, power_state[es9218_power_state]);
@@ -1873,7 +1988,7 @@ static int es9218_sabre_audio_active(void)
 {
     if ( es9218_power_state != ESS_PS_IDLE ) {
         pr_err("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
-        return 0;
+        return -EINVAL;
     }
 #ifdef SHOW_LOGS
     pr_info("%s() : state = %s\n", __func__, power_state[es9218_power_state]);
@@ -1948,7 +2063,7 @@ static int __es9218_sabre_headphone_off(void)
 {
     if ( es9218_power_state == ESS_PS_CLOSE) {
         pr_err("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
-        return 0;
+        return -EINVAL;
     }
 
     cancel_delayed_work_sync(&g_es9218_priv->hifi_in_standby_work);
@@ -2257,12 +2372,12 @@ static int es9218_headset_type_put(struct snd_kcontrol *kcontrol,
          * aux      : <ctl name="Es9018 HEADSET TYPE" value="3" />
         */
         pr_err("%s() : invalid headset type = %d, state = %s\n", __func__, value, power_state[es9218_power_state]);
-        return 0;
+        return -EINVAL;
     }
 
     if (es9218_power_state < ESS_PS_HIFI) {
         pr_debug("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
-        return 0;
+        return -EINVAL;
     }
 
     es9218_set_thd(g_es9218_priv->i2c_client, g_headset_type);
@@ -2291,8 +2406,8 @@ static int es9218_auto_mute_put(struct snd_kcontrol *kcontrol,
     pr_debug("%s(): g_auto_mute_flag = %d \n", __func__, g_auto_mute_flag);
 
     if (es9218_power_state < ESS_PS_HIFI) {
-        pr_err("%s() : return = %s\n", __func__, power_state[es9218_power_state]);
-        return 0;
+        pr_err("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
+        return -EINVAL;
     }
 
     if(g_auto_mute_flag) {
@@ -2425,7 +2540,7 @@ static int lge_ess_fade_inout_put(struct snd_kcontrol *kcontrol, struct snd_ctl_
 
     if (es9218_power_state < ESS_PS_HIFI) {
         pr_err("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
-        return 0;
+        return -EINVAL;
     }
     if(lge_ess_fade_inout_init != true) {
         lge_ess_fade_inout_init = true;
@@ -2436,7 +2551,7 @@ static int lge_ess_fade_inout_put(struct snd_kcontrol *kcontrol, struct snd_ctl_
         if(!mute_work) {
             lge_ess_fade_inout_init = false;
             pr_err("%s() : devm_kzalloc failed!!\n", __func__);
-            return 0;
+            return -ENOMEM;
         }
 
         INIT_DELAYED_WORK(mute_work, mute_work_function);
@@ -2488,7 +2603,7 @@ static int es9218_avc_volume_put(struct snd_kcontrol *kcontrol,
 
     if (es9218_power_state < ESS_PS_HIFI) {
         pr_debug("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
-        return 0;
+        return -EINVAL;
     }
 
     es9218_set_avc_volume(g_es9218_priv->i2c_client, g_avc_volume);
@@ -2515,7 +2630,7 @@ static int es9218_master_volume_put(struct snd_kcontrol *kcontrol,
 
     if (es9218_power_state < ESS_PS_HIFI) {
         pr_err("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
-        return 0;
+        return -EINVAL;
     }
 
     es9218_master_trim(g_es9218_priv->i2c_client, g_volume);
@@ -2541,7 +2656,7 @@ static int es9218_left_volume_put(struct snd_kcontrol *kcontrol,
 
     if (es9218_power_state < ESS_PS_HIFI) {
         pr_err("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
-        return 0;
+        return -EINVAL;
     }
 
     es9218_write_reg(g_es9218_priv->i2c_client, ES9218P_REG_15, g_left_volume);
@@ -2567,7 +2682,7 @@ static int es9218_right_volume_put(struct snd_kcontrol *kcontrol,
 
     if (es9218_power_state < ESS_PS_HIFI) {
         pr_err("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
-        return 0;
+        return -EINVAL;
     }
 
     es9218_write_reg(g_es9218_priv->i2c_client, ES9218P_REG_16, g_right_volume);
@@ -2593,7 +2708,7 @@ static int es9218_filter_enum_put(struct snd_kcontrol *kcontrol,
 
     if (es9218_power_state < ESS_PS_HIFI) {
         pr_info("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
-        return 0;
+        return -EINVAL;
     }
 
     g_sabre_cf_num = (int)ucontrol->value.integer.value[0];
@@ -2725,7 +2840,7 @@ static int es9218_clk_divider_get(struct snd_kcontrol *kcontrol,
 
     if (es9218_power_state < ESS_PS_HIFI) {
         pr_err("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
-        return 0;
+        return -EINVAL;
     }
 
     err_check = es9218_read_reg(g_es9218_priv->i2c_client,
@@ -2752,7 +2867,7 @@ static int es9218_clk_divider_put(struct snd_kcontrol *kcontrol,
 
     if (es9218_power_state < ESS_PS_HIFI) {
         pr_err("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
-        return 0;
+        return -EINVAL;
     }
 
     pr_debug("%s: ucontrol->value.integer.value[0]  = %ld\n", __func__, ucontrol->value.integer.value[0]);
