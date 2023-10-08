@@ -1054,16 +1054,16 @@ static ssize_t set_forced_ess_custom_filter(struct device *dev,
 
 	/* Load the received data into the custom filter */
 	if(filter_data[0] >= 0 && filter_data[0] !=  5 && filter_data[0] <= 7) /* Load filter shape config */
-		es9218_sabre_custom_ft[g_sabre_cf_num].shape    = filter_data[0];
+		es9218_sabre_custom_ft[3].shape    = filter_data[0];
 	if(filter_data[1] == 0 || filter_data[1] == 1) /* Copy filter symmetry config */
-		es9218_sabre_custom_ft[g_sabre_cf_num].symmetry = filter_data[1];
+		es9218_sabre_custom_ft[3].symmetry = filter_data[1];
 	for(i = 0; i < 14; i++) {
 			/* 
 			 * Load stage 2 coefficients, totaling 14 data points. The last two datapoints are 
 			 * always zero according to ES9218/P's Official Datasheet.
 			 */
 		if(filter_data[i+2] <= 9999999 && filter_data[i+2] >= -9999999)
-			es9218_sabre_custom_ft[g_sabre_cf_num].stage2_coeff[i] = filter_data[i+2];
+			es9218_sabre_custom_ft[3].stage2_coeff[i] = filter_data[i+2];
 	}
 		/* 
 		 * Stage 1 coefficients aren't needed... stage 2 seems to override them or at least
@@ -1075,7 +1075,7 @@ static ssize_t set_forced_ess_custom_filter(struct device *dev,
 		 * that read or write to the custom filter a bit faster as well.
 		 */
 
-	/* Apply the custom filter */
+	/* Apply the filter (just to update the data internally in case custom filter is not selected) */
 	es9218_sabre_cfg_custom_filter(&es9218_sabre_custom_ft[g_sabre_cf_num]);
 
 	/* We already used up the received data, so free all previously allocated space. */
