@@ -1496,7 +1496,7 @@ static int es9218_sabre_bypass2hifi(void) {
 			pr_info("%s(): Rev-A DOP Format Test Running \n", __func__);
 		}
    	}
-	//	es9218_sabre_cfg_custom_filter(&es9218_sabre_custom_ft[g_sabre_cf_num]);
+	es9218_sabre_cfg_custom_filter(&es9218_sabre_custom_ft[g_sabre_cf_num]);    // set digital filter
 
     es9218_write_reg(g_es9218_priv->i2c_client, ESS9218_VOL1, g_left_volume); 	// set left channel digital volume level
 
