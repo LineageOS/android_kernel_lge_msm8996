@@ -154,6 +154,10 @@ static int touch_i2c_probe(struct i2c_client *i2c,
 	TOUCH_I("%s\n, platform ptr = %p\n",
 			__func__, i2c->dev.platform_data);
 
+	if (!info) {
+		TOUCH_E("info is NULL\n");
+		return -ENOMEM;
+	}
 	ts = devm_kzalloc(&i2c->dev, sizeof(*ts), GFP_KERNEL);
 
 	if (!ts) {

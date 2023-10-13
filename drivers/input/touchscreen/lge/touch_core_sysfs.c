@@ -28,7 +28,7 @@
 static char ime_str[3][8] = {"OFF", "ON", "SWYPE"};
 static char incoming_call_str[3][8] = {"IDLE", "RINGING", "OFFHOOK"};
 static char mfts_str[4][8] = {"NONE", "FOLDER", "FLAT", "CURVED"};
-static int lpwg_status = 0;
+int lpwg_status = 0;
 
 static ssize_t show_platform_data(struct device *dev, char *buf)
 {
@@ -180,28 +180,26 @@ static ssize_t store_lpwg_notify(struct device *dev,
 	return count;
 }
 
-static int tap2wake_knocked[4] = { 1, 1, 0, 0 };
+int tap2wake_status = 0;
 
 static ssize_t show_tap2wake(struct device *dev, char *buf)
 {
-	return scnprintf(buf, PAGE_SIZE, "%d\n", lpwg_status);
+	return scnprintf(buf, PAGE_SIZE, "%d\n", tap2wake_status);
 }
 
 static ssize_t store_tap2wake(struct device *dev,
 		const char *buf, size_t count)
 {
-	struct touch_core_data *ts = to_touch_core(dev);
 	int status = 0;
+	sscanf(buf, "%d", &status);
 
-	sscanf(buf, "%d", &tap2wake_knocked[0]);
 
-	if (ts->driver->lpwg) {
-		mutex_lock(&ts->lock);
-		TOUCH_I("tap2wake %s\n", (status) ? "Enabled" : "Disabled");
-		ts->driver->lpwg(ts->dev, LPWG_MASTER, tap2wake_knocked);
-		lpwg_status = status;
-		mutex_unlock(&ts->lock);
+	if(status < 0 || status > 1) {
+		TOUCH_E("invalid tap2wake status(%d)\n", status);
+		return 0;
 	}
+
+	tap2wake_status = status;
 
 	return count;
 }
@@ -468,6 +466,7 @@ static ssize_t store_sp_link_touch_off(struct device *dev,
 		TOUCH_I("SP Mirroring Connected\n");
 	} else if(atomic_read(&ts->state.sp_link) == SP_DISCONNECT) {
 		touch_interrupt_control(ts->dev, INTERRUPT_ENABLE);
+		mod_delayed_work(ts->wq, &ts->init_work, 0);
 		TOUCH_I("SP Mirroring Disconnected\n");
 	}
 
@@ -649,15 +648,26 @@ int touch_init_sysfs(struct touch_core_data *ts)
 	ret = kobject_init_and_add(&ts->kobj, &touch_kobj_type,
 			dev->kobj.parent, "%s", LGE_TOUCH_NAME);
 
+	if (ret < 0) {
+		TOUCH_E("failed to initialize kobject\n");
+		goto error;
+	}
+
 	ret = sysfs_create_group(&ts->kobj, &touch_attribute_group);
 
 	if (ret < 0) {
 		TOUCH_E("failed to create sysfs\n");
-		return ret;
+		goto error;
 	}
 
-	if (ts->driver->register_sysfs)
+	if (ts->driver->register_sysfs) {
 		ret = ts->driver->register_sysfs(dev);
+		if (ret < 0) {
+			TOUCH_E("failed to device create sysfs\n");
+			goto error;
+		}
+	}
 
+error:
 	return ret;
 }

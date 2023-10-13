@@ -27,6 +27,7 @@
 #include <linux/interrupt.h>
 #include <linux/irq.h>
 
+#include <soc/qcom/lge/board_lge.h>
 extern int touch_gpio_init(int pin, const char *name);
 extern void touch_gpio_direction_input(int pin);
 extern void touch_gpio_direction_output(int pin, int value);
