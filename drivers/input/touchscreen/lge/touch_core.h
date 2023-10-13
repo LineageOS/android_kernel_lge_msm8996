@@ -76,7 +76,7 @@ extern u32 touch_debug_mask;
 #define TOUCH_D(condition, fmt, args...)			\
 	do {							\
 		if (unlikely(touch_debug_mask & (condition)))	\
-			pr_info("[Touch] " fmt, ##args);	\
+			pr_debug("[Touch] " fmt, ##args);	\
 	} while (0)
 
 #define TOUCH_DEBUG_SHOW_FILE
@@ -96,6 +96,7 @@ extern u32 touch_debug_mask;
 #define TOUCH_IRQ_SWIPE_UP		(1 << 4)
 #define TOUCH_IRQ_SWIPE_RIGHT		(1 << 5)
 #define TOUCH_IRQ_SWIPE_LEFT		(1 << 6)
+#define TOUCH_IRQ_AI_BUTTON		(1 << 9)
 #define TOUCH_IRQ_ERROR			(1 << 15)
 
 enum {
@@ -296,6 +297,7 @@ enum {
 	TOUCH_UEVENT_SWIPE_UP,
 	TOUCH_UEVENT_SWIPE_RIGHT,
 	TOUCH_UEVENT_SWIPE_LEFT,
+	TOUCH_UEVENT_AI_BUTTON,
 	TOUCH_UEVENT_SIZE,
 };
 
@@ -330,6 +332,7 @@ struct state_info {
 struct touch_driver {
 	int (*probe)(struct device *dev);
 	int (*remove)(struct device *dev);
+	int (*shutdown)(struct device *dev);
 	int (*suspend)(struct device *dev);
 	int (*resume)(struct device *dev);
 	int (*init)(struct device *dev);
@@ -579,6 +582,8 @@ extern int touch_get_platform_data(struct touch_core_data *ts);
 extern int touch_init_sysfs(struct touch_core_data *ts);
 extern void touch_interrupt_control(struct device *dev, int on_off);
 extern void touch_report_all_event(struct touch_core_data *ts);
+extern void touch_suspend(struct device *dev);
+extern void touch_resume(struct device *dev);
 
 enum touch_device_type {
 	TYPE_LG4946 = 0,
@@ -589,6 +594,8 @@ enum touch_device_type {
 	TYPE_SW49407_VIDEO,
 	TYPE_SW49407_LUCY_VIDEO,
 	TYPE_SW49408,
+	TYPE_NOTOUCH,
+	TYPE_FTM4,
 	TYPE_MAX,
 };
 

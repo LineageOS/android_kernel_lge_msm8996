@@ -270,6 +270,7 @@ void touch_resend_irq(unsigned int irq)
 	if (desc) {
 		if (desc->istate & IRQS_PENDING)
 			TOUCH_D(BASE_INFO, "irq(%d) pending\n", irq);
+		check_irq_resend(desc);
 	}
 }
 
@@ -298,8 +299,8 @@ int touch_boot_mode(void)
 
 int touch_boot_mode_check(struct device *dev)
 {
-	struct touch_core_data *ts = to_touch_core(dev);
 	int ret = 0;
+	struct touch_core_data *ts = to_touch_core(dev);
 
 	ret = lge_get_factory_boot();
 

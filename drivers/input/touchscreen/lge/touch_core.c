@@ -45,9 +45,6 @@ u32 touch_debug_mask = BASE_INFO;
 module_param_named(debug_mask, touch_debug_mask, int, S_IRUGO|S_IWUSR|S_IWGRP);
 
 static void touch_send_uevent(struct touch_core_data *ts, int type);
-static void touch_suspend(struct device *dev);
-static void touch_resume(struct device *dev);
-
 
 static void touch_report_cancel_event(struct touch_core_data *ts)
 {
@@ -228,6 +225,9 @@ irqreturn_t touch_irq_thread(int irq, void *dev_id)
 
 		if (ts->intr_status & TOUCH_IRQ_SWIPE_LEFT)
 			touch_send_uevent(ts, TOUCH_UEVENT_SWIPE_LEFT);
+
+		if (ts->intr_status & TOUCH_IRQ_AI_BUTTON)
+			touch_send_uevent(ts, TOUCH_UEVENT_AI_BUTTON);
 	} else {
 		if (ret == -ERESTART) {
 			TOUCH_I("IRQ - IC reset delay = %d\n",
@@ -440,7 +440,10 @@ error:
 	return ret;
 }
 
-static void touch_suspend(struct device *dev)
+extern int tap2wake_status;
+extern int lpwg_status;
+
+void touch_suspend(struct device *dev)
 {
 	struct touch_core_data *ts = to_touch_core(dev);
 	int ret = 0;
@@ -456,13 +459,22 @@ static void touch_suspend(struct device *dev)
 	/* if need skip, return value is not 0 in pre_suspend */
 	ret = ts->driver->suspend(dev);
 	mutex_unlock(&ts->lock);
+	if (ts->driver->lpwg) {
+	    int tap2wake_knocked[4] = { 0, 0, 1, 0 };
+	    tap2wake_knocked[0] = tap2wake_status;
+		mutex_lock(&ts->lock);
+		TOUCH_I("tap2wake %s\n", (tap2wake_status) ? "Enabled" : "Disabled");
+		ts->driver->lpwg(ts->dev, LPWG_MASTER, tap2wake_knocked);
+		lpwg_status = tap2wake_status;
+		mutex_unlock(&ts->lock);
+	}
 	TOUCH_I("%s End\n", __func__);
 
 	if (ret == 1)
 		mod_delayed_work(ts->wq, &ts->init_work, 0);
 }
 
-static void touch_resume(struct device *dev)
+void touch_resume(struct device *dev)
 {
 	struct touch_core_data *ts = to_touch_core(dev);
 	int ret = 0;
@@ -474,6 +486,15 @@ static void touch_resume(struct device *dev)
 	/* if need skip, return value is not 0 in pre_resume */
 	ret = ts->driver->resume(dev);
 	mutex_unlock(&ts->lock);
+	if (ts->driver->lpwg) {
+		int tap2wake_knocked[4] = { 0, 1, 1, 0 };
+		tap2wake_knocked[0] = tap2wake_status;
+		mutex_lock(&ts->lock);
+		TOUCH_I("tap2wake %s\n", (tap2wake_status) ? "Enabled" : "Disabled");
+		ts->driver->lpwg(ts->dev, LPWG_MASTER, tap2wake_knocked);
+		lpwg_status = tap2wake_status;
+		mutex_unlock(&ts->lock);
+	}
 	TOUCH_I("%s End\n", __func__);
 
 	if (ret == 0)
@@ -567,14 +588,16 @@ char *uevent_str[TOUCH_UEVENT_SIZE][2] = {
 	{"TOUCH_GESTURE_WAKEUP=SWIPE_DOWN", NULL},
 	{"TOUCH_GESTURE_WAKEUP=SWIPE_UP", NULL},
 	{"TOUCH_GESTURE_WAKEUP=SWIPE_RIGHT", NULL},
-	{"TOUCH_GESTURE_WAKEUP=SWIPE_LEFT", NULL}
+	{"TOUCH_GESTURE_WAKEUP=SWIPE_LEFT", NULL},
+	{"TOUCH_GESTURE_WAKEUP=AI_BUTTON", NULL}
 };
 
 static void touch_send_uevent(struct touch_core_data *ts, int type)
 {
 	TOUCH_TRACE();
-	if (atomic_read(&ts->state.uevent) == UEVENT_IDLE) {
-		wake_lock_timeout(&ts->lpwg_wake_lock, msecs_to_jiffies(3000));
+	if (atomic_read(&ts->state.uevent) == UEVENT_IDLE ||
+			touch_boot_mode_check(ts->dev) != NORMAL_BOOT) {
+						wake_lock_timeout(&ts->lpwg_wake_lock, msecs_to_jiffies(3000));
 		atomic_set(&ts->state.uevent, UEVENT_BUSY);
 		kobject_uevent_env(&device_uevent_touch.kobj,
 				KOBJ_CHANGE, uevent_str[type]);
@@ -833,8 +856,15 @@ static int touch_core_probe_normal(struct platform_device *pdev)
 	return 0;
 
 error_request_irq:
+	free_irq(ts->irq, ts);
 error_init_input:
+	if (ts->input) {
+		input_mt_destroy_slots(ts->input);
+		input_free_device(ts->input);
+	}
 error_init_work:
+	if (ts->wq)
+		destroy_workqueue(ts->wq);
 	return ret;
 }
 
@@ -881,8 +911,57 @@ static int touch_core_probe(struct platform_device *pdev)
 
 static int touch_core_remove(struct platform_device *pdev)
 {
+	struct touch_core_data *ts;
+
 	TOUCH_TRACE();
+
+	ts = (struct touch_core_data *) pdev->dev.platform_data;
+
+	TOUCH_I("%s\n", __func__);
+
+#if defined(CONFIG_HAS_EARLYSUSPEND)
+	unregister_early_suspend(&ts->early_suspend);
+#elif defined(CONFIG_FB)
+	fb_unregister_client(&ts->fb_notif);
+#endif
+
+	kobject_del(&ts->kobj);
+
+	touch_atomic_notifier_unregister(&ts->atomic_notif);
+
+	destroy_workqueue(ts->wq);
+	wake_lock_destroy(&ts->lpwg_wake_lock);
+
+	touch_interrupt_control(ts->dev, INTERRUPT_DISABLE);
+	free_irq(ts->irq, ts);
+
+	input_unregister_device(ts->input);
+
+	ts->driver->remove(ts->dev);
+	ts->driver->power(ts->dev, POWER_OFF);
+
+	devm_kfree(ts->dev, ts);
+
 	return 0;
+}
+
+void touch_core_shutdown(struct platform_device *pdev)
+{
+	struct touch_core_data *ts;
+
+	TOUCH_TRACE();
+
+	ts = (struct touch_core_data *) pdev->dev.platform_data;
+
+	TOUCH_I("%s\n", __func__);
+
+	if (ts->dev == NULL)
+		return;
+
+	touch_interrupt_control(ts->dev, INTERRUPT_DISABLE);
+
+	if (ts->driver->shutdown)
+		ts->driver->shutdown(ts->dev);
 }
 
 static struct platform_driver touch_core_driver = {
@@ -895,6 +974,7 @@ static struct platform_driver touch_core_driver = {
 	},
 	.probe = touch_core_probe,
 	.remove = touch_core_remove,
+	.shutdown = touch_core_shutdown,
 };
 
 static void touch_core_async_init(void *data, async_cookie_t cookie)
