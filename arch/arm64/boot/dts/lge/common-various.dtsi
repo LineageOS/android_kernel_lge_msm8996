@@ -140,7 +140,11 @@
 
 &pmi8994_charger {
 	somc,limit-usb-5v-level = <8>;
-	qcom,float-voltage-mv = <4350>;
+#if defined(CONFIG_MACH_MSM8996_ELSA) || defined(CONFIG_MACH_MSM8996_H1)
+	qcom,float-voltage-mv = <4400>;
+#else
+    qcom,float-voltage-mv = <4350>;
+#endif
 	qcom,float-voltage-comp = <0x08>;
 	qcom,jeita-temp-hard-limit = <0>;
 	/delete-property/ qcom,chg-inhibit-fg;

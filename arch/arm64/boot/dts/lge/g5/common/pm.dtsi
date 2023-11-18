@@ -35,7 +35,7 @@
 	qcom,fg-iterm-ma = <200>;
 	qcom,fg-chg-iterm-ma = <100>;
 	qcom,vbat-estimate-diff-mv = <250>;
-	qcom,fg-cc-cv-threshold-mv = <4340>; //float-voltage set as 4350 in common-various
+	qcom,fg-cc-cv-threshold-mv = <4390>;
 	qcom,esr-pulse-tuning-en;
 	qcom,fg-use-vbat-low-empty-soc;
 	qcom,fg-cc-soc-limit-pct = <120>;
