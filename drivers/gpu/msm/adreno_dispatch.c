@@ -2273,7 +2273,7 @@ static void retire_cmdobj(struct adreno_device *adreno_dev,
 		struct kgsl_drawobj_cmd *cmdobj)
 {
 	struct kgsl_drawobj *drawobj = DRAWOBJ(cmdobj);
-	struct adreno_context *drawctxt = ADRENO_CONTEXT(drawobj->context);
+	struct adreno_context;
 	uint64_t start = 0, end = 0;
 
 	if (cmdobj->fault_recovery != 0) {

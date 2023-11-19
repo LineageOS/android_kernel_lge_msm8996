@@ -446,7 +446,6 @@ static void popp_trans1(struct kgsl_device *device)
 		break;
 	}
 
-	trace_kgsl_popp_level(device, old_level, psc->popp_level);
 }
 
 /*
@@ -457,7 +456,6 @@ static int popp_trans2(struct kgsl_device *device, int level)
 {
 	struct kgsl_pwrctrl *pwr = &device->pwrctrl;
 	struct kgsl_pwrscale *psc = &device->pwrscale;
-	int old_level = psc->popp_level;
 
 	if (!test_bit(POPP_ON, &psc->popp_state))
 		return level;
@@ -466,7 +464,6 @@ static int popp_trans2(struct kgsl_device *device, int level)
 	/* If the governor recommends going down, do it! */
 	if (pwr->active_pwrlevel < level) {
 		psc->popp_level = 0;
-		trace_kgsl_popp_level(device, old_level, psc->popp_level);
 		return level;
 	}
 
@@ -492,7 +489,6 @@ static int popp_trans2(struct kgsl_device *device, int level)
 		break;
 	}
 
-	trace_kgsl_popp_level(device, old_level, psc->popp_level);
 
 	return level;
 }
