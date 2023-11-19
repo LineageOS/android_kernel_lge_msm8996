@@ -16,6 +16,23 @@
       "message": "Confirmed to fix wifi on elsa, reports from lucye show that wifi is also broken there without this revert.",
       "revId": "c3e3670723d1fe2c39315be7c1dec2976055b143",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "902451e1_2ce13626",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 16185
+      },
+      "writtenOn": "2023-11-19T01:02:14Z",
+      "side": 1,
+      "message": "pls push to common kernel",
+      "revId": "c3e3670723d1fe2c39315be7c1dec2976055b143",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
