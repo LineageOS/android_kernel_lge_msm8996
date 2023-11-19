@@ -237,7 +237,7 @@ static ssize_t level_stats_file_write(struct file *file,
 	char buf[MAX_STR_LEN] = {0};
 	struct inode *in = file->f_inode;
 	struct level_stats *stats = (struct level_stats *)in->i_private;
-	size_t len = strnlen(lpm_stats_reset, MAX_STR_LEN);
+	size_t len = strnlen(lpm_stats_reset, sizeof(lpm_stats_reset)/sizeof(char *));
 
 	if (!stats)
 		return -EINVAL;
@@ -262,7 +262,7 @@ static ssize_t lpm_stats_file_write(struct file *file,
 	char buf[MAX_STR_LEN] = {0};
 	struct inode *in = file->f_inode;
 	struct lpm_stats *stats = (struct lpm_stats *)in->i_private;
-	size_t len = strnlen(lpm_stats_reset, MAX_STR_LEN);
+	size_t len = strnlen(lpm_stats_reset, sizeof(lpm_stats_reset)/sizeof(char *));
 
 	if (!stats)
 		return -EINVAL;
@@ -338,7 +338,7 @@ static ssize_t lifo_stats_file_write(struct file *file,
 	char buf[MAX_STR_LEN] = {0};
 	struct inode *in = file->f_inode;
 	struct lpm_stats *stats = (struct lpm_stats *)in->i_private;
-	size_t len = strnlen(lpm_stats_reset, MAX_STR_LEN);
+	size_t len = strnlen(lpm_stats_reset, sizeof(lpm_stats_reset)/sizeof(char *));
 
 	if (!stats)
 		return -EINVAL;
