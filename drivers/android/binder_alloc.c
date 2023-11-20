@@ -51,16 +51,6 @@ module_param_named(debug_mask, binder_alloc_debug_mask,
 			pr_info(x); \
 	} while (0)
 
-static struct binder_buffer *binder_buffer_next(struct binder_buffer *buffer)
-{
-	return list_entry(buffer->entry.next, struct binder_buffer, entry);
-}
-
-static struct binder_buffer *binder_buffer_prev(struct binder_buffer *buffer)
-{
-	return list_entry(buffer->entry.prev, struct binder_buffer, entry);
-}
-
 static size_t binder_alloc_buffer_size(struct binder_alloc *alloc,
 				       struct binder_buffer *buffer)
 {
@@ -143,9 +133,9 @@ static struct binder_buffer *binder_alloc_prepare_to_free_locked(
 		buffer = rb_entry(n, struct binder_buffer, rb_node);
 		BUG_ON(buffer->free);
 
-		if (kern_ptr < buffer->data)
+		if (kern_ptr < (void *) buffer->data)
 			n = n->rb_left;
-		else if (kern_ptr > buffer->data)
+		else if (kern_ptr > (void *) buffer->data)
 			n = n->rb_right;
 		else {
 			/*
@@ -276,7 +266,6 @@ err_map_kernel_failed:
 		__free_page(*page);
 		*page = NULL;
 err_alloc_page_failed:
-err_page_ptr_cleared:
 		;
 	}
 err_no_vma:
