@@ -32,7 +32,7 @@ static unsigned char __i2c_read_byte(unsigned char dev, unsigned char offset)
 		unchar temp; \
 		if (__i2c_read_byte(DP_HDCP_ADDR, AUX_ADDR_7_0) != (unchar)addrl) \
 			OhioWriteReg(DP_HDCP_ADDR, AUX_ADDR_7_0, (unchar)addrl); \
-			if (__i2c_read_byte(DP_HDCP_ADDR, AUX_ADDR_15_8) != (unchar)addrm) \
+		if (__i2c_read_byte(DP_HDCP_ADDR, AUX_ADDR_15_8) != (unchar)addrm) \
 			OhioWriteReg(DP_HDCP_ADDR, AUX_ADDR_15_8, (unchar)addrm); \
 		temp = OhioReadReg(DP_HDCP_ADDR, AUX_ADDR_19_16); \
 		if ((unchar)(temp & 0x0F)  != ((unchar)addrh & 0x0F)) \
