@@ -2,7 +2,7 @@
 
 #include <soc/qcom/lge/lge_batt_detection.h>
 
-char *return_lge_battery_name(){
+char *return_lge_battery_name(void){
 	char *lge_batt_profile_name = NULL;
 	
 #if defined(CONFIG_MACH_MSM8996_ELSA) || defined(CONFIG_MACH_MSM8996_ANNA) // V20, ANNA
