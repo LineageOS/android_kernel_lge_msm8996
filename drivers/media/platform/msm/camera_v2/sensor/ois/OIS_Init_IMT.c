@@ -736,7 +736,7 @@ int CmdRdChk_IMT(void)
 // Explanation		: Servo Initial Setting
 // History			: First edition 						2013.01.08 Y.Shigeoka
 //********************************************************************************
-void IniSrv_IMT()
+void IniSrv_IMT(void)
 {
 	uint8_t	UcStbb0;
 
