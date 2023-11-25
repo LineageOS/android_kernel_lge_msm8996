@@ -435,7 +435,7 @@ static int bluesleep_lpm_enable (int en)
 	return 0;
 }
 
-static int bluesleep_reset_lpm_internal()
+static int bluesleep_reset_lpm_internal(void)
 {
 	if (has_lpm_enabled) {
 		pr_warn("no bluesleep_write_proc_lpm\n");
