@@ -18,7 +18,7 @@ struct switch_dev dp_notify_sdev = {
 	.name = "dp_notify",
 };
 
-void register_dp_notify_node()
+void register_dp_notify_node(void)
 {
 	if (switch_dev_register(&dp_notify_sdev) < 0) {
 		pr_err("%s: dp_notify switch registration failed\n", __func__);
