@@ -16383,7 +16383,7 @@ bool wl_cfg80211_is_vsdb_mode(void)
 	return (g_bcm_cfg && g_bcm_cfg->vsdb_mode);
 }
 
-void* wl_cfg80211_get_dhdp()
+void* wl_cfg80211_get_dhdp(void)
 {
 	struct bcm_cfg80211 *cfg = g_bcm_cfg;
 
