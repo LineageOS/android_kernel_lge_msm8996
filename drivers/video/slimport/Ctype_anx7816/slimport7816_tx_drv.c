@@ -3378,23 +3378,23 @@ void hdmi_rx_show_video_info(void)
 
     sp_read_reg(RX_P0, HDMI_RX_SYS_CTRL1_REG, &c);
     if ((c & 0x30) == 0x00)
-	pr_info("%s %s : Input Pixel Clock = Not Repeated.\n", LOG_TAG, __func__);
+		pr_info("%s %s : Input Pixel Clock = Not Repeated.\n", LOG_TAG, __func__);
     else if ((c & 0x30) == 0x10)
-	pr_info("%s %s : Input Pixel Clock = 2x Video Clock. Repeated.\n", LOG_TAG, __func__);
+		pr_info("%s %s : Input Pixel Clock = 2x Video Clock. Repeated.\n", LOG_TAG, __func__);
     else if ((c & 0x30) == 0x30)
-	pr_info("%s %s : Input Pixel Clock = 4x Vvideo Clock. Repeated.\n", LOG_TAG, __func__);
+		pr_info("%s %s : Input Pixel Clock = 4x Vvideo Clock. Repeated.\n", LOG_TAG, __func__);
 
     if ((c & 0xc0) == 0x00)
-	pr_info("%s %s : Output Video Clock = Not Divided.\n", LOG_TAG, __func__);
+		pr_info("%s %s : Output Video Clock = Not Divided.\n", LOG_TAG, __func__);
     else if ((c & 0xc0) == 0x40)
-	pr_info("%s %s : Output Video Clock = Divided By 2.\n", LOG_TAG, __func__);
+		pr_info("%s %s : Output Video Clock = Divided By 2.\n", LOG_TAG, __func__);
     else if ((c & 0xc0) == 0xc0)
-	pr_info("%s %s : Output Video Clock = Divided By 4.\n", LOG_TAG, __func__);
+		pr_info("%s %s : Output Video Clock = Divided By 4.\n", LOG_TAG, __func__);
 
     if (c & 0x02)
-	pr_info("%s %s : Output Video Using Rising Edge To Latch Data.\n", LOG_TAG, __func__);
+		pr_info("%s %s : Output Video Using Rising Edge To Latch Data.\n", LOG_TAG, __func__);
     else
-	pr_info("%s %s : Output Video Using Falling Edge To Latch Data.\n", LOG_TAG, __func__);
+		pr_info("%s %s : Output Video Using Falling Edge To Latch Data.\n", LOG_TAG, __func__);
 
 
 	pr_info("Input Video Color Depth = ");
@@ -3417,21 +3417,21 @@ void hdmi_rx_show_video_info(void)
     sp_read_reg(RX_P1, HDMI_RX_AVI_DATA00_REG, &c);
     c &= 0x60;
     if (c == 0x20)
-	pr_info("YCbCr4:2:2 .\n");
+		pr_info("YCbCr4:2:2 .\n");
     else if (c == 0x40)
-	pr_info("YCbCr4:4:4 .\n");
+		pr_info("YCbCr4:4:4 .\n");
     else if (c == 0x00)
-	pr_info("RGB.\n");
+		pr_info("RGB.\n");
     else
-	pr_err("Unknow 0x44 = 0x%.2x\n", (int)c);
+		pr_err("Unknow 0x44 = 0x%.2x\n", (int)c);
 
 
 
     sp_read_reg(RX_P1, HDMI_RX_HDCP_STATUS_REG, &c);
     if (c & AUTH_EN)
-	pr_info("%s %s : Authentication is attempted.\n", LOG_TAG, __func__);
+		pr_info("%s %s : Authentication is attempted.\n", LOG_TAG, __func__);
     else
-	pr_info("%s %s : Authentication is not attempted.\n", LOG_TAG, __func__);
+		pr_info("%s %s : Authentication is not attempted.\n", LOG_TAG, __func__);
 
     for(cl=0;cl<20;cl++)
     {
