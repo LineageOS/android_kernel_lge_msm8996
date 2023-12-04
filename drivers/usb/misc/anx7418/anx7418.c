@@ -112,7 +112,6 @@ static int chg_get_property(struct power_supply *psy,
 {
 	struct anx7418 *anx = power_supply_get_drvdata(psy);
 	struct device *cdev = &anx->client->dev;
-	int rc;
 
 	if (!anx) /* Don't check the psy if it doesn't exist yet. */
 		return -ENODEV;
