@@ -289,7 +289,9 @@ int charger_init(struct hw_pd_dev *dev)
 {
 	struct device *cdev = dev->dev;
 	struct power_supply_config chg_psy_cfg = {};
+#ifndef TUSB422_LGE_DISABLE_USB_PSY
 	union power_supply_propval prop;
+#endif
 	int rc;
 
 #ifndef TUSB422_LGE_DISABLE_USB_PSY
