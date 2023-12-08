@@ -98,6 +98,7 @@ CONFIG_SLIMBUS=y
 CONFIG_MFD_H1_DSV=y
 CONFIG_WQ_POWER_EFFICIENT_DEFAULT=y
 CONFIG_CPU_FREQ_TIMES=n
+CONFIG_ANDROID_LOW_MEMORY_KILLER=n
 
 # EXT Filesystems
 CONFIG_EXT2_FS=n
@@ -179,6 +180,9 @@ CONFIG_PSTORE_RAM=y
 # Disable duplicate "qcrypto" driver registration, fixing qualcomm's crypto engine init
 CONFIG_CRYPTO_DEV_QCE=n
 
+# MEMCG
+CONFIG_MEMCG=y
+CONFIG_MEMCG_SWAP=y
 
 ########################### LGE_8996 kernel 4.4 tweaks
 
