@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "b2df95bb_411573a4",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 24773
+      },
+      "writtenOn": "2023-12-09T01:40:53Z",
+      "side": 1,
+      "message": "Been running LMKD on H830 and VS995 for a while now with no issue",
+      "revId": "0a9d154f38d6cfce891ef985131cc9ab0047eca0",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
