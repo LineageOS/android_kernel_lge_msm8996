@@ -376,7 +376,7 @@ static void somc_chg_lrc_check(struct smbchg_chip *chip)
 	}
 
 	if (soc >= (params->lrc.socmax +
-				params->lrc.hysterisis))
+				params->lrc.hysteresis))
 		retcode = LRC_CHG_OFF;
 	else if (soc <= params->lrc.socmin)
 		retcode = LRC_CHG_ON;
@@ -2170,6 +2170,22 @@ static int somc_chg_smb_parse_dt(struct smbchg_chip *chip,
 	SOMC_OF_PROP_READ(chip->dev, node,
 		params->temp_thresh.cold_threshold,
 		"fastchg-cold-threshold", rc, 1);
+#endif
+
+#ifdef CONFIG_LGE_ADJUSTABLE_CHARGE_LIMIT
+	params->lrc.enabled = of_property_read_bool(node, "somc,adj-charge-limit-enabled");
+	if (!params->lrc.enabled) {
+		pr_smb_ext(PR_LGE, "Charge limit is not enabled for this device.\n");
+	} else {
+		pr_smb_ext(PR_LGE, "Charge limit is enabled for this device. Setting up charge limit properties...\n");
+
+		params->lrc.socmax = 100;
+		params->lrc.socmin = params->lrc.socmax - 2;
+		params->lrc.hysteresis = 0;
+
+		pr_smb_ext(PR_LGE, "Charge limit set up. Initial values: socmax=%d socmin=%d hysteresis=%d\n",
+					params->lrc.socmax, params->lrc.socmin, params->lrc.hysteresis);
+	}
 #endif
 
 	if (!rc)

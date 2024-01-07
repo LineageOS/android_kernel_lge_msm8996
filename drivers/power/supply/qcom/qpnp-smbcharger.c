@@ -311,6 +311,9 @@ struct smbchg_chip {
 	struct chg_somc_params		somc_params;
 	struct usb_somc_params		usb_params;
 #endif
+#ifdef CONFIG_LGE_ADJUSTABLE_CHARGE_LIMIT
+	bool lge_charge_limit_workaround;
+#endif
 };
 
 #ifdef CONFIG_QPNP_SMBCHARGER_EXTENSION
@@ -561,6 +564,10 @@ module_param_named(
 
 #ifdef CONFIG_QPNP_SMBCHARGER_EXTENSION
 #include "qpnp-smbcharger_extension_usb.c"
+#endif
+
+#ifdef CONFIG_LGE_ADJUSTABLE_CHARGE_LIMIT
+static inline int get_prop_batt_capacity(struct smbchg_chip *chip);
 #endif
 
 static int smbchg_read(struct smbchg_chip *chip, u8 *val,
@@ -1110,6 +1117,29 @@ static int get_prop_batt_status(struct smbchg_chip *chip)
 
 out:
 	pr_smb_rt(PR_MISC, "CHGR_STS = 0x%02x\n", reg);
+
+#ifdef CONFIG_LGE_ADJUSTABLE_CHARGE_LIMIT
+	/* 
+	 * reg == 0x80 == battery not charging, either due to userspace or SoMC's LRC.
+	 * If userspace is the one triggering this, make sure SoMC's LRC knows about it.
+	 */
+	if(reg == 128 && !chip->lge_charge_limit_workaround) {
+		/* The lower charge limit must be at least 70%, if it isn't, default to 80% */
+		chip->somc_params.lrc.socmax = (get_prop_batt_capacity(chip) < 70) ? 80 : get_prop_batt_capacity(chip);
+		chip->somc_params.lrc.socmin = chip->somc_params.lrc.socmax - 2;
+		pr_smb_rt(PR_LGE, "Charge limit detected! New charge limits: socmax=%d socmin=%d hysteresis=%d\n",
+					chip->somc_params.lrc.socmax, chip->somc_params.lrc.socmin, chip->somc_params.lrc.hysteresis);
+		chip->lge_charge_limit_workaround = true;
+	}
+	else if (reg != 128 && chip->lge_charge_limit_workaround)
+	{
+		chip->somc_params.lrc.socmax = 100;
+		chip->somc_params.lrc.socmin = chip->somc_params.lrc.socmax - 2;
+		pr_smb_rt(PR_LGE, "Charge limit lifted! restoring default charge limits: socmax=%d socmin=%d hysteresis=%d\n",
+						chip->somc_params.lrc.socmax, chip->somc_params.lrc.socmin, chip->somc_params.lrc.hysteresis);
+		chip->lge_charge_limit_workaround = false;
+	}
+#endif
 #if defined(CONFIG_QPNP_SMBCHARGER_EXTENSION) && defined(CONFIG_LGE_FIX_BATT_TEMP_READING)
 	/* Check temp status every time a batt status read is issued by smbcharger. */
 	schedule_work(&chip->somc_params.temp.work);
@@ -1779,6 +1809,15 @@ static void smbchg_usb_update_online_work(struct work_struct *work)
 			!chip->somc_params.apsd.rerun_wait_irq;
 #else
 	online = user_enabled && chip->usb_present && !chip->very_weak_charger;
+#endif
+
+#ifdef CONFIG_LGE_ADJUSTABLE_CHARGE_LIMIT
+	/* 
+	 * We need this to prevent userspace from constantly toggling between usb
+	 * online and offline when the charge limit is set.
+	 */
+	if(chip->lge_charge_limit_workaround && !chip->somc_params.apsd.rerun_wait_irq)
+		online = true;
 #endif
 
 	mutex_lock(&chip->usb_set_online_lock);
@@ -5305,6 +5344,14 @@ static void handle_usb_removal(struct smbchg_chip *chip)
 			POWER_SUPPLY_PROP_PRESENT, &pval);
 	}
 #endif
+#ifdef CONFIG_LGE_ADJUSTABLE_CHARGE_LIMIT
+	/* Clear the charge limit flag on usb removal and restore charge limit values */
+	chip->lge_charge_limit_workaround = false;
+	chip->somc_params.lrc.socmax = 100;
+	chip->somc_params.lrc.socmin = chip->somc_params.lrc.socmax - 2;
+	pr_smb_rt(PR_LGE, "USB Disconnected! restoring default charge limits: socmax=%d socmin=%d hysteresis=%d\n",
+					chip->somc_params.lrc.socmax, chip->somc_params.lrc.socmin, chip->somc_params.lrc.hysteresis);
+#endif
 	extcon_set_cable_state_(chip->extcon, EXTCON_USB, chip->usb_present);
 	smbchg_request_dpdm(chip, false);
 	schedule_work(&chip->usb_set_online_work);
@@ -6823,7 +6870,7 @@ static int smbchg_battery_set_property(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_LRC_NOT_STARTUP:
 		chip->somc_params.lrc.fake_capacity = (int)val->intval;
 		if (chip->somc_params.lrc.fake_capacity)
-			chip->somc_params.lrc.hysterisis =
+			chip->somc_params.lrc.hysteresis =
 			FAKE_CAPACITY_HYSTERISIS;
 		break;
 	case POWER_SUPPLY_PROP_MAX_CHARGE_CURRENT:
@@ -7412,6 +7459,16 @@ static irqreturn_t power_ok_handler(int irq, void *_chip)
 	u8 reg = 0;
 
 	smbchg_read(chip, &reg, chip->misc_base + RT_STS, 1);
+
+#ifdef CONFIG_LGE_ADJUSTABLE_CHARGE_LIMIT
+	/* 
+	 * We need this to prevent userspace from constantly toggling between usb
+	 * online and offline when the charge limit is set.
+	 */
+	if(chip->lge_charge_limit_workaround)
+		reg = 1;
+#endif
+
 	pr_smb(PR_INTERRUPT, "triggered: 0x%02x\n", reg);
 	return IRQ_HANDLED;
 }
@@ -9531,6 +9588,9 @@ static int smbchg_probe(struct platform_device *pdev)
 	device_init_wakeup(chip->dev, true);
 #ifdef CONFIG_QPNP_SMBCHARGER_EXTENSION
 	somc_chg_init(&chip->somc_params);
+#endif
+#ifdef CONFIG_LGE_ADJUSTABLE_CHARGE_LIMIT
+	chip->lge_charge_limit_workaround = false;
 #endif
 
 	rc = smbchg_parse_peripherals(chip);
