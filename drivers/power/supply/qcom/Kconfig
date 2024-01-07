@@ -25,6 +25,13 @@ config LGE_FIX_BATT_TEMP_READING
 	  despite the temp values being within the NORMAL range for those 
 	  devices.
 
+config LGE_ADJUSTABLE_CHARGE_LIMIT
+	tristate "Custom configurable charge limit for LGE 8996 devices"
+	depends on QPNP_SMBCHARGER_EXTENSION
+	help
+	  Say Y here to enable the custom battery charge limit code for the
+	  LG G5, G6 and V20, enabling a few functions in SoMC's power drivers.
+
 config QPNP_FG
 	tristate "QPNP fuel gauge driver"
 	depends on MFD_SPMI_PMIC

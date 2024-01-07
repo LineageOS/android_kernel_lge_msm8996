@@ -43,6 +43,7 @@
 	somc,thermal-mitigation-usb-8v = <2100>;
 	somc,thermal-mitigation-usb-9v = <1900>;
 	somc,typec-current-max = <2000>;
+    somc,adj-charge-limit-enabled;
 };
 
 &i2c_6 {

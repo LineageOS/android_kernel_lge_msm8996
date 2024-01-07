@@ -37,6 +37,7 @@
 	somc,thermal-mitigation-usb-8v = <2200>;
 	somc,thermal-mitigation-usb-9v = <2000>;
 	somc,typec-current-max = <3000>;
+    somc,adj-charge-limit-enabled;
 	qcom,dc-psy-type = "Wireless";
 	qcom,dc-psy-ma = <900>;
 };
