@@ -29,11 +29,12 @@
 	somc,fastchg-cold-current-ma = <700>;
 	somc,thermal-engine-fastchg-current = <2500>;
 	somc,thermal-mitigation-usb-5v = <2500>;
-	somc,thermal-mitigation-usb-6v = <2500>;
-	somc,thermal-mitigation-usb-7v = <2500>;
-	somc,thermal-mitigation-usb-8v = <2500>;
-	somc,thermal-mitigation-usb-9v = <2500>;
-	somc,typec-current-max = <2500>;
+	somc,thermal-mitigation-usb-6v = <2100>;
+	somc,thermal-mitigation-usb-7v = <1800>;
+	somc,thermal-mitigation-usb-8v = <1600>;
+	somc,thermal-mitigation-usb-9v = <1500>;
+	somc,typec-current-max = <1800>;
+    somc,adj-charge-limit-enabled;
 };
 
 &i2c_6 {

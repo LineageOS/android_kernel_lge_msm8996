@@ -74,7 +74,7 @@ struct somc_limit_range_charge {
 	int			socmin;
 	int			status;
 	bool			fake_capacity;
-	int			hysterisis;
+	int			hysteresis;
 };
 
 struct somc_batt_log {
