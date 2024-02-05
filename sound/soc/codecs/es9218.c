@@ -877,6 +877,16 @@ static ssize_t set_forced_ess_filter(struct device *dev,
 	g_sabre_cf_num = input_filter;
 
     es9218_sabre_cfg_custom_filter(&es9218_sabre_custom_ft[g_sabre_cf_num]);
+
+	// Logic taken from `mute_work_function` above
+    if(g_sabre_cf_num == SHORT_FILTER)
+        g_volume = 0;
+    else if(g_sabre_cf_num == SHARP_FILTER)
+        g_volume = 4;
+    else
+        g_volume = 2;
+
+    es9218_master_trim(g_es9218_priv->i2c_client, g_volume);
     
     return count;
 }
