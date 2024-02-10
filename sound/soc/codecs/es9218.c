@@ -794,7 +794,6 @@ static ssize_t get_forced_right_volume(struct device *dev,
 }
 static DEVICE_ATTR(right_volume, S_IWUSR|S_IRUGO, get_forced_right_volume, set_forced_right_volume);
 
-#ifdef ES9218_DEBUG
 /* Headset type */
 static ssize_t set_forced_headset_type(struct device *dev,
                    struct device_attribute *attr,
@@ -816,7 +815,6 @@ static ssize_t get_forced_headset_type(struct device *dev,
     return sprintf(buf, "%i\n", g_headset_type);
 }
 static DEVICE_ATTR(headset_type, S_IWUSR|S_IRUGO, get_forced_headset_type, set_forced_headset_type);
-#endif
 
 /* AVC Volume */
 static ssize_t set_forced_avc_volume(struct device *dev,
@@ -1009,8 +1007,8 @@ static struct attribute *es9218_attrs[] = {
 	&dev_attr_fade_mute_count.attr, /* Unused outside of debugging */
 	&dev_attr_fade_mute_term.attr,  /* Unused as well */
 	&dev_attr_registers.attr,       /* Not really useful to us even on debug mode */
-    &dev_attr_headset_type.attr,    /* This one is already implemented rom-side */
 #endif
+	&dev_attr_headset_type.attr,
     &dev_attr_ess_filter.attr,
 	&dev_attr_ess_custom_filter.attr,
     &dev_attr_avc_volume.attr,
