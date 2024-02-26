@@ -1,0 +1,21 @@
+{
+  "comments": [
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "83534ca5_03f58930",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 29891
+      },
+      "writtenOn": "2024-02-26T00:48:16Z",
+      "side": 1,
+      "message": "About time we cleaned up all that cruft as well.",
+      "revId": "ab994f10bc7d2dc9db4ab1d4618f16f398248248",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    }
+  ]
+}
