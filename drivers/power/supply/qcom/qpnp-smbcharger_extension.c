@@ -172,7 +172,7 @@ static int somc_chg_get_current_ma(struct smbchg_chip *chip,
 			current_limit_ma =
 				chip->somc_params.thermal.usb_9v_current_max ?
 				chip->somc_params.thermal.usb_9v_current_max :
-				smbchg_default_hvdcp_icl_ma;
+				smbchg_default_hvdcp3_icl_ma;
 			pr_smb(PR_LGE, "Selected: C-8, HVDCP3\n");
 		} else {
 			/* Flow chart: C-6 */
