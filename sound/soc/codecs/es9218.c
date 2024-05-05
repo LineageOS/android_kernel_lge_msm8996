@@ -905,21 +905,22 @@ static ssize_t set_forced_ess_custom_filter(struct device *dev,
                    struct device_attribute *attr,
                    const char *buf, size_t count) {
 	char *datatoken, *delimiter = ",";
-	char *received_data = kzalloc(MAX_FILTER_STRING_SIZE * sizeof(char), GFP_KERNEL);
+	char *received_data;
 	int filter_data[MAX_FILTER_DATA_SIZE], i = 0;
-
-
-	sscanf(buf, "%s", received_data);
 
 	if ( es9218_power_state < ESS_PS_HIFI ) {
 		pr_err("%s() : invalid state = %s\n", __func__, power_state[es9218_power_state]);
 		return -EINVAL;
 	}
 
+	received_data = kzalloc(MAX_FILTER_STRING_SIZE * sizeof(char), GFP_KERNEL);
+	sscanf(buf, "%s", received_data);
+
 	/* Tokenize received data and save into the filter data array (everything is an integer) */
 	while ((datatoken = strsep(&received_data, delimiter)) != NULL && i < MAX_FILTER_DATA_SIZE) {
 		if (kstrtoint(datatoken, 10, &filter_data[i]) != 0) {
 			pr_err("Failed to convert filter data!");
+			kfree(received_data);
 			return -EINVAL;
 		}
 		i++;
