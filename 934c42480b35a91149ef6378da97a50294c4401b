@@ -16,6 +16,41 @@
       "message": "Any reason you are generating the full defconfigs instead of minimal?",
       "revId": "934c42480b35a91149ef6378da97a50294c4401b",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "a1bf3527_ce94096c",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 29578
+      },
+      "writtenOn": "2024-06-23T18:49:19Z",
+      "side": 1,
+      "message": "I have generated full defconfigs instead of minimal ones, for debugging in a better way, why we can\u0027t boot 14 QPR2/QPR3. (It seemed to be a problem with Compressed APEX).",
+      "revId": "934c42480b35a91149ef6378da97a50294c4401b",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "c576c24b_b8e145d5",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 2
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 29578
+      },
+      "writtenOn": "2024-06-23T18:49:19Z",
+      "side": 1,
+      "message": "I have generated full defconfigs instead of minimal ones, for debugging in a better way, why we can\u0027t boot 14 QPR2/QPR3. (It seemed to be a problem with Compressed APEX).",
+      "parentUuid": "ac2f925b_758cebd1",
+      "revId": "934c42480b35a91149ef6378da97a50294c4401b",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
