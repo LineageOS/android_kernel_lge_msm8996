@@ -80,6 +80,15 @@ enum voters_type {
 	VOTERS_BATTCHG
 };
 
+char *tempstat_names[] = {
+	"COLD",
+	"COOL",
+	"NORMAL",
+	"WARM",
+	"HOT",
+	"UNKNOWN"
+};
+
 static int somc_debug_mask = PR_INFO;
 module_param_named(
 	somc_debug_mask, somc_debug_mask, int, S_IRUSR | S_IWUSR
