@@ -59,5 +59,8 @@ CONFIG_LGE_USB_TUSB422_PAL=y
 # Moisture detection not implemented on 4.4
 CONFIG_LGE_USB_MOISTURE_DETECT=n
 
+# LGE - Fingerprint
+CONFIG_LGE_USES_NEW_FPC_BLOBS=y
+
 # Other
 CONFIG_TSPDRV=y

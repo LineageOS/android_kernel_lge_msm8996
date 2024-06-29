@@ -68,6 +68,12 @@ CONFIG_LGE_USB_ANX7688=y
 CONFIG_LGE_USB_ANX7688_OVP=y
 CONFIG_LGE_DP_ANX7688=y
 
+# LGE - Fingerprint
+CONFIG_LGE_USES_NEW_FPC_BLOBS=n
+
 # Other
 CONFIG_LGE_IRRC=y
 CONFIG_LGE_QPNP_HAPTIC_OV_RB=y
+
+# Reduce the max allowed clock for msm8996pro since elsa devices with this one are board prototypes
+CONFIG_ELSA_MSM8996PRO_CLOCK_RESTRICTION=y
