@@ -10,32 +10,6 @@
  * GNU General Public License for more details.
  */
 
-/*
-&pmi8994_charger {
-	// Below props are qcom
-	status = "ok";
-	qcom,iterm-ma = <100>;
-	qcom,fastchg-current-ma = <2500>;
-	qcom,float-voltage-mv = <4400>;
-	qcom,resume-delta-mv = <149>;
-	qcom,bmd-pin-src="bpd_thm";
-	qcom,bms-psy-name = "bms";
-	qcom,jeita-temp-hard-limit = <0>;
-	/delete-property/ qcom,charge-unknown-battery;
-	/delete-property/ qcom,chg-inhibit-fg;
-	qcom,parallel-usb-min-current-ma = <1400>;
-	qcom,parallel-usb-9v-min-current-ma = <900>;
-	qcom,charging-timeout-mins = <768>;
-	qcom,skip-usb-suspend-for-fake-battery;
-	qcom,bmd-algo-disabled;
-
-	// Below props are lge
-	qcom,usb_id-vadc = <&pm8994_vadc>;
-	qcom,default-hvdcp-icl-ma = <2000>;
-	// control for CM devices
-	qcom,ext_en_acc = <&pm8994_gpios 19 0>;
-}; */
-
 / {
 	vendor {
 		mtp_batterydata: qcom,battery-data {
@@ -64,7 +38,6 @@
 	qcom,fg-cc-cv-threshold-mv = <4390>;
 	qcom,esr-pulse-tuning-en;
 	qcom,fg-use-vbat-low-empty-soc;
-	qcom,fg-reset-on-lockup;
 	qcom,fg-cc-soc-limit-pct = <120>;
 	qcom,fg-control-slope-limiter;
 	qcom,fg-slope-limit-high-temp-chg = <6>;
@@ -76,8 +49,6 @@
 	qcom,fg-dischg-med-voltage-gain = <5 4 4>;
 	qcom,fg-dischg-high-voltage-gain = <4 4 3>;
 	qcom,cl-max-limit-deciperc= <50>;
-	qcom,fg-acfa-usable-fcc = <90 80 70 60>;
-	qcom,fg-acfa-v-cutoff-aged = <3400 3500 3550 3600>;
 };
 
 &pmi8994_haptics {
@@ -185,7 +156,6 @@
 		qcom,ibat-monitor {
 			qcom,vph-high-threshold-uv = <3200000>;
 			qcom,vph-low-threshold-uv = <3100000>;
-			qcom,soc-low-threshold = <15>;
 			qcom,mitigation-freq-khz = <1190400>;
 		};
 	};

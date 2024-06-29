@@ -56,40 +56,6 @@
 	};
 };
 
-/*
-&pmi8994_charger {
-	// Below props are qcom
-	status = "ok";
-	qcom,iterm-ma = <100>;
-	qcom,fastchg-current-ma = <3200>;
-	qcom,float-voltage-mv = <4350>;
-	qcom,resume-delta-mv = <149>;
-	qcom,bmd-pin-src="bpd_thm";
-	qcom,bms-psy-name = "bms";
-	qcom,jeita-temp-hard-limit = <0>;
-	/delete-property/ qcom,charge-unknown-battery;
-	/delete-property/ qcom,chg-inhibit-fg;
-	qcom,parallel-usb-min-current-ma = <1400>;
-	qcom,parallel-usb-9v-min-current-ma = <900>;
-	qcom,parallel-main-chg-fcc-percent = <40>;
-	qcom,charging-timeout-mins = <768>;
-	qcom,skip-usb-suspend-for-fake-battery;
-	qcom,aicl-rerun-period-s = <45>;
-	qcom,bmd-algo-disabled;
-	qcom,dc-psy-type = "Wireless";
-	qcom,dc-psy-ma = <900>;
-
-	// Below props are lge
-	qcom,usb_id-vadc = <&pm8994_vadc>;
-	qcom,default-hvdcp-icl-ma = <1900>;
-	qcom,default-hvdcp3-icl-ma = <1900>;
-	qcom,maximum-icl-ma = <3000>;
-	qcom,acc-detect-gpio = <&tlmm 132 0>;
-	qcom,enable-booster-gpio = <&pmi8994_gpios 9 0>;
-	qcom,batt-life-cycle-fcc-ma = <3200 3000 2900 2700>;
-	qcom,batt-life-cycle-vfloat = <4350 4340 4320 4300>;
-}; */
-
 / {
 	vendor {
 		mtp_batterydata: qcom,battery-data {
@@ -114,7 +80,6 @@
 	qcom,fg-cc-cv-threshold-mv = <4340>;
 	qcom,esr-pulse-tuning-en;
 	qcom,fg-use-vbat-low-empty-soc;
-	qcom,fg-reset-on-lockup;
 	qcom,fg-cc-soc-limit-pct = <120>;
 	qcom,fg-control-slope-limiter;
 	qcom,fg-slope-limit-high-temp-chg = <6>;
@@ -127,9 +92,6 @@
 	qcom,fg-dischg-high-voltage-gain = <4 4 3>;
 	qcom,fg-rconn-mohm = <0>;
 	qcom,cl-max-limit-deciperc= <50>;
-	qcom,fg-batt-life-cycle-set = <0 200 300 400>;
-	qcom,fg-batt-life-cycle-offset = <0 2 7 11>;
-	qcom,fg-batt-life-cycle-vfloat = <4350 4340 4320 4300>;
 };
 
 &pmi8994_haptics {
@@ -538,7 +500,6 @@
 		qcom,ibat-monitor {
 			qcom,vph-high-threshold-uv = <3200000>;
 			qcom,vph-low-threshold-uv = <3100000>;
-			qcom,soc-low-threshold = <15>;
 			qcom,mitigation-freq-khz = <1209600>;
 		};
 	};

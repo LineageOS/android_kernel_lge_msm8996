@@ -10,39 +10,6 @@
  * GNU General Public License for more details.
  */
 
-/*
-&pmi8994_charger {
-	// Below props are qcom
-	status = "ok";
-	qcom,iterm-ma = <100>;
-	qcom,fastchg-current-ma = <3100>;
-	qcom,float-voltage-mv = <4400>;
-	qcom,resume-delta-mv = <149>;
-	qcom,bmd-pin-src="bpd_thm";
-	qcom,bms-psy-name = "bms";
-	qcom,jeita-temp-hard-limit = <0>;
-	/delete-property/ qcom,charge-unknown-battery;
-	/delete-property/ qcom,chg-inhibit-fg;
-	qcom,parallel-usb-min-current-ma = <1400>;
-	qcom,parallel-usb-9v-min-current-ma = <900>;
-	qcom,parallel-main-chg-fcc-percent = <40>;
-	qcom,charging-timeout-mins = <768>;
-	qcom,skip-usb-suspend-for-fake-battery;
-	qcom,aicl-rerun-period-s = <45>;
-	qcom,bmd-algo-disabled;
-
-	// Below props are lge
-#if defined(CONFIG_MACH_MSM8996_ELSA_GLOBAL_CA)
-	qcom,afvc-comp-voltage = <0x01>;
-#endif
-	qcom,usb_id-vadc = <&pm8994_vadc>;
-	qcom,default-hvdcp-icl-ma = <1900>;
-	qcom,default-hvdcp3-icl-ma = <1900>;
-	qcom,maximum-icl-ma = <2000>;
-	qcom,acc-detect-gpio = <&tlmm 132 0>;
-	qcom,enable-booster-gpio = <&pmi8994_gpios 9 0>;
-}; */
-
 / {
 	vendor {
 		mtp_batterydata: qcom,battery-data {
@@ -70,7 +37,6 @@
 	qcom,fg-cc-cv-threshold-mv = <4390>;
 	qcom,esr-pulse-tuning-en;
 	qcom,fg-use-vbat-low-empty-soc;
-	qcom,fg-reset-on-lockup;
 	qcom,fg-cc-soc-limit-pct = <120>;
 	qcom,fg-control-slope-limiter;
 	qcom,fg-slope-limit-high-temp-chg = <6>;
@@ -82,9 +48,7 @@
 	qcom,fg-dischg-med-voltage-gain = <5 4 4>;
 	qcom,fg-dischg-high-voltage-gain = <4 4 3>;
 	qcom,fg-rconn-mohm = <30>;
-	qcom,cl-max-limit-deciperc= <50>;
-	qcom,fg-acfa-usable-fcc = <90 80 70 60>;
-	qcom,fg-acfa-v-cutoff-aged = <3400 3500 3550 3600>;
+	qcom,cl-max-limit-deciperc = <50>;
 };
 
 &pmi8994_haptics {
@@ -196,10 +160,9 @@
 		/delete-property/ qcom,bcl-soc-hotplug-list;
 		qcom,bcl-freq-control-list = <&CPU0 &CPU1 &CPU2 &CPU3>;
 		qcom,ibat-monitor {
-			qcom,vph-high-threshold-uv = <3500000>;
-			qcom,vph-low-threshold-uv = <3350000>;
-			qcom,soc-low-threshold = <20>;
-			qcom,mitigation-freq-khz = <1036800>;
+			qcom,vph-high-threshold-uv = <3300000>;
+			qcom,vph-low-threshold-uv  = <3100000>;
+			qcom,mitigation-freq-khz   = <1036800>;
 		};
 	};
 };
