@@ -818,8 +818,8 @@ CONFIG_TOUCHSCREEN_ATMEL_MAXTOUCH_TS=n
 CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_v21=n
 CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_v26=n
 
-# Disable verity to match Lineage's charter about verity on system images (LGE_8996 is not treble)
-CONFIG_DM_VERITY=n
+# Verity
+CONFIG_DM_VERITY=y
 
 # Enable perf events
 CONFIG_PERF_EVENTS=y
