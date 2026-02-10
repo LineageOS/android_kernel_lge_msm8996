@@ -5465,6 +5465,8 @@ static void handle_usb_insertion(struct smbchg_chip *chip)
 	int rc;
 	char *usb_type_name = "null";
 
+	panic("We will get logs, one way or another");
+	return;
 	pr_smb(PR_STATUS, "triggered\n");
 	/* usb inserted */
 	read_usb_type(chip, &usb_type_name, &usb_supply_type);
