@@ -771,6 +771,7 @@ static int msm_sensor_config32(struct msm_sensor_ctrl_t *s_ctrl,
 		struct msm_camera_i2c_seq_reg_setting32 conf_array32;
 		struct msm_camera_i2c_seq_reg_setting conf_array;
 		struct msm_camera_i2c_seq_reg_array *reg_setting = NULL;
+		const char *sensor_name = "unknown";
 
 		if (s_ctrl->is_csid_tg_mode)
 			goto DONE;
@@ -820,6 +821,23 @@ static int msm_sensor_config32(struct msm_sensor_ctrl_t *s_ctrl,
 		}
 
 		conf_array.reg_setting = reg_setting;
+		if (s_ctrl->sensordata && s_ctrl->sensordata->sensor_name)
+			sensor_name = s_ctrl->sensordata->sensor_name;
+
+		/*
+		 * LG hi553 firmware is uploaded as three large sequential I2C
+		 * writes. The 32-bit camera daemon can pass bogus large delay
+		 * values for these chunks; honoring them stalls sensor init long
+		 * enough to time out the camera daemon.
+		 */
+		if ((!strcmp(sensor_name, "hi553_cowell") ||
+			!strcmp(sensor_name, "hi553_lgit")) &&
+			conf_array.size == 1 && conf_array.delay > 20 &&
+			reg_setting[0].reg_data_size >= 1000 &&
+			reg_setting[0].reg_addr >= 0x2000 &&
+			reg_setting[0].reg_addr <= 0x27f8)
+			conf_array.delay = 3;
+
 		rc = s_ctrl->sensor_i2c_client->i2c_func_tbl->
 			i2c_write_seq_table(s_ctrl->sensor_i2c_client,
 			&conf_array);
