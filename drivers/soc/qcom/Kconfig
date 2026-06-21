@@ -1021,6 +1021,41 @@ config DIRTYSANTA_FIXUP
 	  bootloader.
 	default n
 
+config DIRTYSANTA_FIXUP_G6
+	boolean "Do G6 fixups for problems caused by DirtySanta-style bootloaders"
+	depends on !DIRTYSANTA_FIXUP
+	default n
+	help
+	  Work around G6/Lucye modem data left by engineering bootloaders
+	  before the modem firmware starts.
+
+config DIRTYSANTA_FIXUP_G6_DEVICENAME
+	string "G6 device name to use for VENDOR0 smem area"
+	depends on DIRTYSANTA_FIXUP_G6
+	default ""
+	help
+	  This string is written to the G6/Lucye VENDOR0 lg_model_name
+	  field. If unset the value from the kernel parameter "model.name"
+	  will be used.
+
+config DIRTYSANTA_FIXUP_G6_NTCODE
+	string "G6 NT code to use for VENDOR0 smem area"
+	depends on DIRTYSANTA_FIXUP_G6
+	default ""
+	help
+	  If set, this string is written to the G6/Lucye VENDOR0 nt_code
+	  field before the modem starts. Leave empty to preserve the
+	  bootloader value.
+
+config DIRTYSANTA_FIXUP_G6_SIMCOUNT
+	int "G6 SIM count to use for VENDOR0 smem area"
+	depends on DIRTYSANTA_FIXUP_G6
+	default "0"
+	help
+	  This value is written to the G6/Lucye VENDOR0 sim_num field.
+	  If unset the value from the kernel parameter "lge.sim_num" will
+	  be used.
+
 config DIRTYSANTA_FIXUP_DEVICENAME
 	string "Device name to use for VENDOR0 smem area"
 	depends on DIRTYSANTA_FIXUP

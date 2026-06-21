@@ -116,3 +116,4 @@ obj-$(CONFIG_MSM_HAB) += hab/
 obj-$(CONFIG_QCOM_QDSS_BRIDGE) += qdss_bridge.o
 obj-$(CONFIG_MFSE_QMI) += mfse_qmi_v01.o mfse_qmi.o
 obj-$(CONFIG_DIRTYSANTA_FIXUP) += dirtysanta_fixup.o
+obj-$(CONFIG_DIRTYSANTA_FIXUP_G6) += dirtysanta_fixup_g6.o
