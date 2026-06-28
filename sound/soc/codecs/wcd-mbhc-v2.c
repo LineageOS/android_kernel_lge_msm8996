@@ -902,7 +902,9 @@ static void wcd_mbhc_find_plug_and_report(struct wcd_mbhc *mbhc,
 		 */
 		wcd_mbhc_report_plug(mbhc, 1, jack_type);
 	} else if (plug_type == MBHC_PLUG_TYPE_HIGH_HPH) {
-		if (mbhc->mbhc_cfg->detect_extn_cable) {
+		if (mbhc->mbhc_cfg->linein_th == 0) {
+			wcd_mbhc_report_plug(mbhc, 1, SND_JACK_HEADPHONE);
+		} else if (mbhc->mbhc_cfg->detect_extn_cable) {
 			/* High impedance device found. Report as LINEOUT */
 			wcd_mbhc_report_plug(mbhc, 1, SND_JACK_LINEOUT);
 			pr_debug("%s: setup mic trigger for further detection\n",

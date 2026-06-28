@@ -545,7 +545,11 @@ static struct wcd_mbhc_config wcd_mbhc_cfg = {
 	.key_code[5] = 0,
 	.key_code[6] = 0,
 	.key_code[7] = 0,
+#if defined(CONFIG_MACH_MSM8996_H1) || defined(CONFIG_MACH_MSM8996_ELSA)
+	.linein_th = 0,
+#else
 	.linein_th = 5000,
+#endif
 #ifdef CONFIG_SND_SOC_ES9018
 	.moisture_en = false,
 #else
