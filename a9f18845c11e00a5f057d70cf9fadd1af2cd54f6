@@ -16,6 +16,23 @@
       "message": "Hold, let me try this on v20 with quad dac",
       "revId": "a9f18845c11e00a5f057d70cf9fadd1af2cd54f6",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
+    },
+    {
+      "unresolved": false,
+      "key": {
+        "uuid": "53ff8477_e4c3ef26",
+        "filename": "/PATCHSET_LEVEL",
+        "patchSetId": 1
+      },
+      "lineNbr": 0,
+      "author": {
+        "id": 37348
+      },
+      "writtenOn": "2026-07-19T06:39:37Z",
+      "side": 1,
+      "message": "Let\u0027s not merge this for now, it\u0027s valid for my personal G5 but it\u0027s possible that corrosion on the headphone jack messed with it\u0027s impeadence readings. Someone with a G6 also had a similar issue so not sure what it applies to. Might circle back to this later",
+      "revId": "a9f18845c11e00a5f057d70cf9fadd1af2cd54f6",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71"
     }
   ]
 }
